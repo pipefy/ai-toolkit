@@ -51,7 +51,8 @@ class StartupIdentity:
         :class:`pipefy_auth.RefreshableBearerAuth`): the token is fetched and
         refreshed on the first request that needs it, not eagerly here.
         """
-        configure_keychain_backend(settings.auth.keychain_backend)
+        if not settings.auth.disable_stored_session:
+            configure_keychain_backend(settings.auth.keychain_backend)
         resolved = resolve_pipefy_auth(
             static_token=settings.auth.static_token,
             service_account=settings.auth.to_service_account(),

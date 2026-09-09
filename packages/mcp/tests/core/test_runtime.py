@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 from unittest.mock import patch
 
@@ -203,6 +205,28 @@ class TestForProfile:
     resource-server pair (failing fast without one); every other profile resolves
     the one startup credential and fails fast when none is configured.
     """
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("backend", ["auto", "file", "encrypted"])
+    def test_disabled_sessions_skip_keyring_discovery(
+        self, clear_auth_env, monkeypatch, mocker, backend
+    ):
+        monkeypatch.setattr("pipefy_auth.settings.sys.platform", "darwin")
+        settings = Settings(
+            auth=AuthSettings(
+                static_token="static-bearer",
+                disable_stored_session=True,
+                keychain_backend=backend,
+            )
+        )
+        discover = mocker.patch(
+            "keyring.get_keyring", side_effect=AssertionError("keyring unavailable")
+        )
+
+        runtime = McpRuntime.for_profile(settings)
+
+        assert _bearer_of(runtime.session_for_request(None)) == "Bearer static-bearer"
+        discover.assert_not_called()
 
     @pytest.mark.unit
     def test_remote_selects_request_scoped_identity_and_builds_inbound_auth(self):

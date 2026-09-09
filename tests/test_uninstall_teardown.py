@@ -393,21 +393,51 @@ def test_the_command_sequence_is_credentials_configs_tools_skills_state(tmp_path
     assert skill < lock
 
 
-def test_logout_recreates_the_config_directory_and_the_ordering_still_clears_it(
-    tmp_path,
+@pytest.mark.parametrize("config_exists", [False, True])
+@pytest.mark.parametrize("encrypted", [False, True])
+def test_logout_runtime_locks_are_cleared_even_when_absent_during_scan(
+    tmp_path, config_exists, encrypted
 ):
-    """`pipefy auth logout` recreates ~/.config/pipefy with a refresh.lock."""
+    """Logout can create both runtime locks after the cleanup plan is collected."""
     home = _home(tmp_path)
     stub = _stub_path(tmp_path)
+    _no_uv_tools(stub)
+    if encrypted:
+        _write_exec(
+            stub / "pipefy",
+            _PIPEFY.replace(
+                "exit 0\n", ': > "$HOME/.config/pipefy/session.enc.lock"\nexit 0\n'
+            ),
+        )
     _keychain_entry(stub)
     config = home / ".config" / "pipefy"
-    assert not config.exists()
+    if config_exists:
+        config.mkdir(parents=True)
 
     run = _run(home, stub)
 
     assert "pipefy auth logout" in run.stubs
     assert run.index("pipefy auth logout") < run.index("refresh.lock")
+    if encrypted:
+        assert run.index("pipefy auth logout") < run.index("session.enc.lock")
     # The directory the logout brought back is gone again at the end.
+    assert not config.exists(), sorted(p.name for p in config.iterdir())
+
+
+def test_encrypted_session_teardown_removes_the_backend_runtime_lock(tmp_path):
+    from pipefy_auth.encrypted_file_keyring import EncryptedFileKeyring
+    from pipefy_auth.wrapping_key import InMemoryWrappingKey
+
+    home = _home(tmp_path)
+    config = home / ".config" / "pipefy"
+    backend = EncryptedFileKeyring(config / "session.enc", InMemoryWrappingKey())
+    backend.set_password("pipefy", "example.invalid|test", "fixture secret")
+    stub = _stub_path(tmp_path)
+    _no_uv_tools(stub)
+
+    run = _run(home, stub)
+
+    assert "pipefy auth logout" in run.stubs
     assert not config.exists(), sorted(p.name for p in config.iterdir())
 
 
@@ -1457,3 +1487,43 @@ def test_client_none_is_refused_rather_than_stranding_registrations(tmp_path):
     assert "uv tool uninstall pipefy-cli" in bare.stdout
     # Nothing was touched on either run.
     assert json.loads((home / ".cursor" / "mcp.json").read_text())["mcpServers"]
+
+
+def test_darwin_wrapping_key_teardown_uses_canonical_service_and_account(tmp_path):
+    from pipefy_auth.keychain_choice import (
+        WRAPPING_KEYCHAIN_ACCOUNT,
+        WRAPPING_KEYCHAIN_SERVICE,
+    )
+
+    home = _home(tmp_path)
+    stub = _stub_path(tmp_path, os_name="Darwin")
+    _no_uv_tools(stub)
+    _write_exec(
+        stub / "security",
+        "#!/bin/sh\n"
+        'printf \'%s\\n\' "security $*" >> "$STUBLOG"\n'
+        'svc=""\n'
+        'prev=""\n'
+        'for arg in "$@"; do\n'
+        '    if [ "$prev" = "-s" ]; then svc="$arg"; fi\n'
+        '    prev="$arg"\n'
+        "done\n"
+        'case "$1" in\n'
+        "    find-generic-password)\n"
+        f'        [ "$svc" = "{WRAPPING_KEYCHAIN_SERVICE}" ] && exit 0\n'
+        "        exit 44\n"
+        "        ;;\n"
+        "    dump-keychain) exit 0 ;;\n"
+        "    delete-generic-password) exit 0 ;;\n"
+        "esac\n"
+        "exit 1\n",
+    )
+
+    run = _run(home, stub)
+
+    assert any(
+        line.startswith("security delete-generic-password")
+        and f"-s {WRAPPING_KEYCHAIN_SERVICE}" in line
+        and f"-a {WRAPPING_KEYCHAIN_ACCOUNT}" in line
+        for line in run.stubs
+    )

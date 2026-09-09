@@ -92,7 +92,7 @@ The order is load-bearing, not cosmetic:
 5. **Client configs.** Before the tools, so no registration is left pointing at a binary that no longer exists.
 6. **Tools.**
 7. **Skills.**
-8. **Runtime state**, last: `pipefy auth logout` and `pipefy auth status` both recreate `~/.config/pipefy` with a lock file, so clearing it any earlier clears nothing.
+8. **Runtime state**, last: `pipefy auth logout` and `pipefy auth status` can recreate `~/.config/pipefy` with `refresh.lock`, and encrypted-session writes also create `session.enc.lock`. Cleanup includes locks created during logout, so clearing them any earlier clears nothing.
 
 `~/.config/pipefy` is removed only if it ends up empty. Its presence after a later `pipefy` invocation is not a failed removal.
 
@@ -116,9 +116,9 @@ A teardown uses the exit codes `--scan` uses, judged by the closing re-scan rath
 
 Without a receipt the run is in **heuristic mode**, which is permanent rather than transitional: every install made before the receipt existed has none, and only a version of `install.sh` that writes one produces one. Heuristic mode removes less. In a config the installer writes, it deletes a registration only where the value is exactly the single command the installer writes, reports everything else for you to judge, and never treats uv as this toolkit's.
 
-## The stored session lives in one of two places
+## The stored session lives in one of three places
 
-`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the keychain while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. The scan resolves and reports the effective backend and checks both stores regardless of which one is active.
+`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; `encrypted` puts it in `session.enc` (plus `wrapping.key` on Windows, and a `pipefy-wrapping-key` Keychain item on macOS). Without either override, the session is in the OS keychain. Removing that setting **moves the store** rather than clearing it: the next login writes to the keychain while anything already in `keyring.cfg` / `session.enc` stays there, still signed in and invisible to a keychain-only sweep. The scan resolves and reports the effective backend and checks the OS keychain, `keyring.cfg`, `session.enc`, and wrapping artifacts regardless of which store is active.
 
 ## Never removed, by design
 
@@ -212,6 +212,8 @@ The scan prints this list too, filled in with the names it found:
 | credentials | `pipefy auth logout` |
 | hosted OAuth token | `claude mcp logout <name>` |
 | macOS keychain item | `security delete-generic-password -s pipefy` |
+| macOS wrapping key | `security delete-generic-password -s pipefy-wrapping-key -a aes-256-gcm` |
+| Windows wrapping key | delete `wrapping.key` under the Pipefy config directory |
 
 Use the names the report printed: a registration can be called anything.
 

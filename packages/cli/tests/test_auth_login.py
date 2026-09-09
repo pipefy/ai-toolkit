@@ -555,15 +555,23 @@ class TestAuthLoginCommand:
         assert "auth_url" in result.stderr
         assert "should match pattern" in result.stderr
 
+    @pytest.mark.parametrize("backend", ["auto", "file", "encrypted"])
     def test_disable_stored_session_refuses_with_exit_2(
         self,
         cli_runner,
         monkeypatch: pytest.MonkeyPatch,
         clean_pipefy_env,
         saved_cwd,
+        mocker,
+        backend: str,
     ) -> None:
-        """``PIPEFY_DISABLE_STORED_SESSION=1`` short-circuits login before any OAuth work."""
+        """Disabled sessions skip backend discovery as well as OAuth work."""
         monkeypatch.setenv("PIPEFY_DISABLE_STORED_SESSION", "1")
+        monkeypatch.setenv("PIPEFY_KEYCHAIN_BACKEND", backend)
+        monkeypatch.setattr("pipefy_auth.settings.sys.platform", "darwin")
+        discover = mocker.patch(
+            "keyring.get_keyring", side_effect=AssertionError("keyring unavailable")
+        )
 
         from pipefy_cli.commands import auth as auth_module
 
@@ -577,6 +585,7 @@ class TestAuthLoginCommand:
         result = cli_runner.invoke(cli_app, ["auth", "login"])
         assert result.exit_code == 2
         assert "Stored sessions are disabled" in result.stderr
+        discover.assert_not_called()
 
     def test_happy_path(
         self,
@@ -828,7 +837,7 @@ class TestAuthLoginCommand:
         monkeypatch.setattr(
             auth_module,
             "keychain_backend_name",
-            lambda: "PlaintextKeyring",
+            lambda: "file",
         )
 
         def _boom(**_kwargs: object) -> None:
@@ -838,8 +847,6 @@ class TestAuthLoginCommand:
 
         result = cli_runner.invoke(cli_app, ["auth", "login"])
         assert result.exit_code == 1
-        assert (
-            "could not be stored in your keychain (PlaintextKeyring)" in result.stderr
-        )
+        assert "could not be stored in your keychain (file)" in result.stderr
         assert "config directory is writable" in result.stderr
         assert "Secret Service" not in result.stderr

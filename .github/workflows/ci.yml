@@ -7,6 +7,34 @@ on:
     branches: [main, dev]
 
 jobs:
+  encrypted-session:
+    name: Encrypted sessions (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+    # The Linux suite cannot exercise Security.framework ACLs or Windows DPAPI.
+    # These tests use synthetic credentials and temporary files/keychains.
+    - name: Test native encrypted session storage
+      run: >-
+        uv run pytest -c pyproject.toml
+        packages/auth/tests/test_encrypted_file_keyring.py
+        packages/auth/tests/test_wrapping_key.py
+        packages/auth/tests/test_wrapping_key_darwin.py
+        packages/auth/tests/test_wrapping_key_darwin_persistence.py
+        packages/auth/tests/test_wrapping_key_windows.py
+
   lint:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

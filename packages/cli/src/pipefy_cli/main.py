@@ -95,7 +95,8 @@ def main(
     ctx.obj["auth_settings"] = cli_settings.auth
     # Swap the keyring backend before any keychain probe (resolver tier
     # detection, ``auth login``, ``auth status``). No-op when ``auto``.
-    configure_keychain_backend(cli_settings.auth.keychain_backend)
+    if not cli_settings.auth.disable_stored_session:
+        configure_keychain_backend(cli_settings.auth.keychain_backend)
     cli_token = token.strip() if token else None
     bearer: BearerToken | None
     if cli_token:
