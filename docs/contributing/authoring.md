@@ -90,15 +90,16 @@ Change the order when something outside this file changes what matters:
 - Expectations cover the architecture and its documentation, which is what arc42 asks for.
 - Name no `FR` and no `QR`. A run of IDs costs every reader legibility, and it pays only a completeness check, which is a different artifact.
 
-**`Architecture constraints`, arc42 2.** The limits every decision works inside, in two tables: technical, then organizational.
+**`Architecture constraints`, arc42 2.** The limits every decision works inside, in two tables, technical then organizational, and a third block for the conventions we set.
 
-- A row is a noun phrase that names the limit, and a consequence that says what the toolkit therefore does.
-- Name a limit, and never a capability. A reader finds a constraint by the word that removes freedom.
-- A limit earns a row when it bounds a decision this map describes, and when an outside party set it or bears it. One that is ours to lift and ours to bear is a precedent, and [`conventions.md`](conventions.md) holds the rule for it. One that bounds no decision here stays with the file that sets it, such as [`CONTRIBUTING.md`](../../CONTRIBUTING.md) or [`TERMS.md`](../../TERMS.md).
+- A constraint takes a choice away from a contributor. It bounds a design, an implementation, or the way we work. Every one takes a row here, even where another file states the rules. A requirement is not a constraint, and `Requirements overview` lists a function while `Quality requirements` lists a demand.
+- The kind of limit picks the group. A limit on technology goes in the technical table, and a limit that a code change relieves is technical whoever set it. A limit from the organization, from a contract, or from law goes in the organizational table. A rule we set about how we write and work is a convention, and the `Conventions` block names its set.
+- A row leaves when we lift the limit. `Risks and technical debt` then carries the code that is still written against it.
+- A row carries a short name for the limit, and an explanation in the last column. The explanation says where the limit comes from, and another section says what we do about it.
 - A cell reads on its own. Use no term the map leaves undefined, and take no referent from the neighboring cell.
-- Name the applications a limit applies to, in the words `Glossary` fixes. A contributor on one application reads that column and stops.
-- Ask whether we can remove the limit alone, and who bears it while it stands. If we can remove it alone, and no outside party bears it, then it is a gap or a precedent rather than a constraint. `Risks and technical debt` records a gap with the fix as its target, and [`conventions.md`](conventions.md) holds a precedent.
+- The `Applies to` cell names what a limit reaches: each of `SDK`, `CLI` and `MCP`, and a directory such as `skills/` beside them. It reads `The repository` instead where the limit reaches every part, including `docs/` and a support package.
 - A link that points at an owner goes under the table, never in a cell. See [Point at the owner of a fact](#point-at-the-owner-of-a-fact).
+- A reference runs from a demand to the constraint that shapes it. A cell therefore carries no `FR` and no `QR` handle, and the demand cites the constraint instead.
 
 **`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it all acts on.
 
