@@ -2,7 +2,7 @@
 
 These are the decision records behind the toolkit design: how the SDK, MCP server, and CLI are layered, how their contracts are shaped, and how the code is structured. Each record holds one decision with its context and reasoning. A record becomes immutable once it is adopted.
 
-There are four records, one per principle. Today all four are proposed. None is adopted yet. The rule each decision produces lives in a living doc, and that is what a contributor follows day to day. A record can defer part of its decision, and its row names the deferred part. The record keeps the why. To change an adopted decision, add a new record that supersedes the old one. Do not edit an adopted record. See [`authoring.md`](../authoring.md).
+There are four records, one per principle. Today all four are proposed. None is adopted yet. The rule each decision produces lives in a living doc, and that is what a contributor follows day to day. A record can defer part of its decision, and its row names the deferred part. The record keeps the why. To change an adopted decision, add a new record that supersedes the old one. Do not edit an adopted record, and do not change its decision by a refactor. See [`authoring.md`](../authoring.md).
 
 | ADR | Decision | Status | Current rule |
 |---|---|---|---|
@@ -11,7 +11,7 @@ There are four records, one per principle. Today all four are proposed. None is 
 | [0003](0003-mcp-tools-express-outcomes.md) | MCP tools express outcomes | proposed, consolidation, resolver migration, and gate reshaping deferred | [`conventions.md`](../conventions.md) |
 | [0004](0004-vertical-slice-structure.md) | Vertical-slice structure and naming | proposed, slice folders and the `Pipefy` rename deferred | [`architecture.md`](../architecture.md), [`conventions.md`](../conventions.md) |
 
-The governance rule that a self-imposed constraint is a refactor candidate lives in [`conventions.md`](../conventions.md), not as a separate record.
+The governance rule that says when to refactor lives in [`conventions.md`](../conventions.md), not as a separate record.
 
 ## Rollout epics
 
