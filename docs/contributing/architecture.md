@@ -81,10 +81,11 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | Vendor-owned domain vocabulary | The repository | Pipefy's domain model names every entity, and Pipefy maintains that model outside this repository |
 | A tool catalog we do not own | MCP | The iPaaS engine publishes its own tools, and their names and their shapes come from that engine |
 | A deployment we do not build | MCP | Every deployment of the MCP server is built and run outside this repository, by Pipefy or by a consumer |
+| Python 3.11 as the floor | The repository | Python 3.9 left upstream support in late 2025, and 3.10 leaves it on 2026-10-31. Python 3.11 is therefore the oldest runtime that still receives a security fix |
 | No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
 | No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
 
-[`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and `install.sh` covers the POSIX platforms alone.
+[`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and `install.sh` covers the POSIX platforms alone. Each `pyproject.toml` owns the floor, and `.python-version` holds the one version CI runs.
 
 **Organizational.**
 
