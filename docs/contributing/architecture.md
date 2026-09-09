@@ -75,11 +75,11 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 |---|---|---|
 | Schema as the model's only instruction | MCP | A field name and its description are written for a model to read, so a schema change is a behavior change |
 | No guaranteed answer from the client | MCP | The client's side of a question is optional in the protocol, so every tool needs a path that finishes without an answer |
-| Vendor-owned GraphQL shape | All three | A better entity shape or error shape is a translation we build and maintain, and `QR-2` is what that buys |
-| Vendor-owned domain vocabulary | All three | Every capability name comes from the domain model, never from the tool catalog, and `QR-17` is the demand it serves |
+| Vendor-owned GraphQL shape | SDK, CLI, MCP | A better entity shape or error shape is a translation we build and maintain, and `QR-2` is what that buys |
+| Vendor-owned domain vocabulary | The repository | Every capability name comes from the domain model, never from the tool catalog, and `QR-17` is the demand it serves |
 | A tool catalog we do not own | MCP | The iPaaS tools are relayed rather than reshaped, so they are the one place `QR-5` does not apply |
 | No deployment we operate | MCP | Every endpoint and every exposed tool is a setting rather than a source constant, which is `QR-21`, and the unauthenticated profile refuses a non-loopback bind |
-| No assumed operating system | All three | A credential store, a config path, and a file lock each take an OS-specific form |
+| No assumed operating system | The repository | A credential store, a config path, and a file lock each take an OS-specific form |
 | No keychain in some environments | CLI, MCP | Credential storage carries a file backend as well as the OS keychain |
 
 [`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and `install.sh` covers the POSIX platforms alone.
@@ -88,7 +88,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 
 | Constraint | Applies to | Consequence |
 |---|---|---|
-| Apache 2.0 for the code and the docs | All three | A dependency carries a compatible license, or it does not land |
+| Apache 2.0 for the code and the docs | The repository | A dependency carries a compatible license, or it does not land |
 
 [`TERMS.md`](../../TERMS.md) is the notice behind that row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering.
 
