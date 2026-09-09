@@ -65,28 +65,28 @@ Each Pipefy party confirmed its own row. The consumer rows are our reading of wh
 
 ## Architecture constraints
 
-Every decision on this map works inside these constraints. Each row names the constraint and what follows from it. A limit is ours alone when we can lift it and we bear its cost. That is a precedent rather than a constraint, and [`conventions.md`](conventions.md) says when to refactor it away. Every other limit is a constraint.
+Every decision on this map works inside these constraints. Each row names the constraint and says where it comes from. A limit is ours alone when we can lift it and we bear its cost. That is a precedent rather than a constraint, and [`conventions.md`](conventions.md) says when to refactor it away. Every other limit is a constraint.
 
 A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row.
 
 **Technical.**
 
-| Constraint | Applies to | Consequence |
+| Constraint | Applies to | Explanation |
 |---|---|---|
-| Schema as the model's only instruction | MCP | A field name and its description are written for a model to read, so a schema change is a behavior change |
-| No guaranteed answer from the client | MCP | The client's side of a question is optional in the protocol, so every tool needs a path that finishes without an answer |
-| Vendor-owned GraphQL shape | SDK, CLI, MCP | A better entity shape or error shape is a translation we build and maintain, and `QR-2` is what that buys |
-| Vendor-owned domain vocabulary | The repository | Every capability name comes from the domain model, never from the tool catalog, and `QR-17` is the demand it serves |
-| A tool catalog we do not own | MCP | The iPaaS tools are relayed rather than reshaped, so they are the one place `QR-5` does not apply |
-| No deployment we operate | MCP | Every endpoint and every exposed tool is a setting rather than a source constant, which is `QR-21`, and the unauthenticated profile refuses a non-loopback bind |
-| No assumed operating system | The repository | A credential store, a config path, and a file lock each take an OS-specific form |
-| No keychain in some environments | CLI, MCP | Credential storage carries a file backend as well as the OS keychain |
+| Schema as the model's only instruction | MCP | A client loads the schema at connect, and a model reads nothing else about a tool before it calls one |
+| No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
+| Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
+| Vendor-owned domain vocabulary | The repository | Pipefy's domain model names every entity, and Pipefy maintains that model outside this repository |
+| A tool catalog we do not own | MCP | The iPaaS engine publishes its own tools, and their names and their shapes come from that engine |
+| A deployment we do not build | MCP | Every deployment of the MCP server is built and run outside this repository, by Pipefy or by a consumer |
+| No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
+| No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
 
 [`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and `install.sh` covers the POSIX platforms alone.
 
 **Organizational.**
 
-| Constraint | Applies to | Consequence |
+| Constraint | Applies to | Explanation |
 |---|---|---|
 | Apache 2.0 for the code and the docs | The repository | A dependency carries a compatible license, or it does not land |
 
