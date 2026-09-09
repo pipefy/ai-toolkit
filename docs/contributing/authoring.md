@@ -94,10 +94,10 @@ Change the order when something outside this file changes what matters:
 
 - A row is a noun phrase that names the limit, and a consequence that says what the toolkit therefore does.
 - Name a limit, and never a capability. A reader finds a constraint by the word that removes freedom.
-- A limit earns a row when it bounds a decision this map describes. One that binds Pipefy, a contributor, or a deployer stays off the map and lives where it is set, in [`CONTRIBUTING.md`](../../CONTRIBUTING.md) or [`TERMS.md`](../../TERMS.md).
+- A limit earns a row when it bounds a decision this map describes, and when an outside party set it or bears it. One that is ours to lift and ours to bear is a precedent, and [`conventions.md`](conventions.md) holds the rule for it. One that bounds no decision here stays with the file that sets it, such as [`CONTRIBUTING.md`](../../CONTRIBUTING.md) or [`TERMS.md`](../../TERMS.md).
 - A cell reads on its own. Use no term the map leaves undefined, and take no referent from the neighboring cell.
 - Name the applications a limit applies to, in the words `Glossary` fixes. A contributor on one application reads that column and stops.
-- Ask whether we could remove the limit today. If we could, it is not a constraint but a gap, and `Risks and technical debt` records it with the fix as its target.
+- Ask whether we can remove the limit alone, and who bears it while it stands. If we can remove it alone, and no outside party bears it, then it is a gap or a precedent rather than a constraint. `Risks and technical debt` records a gap with the fix as its target, and [`conventions.md`](conventions.md) holds a precedent.
 - A link that points at an owner goes under the table, never in a cell. See [Point at the owner of a fact](#point-at-the-owner-of-a-fact).
 
 **`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it all acts on.
