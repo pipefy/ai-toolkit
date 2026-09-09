@@ -400,22 +400,53 @@ Do not
 
 Why: a test that constructs the app and invokes the tool handler walks the same path a client walks.
 
-## A precedent is a refactor candidate
+## Lean into a refactor
 
-**PREC-1. A precedent we set is a refactor candidate.**
+**REFAC-1. A workaround is a signal to refactor.**
 
 Do
 
-- Remove the precedent when it blocks a better name, a cleaner structure, or a better abstraction.
-- Free a held name by renaming, rather than settle for a second-best term.
-- Reopen a decision an ADR records with a new ADR, not with a refactor.
+- Look at the problem from another angle when the same workaround comes up again.
 
 Do not
 
-- Rename because a precedent feels imperfect. It must actually block something.
+- Refactor to escape a constraint. [Architecture constraints](architecture.md#architecture-constraints) states what happens to one instead.
 
-Why: the default is to fix the rule, not to accept the worse option. Weigh the churn before a wide rename.
+Why: a workaround charges its cost again on every pass, and it hides the shape that fits.
 
-**PREC-2. A constraint a vendor or the runtime set is not a precedent, so it is not ours to lift.**
+**REFAC-2. A proven pattern asks for one abstraction.**
 
-Why: the rule above applies only to a precedent we set ourselves.
+Do
+
+- Pull the shape out when the pattern is proven, and when it stays.
+
+Do not
+
+- Abstract on a count of copies.
+- Abstract a shape that still moves.
+
+Why: a count says nothing about whether a shape stays. An abstraction over a moving shape needs a rework at the next change. Copies of a proven shape drift apart until each one states a slightly different rule.
+
+**REFAC-3. Take the simpler alternative.**
+
+Do
+
+- Free a held name by renaming, rather than settle for a second-best term.
+
+Do not
+
+- Refactor because the current shape feels imperfect. Name the simpler alternative.
+
+Why: the default is to fix the rule, not to accept the worse option.
+
+**REFAC-4. Churn sets when a rework lands, and never whether it lands.**
+
+Do
+
+- Stage a wide rework behind a smaller step.
+
+Do not
+
+- Keep a shape because the rework reaches far.
+
+Why: the previous-decision trap is how a design rots. A wide rework is a question of scheduling, and it settles nothing about whether the current shape stands.
