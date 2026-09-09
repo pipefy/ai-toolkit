@@ -74,6 +74,8 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | Constraint | Applies to | Explanation |
 |---|---|---|
 | Schema as the model's only instruction | MCP | A client loads the schema at connect, and a model reads nothing else about a tool before it calls one |
+| A rate limit at the LLM vendor | CLI, MCP, `skills/` | The LLM vendor meters a consumer's use over a rolling period, and a longer cap sits above the meter |
+| A context window per call | CLI, MCP, `skills/` | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
 | Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
 | Vendor-owned domain vocabulary | The repository | Pipefy's domain model names every entity, and Pipefy maintains that model outside this repository |
@@ -500,7 +502,7 @@ Today the server does more than this, because a destructive tool returns a previ
 
 ### Tool surface
 
-A deployment decides how many tools a model sees, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog costs context once at connect, before the consumer asks for anything, and it costs that in tool count and in words per tool, so `QR-23` bounds the words per tool.
+A deployment decides how many tools a model sees, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, once at connect, before the consumer asks for anything. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
 
 Two axes classify the catalog. A domain is the one subject a tool is about, and the domains partition it, so every registered tool has exactly one. A tool profile is a journey-sized selection that crosses domains, and profiles overlap. `--toolsets` and `PIPEFY_MCP_TOOLSETS` name either kind, or a reserved keyword, so a deployment chooses without a source change, which is `QR-21`. [`docs/config.md`](../config.md) is the reference for those names and their precedence.
 
