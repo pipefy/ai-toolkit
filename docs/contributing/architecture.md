@@ -65,7 +65,9 @@ Each Pipefy party confirmed its own row. The consumer rows are our reading of wh
 
 ## Architecture constraints
 
-Every decision on this map works inside these constraints. Each row names the constraint and what follows from it. Where we set the rule ourselves, it is a precedent rather than a constraint, and `PREC-1` in [`conventions.md`](conventions.md) treats it as a refactor candidate.
+Every decision on this map works inside these constraints. Each row names the constraint and what follows from it. A limit is ours alone when we can lift it and we bear its cost. That is a precedent rather than a constraint, and [`conventions.md`](conventions.md) says when to refactor it away. Every other limit is a constraint.
+
+A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row.
 
 **Technical.**
 
