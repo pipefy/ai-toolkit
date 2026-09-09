@@ -92,8 +92,9 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | Constraint | Applies to | Explanation |
 |---|---|---|
 | Apache 2.0 for the code and the docs | The repository | A dependency carries a compatible license, or it does not land |
+| A public repository | The repository | Pipefy publishes this repository, so every file in it and every past version is readable by anyone |
 
-[`TERMS.md`](../../TERMS.md) is the notice behind that row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering.
+[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering.
 
 ## Context and scope
 
@@ -152,7 +153,7 @@ These are the decisions everything else rests on. Some answer a goal that [Quali
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
 | A change to shared behavior that lands in one pull request (`QR-26`) | Every package lives in one repository and ships on one version. One test run covers all of them | [`RELEASE.md`](../../RELEASE.md) |
 | A smaller learning curve for a contributor | The toolkit is written in Python, which was the default language for work on artificial intelligence when this project began | [`dependencies.md`](dependencies.md) |
-| A commitment to ship in the open | Everything in this repository is published, so a deployment's configuration and credentials cannot sit in it. The hosted wrapper that runs the remote profile is built elsewhere | [Architecture constraints](#architecture-constraints), [`CONTRIBUTING.md`](../../CONTRIBUTING.md) |
+| A commitment to ship in the open | A deployment reads its configuration and its credentials from its own environment | [Architecture constraints](#architecture-constraints), [`CONTRIBUTING.md`](../../CONTRIBUTING.md) |
 
 ## Building block view
 
