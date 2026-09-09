@@ -65,7 +65,9 @@ Each Pipefy party confirmed its own row. The consumer rows are our reading of wh
 
 ## Architecture constraints
 
-Every decision on this map works inside these constraints. Each row names the constraint and says where it comes from. A limit is ours alone when we can lift it and we bear its cost. That is a precedent rather than a constraint, and [`conventions.md`](conventions.md) says when to refactor it away. Every other limit is a constraint.
+Every decision on this map works inside these constraints, and this section is the whole list. Each row names the constraint and says where it comes from. Where another file states the rules, the owner under the table points there.
+
+A limit on technology goes under `Technical`. A limit from the organization, from a contract, or from law goes under `Organizational`. The rules we set for ourselves are conventions, and the block below names each set with the file that holds it. Once we lift a limit, its row goes, and `Risks and technical debt` carries the code still written against it.
 
 A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row.
 
@@ -98,6 +100,10 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | A compliance card on a regulated blueprint | `skills/` | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
 [`TERMS.md`](../../TERMS.md) is the notice behind the license row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) with `.github/workflows/dco.yml` owns the sign-off. `CONTRIBUTING.md` owns the review, and [`TERMS.md`](../../TERMS.md) with `CONTRIBUTING.md` owns the card, alongside [`COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md).
+
+**Conventions.**
+
+We set conventions, and every contributor works inside them. The code rules live in [`conventions.md`](conventions.md), each under a permanent ID that a review cites. The documentation rules live in [`authoring.md`](authoring.md). A skill, a commit and a pull request all follow [`CONTRIBUTING.md`](../../CONTRIBUTING.md). A version and a release follow [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md). A dependency follows [`dependencies.md`](dependencies.md), and each `pyproject.toml` carries the cap it sets. A contributing agent starts at [`AGENTS.md`](../../AGENTS.md), which holds the rules for an agent and routes it to the file that owns each set.
 
 ## Context and scope
 
