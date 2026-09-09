@@ -93,8 +93,9 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 |---|---|---|
 | Apache 2.0 for the code and the docs | The repository | A dependency carries a compatible license, or it does not land |
 | A public repository | The repository | Pipefy publishes this repository, so every file in it and every past version is readable by anyone |
+| A sign-off on every commit | The repository | Pipefy applies the Developer Certificate of Origin, which makes a contributor certify the origin of a change |
 
-[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering.
+[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) with `.github/workflows/dco.yml` owns the sign-off.
 
 ## Context and scope
 
