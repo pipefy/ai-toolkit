@@ -469,6 +469,16 @@ A solid arrow is an import that the chain permits. The dotted arrow is construct
 
 An application is entered through a driving port, and its driving adapter is what the outside touches, for example an MCP tool call or a CLI command. The core calls a driven adapter to reach the outside, for example Pipefy data access. A library is not entered this way, because a caller imports it and calls it directly.
 
+### Declared dependencies
+
+**What a package declares.** A package lists every dependency that its own code imports. This holds even when another dependency already installs that package. The other dependency installs it by its own choice, and that choice can change. The package can be dropped, copied into the dependent, or made conditional on the platform. Nothing in this repository detects such a change. Two dependencies in `packages/mcp/pyproject.toml` are declared for this reason, and the comment beside each one states it. [Risks and technical debt](#risks-and-technical-debt) carries the one place where the rule is broken.
+
+**How a version is bounded.** Every third-party dependency states a minimum version and a maximum version. The maximum stops before the next major release, as in `>=2.13.4,<3`. A major release can change behavior that this code depends on, and no other check catches that change.
+
+A dependency can instead be locked to one minor series. That is correct only where this code uses parts of the dependency that its version numbers do not protect. A comment beside the dependency then states which parts those are. One dependency in `packages/mcp/pyproject.toml` is locked this way today.
+
+The five packages of this workspace are different. Each one takes a single exact version, which [`RELEASE.md`](../../RELEASE.md) rules and `QR-26` demands.
+
 ### Ports and dependency inversion
 
 Business logic depends on an interface shaped by what it needs, and the adapter implements it. This rule states where the boundary sits, so "invert" does not mean "invert everything". The boundary is domain to infrastructure: a third-party SDK, the network, a database. Ports are not universal, and the rules that add one are `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md).
