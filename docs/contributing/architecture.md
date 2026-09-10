@@ -93,13 +93,14 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 
 | Constraint | Applies to | Explanation |
 |---|---|---|
-| Apache 2.0 for the code and the docs | The repository | A dependency carries a compatible license, or it does not land |
+| Apache 2.0 for the code and the docs | The repository | Pipefy's Privacy, Legal and Compliance team chose Apache 2.0 for the source code and the documentation |
+| A compatible license on every dependency | The repository | A package we depend on carries its own license terms, and some terms are incompatible with an Apache 2.0 distribution |
 | A public repository | The repository | Pipefy publishes this repository, so every file in it and every past version is readable by anyone |
 | A sign-off on every commit | The repository | Pipefy applies the Developer Certificate of Origin, which makes a contributor certify the origin of a change |
 | A compliance review before a regulated skill merges | `skills/` | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
 | A compliance card on a regulated blueprint | `skills/` | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
-[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and Pipefy's Privacy, Legal and Compliance team set it rather than engineering. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) with `.github/workflows/dco.yml` owns the sign-off. `CONTRIBUTING.md` owns the review, and [`TERMS.md`](../../TERMS.md) with `CONTRIBUTING.md` owns the card, alongside [`COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md).
+[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and [`dependencies.md`](dependencies.md) holds the license test a candidate package passes. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) with `.github/workflows/dco.yml` owns the sign-off. `CONTRIBUTING.md` owns the review, and [`TERMS.md`](../../TERMS.md) with `CONTRIBUTING.md` owns the card, alongside [`COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md).
 
 **Conventions.**
 
