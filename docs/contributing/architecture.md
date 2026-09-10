@@ -80,7 +80,6 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | A context window per call | CLI, MCP, `skills/` | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
 | Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
-| Vendor-owned domain vocabulary | The repository | Pipefy's domain model names every entity, and Pipefy maintains that model outside this repository |
 | A tool catalog we do not own | MCP | The iPaaS engine publishes its own tools, and their names and their shapes come from that engine |
 | A deployment we do not build | MCP | Every deployment of the MCP server is built and run outside this repository, by Pipefy or by a consumer |
 | Python 3.11 as the floor | The repository | Python 3.9 left upstream support in late 2025, and 3.10 leaves it on 2026-10-31. Python 3.11 is therefore the oldest runtime that still receives a security fix |
@@ -93,6 +92,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 
 | Constraint | Applies to | Explanation |
 |---|---|---|
+| Vendor-owned domain vocabulary | The repository | Pipefy's domain model names every entity, and Pipefy maintains that model outside this repository |
 | Apache 2.0 for the code and the docs | The repository | Pipefy's Privacy, Legal and Compliance team chose Apache 2.0 for the source code and the documentation |
 | A compatible license on every dependency | The repository | A package we depend on carries its own license terms, and some terms are incompatible with an Apache 2.0 distribution |
 | A public repository | The repository | Pipefy publishes this repository, so every file in it and every past version is readable by anyone |
