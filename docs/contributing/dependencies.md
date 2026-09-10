@@ -57,5 +57,6 @@ This package declares nothing else. It is the leaf of the workspace graph, so it
 
 ## Supply-chain notes
 
+- Require a **license compatible with Apache 2.0**. A package under an incompatible license does not land.
 - Prefer **pinned versions** as committed in each `pyproject.toml`; review upgrades with a quick grep for breaking API usage.
 - Prefer **HTTPS** for every Pipefy and webhook URL; optional insecure URLs are dev-only and documented in `.env.example`.
