@@ -75,7 +75,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 
 | Constraint | Applies to | Explanation |
 |---|---|---|
-| Schema as the model's only instruction | MCP | A client loads the schema at connect, and a model reads nothing else about a tool before it calls one |
+| Schema as the only instruction we can count on | MCP | A client loads the schema at connect. A playbook in `skills/` reaches the model only where the consumer installed it |
 | A rate limit at the LLM vendor | CLI, MCP, `skills/` | The LLM vendor meters a consumer's use over a rolling period, and a longer cap sits above the meter |
 | A context window per call | CLI, MCP, `skills/` | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
