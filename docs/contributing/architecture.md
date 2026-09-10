@@ -86,7 +86,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
 | No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
 
-[`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and `install.sh` covers the POSIX platforms alone. Each `pyproject.toml` owns the floor, and `.python-version` holds the one version CI runs.
+[`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and each `pyproject.toml` owns the Python floor.
 
 **Organizational.**
 
@@ -100,7 +100,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | A compliance review before a regulated skill merges | `skills/` | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
 | A compliance card on a regulated blueprint | `skills/` | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
-[`TERMS.md`](../../TERMS.md) is the notice behind the license row, and [`dependencies.md`](dependencies.md) holds the license test a candidate package passes. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) with `.github/workflows/dco.yml` owns the sign-off. `CONTRIBUTING.md` owns the review, and [`TERMS.md`](../../TERMS.md) with `CONTRIBUTING.md` owns the card, alongside [`COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md).
+[`TERMS.md`](../../TERMS.md) owns the license notice, and [`dependencies.md`](dependencies.md) owns the license test. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card.
 
 **Conventions.**
 
