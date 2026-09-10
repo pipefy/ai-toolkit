@@ -53,7 +53,7 @@ The contributor row also holds what a tester, a code reviewer, and a developer w
 | MCP consumer | A person who works through an LLM client | The tool catalog, what a destructive tool does before it runs, and where a credential lives: [`docs/mcp`](../mcp/README.md), [Tool surface](#tool-surface), and [Identity lifetime](#identity-lifetime) |
 | LLM agent | A program that runs a model's decisions. It calls an MCP tool, or it runs a CLI command in a shell | The playbooks in [`skills/`](../../skills/README.md), the tool descriptions it receives at connect ([Tool surface](#tool-surface)), and a discoverable command set whose output it can parse and pipe into the next call ([`docs/cli`](../cli/README.md)) |
 | Contributor | Anyone who opens a pull request, under [`CONTRIBUTING.md`](../../CONTRIBUTING.md) | Where a change goes, what it may import, and whether a passing test means anything: [Package decomposition](#package-decomposition), [Dependency rule](#dependency-rule), [`conventions.md`](conventions.md), and [`AGENTS.md`](../../AGENTS.md) |
-| Maintainer | The core team, at `dev@pipefy.com` | A stack it controls, a layer order a merge cannot break, and a decision that outlives whoever made it: [Architecture decisions](#architecture-decisions), [Dependency rule](#dependency-rule), and [`dependencies.md`](dependencies.md) |
+| Maintainer | The core team, at `dev@pipefy.com` | A stack it controls, a layer order a merge cannot break, and a decision that outlives whoever made it: [Architecture decisions](#architecture-decisions), [Dependency rule](#dependency-rule), and [Declared dependencies](#declared-dependencies) |
 | Security reviewer | Whoever answers `security@pipefy.com`, per [`SECURITY.md`](../../SECURITY.md) | Trust boundaries, token validation, credential storage, and outbound URL policy: [Identity lifetime](#identity-lifetime) and [Architecture constraints](#architecture-constraints) |
 | Privacy, Legal and Compliance | Pipefy's review team, at `dpos@pipefy.com` | The three positions [`TERMS.md`](../../TERMS.md) defines: human review for a decision that affects an individual, a compliance card on every published blueprint, and Apache 2.0 for the code and the docs |
 | Release manager | The maintainers who cut a release, at `dev@pipefy.com` | What counts as a breaking change, and what is owed before one ships: [`DEPRECATION.md`](../DEPRECATION.md) and [`RELEASE.md`](../../RELEASE.md) |
@@ -100,11 +100,11 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | A compliance review before a regulated skill merges | `skills/` | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
 | A compliance card on a regulated blueprint | `skills/` | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
-[`TERMS.md`](../../TERMS.md) owns the license notice, and [`dependencies.md`](dependencies.md) owns the license test. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card.
+[`TERMS.md`](../../TERMS.md) owns the license notice. No check reads the license of a dependency, so a reviewer applies the row above before a new dependency lands. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card.
 
 **Conventions.**
 
-We set conventions, and every contributor works inside them. The code rules live in [`conventions.md`](conventions.md), each under a permanent ID that a review cites. The documentation rules live in [`authoring.md`](authoring.md). A skill, a commit and a pull request all follow [`CONTRIBUTING.md`](../../CONTRIBUTING.md). A version and a release follow [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md). A dependency follows [`dependencies.md`](dependencies.md), and each `pyproject.toml` carries the cap it sets. A contributing agent starts at [`AGENTS.md`](../../AGENTS.md), which holds the rules for an agent and routes it to the file that owns each set.
+We set conventions, and every contributor works inside them. The code rules live in [`conventions.md`](conventions.md), each under a permanent ID that a review cites. The documentation rules live in [`authoring.md`](authoring.md). A skill, a commit and a pull request all follow [`CONTRIBUTING.md`](../../CONTRIBUTING.md). A version and a release follow [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md). A contributing agent starts at [`AGENTS.md`](../../AGENTS.md), which holds the rules for an agent and routes it to the file that owns each set.
 
 ## Context and scope
 
@@ -162,7 +162,7 @@ These are the decisions everything else rests on. Some answer a goal that [Quali
 | An LLM agent reaches the domain by two mechanisms, and a person and a script reach it by one of them | The MCP server declares a schema that a client loads at connect, and the CLI takes a command that composes with other commands. Both sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
 | A change to shared behavior that lands in one pull request (`QR-26`) | Every package lives in one repository and ships on one version. One test run covers all of them | [`RELEASE.md`](../../RELEASE.md) |
-| A smaller learning curve for a contributor | The toolkit is written in Python, which was the default language for work on artificial intelligence when this project began | [`dependencies.md`](dependencies.md) |
+| A smaller learning curve for a contributor | The toolkit is written in Python, which was the default language for work on artificial intelligence when this project began | [Architecture constraints](#architecture-constraints) |
 | A commitment to ship in the open | A deployment reads its configuration and its credentials from its own environment | [Architecture constraints](#architecture-constraints), [`CONTRIBUTING.md`](../../CONTRIBUTING.md) |
 
 ## Building block view
@@ -221,7 +221,7 @@ The match of consumer to package then decides where a behavior lives. The SDK ex
 
 Because the CLI declares no edge to `pipefy-infra`, the diagram draws none, and that package arrives as a transitive of the SDK and of `pipefy-auth`. One CLI module imports it directly, which [Risks and technical debt](#risks-and-technical-debt) carries.
 
-[Architecture constraints](#architecture-constraints) names which constraints each package works inside, while [`dependencies.md`](dependencies.md) says which third-party packages each one needs, and why.
+[Architecture constraints](#architecture-constraints) names which constraints each package works inside, while each package's `pyproject.toml` declares the third-party packages it needs, under the rules in [Declared dependencies](#declared-dependencies).
 
 ### Inside each package
 

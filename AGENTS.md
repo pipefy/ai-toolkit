@@ -7,7 +7,6 @@
 - **`docs/config.md`**. `PIPEFY_*` environment variables, `config.toml` schema, precedence chain.
 - **`docs/parity.md`**. MCP tool ↔ CLI command parity matrix. Source of truth for coverage and deferrals.
 - **`docs/MIGRATION.md`**. What existing MCP users need to know about v0.1.
-- **`docs/contributing/dependencies.md`**. Rationale for runtime dependencies.
 - **`docs/uninstall.md`**. `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. The two root scripts are colocated so `install.sh` and `uninstall.sh` stay reviewable side by side. A test asserts every file the installer writes is one the teardown accounts for.
 - **`docs/contributing/architecture.md`**. The map of the architecture. The functions it delivers, the goals that rank them, the roles that hold them, and the quality requirements and constraints that shape it. Then the boundary with its diagram, the decomposition into applications, packages, and layers, the tool surface, the response shape, one runtime scenario, the rules that cross every package, the known debt, and the glossary.
 - **`docs/contributing/conventions.md`**. The code conventions, as rules with permanent IDs. A rule belongs there when a reviewer applies it by judgment to one unit of code.

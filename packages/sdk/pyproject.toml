@@ -9,8 +9,9 @@ dependencies = [
     # the EmailStr annotation in models/member_invite.py, so the line is not
     # unused.
     "email-validator>=2.2.0",
-    # Below 4.4: its transport switches to httpx2, which rejects pipefy_auth's
-    # httpx.Auth classes. See docs/dependencies.md before lifting.
+    # Below 4.4: its transport switches to httpx2 whenever httpx2 is installed
+    # (mcp depends on it), and httpx2 rejects pipefy_auth's httpx.Auth classes.
+    # Lifting the cap means moving pipefy_auth, httpx-auth, and the SDK to httpx2.
     "gql[httpx]>=4.0.0,<4.4",
     "httpx>=0.27.0",
     "openpyxl>=3.1.5",

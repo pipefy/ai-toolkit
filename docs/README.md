@@ -19,7 +19,6 @@ Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-t
 | [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
 | [`parity.md`](parity.md) | MCP tool ↔ CLI command matrix (source of truth for coverage and deferrals) |
 | [`MIGRATION.md`](MIGRATION.md) | Notes for existing MCP users across packaging changes |
-| [`contributing/dependencies.md`](contributing/dependencies.md) | Why each runtime dependency exists |
 | [`contributing/architecture.md`](contributing/architecture.md) | Map of the architecture: the functions it delivers, the goals that rank them, the roles that hold them, the quality requirements and constraints that shape it, the boundary with its diagram, the decomposition into applications, packages, and layers, one runtime scenario, the rules that cross every package, the known debt, and the glossary |
 | [`contributing/conventions.md`](contributing/conventions.md) | Code conventions, as rules with permanent IDs. A rule belongs there when a reviewer applies it by judgment to one unit of code |
 | [`contributing/authoring.md`](contributing/authoring.md) | How the docs tree is organized, where a new doc goes, and what form an entry takes |

@@ -128,7 +128,7 @@ Change the order when something outside this file changes what matters:
 - An organizational commitment earns a row only where it shapes the architecture, which is what arc42 means by a relevant one. Name the structural consequence, or leave the commitment where it is set.
 - The last column is a link, and a row that cannot point at an owner does not belong here. No row links a decision record: the section that details the decision already names it, and [`adr/`](adr/README.md) already maps each one to the rule it produced.
 - The goal rows come from `Quality goals`, so they grow only when that section does, and arc42 caps that section at five.
-- The language and the distribution shape are stated here, with the reason that drove them. No other document owns them at this altitude, and [`dependencies.md`](dependencies.md) answers the lower question of why a given third-party package is present.
+- The language and the distribution shape are stated here, with the reason that drove them. No other document owns them at this altitude. The module that imports a third-party package answers the lower question of why that package is present. Where no module imports it, a comment beside the line in the `pyproject.toml` answers that question.
 
 A decision here is a settled choice, and a concept at arc42 8 is a standing rule. Both hold whichever part you are in, so sort by whether a contributor follows it while writing code.
 
