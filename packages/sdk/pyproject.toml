@@ -5,6 +5,9 @@ description = "Pipefy GraphQL client, models, and services (shared by MCP and CL
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    # No module imports email_validator. Pydantic resolves it at runtime for
+    # the EmailStr annotation in models/member_invite.py, so the line is not
+    # unused.
     "email-validator>=2.2.0",
     # Below 4.4: its transport switches to httpx2, which rejects pipefy_auth's
     # httpx.Auth classes. See docs/dependencies.md before lifting.
