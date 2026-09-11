@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Release track**: the next published cut is `0.5.2-beta.1`. `0.5.1` on `main` was not tagged; there is no new tool surface since that version.
+
 ## [0.5.1] - 2026-09-11
 
 ### Fixed
