@@ -50,7 +50,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 - Every heading sits under a numbered one. A `##` heading takes arc42's name. A `###` heading under it takes arc42's name where arc42 numbers that sublevel, and it is ours to name where arc42 does not.
 - A heading deeper than `###` marks a deeper arc42 level. Arc42 5 holds each level 2 whitebox at `####`.
 - A section whose content another owner holds is a pointer to that owner, and never a copy. `Architecture decisions` at arc42 9 points at [`adr/`](adr/README.md).
-- A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 6 and arc42 7 stay absent today.
+- A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 7 stays absent today.
 - The map explains rather than instructs, so every claim is a third-person declarative.
 
 A subsection that names a part of the system goes under arc42 5, and one that states a rule that holds whichever part you are in goes under arc42 8. Arc42 asks for practices, patterns, and regulations at 8, and it never asks that a concept reach every part, so a rule that one application alone obeys still belongs there.
@@ -139,6 +139,17 @@ A decision here is a settled choice, and a concept at arc42 8 is a standing rule
 - Where the level needs a fact another document owns, it names the fact and points there. The kinds come from the scope list in [`DEPRECATION.md`](../DEPRECATION.md). The interface column says a check holds the SDK root closed, and it names no banned module, because `Dependency rule` owns those lists. Arc42's quality and open-issues blackbox fields stay out, because `Identity lifetime` and `Risks and technical debt` own them.
 - `Requirements overview` states what the toolkit does, and this level states which block does it. Where a function text names a package, that name belongs here instead.
 - This level draws the external partners, although the HtmlSanityCheck, Traffic Pursuit Unit, and biking2 examples each draw internal blocks alone. It is the only place that says which package performs a crossing, whereas [Context and scope](architecture.md#context-and-scope) says which install reaches a partner.
+
+**`Runtime view`, arc42 6.** A few scenarios, each one a subsection that names what the reader watches happen.
+
+- A scenario earns its place on architectural relevancy, which is the test arc42 6 sets. The section holds a representative selection, because arc42 asks for one rather than for a complete set.
+- A scenario names blocks that `Building block view` already names, and it coins no participant. Arc42 asks that a scenario map onto existing blocks.
+- A scenario stays at the altitude of level 1, because arc42 recommends a schematic scenario over a detailed one. A parameter name, a scope string, and a measured cost all sit below it, and the document that serves a reader debugging a failure owns them.
+- Where behavior differs by application or by deployment profile, the difference goes in prose, or in a scenario of its own where that difference is the subject. It never goes in a second copy of the same flow.
+- A scenario that one application alone runs names that application. Otherwise a reader takes one application's behavior for the toolkit's.
+- A scenario that starts in the middle of a longer flow says what ran before it. Arc42 calls that a partial scenario, and it asks for the omitted context to be stated.
+- The section splits on the axis that the concept owning the subject already chose. For a credential that concept is `Identity lifetime`, and its two shapes are the two scenarios.
+- A `###` name is ours, because arc42 6 numbers no sublevel.
 
 **`Quality requirements`, arc42 10.** Two subsections, as arc42 10.1 and 10.2 divide it. An overview by category, then the scenarios in arc42's two categories: a reaction while the system runs, and a change to the system or to what it depends on.
 
