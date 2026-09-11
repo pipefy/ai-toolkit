@@ -427,6 +427,113 @@ An arrow is an import, and the diagram draws the ones that set the direction rat
 
 This package declares no order inside itself, so no check holds the chain above. `packages/auth/pyproject.toml` carries the ruff `TID251` list that holds the direction between packages, and it carries nothing that holds the direction within this one. [Risks and technical debt](#risks-and-technical-debt) states what this package leaves open.
 
+## Runtime view
+
+[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold. Two applications resolve a credential, which are the CLI and the MCP server. The SDK resolves none of its own, because it takes one from settings or from the program that embeds it.
+
+### A credential resolved once per process
+
+The CLI runs this scenario on every invocation, and so does the MCP server under the local profile. One caller owns the process, so the credential it resolves lasts as long as the process does.
+
+A browser login comes first, and the CLI alone runs it. It is `FR-1`, and it happens once rather than on every invocation.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Person as Person at a terminal
+    participant Surface as Command surface
+    participant Flow as Login flow
+    participant Loopback as Loopback callback
+    participant Issuer as Issuer client
+    participant Browser as System web browser
+    participant Idp as Pipefy identity provider
+    participant Store as Session store
+
+    Person->>Surface: pipefy auth login
+    Surface->>Flow: run the login
+    Flow->>Issuer: ask where the provider's endpoints are
+    Issuer-->>Flow: the authorization and token endpoints
+    Flow->>Loopback: listen on a loopback port
+    Note over Flow,Loopback: the port is held before the browser opens,<br/>so nothing else can take it mid-flight
+    Flow->>Browser: open the authorization URL
+    Browser->>Idp: the person signs in
+    Idp-->>Loopback: the authorization code, with the value sent out
+    Loopback-->>Flow: both, and the flow refuses a value it did not send
+    Flow->>Issuer: trade the code for tokens
+    Issuer-->>Flow: an access token and a renewal token
+    Flow-->>Surface: the tokens, which the flow stores nowhere
+    Surface->>Store: keep them for later invocations
+```
+
+Every later invocation resolves a credential without asking the person anything.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Entry as The composition root
+    participant Chain as Credential chain
+    participant Store as Session store
+    participant Refresh as Refresh grant
+    participant Idp as Pipefy identity provider
+    participant Attach as Bearer attachment
+    participant Api as Pipefy GraphQL API
+
+    Note over Entry: Credential resolution in the CLI,<br/>or Startup and wiring in the MCP server
+    Entry->>Chain: which credential does this caller hold
+    Chain->>Chain: walk the sources, most explicit first
+    Chain->>Store: read the stored session
+    Store-->>Chain: the session, where one is stored
+    Chain->>Refresh: make sure the token outlives this call
+    Refresh->>Refresh: take the lock that guards a renewal
+    Refresh->>Idp: trade the renewal token for a fresh one
+    Idp-->>Refresh: a fresh access token
+    Refresh->>Store: keep what came back
+    Refresh-->>Chain: the token to use
+    Chain-->>Entry: an authentication the client takes
+    Entry->>Attach: build the client around it
+    Attach->>Api: every call this process makes
+```
+
+Four facts sit beside the diagrams.
+
+- Only the CLI runs the login. The MCP server under the local profile reads the session that login wrote, and it opens no browser of its own.
+- The lower half of the second diagram runs for a stored session alone. A static token and a service account resolve on the spot, in either application, and reach `Bearer attachment` directly.
+- The lock exists because two processes can hold the same stored session, and a renewal invalidates the token the other one is about to use.
+- A renewal that fails stops the invocation. No other source answers in its place, because the caller already chose this one, and a silent swap would act as somebody else.
+
+[`docs/cli/auth.md`](../cli/auth.md) owns what a consumer does about each source, and what a failed step reports.
+
+### A credential resolved once per request
+
+The MCP server under the remote profile runs this scenario, and nothing else here has a second shape. One process serves many callers at the same time, so no credential can belong to the process.
+
+The scenario starts mid-flight. The process is already running, it holds no caller credential from its startup, and it is already serving other callers.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP client
+    participant Middleware as Inbound middleware
+    participant Caller as Caller identity
+    participant Verify as Bearer validation
+    participant Idp as Pipefy identity provider
+    participant Tool as Tool surface
+    participant Api as Pipefy GraphQL API
+
+    Client->>Middleware: a tool call, carrying its own bearer
+    Middleware->>Caller: who sent this
+    Caller->>Verify: check the bearer
+    Verify->>Idp: the keys this issuer signs with
+    Idp-->>Verify: the keys
+    Verify-->>Caller: the caller, or a refusal
+    Caller-->>Middleware: an identity that lives for this request
+    Middleware->>Tool: run the tool as that caller
+    Tool->>Api: the calls the tool makes, carrying the same bearer
+    Note over Tool,Api: the request ends and nothing keeps a copy
+```
+
+This is `QR-4`, which [Quality goals](#quality-goals) ranks first. Two callers on one process each act as themselves, and neither reads what the other can reach. [Identity lifetime](#identity-lifetime) states the rule that follows for code, which is that nothing caches what a request brought and no process-global value answers a question about the caller.
+
 ## Cross-cutting concepts
 
 These rules hold whichever building block you are in, which is why none of them sits under one. A rule that one application alone obeys today still sits here, because the rule and not its reach makes it a concept.
