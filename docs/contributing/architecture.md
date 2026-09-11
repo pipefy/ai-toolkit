@@ -429,7 +429,7 @@ This package declares no order inside itself, so no check holds the chain above.
 
 ## Runtime view
 
-[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold. Two applications resolve a credential, which are the CLI and the MCP server. The SDK resolves none of its own, because it takes one from settings or from the program that embeds it.
+[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold. The CLI always resolves a credential of its own. The MCP server resolves one under the local profile, and under the remote profile it validates one that its client obtained instead. The SDK resolves none, because it takes one from settings or from the program that embeds it.
 
 ### A credential resolved once per process
 
@@ -507,7 +507,9 @@ Four facts sit beside the diagrams.
 
 The MCP server under the remote profile runs this scenario, and nothing else here has a second shape. One process serves many callers at the same time, so no credential can belong to the process.
 
-The scenario starts mid-flight. The process is already running, it holds no caller credential from its startup, and it is already serving other callers.
+The roles divide. The MCP client is the party that signs its user in, and it holds the credential that comes back. The server is a resource server: it accepts a bearer, checks it, and acts on it, and it mints none. So the first scenario's login has no counterpart here, and the browser flow that obtains the bearer runs outside this system.
+
+The scenario starts mid-flight. The process is already running and already serving other callers, and it holds no caller credential from its startup.
 
 ```mermaid
 sequenceDiagram
@@ -520,7 +522,10 @@ sequenceDiagram
     participant Tool as Tool surface
     participant Api as Pipefy GraphQL API
 
-    Client->>Middleware: a tool call, carrying its own bearer
+    Client->>Middleware: a tool call, carrying no bearer
+    Middleware-->>Client: a refusal that says where to authenticate
+    Note over Client,Idp: the client signs its user in against that issuer,<br/>and this system takes no part in it
+    Client->>Middleware: the same call, carrying the bearer it obtained
     Middleware->>Caller: who sent this
     Caller->>Verify: check the bearer
     Verify->>Idp: the keys this issuer signs with
@@ -531,6 +536,10 @@ sequenceDiagram
     Tool->>Api: the calls the tool makes, carrying the same bearer
     Note over Tool,Api: the request ends and nothing keeps a copy
 ```
+
+The refusal is what makes the division work. A caller who arrives with nothing gets a challenge that names this resource and the issuer that guards it, so the client can find where to authenticate without being configured for it. The MCP SDK writes that challenge and serves the metadata behind it, and this repository gives the SDK the two values it puts there.
+
+The check has two halves. The bearer is verified against the issuer's signing keys, and it is verified as a token issued for this resource rather than for another one. That second half is `QR-16`, and [Risks and technical debt](#risks-and-technical-debt) records that it is off by default today.
 
 This is `QR-4`, which [Quality goals](#quality-goals) ranks first. Two callers on one process each act as themselves, and neither reads what the other can reach. [Identity lifetime](#identity-lifetime) states the rule that follows for code, which is that nothing caches what a request brought and no process-global value answers a question about the caller.
 
