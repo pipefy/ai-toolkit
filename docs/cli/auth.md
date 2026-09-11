@@ -258,20 +258,17 @@ The browser came back with a different `state` than the CLI sent. Re-run `pipefy
 
 ## How it works
 
+[`architecture.md`](../contributing/architecture.md#runtime-view) walks both flows step by step: the browser login, and the credential that every later invocation resolves. This section holds the details the entries above depend on.
+
 ### Login (`pipefy auth login`)
 
-1. Read `PIPEFY_AUTH_URL` (issuer) and `PIPEFY_AUTH_CLIENT_ID` (default `pipefy-cli`).
-2. Fetch `<issuer>/.well-known/openid-configuration` to discover the authorization and token endpoints.
-3. Bind a loopback socket on `127.0.0.1:<ephemeral>` **before** opening the browser (so no other process can grab the port mid-flight).
-4. Open the browser at the authorization URL with `code_challenge_method=S256` and scopes `openid profile email offline_access` (the last one is what makes the IdP issue a refresh token).
-5. The IdP redirects back to the loopback callback with `?code=...&state=...`.
-6. The CLI verifies `state`, POSTs the code + PKCE verifier to the token endpoint, and persists the response in the OS keychain.
+The CLI binds the loopback socket on `127.0.0.1:<ephemeral>` **before** it opens the browser, so no other process can take the port mid-flight. It sends a one-time `state` value with the authorization request and refuses a callback that returns a different one, which is what raises [`State mismatch on OAuth callback`](#state-mismatch-on-oauth-callback-possible-csrf).
 
-The stored shape is keyed by `(issuer_host, client_id)` — one active session per (IdP, client) pair, per machine. Re-running `pipefy auth login` against the same issuer replaces the previous entry.
+The stored shape is keyed by `(issuer_host, client_id)`: one active session per (IdP, client) pair, per machine. Re-running `pipefy auth login` against the same issuer replaces the previous entry.
 
 ### Eager refresh
 
-Each `pipefy <cmd>` invocation calls `ensure_fresh_session` before building the client. If the access token has less than **60 s** of life left, the CLI POSTs `grant_type=refresh_token` to the token endpoint, persists the rotated tokens back to the keychain, and uses the new access token. Failure surfaces as `Stored Pipefy session could not be refreshed: ...`, with no fallback to other tiers — the precedence chain is evaluated before refresh, so if the user explicitly chose tier 4 they get a hard "re-login" signal rather than a silent service-account swap.
+Each `pipefy <cmd>` invocation refreshes the access token before it builds the client, when that token has less than **60 s** of life left. A failure surfaces as `Stored Pipefy session could not be refreshed: ...`, with no fallback to another tier. The precedence chain is evaluated before the refresh, so a user who chose tier 4 gets a hard "re-login" signal rather than a silent service-account swap.
 
 Reactive refresh-on-401 (for tokens revoked mid-session) is not implemented: a token revoked mid-session fails the call rather than triggering a refresh.
 
