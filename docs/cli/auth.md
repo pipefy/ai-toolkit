@@ -197,7 +197,7 @@ Options today:
 2. **Use a service account** (`PIPEFY_SERVICE_ACCOUNT_*`) on the headless box — this is the canonical answer for CI and servers.
 3. **Static bearer** via `PIPEFY_TOKEN` for short-lived debugging.
 
-Forthcoming: an OAuth 2.0 Device Authorization Grant (`pipefy auth login --device`) that swaps the loopback callback for a code you paste into a browser elsewhere.
+Forthcoming: an OAuth 2.0 Device Authorization Grant (`pipefy auth login --device`) that swaps the loopback callback for a code you paste into a browser elsewhere. Tracked in issue #138.
 
 ---
 
@@ -270,7 +270,7 @@ The stored shape is keyed by `(issuer_host, client_id)`: one active session per 
 
 Each `pipefy <cmd>` invocation refreshes the access token before it builds the client, when that token has less than **60 s** of life left. A failure surfaces as `Stored Pipefy session could not be refreshed: ...`, with no fallback to another tier. The precedence chain is evaluated before the refresh, so a user who chose tier 4 gets a hard "re-login" signal rather than a silent service-account swap.
 
-Reactive refresh-on-401 (for tokens revoked mid-session) is not implemented: a token revoked mid-session fails the call rather than triggering a refresh.
+A token revoked mid-session is handled separately, and the eager refresh above never sees it. When an API call answers 401, the CLI forces one refresh and retries the call. When that refresh returns nothing, or returns the same token, the 401 propagates, so you get a "session expired" error rather than a loop.
 
 ### Keychain backends
 
