@@ -16,6 +16,7 @@
     "./skills/api-troubleshoot/pipefy-api-fallback",
     "./skills/attachments/pipefy-attachments",
     "./skills/automations/pipefy-automations",
+    "./skills/automations/pipefy-automations-formulas",
     "./skills/building/pipefy-building",
     "./skills/database-tables/pipefy-database-tables",
     "./skills/introspection/pipefy-introspection",

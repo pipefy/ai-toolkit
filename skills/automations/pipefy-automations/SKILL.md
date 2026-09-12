@@ -277,6 +277,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 
 ## See also
 
+- [skills/automations/pipefy-automations-formulas/SKILL.md](../pipefy-automations-formulas/SKILL.md) — `field_map` formulas and `%{tokens}` beyond the official event-attribute catalog.
 - [skills/building/pipefy-building/SKILL.md](../../building/pipefy-building/SKILL.md) — intent → domain skill router for build asks.
 - [skills/ai-agents/pipefy-ai-agents/SKILL.md](../../ai-agents/pipefy-ai-agents/SKILL.md) — conversational agents with behaviors (different from AI automations).
 - [skills/observability/pipefy-observability/SKILL.md](../../observability/pipefy-observability/SKILL.md) — execution logs and usage stats.
