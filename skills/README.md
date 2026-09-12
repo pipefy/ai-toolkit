@@ -34,6 +34,7 @@ git clone https://github.com/pipefy/ai-toolkit.git
 | **Reports** | [pipefy-reports](reports/pipefy-reports/SKILL.md) | Pipe and organization reports, async exports. 17 MCP tools. |
 | **Automations** | [pipefy-automations](automations/pipefy-automations/SKILL.md) | Traditional and AI automations, simulation. 16 MCP tools. |
 | **iPaaS (Advanced Automations)** | [pipefy-ipaas](ipaas/pipefy-ipaas/SKILL.md) | Build, test, publish, and manage integration flows. 4 MCP meta-tools over a per-pipe catalog; MCP-only. |
+| **iPaaS usage health** | [pipefy-ipaas-usage-health](ipaas/pipefy-ipaas-usage-health/SKILL.md) | Org briefing: iPaaS adoption, flow-run failures, noisy pipes, vs native usage and AI credits. 10 MCP tools. |
 | **AI Agents** | [pipefy-ai-agents](ai-agents/pipefy-ai-agents/SKILL.md) | Conversational AI agents and behaviors. 7 MCP tools. |
 | **Observability** | [pipefy-observability](observability/pipefy-observability/SKILL.md) | Logs, usage, credits, execution metrics, job exports. 11 MCP tools. |
 | **Members, Email & Webhooks** | [pipefy-members-email-webhooks](members-email-webhooks/pipefy-members-email-webhooks/SKILL.md) | Membership, email, webhooks. 12 MCP tools. |

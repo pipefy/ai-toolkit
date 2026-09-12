@@ -20,6 +20,7 @@
     "./skills/database-tables/pipefy-database-tables",
     "./skills/introspection/pipefy-introspection",
     "./skills/ipaas/pipefy-ipaas",
+    "./skills/ipaas/pipefy-ipaas-usage-health",
     "./skills/members-email-webhooks/pipefy-members-email-webhooks",
     "./skills/observability/pipefy-observability",
     "./skills/onboarding/pipefy-toolkit-setup",

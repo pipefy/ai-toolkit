@@ -121,6 +121,7 @@ For a single task ("send one Slack message", "check my inbox"), the catalog has 
 
 ## See also
 
+- [skills/ipaas/pipefy-ipaas-usage-health/SKILL.md](../pipefy-ipaas-usage-health/SKILL.md) — org-wide flow-run health and usage briefing (do not build here).
 - [skills/automations/pipefy-automations/SKILL.md](../../automations/pipefy-automations/SKILL.md) — native if/then rules and AI automations (not iPaaS).
 - [skills/members-email-webhooks/pipefy-members-email-webhooks/SKILL.md](../../members-email-webhooks/pipefy-members-email-webhooks/SKILL.md) — `create_webhook` for HTTP callbacks on card events; `add_service_account_to_pipe` to grant a flow's service account pipe membership.
 - [docs/mcp/tools/ipaas.md](../../../docs/mcp/tools/ipaas.md) and [docs/ipaas.md](../../../docs/ipaas.md) — meta-tool semantics and flow vocabulary.
