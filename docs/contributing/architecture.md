@@ -434,7 +434,7 @@ This package declares no order inside itself, so no check holds the chain above.
 
 ## Runtime view
 
-[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold. The CLI always resolves a credential of its own. The MCP server resolves one under the local profile, and under the remote profile it validates one that its client obtained instead. The SDK resolves none, because it takes one from settings or from the program that embeds it.
+[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request, and its `By component` block says which component takes which shape. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold.
 
 ### A credential resolved once per process
 
@@ -610,19 +610,33 @@ These are the ports the repository owns today. `GraphQLExecutor` in the SDK is a
 
 The composition root does two jobs at startup: it parses raw input into decisions, and it builds effects once. Raw input means the environment, a config file, and the startup flags. Parsed types cost no I/O, so we construct them freely. At startup an effect happens only here: a keychain read, a network call, or the construction of a client. Downstream code then receives a decision it can rely on, and never a raw value it must re-read. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
 
-There is one composition root per application, not one for the repo. Each one parses its startup input at its entry point. The MCP server then centralizes the wiring in `core/runtime.py`. The CLI wires at its entry point, without a single runtime module. Where the wiring lives is a per-application choice.
+There is one composition root per application, not one for the repo. Each one parses its startup input at its entry point.
 
-A tool module does not construct a concrete client. It receives what it needs from the composition root. A shared package exports parsed types and resolvers, not application wiring or effects. An application can wire eagerly and fail fast at boot, or it can keep effectful members lazy. That is a per-application choice.
+A tool module does not construct a concrete client. It receives what it needs from the composition root. A shared package exports parsed types and resolvers, not application wiring or effects. An application can wire eagerly and fail fast at boot, or it can keep effectful members lazy. That choice, like the place the wiring lives, is the application's.
+
+**By component.**
+
+- SDK: owns no composition root, because the caller wires it, so the facade constructs the services it delegates to.
+- CLI: wires at its entry point, without a single runtime module.
+- MCP: centralizes the wiring in `core/runtime.py`.
+- Skills: not reached.
 
 ### Identifier resolution
 
-No global choice sets the identifier form, because each package that a consumer reaches picks its own. The SDK takes numeric identifiers first, whereas the CLI takes deterministic ones. Where the CLI resolves a name, it does so behind an explicit flag, which fails closed under automation. The MCP server differs from both, because it takes the human intent as its primary input.
+No global choice sets the identifier form, because each component picks its own.
 
 `QR-7` demands that an identifier which fits more than one resource never resolves silently. Rather than pick one resource for an ambiguous name, the MCP server returns every match.
 
 `QR-28` demands that an inexact name still finds its resource. A pipe search and a table search take a substring first, and then a similarity score above a threshold.
 
 `ARG-1` in [`conventions.md`](conventions.md) holds each argument to one form, while [`docs/mcp/tools/identifiers.md`](../mcp/tools/identifiers.md) names which form each MCP tool and argument takes. These identifier rules come from the decision record [ADR-0002](adr/0002-typed-single-form-contract.md).
+
+**By component.**
+
+- SDK: takes a numeric identifier first.
+- CLI: takes a deterministic identifier, and resolves a name only behind an explicit flag, which fails closed under automation.
+- MCP: takes the human intent as its primary input, so a name is the normal case.
+- Skills: state no form of their own, and point at the MCP reference for the form each argument takes.
 
 ### Asking the caller
 
@@ -637,11 +651,17 @@ Each party does the one thing it alone can do:
 - The MCP server states what a tool changes, both in the tool's description and in its annotations.
 - The client then decides whether a human sees that statement, under settings that the human chose.
 - Pipefy's API authorizes the call, so it alone can refuse one.
-- Because the CLI has nobody in front of it, it both states and decides. Its consumer sets that policy with `--yes`.
 
 [`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md) owns the protocol.
 
 Today the server does more than this, because a destructive tool returns a preview and acts only on a second call that sets `confirm`. Since the model makes that second call, the preview reaches the model, and no person agrees to anything. [Risks and technical debt](#risks-and-technical-debt) carries the correction.
+
+**By component.**
+
+- SDK: asks nobody, and a missing input is an exception that the program handles.
+- CLI: states and decides, because nobody sits in front of it, and its consumer sets that policy with `--yes`.
+- MCP: states what a tool changes, and the client decides whether a human sees that statement.
+- Skills: carry the confirmation procedure, which a tool description must not teach.
 
 ### Tool surface
 
@@ -671,7 +691,14 @@ A partial result is not a failure. A read that the caller may perform in part re
 
 An answer costs the caller context once per call, which is `QR-10`. What a read returns by default is therefore part of its shape, and [Risks and technical debt](#risks-and-technical-debt) holds the review of those defaults.
 
-Two exceptions on reach. The envelope is the MCP application's shape, because the CLI prints the underlying payload instead, and [`docs/parity.md`](../parity.md) records where the two differ. And the shape arrives by wrapping rather than as a tool's own return type. A flag switches it, it covers migrated tools only, and it reaches an internal of the MCP SDK. The requirement is right and the mechanism is not settled, so [Risks and technical debt](#risks-and-technical-debt) carries it.
+One exception on reach. The shape arrives by wrapping rather than as a tool's own return type. A flag switches it, it covers migrated tools only, and it reaches an internal of the MCP SDK. The requirement is right and the mechanism is not settled, so [Risks and technical debt](#risks-and-technical-debt) carries it.
+
+**By component.**
+
+- SDK: returns a value or raises an exception, and carries no envelope.
+- CLI: prints the underlying payload instead, and [`docs/parity.md`](../parity.md) records where the two differ.
+- MCP: returns the envelope.
+- Skills: not reached.
 
 ### Identity lifetime
 
@@ -679,7 +706,7 @@ The local profile runs one process per user. The remote profile runs one process
 
 A credential is resolved once per process, or once per request.
 
-Resolved once per process. The SDK takes its credential from settings or from the embedding program. The CLI resolves one user's credential per invocation, with the precedence in [`docs/cli/auth.md`](../cli/auth.md). The MCP local profile reads one startup credential. In all three, the process belongs to one caller.
+Resolved once per process. The process belongs to one caller, and the block at the end of this section says how each component obtains that credential.
 
 Resolved once per request. The MCP remote profile holds no caller credential at startup, and it snapshots the bearer off each request. The `pipefy-auth` package then validates that bearer as the resource server. The startup identity and the request-scoped identity are the two shapes in code, and both delegate to `pipefy-auth`.
 
@@ -688,6 +715,13 @@ A credential also ends. `pipefy auth logout` revokes the refresh token at the pr
 One rule follows, and it is what `QR-4` requires of any application here. With a per-process identity, downstream code can hold what it received. With a per-request identity, nothing caches it, and process-global state never answers a question about the caller. That is why the import-linter contract bans a `settings` import from the `tools` layer, and the full reasoning is in [`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md).
 
 A caller can also carry state between calls, such as a vendor cursor or an export id. The API authorizes that value on each request. A handle that we mint ourselves obeys the same rule.
+
+**By component.**
+
+- SDK: takes its credential from settings or from the embedding program, and resolves none.
+- CLI: resolves one user's credential per invocation, with the precedence in [`docs/cli/auth.md`](../cli/auth.md).
+- MCP: reads one startup credential under the local profile, and takes the bearer off each request under the remote profile.
+- Skills: not reached.
 
 ## Architecture decisions
 
