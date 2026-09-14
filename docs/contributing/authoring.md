@@ -50,7 +50,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 - A section that arc42 numbers takes arc42's position and arc42's name. A `##` heading takes arc42's name. A `###` heading takes arc42's name where arc42 numbers that sublevel, and it is ours to name where arc42 does not. A heading deeper than `###` marks a deeper arc42 level, so arc42 5 holds each level 2 whitebox at `####`.
 - A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 7 stays absent today.
-- A part of the system goes under arc42 5. A rule that holds whichever part you are in goes under arc42 8, and arc42 never asks that a concept reach every part, so a rule that one component alone obeys still belongs there. A settled choice goes in `Solution strategy` where it serves a goal or where every contributor holds it whatever they change, and in [`adr/`](adr/README.md) otherwise. Sort a rule from a choice by whether a contributor follows it while writing code.
+- A part of the system goes under arc42 5. A rule that holds whichever part you are in goes under arc42 8, and arc42 8 says that a concept can concern a few elements rather than all, so a rule that one component alone obeys still belongs there. A settled choice goes in `Solution strategy` where it serves a goal or where every contributor holds it whatever they change, and in [`adr/`](adr/README.md) otherwise. Sort a rule from a choice by whether a contributor follows it while writing code.
 - Where arc42 offers a form, the section says which form it took. Where this map departs from arc42, the rule that departs says so.
 
 **Ownership.**
@@ -82,7 +82,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **`Quality goals`, arc42 1.2.** Three to five qualities, in the priority order that arc42 asks for here.
 
-- A goal is a catalog name plus the one scenario that is the most important `QR` in its category. The name is abstract, and the scenario makes it concrete. `Quality scenarios` points back at the goal rather than restating it, which is the direction arc42 10 asks for.
+- A goal is a catalog name plus the one scenario that is the most important `QR` in its category. The name is abstract, and the scenario makes it concrete. `Quality scenarios` points back at the goal rather than restating it, so the demand is stated once. Arc42 1.2 points forward to arc42 10, and the pointer back is this map's choice.
 - The `QR` rows carry no rank, because a rank there would reopen where each new row slots in.
 - The order changes only when something outside this file changes what matters: a pivot, an incident, a regulation, a cost limit, a vendor change, or a new key stakeholder.
 
@@ -91,7 +91,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 - A party earns a row on arc42's five criteria: it needs to know the architecture, it has to be convinced of it, it works with the architecture or the code, it needs the documentation for its work, or it decides about the system. A party that is not a person can meet them.
 - Expectations cover the architecture and its documentation, which is what arc42 asks for.
 
-**`Architecture constraints`, arc42 2.** The limits every decision works inside: a technical table, an organizational table, and a block for the conventions we set.
+**`Architecture constraints`, arc42 2.** The limits every decision works inside: a technical table, an organizational table, and a block for the conventions we set. Arc42 2 offers those three groups, and the third is a block rather than a table here, because each convention set lives in its own file.
 
 - A constraint takes a choice away from a contributor, and every one takes a row here, even where another file states the rules. A requirement is not a constraint.
 - The kind of limit picks the group. A limit on technology is technical, and so is a limit that a code change relieves, whoever set it. A limit from the organization, from a contract, or from law is organizational. A rule we set about how we write and work is a convention, and the block names each set with its file.
@@ -100,13 +100,13 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 **`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it acts on and who it acts as.
 
 - Draw the toolkit as one box, and draw every partner. Completeness is arc42's demand here and almost nowhere else in the template. A host that holds or carries a credential is a partner, and so is a party that stands between an application and its consumer.
-- A table beside the diagram carries which components reach each partner and what crosses, which arc42 recommends. It exists because no install reaches every partner. `Package decomposition` draws the same partners on the package that performs each crossing, and arc42 asks that the two stay consistent.
+- A table beside the diagram carries which components reach each partner and what crosses. Arc42 3.1 offers the table as an alternative to the diagram, and this map takes both. It exists because no install reaches every partner. `Package decomposition` draws the same partners on the package that performs each crossing, and arc42 asks that the two stay consistent.
 - An inbound arrow carries the channel a consumer arrives over, and an outbound arrow carries no label, so the two pictures cannot come to claim different things.
-- One diagram carries the business context and the technical context, which arc42 allows, and technology appears only where it marks the boundary. Mark no risk and no quality goal on a partner, though arc42 offers both.
+- One diagram carries the business context and the technical context, although arc42 keeps 3.1 and 3.2 apart, so the merge is this map's choice. Technology appears only where it marks the boundary. Mark no risk and no quality goal on a partner. Arc42 tip 3-4 recommends a risk mark, and this rule overrides that tip, because `Risks and technical debt` owns every risk.
 
 **`Solution strategy`, arc42 4.** The most important decisions in one table: a driver, the decision it produced, and the section that details it. The goal rows come first, in the `Quality goals` order, so they grow only when that section does.
 
-- One table, because arc42's own first column holds a goal, a requirement, or a constraint. A second table would put a second grammar in one section.
+- One table with three columns, although arc42 4 suggests four: a quality goal, a scenario, a solution approach, and a link. The scenario sits inside the driver here, because `Quality goals` already states it. A second table would put a second grammar in one section.
 - A driver says what happens, in words a person would say, and never the category it falls in. It opens with the phrase and puts the `QR` handle in parentheses after it. Where no `QR` carries the driver, write it out rather than borrow the nearest handle. Where a `QR` admits more than one mechanism, the driver says which demand rules the others out.
 - A decision names the mechanism that meets its driver and never explains it, because the linked section owns the explanation. A decision and the check that keeps it true are two rows. Where a goal's scenario has a half that no settled mechanism serves, leave that half out.
 - The last column links the owner, and never a decision record. An organizational commitment earns a row only where it shapes the architecture. The language and the distribution shape are stated here, with the reason that drove them.
