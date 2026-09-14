@@ -1964,13 +1964,13 @@ class PipefyClient:
         return await self._portal_service.sort_portal_pages(interface_uuid, page_ids)
 
     async def update_portal_page_layout(
-        self, page_id: str, layout: dict[str, Any]
+        self, page_id: str, layout: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """Update a portal page grid layout.
 
         Args:
             page_id: Page UUID.
-            layout: Layout JSON for ``updatePageLayout``.
+            layout: Full row array from ``get_portal`` -> ``pages[].layout``.
         """
         return await self._portal_service.update_portal_page_layout(page_id, layout)
 
@@ -1983,7 +1983,7 @@ class PipefyClient:
         data_sources: list[dict[str, Any]] | None = None,
         element_id: str | None = None,
         editable: bool | None = None,
-        layout: dict[str, Any] | None = None,
+        layout: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create a portal page element.
 
@@ -1994,7 +1994,8 @@ class PipefyClient:
             data_sources: Optional data source bindings.
             element_id: Optional client-provided element UUID.
             editable: Optional editable flag.
-            layout: Optional layout JSON.
+            layout: Optional full page layout row array (``get_portal`` ->
+                ``pages[].layout``) with a row whose children list ``element_id``.
         """
         return await self._portal_service.create_portal_element(
             page_id,

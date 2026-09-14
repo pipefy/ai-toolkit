@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Portal layout**: `get_portal` now reads the full page layout, and SDK/MCP/CLI page-layout updates accept the API's row array instead of an object. `create_portal_element` accepts the same row array with `element_id` to create and place an element in one call (CLI `--element-id` / `--layout`), and rejects a layout that does not reference the new element. Guidance distinguishes row placement from element dimensions, records that the API stores any layout JSON verbatim, and requires read-back after edits (#524).
+
 - **Cursor Marketplace plugin**: hosted MCP config is `.mcp.json` only. `.cursor-plugin/plugin.json` points `mcpServers` at `./.mcp.json`, the same file Claude Code auto-discovers.
 - **Cursor plugin listing title**: adding this repo as a GitHub marketplace title-cased the slug `ai-toolkit` to "Ai Toolkit". `.cursor-plugin/marketplace.json` names the marketplace `pipefy`, and the plugin `displayName` is `Pipefy`, matching other company plugins.
 - **MCP (`create_ipaas_connection`)**: `readOnlyHint` is false. The tool upserts credentials and was advertised as read-only. (#644)

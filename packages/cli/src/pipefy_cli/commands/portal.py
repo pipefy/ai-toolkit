@@ -123,6 +123,23 @@ def _parse_optional_data_sources_json(raw: str | None) -> list[dict[str, Any]] |
     return parsed
 
 
+_LAYOUT_ROWS_MESSAGE = (
+    "{option} must be a JSON array of row objects from get_portal pages[].layout."
+)
+
+
+def _parse_layout_rows(
+    raw: str | None, option_name: str
+) -> list[dict[str, Any]] | None:
+    """Parse a page layout row array; ``None`` when the option was not given."""
+    parsed = parse_json_value(raw, option_name)
+    if parsed is None:
+        return None
+    if not isinstance(parsed, list) or not all(isinstance(row, dict) for row in parsed):
+        raise typer.BadParameter(_LAYOUT_ROWS_MESSAGE.format(option=option_name))
+    return parsed
+
+
 def _portal_element_create_kwargs(
     validated: CreatePortalElementInput,
 ) -> dict[str, Any]:
@@ -496,9 +513,9 @@ def portal_page_layout_update(
     """Update a portal page grid layout."""
 
     page_id = _require_non_empty_portal_uuid(page_id)
-    layout_obj = parse_json_object(layout, "--layout")
+    layout_obj = _parse_layout_rows(layout, "--layout")
     if layout_obj is None:
-        raise typer.BadParameter("--layout must be a JSON object.")
+        raise typer.BadParameter(_LAYOUT_ROWS_MESSAGE.format(option="--layout"))
 
     async def factory(client: PipefyClient):
         return await client.update_portal_page_layout(page_id, layout_obj)
@@ -525,6 +542,23 @@ def portal_element_create(
         "--data-sources",
         help="Optional JSON array of data source bindings (forms elements).",
     ),
+    element_id: str | None = typer.Option(
+        None,
+        "--element-id",
+        help=(
+            "Client-provided element UUID; required with --layout so a layout row "
+            "can reference the new element."
+        ),
+    ),
+    layout: str | None = typer.Option(
+        None,
+        "--layout",
+        help=(
+            "Full page layout row array (get_portal pages[].layout) with a row listing "
+            "--element-id, to create and place in one call. Omit to leave the grid "
+            "untouched."
+        ),
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -532,11 +566,15 @@ def portal_element_create(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """Create a portal page element."""
+    """Create a portal page element, optionally placed via --element-id and --layout."""
 
     page_id = _require_non_empty_portal_uuid(page_id)
     metadata_obj = _parse_required_metadata_json(metadata, "--metadata")
     data_sources_list = _parse_optional_data_sources_json(data_sources)
+    layout_rows = _parse_layout_rows(layout, "--layout")
+    cleaned_element_id = (
+        element_id.strip() if element_id and element_id.strip() else None
+    )
 
     try:
         validated = CreatePortalElementInput.model_validate(
@@ -545,6 +583,8 @@ def portal_element_create(
                 "type": type,
                 "metadata": metadata_obj,
                 "data_sources": data_sources_list or [],
+                "element_id": cleaned_element_id,
+                "layout": layout_rows,
             }
         )
     except ValidationError as exc:

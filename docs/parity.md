@@ -52,7 +52,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `create_pipe_report` | `pipefy report-pipe create` | shipped | Reports domain; `filter` preflight validates ReportCardsFilter shape (nested `operator` + `queries`). |
 | `create_portal` | `pipefy portal create` | shipped | `--organization-uuid`; idempotent (find-or-create main portal). |
 | `create_portal_page` | `pipefy portal page create` | shipped | `--portal-uuid`, `--title`; optional `--description`, `--index`. Empty main portal may bootstrap a templated page when the API omits `elements`. |
-| `create_portal_element` | `pipefy portal element create` | shipped | `--page-id`, `--type`, `--metadata` JSON; optional `--data-sources` JSON array. SDK validates metadata before GraphQL. |
+| `create_portal_element` | `pipefy portal element create` | shipped | `--page-id`, `--type`, `--metadata` JSON; optional `--data-sources` JSON array, `--element-id` + `--layout` row array (create and place). SDK validates metadata and layout placement before GraphQL. |
 | `create_sub_portal` | `pipefy portal sub-portal create` | shipped | `--main-portal-uuid`; optional `--name`. Interfaces `createSubPortal`. |
 | `create_send_task_automation` | `pipefy automation send-task create` | shipped | (task title + recipients; optional `--event-params` / `--condition` JSON). |
 | `create_service_account` | `pipefy service-account create` | shipped | Org service account (`--org` uuid, `--name` <=20, `--role`, optional `--description` / `--expiration-unit` + `--expiration-value`; optional `--pipe-ids` + `--pipe-role` default admin to add it to pipes immediately). Returns the OAuth2 client secret + token endpoint once (never logged); remote-safe. |

@@ -116,7 +116,13 @@ class CreatePortalElementInput(BaseModel):
         description="Optional client-provided element UUID (GraphQL input id).",
     )
     editable: bool | None = None
-    layout: dict[str, Any] | None = None
+    layout: list[dict[str, Any]] | None = Field(
+        default=None,
+        description=(
+            "Full page layout row array (get_portal pages[].layout) including a row "
+            "whose children list element_id; omit to leave the page grid untouched."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_metadata_for_element_type(self) -> Self:
@@ -126,6 +132,30 @@ class CreatePortalElementInput(BaseModel):
             )
         _validate_element_metadata(self.type, self.metadata)
         return self
+
+    @model_validator(mode="after")
+    def validate_layout_places_element(self) -> Self:
+        """``layout`` must reference the new element, or the write places nothing.
+
+        The Interfaces API stores whatever JSON it receives in ``layout``; a row
+        array that never lists ``element_id`` leaves the element outside the grid.
+        """
+        if self.layout is None:
+            return self
+        element_id = (self.element_id or "").strip()
+        if not element_id:
+            raise ValueError(
+                "layout requires element_id: generate a UUID, pass it as element_id, "
+                "and list it in the children of one layout row."
+            )
+        for row in self.layout:
+            children = row.get("children")
+            if isinstance(children, list) and element_id in children:
+                return self
+        raise ValueError(
+            "layout must contain a row whose children include element_id; "
+            "otherwise the element is created outside the page grid."
+        )
 
 
 class UpdatePortalElementInput(BaseModel):

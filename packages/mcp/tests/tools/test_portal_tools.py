@@ -38,6 +38,7 @@ _PORTAL_DETAIL = {
             "id": "page-1",
             "uuid": "page-1",
             "title": "Home",
+            "layout": [{"id": "row-1", "type": "row", "children": ["el-1"]}],
             "elements": [
                 {
                     "id": "el-1",
@@ -85,7 +86,7 @@ _CREATED_PAGE = {
     "elements": [{"id": "el-1", "uuid": "el-1", "type": "text"}],
 }
 
-_PAGE_LAYOUT = {"rows": [{"columns": [{"width": 12}]}]}
+_PAGE_LAYOUT = [{"id": "row-1", "type": "row", "children": ["el-1"]}]
 
 _ELEMENT_UUID = "el-uuid-1"
 _FORMS_METADATA = {"name": "Request form"}
@@ -278,6 +279,7 @@ async def test_get_portal_success(portal_session, mock_portal_client, extract_pa
     assert payload["data"]["uuid"] == "portal-uuid-1"
     assert payload["data"]["published"] is True
     assert payload["data"]["pages"][0]["title"] == "Home"
+    assert payload["data"]["pages"][0]["layout"] == _PAGE_LAYOUT
     assert payload["data"]["subPortals"][0]["name"] == "Sub Portal 1"
 
 
@@ -1218,6 +1220,70 @@ async def test_create_portal_element_success(
     assert payload["success"] is True
     assert payload["data"]["uuid"] == _ELEMENT_UUID
     assert payload["data"]["type"] == "forms"
+
+
+_PLACING_LINK_METADATA = {"linkName": "Docs", "linkUrl": "https://example.com"}
+_PLACING_LAYOUT = [
+    {"id": "row-1", "type": "row", "children": ["el-1"]},
+    {"id": "row-2", "type": "row", "children": ["el-new"]},
+]
+
+
+@pytest.mark.anyio
+async def test_create_portal_element_with_layout_places_element(
+    portal_session, mock_portal_client
+):
+    mock_portal_client.create_portal_element = AsyncMock(return_value=_CREATED_ELEMENT)
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_portal_element",
+            {
+                "page_id": _PAGE_UUID,
+                "type": "link",
+                "metadata": _PLACING_LINK_METADATA,
+                "element_id": "el-new",
+                "layout": _PLACING_LAYOUT,
+            },
+        )
+
+    assert result.is_error is False
+    mock_portal_client.create_portal_element.assert_awaited_once_with(
+        _PAGE_UUID,
+        type="link",
+        metadata=_PLACING_LINK_METADATA,
+        data_sources=[],
+        element_id="el-new",
+        layout=_PLACING_LAYOUT,
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"element_id": "el-new", "layout": {"rows": _PLACING_LAYOUT}},
+        {"layout": _PLACING_LAYOUT},
+        {"element_id": "el-elsewhere", "layout": _PLACING_LAYOUT},
+    ],
+    ids=["object-wrapper", "missing-element-id", "element-not-in-rows"],
+)
+async def test_create_portal_element_rejects_unplaceable_layout_before_client(
+    portal_session, mock_portal_client, extract_payload, arguments
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_portal_element",
+            {
+                "page_id": _PAGE_UUID,
+                "type": "link",
+                "metadata": _PLACING_LINK_METADATA,
+                **arguments,
+            },
+        )
+
+    mock_portal_client.create_portal_element.assert_not_called()
+    assert extract_payload(result)["success"] is False
 
 
 @pytest.mark.anyio
@@ -2301,3 +2367,16 @@ async def test_delete_sub_portal_docstring_warns_irreversible(portal_session):
     tool_map = {t.name: t for t in listed.tools}
     description = (tool_map["delete_sub_portal"].description or "").lower()
     assert "irreversible" in description
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("layout", [{"rows": []}, "not-json", ["element-1"]])
+async def test_page_layout_rejects_non_row_arrays(
+    portal_session, mock_portal_client, extract_payload, layout
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_page_layout", {"page_id": _PAGE_UUID, "layout": layout}
+        )
+    assert extract_payload(result)["success"] is False
+    mock_portal_client.update_portal_page_layout.assert_not_called()

@@ -261,3 +261,58 @@ def test_update_portal_input_rejects_invalid_visibility() -> None:
             interface_uuid=_PORTAL_UUID,
             visibility="public_visibility",  # type: ignore[arg-type]
         )
+
+
+_LAYOUT_ROWS = [
+    {"id": "row-1", "type": "row", "children": ["el-existing"]},
+    {"id": "row-2", "type": "row", "children": [_ELEMENT_ID]},
+]
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_accepts_layout_rows_placing_element() -> None:
+    """layout is the page row array; the row listing element_id is what places it."""
+    element_input = CreatePortalElementInput(
+        page_id=_PAGE_ID,
+        type="link",
+        metadata=_VALID_LINK_METADATA,
+        element_id=_ELEMENT_ID,
+        layout=_LAYOUT_ROWS,
+    )
+    assert element_input.layout == _LAYOUT_ROWS
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_object_layout() -> None:
+    """The API stores an object wrapper verbatim, so it has to be rejected locally."""
+    with pytest.raises(ValidationError):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id=_ELEMENT_ID,
+            layout={"rows": _LAYOUT_ROWS},
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_layout_without_element_id() -> None:
+    with pytest.raises(ValidationError, match="element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            layout=_LAYOUT_ROWS,
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_layout_that_omits_the_element() -> None:
+    with pytest.raises(ValidationError, match="children include element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id="el-not-in-layout",
+            layout=_LAYOUT_ROWS,
+        )

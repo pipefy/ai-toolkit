@@ -489,13 +489,13 @@ class PortalService:
         )
 
     async def update_portal_page_layout(
-        self, page_id: str, layout: dict[str, Any]
+        self, page_id: str, layout: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """Update a portal page grid layout (full layout blob).
 
         Args:
             page_id: Page UUID (no parent ``interface_uuid`` on this mutation).
-            layout: Layout JSON as required by ``updatePageLayout``.
+            layout: Full row array from ``get_portal`` -> ``pages[].layout``.
         """
         return await _execute_query_with_portal_errors(
             self.execute_interfaces_query,
@@ -517,7 +517,7 @@ class PortalService:
         data_sources: list[dict[str, Any]] | None = None,
         element_id: str | None = None,
         editable: bool | None = None,
-        layout: dict[str, Any] | None = None,
+        layout: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create a portal page element on the Interfaces schema.
 
@@ -528,7 +528,9 @@ class PortalService:
             data_sources: Optional data source bindings (e.g. for ``forms``).
             element_id: Optional client-provided element UUID (GraphQL ``id``).
             editable: Optional editable flag.
-            layout: Optional layout JSON.
+            layout: Optional full page layout row array (``get_portal`` ->
+                ``pages[].layout``) with a row whose children list ``element_id``,
+                to create and place in one call. Omit to leave the grid untouched.
         """
         validated = CreatePortalElementInput.model_validate(
             {

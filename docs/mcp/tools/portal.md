@@ -112,7 +112,7 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `delete_portal_page` | No | Irreversible; MCP two-step with `confirmation_token`; CLI `--yes`. |
 | `sort_portal_pages` | No | `page_ids` ordered list. |
 | `update_portal_page_layout` | No | `page_id` + `layout` JSON only (no portal UUID on wire). |
-| `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`. |
+| `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`, `element_id`, `layout` (full row array with a row listing `element_id`: creates and places in one call). |
 | `update_portal_element` | No | Full `metadata` replace. |
 | `delete_portal_element` | No | Irreversible. |
 | `duplicate_portal_element` | No | Same page; `element_id`, `portal_uuid`, `page_id`. |
@@ -123,7 +123,9 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `delete_sub_portal_element` | No | Detach wiring (`deleteSubPortalElement`). |
 | `delete_sub_portal` | No | Delete interface (`deleteSubPortalInterface`). |
 
-**Layout caveat:** `createElement` does not update the page grid; `duplicateElement` appends layout rows; `deleteElement` does not prune layout unless you pass updated `layout`. Orphan layout references can break the portal viewer (HTTP 500). Prefer disposable pages in smoke tests.
+**Read before editing layout:** `get_portal` returns the full `pages[].layout` row array. Each row carries `id`, `type: "row"`, and `children` element UUIDs; array order defines placement. Pass the complete array to `update_portal_page_layout` (CLI `--layout '[...]'`), preserving unaffected rows, IDs, and children. Do not wrap it in `{ "rows": [...] }`: the API does not validate this field, it stores an object wrapper or an empty array verbatim and the page grid is lost, so the toolkit rejects non-array input before the call. To add an element at a known position, pass `element_id` and `layout` (existing rows plus a row listing the new id) to `create_portal_element` instead of creating first and rewriting the grid afterwards. Element `metadata.gridMap` holds dimensions (`height`, `columns`, `minColumns`), not row order or grouping; retain it when replacing element metadata. Re-read the page and compare layout and element metadata after writing. If the layout cannot be read, stop the positional edit instead of reconstructing it from dimensions.
+
+**Layout caveat:** `createElement` leaves the page grid untouched unless you pass `layout`; `duplicateElement` appends layout rows; `deleteElement` does not prune layout unless you pass updated `layout`. Orphan layout references can break the portal viewer (HTTP 500). Prefer disposable pages in smoke tests.
 
 ---
 
@@ -199,8 +201,8 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `update_portal_page` | `pipefy portal page update <portal-uuid> <page-uuid> [--title …]` |
 | `delete_portal_page` | `pipefy portal page delete <portal-uuid> <page-uuid> --yes` |
 | `sort_portal_pages` | `pipefy portal page sort --portal-uuid <uuid> --page-ids id1,id2` |
-| `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '{…}'` |
-| `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}'` |
+| `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '[…]'` |
+| `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}' [--element-id <uuid> --layout '[…]']` |
 | `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type link --metadata '{…}'` |
 | `delete_portal_element` | `pipefy portal element delete <element-uuid> <page-uuid> --yes` |
 | `duplicate_portal_element` | `pipefy portal element duplicate --element-id <uuid> --portal-uuid <uuid> --page-id <uuid>` |

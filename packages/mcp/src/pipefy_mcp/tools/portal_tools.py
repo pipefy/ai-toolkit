@@ -507,7 +507,7 @@ class PortalTools:
         async def update_portal_page_layout(
             ctx: Context,
             page_id: str,
-            layout: dict[str, Any],
+            layout: list[dict[str, Any]],
         ) -> dict[str, Any]:
             """Update a portal page grid layout.
 
@@ -516,7 +516,10 @@ class PortalTools:
 
             Args:
                 page_id: Page UUID.
-                layout: Layout JSON (full layout object for the page).
+                layout: Full array from get_portal -> pages[].layout. Preserve
+                    row IDs and children (element UUIDs), changing only intended
+                    positions. Do not wrap it in an object or infer positions from
+                    metadata.gridMap (element dimensions). Re-read to verify.
             """
             client = get_pipefy_client(ctx)
             page_id, err = validate_tool_id(page_id, "page_id")
@@ -546,7 +549,7 @@ class PortalTools:
             data_sources: list[dict[str, Any]] | None = None,
             element_id: str | None = None,
             editable: bool | None = None,
-            layout: dict[str, Any] | None = None,
+            layout: list[dict[str, Any]] | None = None,
         ) -> dict[str, Any]:
             """Create a portal page element (portal "tool" / widget in the Pipefy UI).
 
@@ -554,14 +557,23 @@ class PortalTools:
             For ``forms`` elements, include ``metadata.name`` and optional
             ``data_sources`` (``repoId`` + ``fieldKeys`` per Interfaces schema).
 
+            To create and place in one call, read ``get_portal`` -> ``pages[].layout``,
+            generate ``element_id``, and pass ``layout`` as the existing rows plus a
+            row whose ``children`` list ``element_id``. Without ``layout`` the element
+            exists but is not on the page grid. Re-read with ``get_portal`` after.
+
             Args:
                 page_id: Parent page UUID.
                 type: ``InterfacePageElementType`` value (e.g. ``forms``, ``link``).
                 metadata: Element metadata JSON (shape depends on ``type``).
                 data_sources: Optional data source bindings for ``forms`` elements.
-                element_id: Optional client-provided element UUID.
+                element_id: Optional client-provided element UUID. Required with
+                    ``layout`` so a row can reference the new element.
                 editable: Optional editable flag.
-                layout: Optional layout JSON.
+                layout: Optional full page layout row array (``id``, ``type: "row"``,
+                    ``children``). Preserve every existing row; never send an object
+                    wrapper. The API stores this JSON verbatim, so a wrong shape
+                    replaces the page grid.
             """
             client = get_pipefy_client(ctx)
             page_id, err = validate_tool_id(page_id, "page_id")

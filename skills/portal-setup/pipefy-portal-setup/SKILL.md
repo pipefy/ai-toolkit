@@ -81,8 +81,8 @@ If **`get_portal`** shows a main page with **no elements**, call **`create_porta
 | **Publish wire** | Use **`publish_sub_portal`** / **`update_sub_portal_element`** on an existing **`forms`** element (`updateSubPortalElement` on internal_api). **`create_portal_element` with `type: subPortal`** is not a substitute for publish. |
 | **Element metadata** | **`update_portal_element`** is **replace-all** — send the full `metadata` JSON every time. |
 | **Metadata keys** | `forms` → `name` (not `formId`); `link` → `linkName` / `linkUrl` (not `url` / `label`). |
-| **Layout JSON** | **`update_portal_page_layout`** expects an **array** of row objects (`id`, `type: "row"`, `children: [elementUuid, ...]`). Copy from **`get_portal`**. A wrapper like `{ "rows": [...] }` fails API validation. |
-| **Page grid vs elements** | **`create_portal_element`** does not update the layout grid; **`duplicate_portal_element`** appends layout rows; **`delete_portal_element`** does not remove layout refs unless you update layout — orphan refs can break the portal viewer (HTTP 500). |
+| **Layout JSON** | **`update_portal_page_layout`** expects an **array** of row objects (`id`, `type: "row"`, `children: [elementUuid, ...]`). Copy the target **`pages[].layout`** from **`get_portal`**. `metadata.gridMap` gives element dimensions, not placement. The API stores any JSON here verbatim (a `{ "rows": [...] }` wrapper or `[]` replaces the grid), so the toolkit rejects non-array input locally; never bypass it with raw GraphQL. |
+| **Page grid vs elements** | **`create_portal_element`** leaves the layout grid untouched unless you pass `element_id` + `layout` (existing rows plus a row listing the new id); **`duplicate_portal_element`** appends layout rows; **`delete_portal_element`** does not remove layout refs unless you update layout; orphan refs can break the portal viewer (HTTP 500). |
 
 ---
 
@@ -227,7 +227,33 @@ Use a **disposable page** for element/layout experiments on a shared org main po
 
 **`duplicate_portal_element`:** `element_id`, `portal_uuid`, and `page_id` must refer to the **same page** that already contains the source element (duplicate on the same page, not cross-page).
 
-**`update_portal_page_layout`:** read `layout` from **`get_portal`** for that page and send the full array back with intentional edits. Never invent `{ "rows": [ ... ] }` stubs.
+**`update_portal_page_layout`:** read the target `pages[].layout` from **`get_portal`** and preserve its row IDs, child element UUIDs, and unaffected rows. Send the complete array with only the intended order/grouping changes; then re-read and compare. `elements[].metadata.gridMap` (`height`, `columns`, `minColumns`) describes dimensions, so it cannot reconstruct row order or grouping. Preserve the full metadata when resizing an element. If the layout is unavailable, stop the positional edit instead of guessing. Never wrap the array in `{ "rows": [ ... ] }`.
+
+MCP:
+```
+get_portal portal_uuid="<portal_uuid>"
+update_portal_page_layout page_id="<page_uuid>" layout=[<complete edited rows from that page>]
+get_portal portal_uuid="<portal_uuid>"
+```
+
+CLI:
+```bash
+pipefy portal get <portal_uuid> --json
+pipefy portal page layout update --page-id <page_uuid> --layout '[<complete edited rows from that page>]' --json
+pipefy portal get <portal_uuid> --json
+```
+
+**`create_portal_element` with placement:** read `pages[].layout`, generate a UUID for `element_id`, append or insert a row `{ "id": "<new row uuid>", "type": "row", "children": ["<element_id>"] }`, and pass both `element_id` and the complete `layout`. Without `layout` the element is created but stays off the grid. Re-read and compare.
+
+MCP:
+```
+create_portal_element page_id="<page_uuid>" type="link" metadata={...} element_id="<element_id>" layout=[<existing rows>, {"id": "<row uuid>", "type": "row", "children": ["<element_id>"]}]
+```
+
+CLI:
+```bash
+pipefy portal element create --page-id <page_uuid> --type link --metadata '{...}' --element-id <element_id> --layout '[<existing rows>, {"id": "<row uuid>", "type": "row", "children": ["<element_id>"]}]' --json
+```
 
 **`sort_portal_pages`:** pass a non-empty `page_ids` list with no duplicates. If the raw response exposes nested `success: false`, treat the operation as failed even when the MCP envelope looks ambiguous.
 

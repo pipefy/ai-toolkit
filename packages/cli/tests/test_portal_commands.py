@@ -249,7 +249,7 @@ _CREATED_PAGE = {
     "elements": [{"id": "el-1", "uuid": "el-1", "type": "text"}],
 }
 
-_PAGE_LAYOUT = {"rows": [{"columns": [{"width": 12}]}]}
+_PAGE_LAYOUT = [{"id": "row-1", "type": "row", "children": ["el-1"]}]
 
 
 def test_portal_page_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
@@ -1627,3 +1627,114 @@ def test_portal_sub_portal_detach_permission_error_still_exits_2(
         )
     assert result.exit_code == 2, result.stdout + (result.stderr or "")
     assert "manage_portals" in result.stderr
+
+
+@pytest.mark.parametrize("layout", [{"rows": []}, ["element-1"], None])
+def test_page_layout_rejects_non_row_arrays(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, layout
+):
+    oauth_env("portal-layout-invalid")
+    result = runner.invoke(
+        app,
+        [
+            "portal",
+            "page",
+            "layout",
+            "update",
+            "--page-id",
+            _PAGE_UUID,
+            "--layout",
+            json.dumps(layout),
+            "--json",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "JSON array of row objects" in result.stderr
+
+
+_PLACING_LAYOUT = [
+    {"id": "row-1", "type": "row", "children": ["el-1"]},
+    {"id": "row-2", "type": "row", "children": ["el-new"]},
+]
+
+
+def test_portal_element_create_with_layout_places_element(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("portal-element-create-layout")
+    mock_client = MagicMock()
+    mock_client.create_portal_element = AsyncMock(return_value=_CREATED_ELEMENT)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "create",
+                "--page-id",
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                "--element-id",
+                "el-new",
+                "--layout",
+                json.dumps(_PLACING_LAYOUT),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.create_portal_element.assert_awaited_once_with(
+        _PAGE_UUID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=[],
+        element_id="el-new",
+        layout=_PLACING_LAYOUT,
+    )
+
+
+@pytest.mark.parametrize(
+    ("extra_args", "expected"),
+    [
+        (
+            ["--element-id", "el-new", "--layout", json.dumps({"rows": []})],
+            "JSON array of row objects",
+        ),
+        (["--layout", json.dumps(_PLACING_LAYOUT)], "element_id"),
+    ],
+    ids=["object-wrapper", "missing-element-id"],
+)
+def test_portal_element_create_rejects_unplaceable_layout_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, extra_args, expected
+):
+    oauth_env("portal-element-create-bad-layout")
+    mock_client = MagicMock()
+    mock_client.create_portal_element = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "create",
+                "--page-id",
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                *extra_args,
+                "--json",
+            ],
+        )
+    assert result.exit_code == 2
+    assert expected in result.stderr
+    mock_client.create_portal_element.assert_not_called()

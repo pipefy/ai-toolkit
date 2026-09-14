@@ -2817,7 +2817,8 @@ Usage: pipefy portal element [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ create      Create a portal page element.                                    │
+│ create      Create a portal page element, optionally placed via --element-id │
+│             and --layout.                                                    │
 │ update      Update a portal page element (send the full metadata blob).      │
 │ delete      Delete a portal page element permanently.                        │
 │ duplicate   Duplicate a portal page element on the same page (source portal  │
@@ -2827,7 +2828,7 @@ Usage: pipefy portal element [OPTIONS] COMMAND [ARGS]...
 ### HELP portal/element/create
 Usage: pipefy portal element create [OPTIONS]
 
- Create a portal page element.
+ Create a portal page element, optionally placed via --element-id and --layout.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --page-id               TEXT  Parent page UUID. [required]                │
@@ -2838,6 +2839,13 @@ Usage: pipefy portal element create [OPTIONS]
 │                                  depends on --type).                         │
 │    --data-sources          TEXT  Optional JSON array of data source bindings │
 │                                  (forms elements).                           │
+│    --element-id            TEXT  Client-provided element UUID; required with │
+│                                  --layout so a layout row can reference the  │
+│                                  new element.                                │
+│    --layout                TEXT  Full page layout row array (get_portal      │
+│                                  pages[].layout) with a row listing          │
+│                                  --element-id, to create and place in one    │
+│                                  call. Omit to leave the grid untouched.     │
 │    --json          -j            Print machine-readable JSON to stdout.      │
 │    --help                        Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
