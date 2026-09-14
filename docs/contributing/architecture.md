@@ -76,8 +76,8 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | Constraint | Applies to | Explanation |
 |---|---|---|
 | Schema as the only instruction we can count on | MCP | A client loads the schema at connect. A playbook in `skills/` reaches the model only where the consumer installed it |
-| A rate limit at the LLM vendor | CLI, MCP, `skills/` | The LLM vendor meters a consumer's use over a rolling period, and a longer cap sits above the meter |
-| A context window per call | CLI, MCP, `skills/` | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
+| A rate limit at the LLM vendor | CLI, MCP, Skills | The LLM vendor meters a consumer's use over a rolling period, and a longer cap sits above the meter |
+| A context window per call | CLI, MCP, Skills | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
 | Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
 | A tool catalog we do not own | MCP | The iPaaS engine publishes its own tools, and their names and their shapes come from that engine |
@@ -97,8 +97,8 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | A compatible license on every dependency | The repository | A package we depend on carries its own license terms, and some terms are incompatible with an Apache 2.0 distribution |
 | A public repository | The repository | Pipefy publishes this repository, so every file in it and every past version is readable by anyone |
 | A sign-off on every commit | The repository | Pipefy applies the Developer Certificate of Origin, which makes a contributor certify the origin of a change |
-| A compliance review before a regulated skill merges | `skills/` | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
-| A compliance card on a regulated blueprint | `skills/` | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
+| A compliance review before a regulated skill merges | Skills | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
+| A compliance card on a regulated blueprint | Skills | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
 [`TERMS.md`](../../TERMS.md) owns the license notice. No check reads the license of a dependency, so a reviewer applies the row above before a new dependency lands. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card.
 
@@ -130,23 +130,23 @@ flowchart LR
     toolkit --> files["Local filesystem"]
 ```
 
-No install reaches every partner, so the table says whether the SDK, the CLI, or the MCP server reaches each one.
+No install reaches every partner, so the table says which components reach each one.
 
-| Partner | What crosses | Reached by |
+| Partner | Reached by | What crosses |
 |---|---|---|
-| Pipefy GraphQL API | Every capability in [Requirements overview](#requirements-overview) | All three |
-| File storage | The bytes of an attachment, up and down | All three |
-| iPaaS HTTP API | The flows of a pipe's workspace, and the credential exchange they need | The MCP server |
-| Pipefy identity provider (OIDC) | A login, and the validation of an inbound bearer | The CLI and the MCP server |
-| System web browser | A login handed off, and the authorization code that comes back | The CLI |
-| OS keychain | A stored credential | The CLI and the MCP server |
-| Local filesystem | A config file, a stored credential, and the bytes of a local file | All three |
+| Pipefy GraphQL API | SDK, CLI, MCP | Every capability in [Requirements overview](#requirements-overview) |
+| File storage | SDK, CLI, MCP | The bytes of an attachment, up and down |
+| iPaaS HTTP API | MCP | The flows of a pipe's workspace, and the credential exchange they need |
+| Pipefy identity provider (OIDC) | CLI, MCP | A login, and the validation of an inbound bearer |
+| System web browser | CLI | A login handed off, and the authorization code that comes back |
+| OS keychain | CLI, MCP | A stored credential |
+| Local filesystem | SDK, CLI, MCP | A config file, a stored credential, and the bytes of a local file |
 
 The legend:
 
 - The table names what crosses as a concept, and never the class that implements it. [Package decomposition](#package-decomposition) draws the same partners on the package whose code performs each crossing.
 - Where a crossing has a port, [Ports and dependency inversion](#ports-and-dependency-inversion) names it, and [Risks and technical debt](#risks-and-technical-debt) carries every one that has none.
-- Which application each consumer uses is in [Package decomposition](#package-decomposition), and what each one does about a credential is in [Identity lifetime](#identity-lifetime). A deployment profile decides which channel the MCP server serves.
+- Which component each consumer uses is in [Package decomposition](#package-decomposition), and what each one does about a credential is in [Identity lifetime](#identity-lifetime). A deployment profile decides which channel the MCP server serves.
 
 ## Solution strategy
 
@@ -159,7 +159,7 @@ These are the decisions everything else rests on. Some answer a goal that [Quali
 | Diagnosability | An application turns input into typed values at its edge, so nothing unchecked reaches the code behind it. Every reply has one shape, and a failure says what probably went wrong and what to do next | [Response shape](#response-shape), [Composition root](#composition-root) |
 | Stability | Most of the code is an adapter around a small hexagonal core, so a vendor change stops at the adapter that wraps it | [Dependency rule](#dependency-rule), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | Each public surface keeps a deprecated path working for a stated period | [`DEPRECATION.md`](../DEPRECATION.md) |
-| An LLM agent reaches the domain by two mechanisms, and a person and a script reach it by one of them | The MCP server declares a schema that a client loads at connect, and the CLI takes a command that composes with other commands. Both sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
+| An LLM agent reaches the domain by three components and learns two of them from a playbook, and a person, a script, and a program each reach it by one | The MCP server declares a schema that a client loads at connect, the CLI takes a command that composes with other commands, and a skill carries the procedure for either. Both applications sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
 | A change to shared behavior that lands in one pull request (`QR-26`) | Every package lives in one repository and ships on one version. One test run covers all of them | [`RELEASE.md`](../../RELEASE.md) |
 | A smaller learning curve for a contributor | The toolkit is written in Python, which was the default language for work on artificial intelligence when this project began | [Architecture constraints](#architecture-constraints) |
