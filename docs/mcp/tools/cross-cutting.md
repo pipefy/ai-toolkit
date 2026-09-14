@@ -61,3 +61,9 @@ Before creating/updating AI automations or AI agents, call [`validate_ai_automat
 ## Error payloads
 
 When a GraphQL exception carries a structured `errors` list, error payloads return the extracted `message` strings (without a noisy `str(exc)` wrapper that would include `locations` / `extensions`). The raw string is used as a fallback only when no structured messages can be extracted.
+
+### Non-blank failure messages
+
+The MCP `tool_error` envelope replaces empty or whitespace-only messages with `Tool request failed.`. Existing non-blank messages, codes, and details are preserved, including domain-specific recovery instructions. This fallback supplies no evidence that a write failed before applying its effect; verify the resource before retrying an ambiguous write.
+
+This invariant applies to MCP envelopes only. CLI error rendering is unchanged; it does not use `tool_error`, and source-specific SDK error normalization remains in place.

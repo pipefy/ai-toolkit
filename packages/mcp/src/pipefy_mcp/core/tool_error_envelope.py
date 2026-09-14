@@ -81,10 +81,14 @@ def tool_error(
 
     Args:
         message: User-visible explanation (keep free of raw secrets; sanitize upstream).
+            Blank/whitespace messages use a generic fallback; non-blank messages
+            are preserved verbatim, including domain-specific recovery guidance.
         code: Optional machine-friendly code (e.g. first GraphQL ``extensions.code``).
         details: Optional structured context (e.g. validation hints), keep JSON-serializable.
     """
-    err: dict[str, Any] = {"message": message}
+    err: dict[str, Any] = {
+        "message": message if message.strip() else "Tool request failed."
+    }
     if code is not None:
         err["code"] = code
     if details:
