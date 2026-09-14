@@ -167,7 +167,7 @@ These are the decisions everything else rests on. Some answer a goal that [Quali
 
 ## Building block view
 
-Level 1 is the package graph, and [Inside each package](#inside-each-package) holds level 2.
+Level 1 draws the four components and the two libraries beneath them, and [Inside each package](#inside-each-package) holds level 2.
 
 ### Package decomposition
 
@@ -175,12 +175,15 @@ Level 1 is the package graph, and [Inside each package](#inside-each-package) ho
 flowchart LR
     subgraph toolkit["AI Toolkit"]
         direction TB
+        skills["Skills (skills/)"]
         mcp["MCP server (pipefy-mcp-server)"]
         cli["CLI (pipefy-cli)"]
         sdk["SDK (pipefy)"]
         auth["Identity (pipefy-auth)"]
         infra["Commons (pipefy-infra)"]
 
+        skills -.-> mcp
+        skills -.-> cli
         mcp --> sdk
         mcp --> auth
         mcp --> infra
@@ -204,8 +207,9 @@ The legend:
 
 - An arrow between two packages is a dependency that the package declares in its own `pyproject.toml`, and [Dependency rule](#dependency-rule) holds those arrows pointing one way.
 - An arrow that leaves the box says which package performs that crossing. It carries no label, because [Context and scope](#context-and-scope) says what crosses each one, and which install reaches it.
+- A dashed arrow is a naming dependency rather than a declared one. A skill names only a registered tool or a registered command, and a build check holds that. The check carries its own list of the commands, which [Risks and technical debt](#risks-and-technical-debt) records.
 
-Two forces produced this split. The first is the shape of the consumer, which produced the packages at the top. A programmer imports, a person types a command, and an LLM calls a tool. The second is the cost of an install, which produced the libraries beneath, so that one consumer never pays another's dependencies.
+Three forces produced this split. The first is the shape of the consumer, which produced the packages at the top. A programmer imports, a person types a command, and an LLM calls a tool. The second is the cost of an install, which produced the libraries beneath, so that one consumer never pays another's dependencies. The third is that a model needs a procedure and a tool description must not carry one, which is `QR-23`, so the procedure ships as a playbook beside the code.
 
 That second force is what makes `pipefy-auth` and `pipefy-infra` two packages rather than one. Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares pydantic alone, so every package takes it cheaply. One shared package instead of two puts the login machinery in every SDK install.
 
@@ -213,6 +217,7 @@ The match of consumer to package then decides where a behavior lives. The SDK ex
 
 | Name | Functions | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
+| Skills | none | Teaches an LLM agent a Pipefy workflow over the MCP server and the CLI, and carries the procedure that a tool description must not | A `SKILL.md` that a consumer installs into an agent harness | `skills/` |
 | MCP server | `FR-2`, `FR-3`, `FR-4`, `FR-5` | Serves the domain to an LLM that acts on intent, and keeps identifiers internal to the tool | A tool call, over stdio or HTTP | `packages/mcp` |
 | CLI | `FR-1`, `FR-2`, `FR-3`, `FR-4` | Serves the domain to a person or a script, thin over the SDK, with discovery as a separate command | A command in a shell | `packages/cli` |
 | SDK | `FR-3` | Executes a named operation deterministically and returns a domain value | The package root, held closed by a check | `packages/sdk` |
@@ -225,7 +230,7 @@ Because the CLI declares no edge to `pipefy-infra`, the diagram draws none, and 
 
 ### Inside each package
 
-Arc42 asks for a whitebox where a block is important, surprising, risky, complex, or volatile, rather than for one per block. Each section below is the whitebox of one package. The three packages that a consumer reaches earn one, and `pipefy-auth` earns one because every credential operation lives in it. `pipefy-infra` gets none, because it holds no subject to refine. A module that only re-exports, such as a package `__init__.py`, belongs to no block.
+Arc42 asks for a whitebox where a block is important, surprising, risky, complex, or volatile, rather than for one per block. Each section below is the whitebox of one package. The three packages that a consumer reaches earn one, and `pipefy-auth` earns one because every credential operation lives in it. `pipefy-infra` gets none, because it holds no subject to refine. Skills gets none either, because [`skills/README.md`](../../skills/README.md) owns the catalog and each `SKILL.md` owns its steps. A module that only re-exports, such as a package `__init__.py`, belongs to no block.
 
 #### MCP server
 
