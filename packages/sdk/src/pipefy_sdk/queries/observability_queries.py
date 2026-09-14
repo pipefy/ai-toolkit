@@ -65,6 +65,11 @@ GET_AI_AGENT_LOG_DETAILS_QUERY = gql(
             executionTime
             createdAt
             finishedAt
+            llmConfigInfo {
+                model
+                name
+                provider
+            }
             tracingNodes {
                 nodeName
                 status
