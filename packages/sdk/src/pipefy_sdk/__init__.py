@@ -61,9 +61,11 @@ from pipefy_sdk.queries.observability_queries import (
 from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
     AutomationEventRow,
+    AutomationListPage,
     AutomationRuleRecord,
     AutomationRuleSummary,
 )
+from pipefy_sdk.services.automation_service import AUTOMATIONS_LIST_MAX_PAGE_SIZE
 from pipefy_sdk.services.observability_export_csv import download_bytes, stream_bytes
 from pipefy_sdk.services.observability_service import (
     AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE,
@@ -99,6 +101,7 @@ __all__ = [
     "AiAgentGraphPayload",
     "AUTOMATION_EVENT_IDS",
     "AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE",
+    "AUTOMATIONS_LIST_MAX_PAGE_SIZE",
     "AUTOMATION_EXECUTION_METRICS_PERIODS",
     "AUTOMATION_SORT_BY",
     "AUTOMATION_SORT_ORDER",
@@ -114,6 +117,7 @@ __all__ = [
     "AutomationConditionInput",
     "AutomationEventParamsInput",
     "AutomationEventRow",
+    "AutomationListPage",
     "AutomationRuleRecord",
     "AutomationRuleSummary",
     "BehaviorInput",

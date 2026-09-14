@@ -19,7 +19,7 @@ For AI agents (conversational agents with behaviors), see [skills/ai-agents/pipe
 
 | Tool (MCP) | CLI | Purpose |
 |------------|-----|---------|
-| `get_automations` | `pipefy automation list` | List all automations for a pipe. |
+| `get_automations` | `pipefy automation list` | List rules with `event_id`, `event_params`, and `condition` to audit triggers and filters. Empty condition expressions are API placeholders, not active filters. Pages hold at most 50 rules: check `pagination.total_count` / `has_more` (CLI `totalCount` / `pageInfo.hasNextPage`) and continue with `after` before concluding a rule or filter does not exist. |
 | `get_automation` | `pipefy automation get` | Single automation with full rule config — returns `event_params` and `action_params` (including `aiParams` for AI rules). |
 | `create_automation` | `pipefy automation create` | Create an if/then rule. `active` defaults to true. First-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)); other fields via `extra_input`. |
 | `update_automation` | `pipefy automation update` | Patch a rule: first-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)) and/or `extra_input`. |

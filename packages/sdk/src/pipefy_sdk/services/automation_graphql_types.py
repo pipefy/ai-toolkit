@@ -167,6 +167,28 @@ class AutomationRuleSummary(TypedDict, total=False):
     name: str
     active: bool
     action_id: str
+    event_id: str
+    event_params: AutomationEventParamsRecord | None
+    condition: AutomationConditionRecord | None
+
+
+class AutomationListPageInfo(TypedDict, total=False):
+    """``pageInfo`` on the ``automations`` connection."""
+
+    hasNextPage: bool
+    endCursor: str | None
+
+
+class AutomationListPage(TypedDict):
+    """One page of the ``automations`` connection.
+
+    The API returns at most 50 rules per page regardless of ``first``; ``totalCount``
+    and ``pageInfo.hasNextPage`` say whether the page is the whole set.
+    """
+
+    nodes: list[AutomationRuleSummary]
+    totalCount: int
+    pageInfo: AutomationListPageInfo
 
 
 class AutomationActionRow(TypedDict, total=False):

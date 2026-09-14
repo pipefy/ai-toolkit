@@ -219,7 +219,7 @@ class AiAutomationTools:
                     message=tool_error_message(pid_err)
                 )
             try:
-                rows = await client.get_automations(
+                page = await client.get_automations(
                     organization_id=org,
                     pipe_id=pid,
                 )
@@ -231,7 +231,7 @@ class AiAutomationTools:
                     resource_kind="pipe",
                     resource_id=pid,
                 )
-            filtered = filter_ai_automation_summaries(rows)
+            filtered = filter_ai_automation_summaries(page["nodes"])
             return build_automation_read_success_payload(
                 filtered,
                 "AI automations listed.",

@@ -457,10 +457,12 @@ async def _automations_referencing_phase(
 ) -> list[dict[str, Any]]:
     """List automations in ``pipe_id`` whose config references ``phase_id`` (summary rows).
 
-    Returns a filtered summary list. Exceptions propagate to the outer gather.
-    Inner per-automation detail fetches are allowed to fail individually.
+    Reads the first page of the pipe's rules (the API caps a page at 50) and returns
+    a filtered summary list. Exceptions propagate to the outer gather. Inner
+    per-automation detail fetches are allowed to fail individually.
     """
-    rows = await client.get_automations(pipe_id=str(pipe_id))
+    page = await client.get_automations(pipe_id=str(pipe_id))
+    rows = page["nodes"]
     if not rows:
         return []
     ids = [str(r.get("id")) for r in rows if isinstance(r, dict) and r.get("id")]

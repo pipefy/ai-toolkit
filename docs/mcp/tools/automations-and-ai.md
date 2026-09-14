@@ -13,7 +13,7 @@ Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe v
 | Tool | Read-only | Role |
 |------|-----------|------|
 | `get_automation` | Yes | Loads one rule by ID (trigger, actions, `active`). |
-| `get_automations` | Yes | Lists rules; optional `organization_id` and/or `pipe_id`. |
+| `get_automations` | Yes | Lists one page of rules (the API caps a page at 50) with `event_id`, `event_params`, and `condition`; optional `organization_id` and/or `pipe_id`, `first` (1 to 50), `after`. `pagination.total_count` and `pagination.has_more` say whether the page is the whole set; continue with `after=pagination.end_cursor`. Use `get_automation` for full action parameters. |
 | `get_automation_actions` | Yes | Catalog of action types for a pipe (IDs and field metadata). |
 | `get_automation_events` | Yes | Catalog of trigger event definitions (global list; tool still takes `pipe_id` for context). |
 | `get_automation_event_attributes` | Yes | **Event-scoped only** (today: one token). Full `field_map.value` list: see [Common value tokens](#common-value-tokens-copy_from) below. |

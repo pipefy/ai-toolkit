@@ -22,11 +22,15 @@ MAX_PAGE_SIZE = 500
 
 
 class PaginationInfo(TypedDict, total=False):
-    """Top-level pagination block for unified-envelope responses."""
+    """Top-level pagination block for unified-envelope responses.
+
+    ``total_count`` is present only for connections that expose ``totalCount``.
+    """
 
     has_more: bool
     end_cursor: str | None
     page_size: int
+    total_count: int
 
 
 def validate_page_size(

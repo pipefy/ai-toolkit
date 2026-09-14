@@ -29,6 +29,7 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
     AutomationEventAttributeRow,
     AutomationEventRow,
+    AutomationListPage,
     AutomationRuleRecord,
     AutomationRuleSummary,
     AutomationSimulationRow,
@@ -40,6 +41,20 @@ from pipefy_sdk.services.automation_graphql_types import (
 from pipefy_sdk.services.types import AutomationServiceResult
 
 ACTION_ID_GENERATE_WITH_AI = "generate_with_ai"
+
+# The ``automations`` connection returns at most this many rules per page whatever
+# ``first`` asks for (observed live: ``first: 200`` still returns 50 nodes).
+AUTOMATIONS_LIST_MAX_PAGE_SIZE = 50
+
+
+def _empty_automation_page() -> AutomationListPage:
+    """Page with no rows, for filters that resolve to no organization or connection."""
+    return {
+        "nodes": [],
+        "totalCount": 0,
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+
 
 _AUTOMATION_EVENT_ATTRIBUTE_GRAPHQL_KEYS: tuple[tuple[str, str], ...] = (
     ("automationEventExecutionDatetime", "automation_event_execution_datetime"),
@@ -202,18 +217,25 @@ class AutomationService:
         self,
         organization_id: str | None = None,
         pipe_id: str | None = None,
-    ) -> list[AutomationRuleSummary]:
-        """List automations for an organization and/or pipe.
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> AutomationListPage:
+        """List one page of automations for an organization and/or pipe.
 
         Pipefy requires ``organizationId`` on ``automations``. When only ``pipe_id`` is set,
-        the organization is resolved from the pipe.
+        the organization is resolved from the pipe. The API caps a page at
+        ``AUTOMATIONS_LIST_MAX_PAGE_SIZE`` rules whatever ``first`` says, so read
+        ``pageInfo.hasNextPage`` and ``totalCount`` before treating the page as complete.
 
         Args:
             organization_id: Organization ID to filter by, if any.
             pipe_id: Pipe (repo) ID to filter by, if any.
+            first: Page size requested from the API (capped server-side at 50).
+            after: ``pageInfo.endCursor`` from the previous page.
         """
         if organization_id is None and pipe_id is None:
-            return []
+            return _empty_automation_page()
 
         org_id: str | None = organization_id
         if org_id is None and pipe_id is not None:
@@ -225,28 +247,37 @@ class AutomationService:
             oid = pipe.get("organizationId")
             org_id = str(oid) if oid is not None else None
             if org_id is None:
-                return []
+                return _empty_automation_page()
 
         if org_id is None:
-            return []
+            return _empty_automation_page()
 
+        variables: dict[str, Any] = {"organizationId": str(org_id)}
+        if first is not None:
+            variables["first"] = int(first)
+        if after is not None:
+            variables["after"] = after
         if pipe_id is None:
             payload = await self._executor.execute_query(
-                GET_AUTOMATIONS_BY_ORG_QUERY,
-                {"organizationId": str(org_id)},
+                GET_AUTOMATIONS_BY_ORG_QUERY, variables
             )
         else:
+            variables["repoId"] = str(pipe_id)
             payload = await self._executor.execute_query(
-                GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY,
-                {"organizationId": str(org_id), "repoId": str(pipe_id)},
+                GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY, variables
             )
         conn = payload.get("automations")
         if conn is None:
-            return []
-        rows = conn.get("nodes")
-        if rows is None:
-            return []
-        return cast(list[AutomationRuleSummary], list(rows))
+            return _empty_automation_page()
+        page_info = conn.get("pageInfo") or {}
+        return {
+            "nodes": cast(list[AutomationRuleSummary], list(conn.get("nodes") or [])),
+            "totalCount": int(conn.get("totalCount") or 0),
+            "pageInfo": {
+                "hasNextPage": bool(page_info.get("hasNextPage")),
+                "endCursor": page_info.get("endCursor"),
+            },
+        }
 
     async def get_automation_actions(self, pipe_id: str) -> list[AutomationActionRow]:
         """List available automation action types for a pipe.

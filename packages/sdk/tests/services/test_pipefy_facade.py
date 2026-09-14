@@ -540,7 +540,7 @@ async def test_pipefy_client_facade_delegates_to_services_without_modifying_args
 
     assert await client.get_automations(pipe_id="pid") == {"ok": "get_automations"}
     automation_service.get_automations.assert_awaited_once_with(
-        organization_id=None, pipe_id="pid"
+        organization_id=None, pipe_id="pid", first=None, after=None
     )
 
     assert await client.get_automation_actions("p1") == {"ok": "get_automation_actions"}

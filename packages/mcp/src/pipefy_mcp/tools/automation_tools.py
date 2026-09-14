@@ -7,6 +7,7 @@ from typing import Any
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
 from pipefy_sdk import (
+    AUTOMATIONS_LIST_MAX_PAGE_SIZE,
     AutomationConditionInput,
     CreateSendTaskAutomationInput,
     PipefyId,
@@ -20,10 +21,15 @@ from pipefy_mcp.tools.automation_tool_helpers import (
     build_automation_mutation_success_payload,
     build_automation_read_success_payload,
     build_automation_simulation_success_payload,
+    build_automations_listed_message,
     handle_automation_tool_graphql_error,
 )
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
 from pipefy_mcp.tools.graphql_error_helpers import enrich_permission_denied_error
+from pipefy_mcp.tools.pagination_helpers import (
+    build_pagination_info,
+    validate_page_size,
+)
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
 from pipefy_mcp.tools.validation_helpers import (
@@ -128,25 +134,35 @@ class AutomationTools:
             ctx: Context,
             organization_id: PipefyId | None = None,
             pipe_id: PipefyId | None = None,
+            first: int | None = None,
+            after: str | None = None,
         ) -> dict[str, Any]:
-            """List traditional automation rules, optionally filtered by organization and/or pipe.
+            """List one page of traditional automation rules, filtered by organization and/or pipe.
 
-            Use this to discover automation IDs in a pipe or org before calling ``get_automation``
-            for full payloads, or to plan ``create_automation`` / ``update_automation`` without
-            listing unrelated rules.
+            Each row includes ``event_id``, ``event_params``, and ``condition`` for
+            auditing triggers and filters without a detail call per rule. An empty
+            condition expression is the API placeholder, not an active filter.
+            Use ``get_automation`` for full action payloads before changing a rule.
 
-            Combine with ``get_automation`` for full detail. When only ``pipe_id`` is set (no
-            ``organization_id``), the server resolves the org from the pipe first, then lists
-            automations — two sequential API calls vs. one when you pass ``organization_id``
-            directly.
+            The API returns at most 50 rules per call. ``pagination.total_count`` is
+            the full count; while ``pagination.has_more`` is true, call again with
+            ``after=pagination.end_cursor``. An audit is complete only when
+            ``has_more`` is false.
+
+            When only ``pipe_id`` is set (no ``organization_id``), the server resolves
+            the org from the pipe first, then lists automations. That is two sequential
+            API calls; passing ``organization_id`` directly needs one.
 
             Args:
                 organization_id: When set, restrict to this organization; omit for no org filter.
                 pipe_id: When set, restrict to this pipe; omit for no pipe filter.
+                first: Page size, 1 to 50 (the API cap). Defaults to 50.
+                after: ``pagination.end_cursor`` from the previous page.
 
             Returns:
-                On success, ``success``, ``message``, and ``data`` with the list of automation
-                summaries returned by the API. On validation or GraphQL errors, ``success: False``
+                On success, ``success``, ``message``, ``data`` with this page's automation
+                summaries, and ``pagination`` (``has_more``, ``end_cursor``, ``page_size``,
+                ``total_count``). On validation or GraphQL errors, ``success: False``
                 with ``error``.
             """
             client = get_pipefy_client(ctx)
@@ -158,10 +174,18 @@ class AutomationTools:
             ok_p, pipe, pipe_err = validate_optional_tool_id(pipe_id, "pipe_id")
             if pipe_err is not None:
                 return pipe_err
+            page_size, size_err = validate_page_size(
+                first, max_size=AUTOMATIONS_LIST_MAX_PAGE_SIZE
+            )
+            if size_err is not None:
+                return size_err
+            cursor = after.strip() if isinstance(after, str) and after.strip() else None
             try:
-                rows = await client.get_automations(
+                page = await client.get_automations(
                     organization_id=org,
                     pipe_id=pipe,
+                    first=page_size,
+                    after=cursor,
                 )
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
@@ -171,9 +195,17 @@ class AutomationTools:
                     resource_kind="pipe" if pipe else "organization",
                     resource_id=pipe or org,
                 )
+            pagination = build_pagination_info(
+                page_info=page["pageInfo"], page_size=page_size
+            )
+            pagination["total_count"] = page["totalCount"]
+            rows = page["nodes"]
             return build_automation_read_success_payload(
                 rows,
-                "Automations listed.",
+                build_automations_listed_message(
+                    len(rows), page["totalCount"], has_more=pagination["has_more"]
+                ),
+                pagination=pagination,
             )
 
         @mcp.tool(

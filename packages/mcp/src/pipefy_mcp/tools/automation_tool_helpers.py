@@ -11,7 +11,7 @@ from pipefy_sdk import (
     AutomationRuleRecord,
     AutomationRuleSummary,
 )
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from pipefy_mcp.core.tool_error_envelope import ToolErrorDetail, tool_error
 from pipefy_mcp.tools.graphql_error_helpers import (
@@ -21,6 +21,7 @@ from pipefy_mcp.tools.graphql_error_helpers import (
     try_enrich_graphql_error,
     with_debug_suffix,
 )
+from pipefy_mcp.tools.pagination_helpers import PaginationInfo
 
 AutomationReadToolData = (
     AutomationRuleRecord
@@ -34,6 +35,7 @@ class AutomationReadSuccessPayload(TypedDict):
     success: Literal[True]
     message: str
     data: AutomationReadToolData
+    pagination: NotRequired[PaginationInfo]
 
 
 class AutomationMutationSuccessPayload(TypedDict):
@@ -97,18 +99,41 @@ def build_automation_simulation_success_payload(
 def build_automation_read_success_payload(
     data: AutomationReadToolData,
     label: str,
+    *,
+    pagination: PaginationInfo | None = None,
 ) -> AutomationReadSuccessPayload:
-    """``success``, ``message``, and typed read ``data`` (record or list).
+    """``success``, ``message``, typed read ``data``, and ``pagination`` for paged listings.
 
     Args:
         data: Record, summary list, or catalog rows from the API.
         label: Shown as ``message``.
+        pagination: Top-level page block for paged listings; omitted when ``None``.
     """
-    return {
+    payload: AutomationReadSuccessPayload = {
         "success": True,
         "message": label,
         "data": data,
     }
+    if pagination is not None:
+        payload["pagination"] = pagination
+    return payload
+
+
+def build_automations_listed_message(listed: int, total: int, *, has_more: bool) -> str:
+    """``message`` for ``get_automations``: rows in this page vs total, plus how to continue.
+
+    Args:
+        listed: Rows in this page.
+        total: ``totalCount`` of the connection.
+        has_more: ``pageInfo.hasNextPage``; when true the listing is incomplete.
+    """
+    message = f"Automations listed: {listed} of {total}."
+    if not has_more:
+        return message
+    return (
+        f"{message} More rules exist; call again with after=pagination.end_cursor. "
+        "The listing is incomplete until pagination.has_more is false."
+    )
 
 
 def build_automation_error_payload(

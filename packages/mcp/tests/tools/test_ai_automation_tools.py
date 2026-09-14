@@ -205,6 +205,14 @@ class TestGetAiAutomation:
         mock_pipefy_client_no_ai.get_automation.assert_awaited_once_with("1")
 
 
+def _automation_page(rows):
+    return {
+        "nodes": rows,
+        "totalCount": len(rows),
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+
+
 @pytest.mark.anyio
 class TestGetAiAutomations:
     async def test_filters_to_generate_with_ai_only(
@@ -213,21 +221,28 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = [
-            {"id": "1", "name": "AI", "active": True, "action_id": "generate_with_ai"},
-            {
-                "id": "2",
-                "name": "HTTP",
-                "active": True,
-                "action_id": "send_http_request",
-            },
-            {
-                "id": "3",
-                "name": "AI 2",
-                "active": True,
-                "action_id": "generate_with_ai",
-            },
-        ]
+        mock_pipefy_client.get_automations.return_value = _automation_page(
+            [
+                {
+                    "id": "1",
+                    "name": "AI",
+                    "active": True,
+                    "action_id": "generate_with_ai",
+                },
+                {
+                    "id": "2",
+                    "name": "HTTP",
+                    "active": True,
+                    "action_id": "send_http_request",
+                },
+                {
+                    "id": "3",
+                    "name": "AI 2",
+                    "active": True,
+                    "action_id": "generate_with_ai",
+                },
+            ]
+        )
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -253,9 +268,16 @@ class TestGetAiAutomations:
     ):
         """The list query emits snake ``action_id``; a camel ``actionId`` never occurs
         and is not treated as an AI automation."""
-        mock_pipefy_client.get_automations.return_value = [
-            {"id": "9", "name": "AI", "active": True, "actionId": "generate_with_ai"},
-        ]
+        mock_pipefy_client.get_automations.return_value = _automation_page(
+            [
+                {
+                    "id": "9",
+                    "name": "AI",
+                    "active": True,
+                    "actionId": "generate_with_ai",
+                },
+            ]
+        )
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -270,14 +292,16 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = [
-            {
-                "id": "2",
-                "name": "HTTP",
-                "active": True,
-                "action_id": "send_http_request",
-            },
-        ]
+        mock_pipefy_client.get_automations.return_value = _automation_page(
+            [
+                {
+                    "id": "2",
+                    "name": "HTTP",
+                    "active": True,
+                    "action_id": "send_http_request",
+                },
+            ]
+        )
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -293,7 +317,7 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = []
+        mock_pipefy_client.get_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -356,9 +380,16 @@ class TestGetAiAutomations:
         mock_pipefy_client_no_ai,
         extract_payload,
     ):
-        mock_pipefy_client_no_ai.get_automations.return_value = [
-            {"id": "a", "name": "x", "active": True, "action_id": "generate_with_ai"},
-        ]
+        mock_pipefy_client_no_ai.get_automations.return_value = _automation_page(
+            [
+                {
+                    "id": "a",
+                    "name": "x",
+                    "active": True,
+                    "action_id": "generate_with_ai",
+                },
+            ]
+        )
         async with client_session_no_ai as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -373,9 +404,16 @@ class TestGetAiAutomations:
         extract_payload,
     ):
         """When ``organization_id`` is omitted, the client lists with ``None`` (org resolved inside the service)."""
-        mock_pipefy_client.get_automations.return_value = [
-            {"id": "1", "name": "AI", "active": True, "action_id": "generate_with_ai"},
-        ]
+        mock_pipefy_client.get_automations.return_value = _automation_page(
+            [
+                {
+                    "id": "1",
+                    "name": "AI",
+                    "active": True,
+                    "action_id": "generate_with_ai",
+                },
+            ]
+        )
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -996,7 +1034,7 @@ class TestPipefyIdCoercion:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = []
+        mock_pipefy_client.get_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",

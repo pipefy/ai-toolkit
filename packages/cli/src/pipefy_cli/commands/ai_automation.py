@@ -81,11 +81,11 @@ def ai_automation_list(
     """List AI automations for a pipe (``get_ai_automations`` / filtered ``get_automations``)."""
 
     async def factory(client: PipefyClient):
-        rows = await client.get_automations(
+        page = await client.get_automations(
             organization_id=organization,
             pipe_id=pipe,
         )
-        filtered = filter_ai_automation_summaries(rows or [])
+        filtered = filter_ai_automation_summaries(page["nodes"])
         return {"success": True, "data": filtered, "message": "AI automations listed."}
 
     run_cli_command(ctx, json_out, factory)

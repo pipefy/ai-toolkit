@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 from pipefy_sdk import (
+    AUTOMATIONS_LIST_MAX_PAGE_SIZE,
     AutomationConditionInput,
     CreateSendTaskAutomationInput,
     PipefyClient,
@@ -38,6 +39,17 @@ def automation_list(
         help="Optional organization id filter.",
     ),
     pipe: str | None = typer.Option(None, "--pipe", help="Optional pipe id filter."),
+    first: int | None = typer.Option(
+        None,
+        "--first",
+        help=(
+            f"Page size, 1 to {AUTOMATIONS_LIST_MAX_PAGE_SIZE} (the API cap). "
+            "Defaults to the cap."
+        ),
+    ),
+    after: str | None = typer.Option(
+        None, "--after", help="pageInfo.endCursor from the previous page."
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -45,12 +57,24 @@ def automation_list(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """List automation rules (``get_automations``)."""
+    """List one page of automation rules (``get_automations``).
+
+    The API caps a page at 50 rules. Output is the page: ``nodes``, ``totalCount``,
+    and ``pageInfo`` (``hasNextPage``, ``endCursor``).
+    """
+
+    if first is not None and (first < 1 or first > AUTOMATIONS_LIST_MAX_PAGE_SIZE):
+        raise typer.BadParameter(
+            f"--first must be between 1 and {AUTOMATIONS_LIST_MAX_PAGE_SIZE}."
+        )
+    cursor = after.strip() if after and after.strip() else None
 
     async def factory(client: PipefyClient):
         return await client.get_automations(
             organization_id=organization,
             pipe_id=pipe,
+            first=first,
+            after=cursor,
         )
 
     run_cli_command(ctx, json_out, factory)

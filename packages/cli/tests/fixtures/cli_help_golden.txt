@@ -865,7 +865,7 @@ Usage: pipefy automation [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ list               List automation rules (``get_automations``).              │
+│ list               List one page of automation rules (``get_automations``).  │
 │ get                Load one automation (``get_automation``).                 │
 │ create             Create an automation rule (``create_automation``).        │
 │ update             Update an automation (``update_automation``).             │
@@ -1085,13 +1085,21 @@ Usage: pipefy automation get [OPTIONS] AUTOMATION_ID
 ### HELP automation/list
 Usage: pipefy automation list [OPTIONS]
 
- List automation rules (``get_automations``).
+ List one page of automation rules (``get_automations``).
+
+ The API caps a page at 50 rules. Output is the page: ``nodes``,
+ ``totalCount``, and ``pageInfo`` (``hasNextPage``, ``endCursor``).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --organization,--org          TEXT  Optional organization id filter.         │
-│ --pipe                        TEXT  Optional pipe id filter.                 │
-│ --json                -j            Print machine-readable JSON to stdout.   │
-│ --help                              Show this message and exit.              │
+│ --organization,--org          TEXT     Optional organization id filter.      │
+│ --pipe                        TEXT     Optional pipe id filter.              │
+│ --first                       INTEGER  Page size, 1 to 50 (the API cap).     │
+│                                        Defaults to the cap.                  │
+│ --after                       TEXT     pageInfo.endCursor from the previous  │
+│                                        page.                                 │
+│ --json                -j               Print machine-readable JSON to        │
+│                                        stdout.                               │
+│ --help                                 Show this message and exit.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP automation/logs

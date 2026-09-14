@@ -1023,3 +1023,58 @@ def test_ai_automation_update_errors_when_existing_row_missing_ai_params(
 
     assert r.exit_code != 0
     assert "infer" in r.stderr.lower() or "prompt" in r.stderr.lower()
+
+
+def test_automation_list_json_forwards_page_flags(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The CLI prints the page as-is so callers see totalCount and hasNextPage."""
+    oauth_env("automation-list-page")
+    page = {
+        "nodes": [{"id": "a1", "name": "R", "active": True}],
+        "totalCount": 210,
+        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
+    }
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock(return_value=page)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "automation",
+                "list",
+                "--org",
+                "7",
+                "--first",
+                "10",
+                "--after",
+                "cursor-40",
+                "--json",
+            ],
+        )
+    assert r.exit_code == 0, r.stdout + (r.stderr or "")
+    assert json.loads(r.stdout) == page
+    mock_client.get_automations.assert_awaited_once_with(
+        organization_id="7", pipe_id=None, first=10, after="cursor-40"
+    )
+
+
+def test_automation_list_rejects_first_above_api_cap(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("automation-list-cap")
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app, ["automation", "list", "--org", "7", "--first", "51", "--json"]
+        )
+    assert r.exit_code == 2
+    assert "between 1 and 50" in (r.stderr or "") + r.stdout
+    mock_client.get_automations.assert_not_called()

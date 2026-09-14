@@ -76,6 +76,14 @@ def test_field_condition_phase_field_id_slug_heuristic__no_integration(
     assert field_condition_phase_field_id_looks_like_slug(value) is looks_like_slug
 
 
+def _automation_page(rows):
+    return {
+        "nodes": rows,
+        "totalCount": len(rows),
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+
+
 @pytest.fixture
 def mock_pipe_config_client():
     client = MagicMock(PipefyClient)
@@ -489,9 +497,9 @@ async def test_delete_phase_preview_all_sublookups_succeed(
             ]
         }
     }
-    mock_pipe_config_client.get_automations.return_value = [
-        {"id": "a1", "name": "Move to phase", "active": True, "action_id": "x"},
-    ]
+    mock_pipe_config_client.get_automations.return_value = _automation_page(
+        [{"id": "a1", "name": "Move to phase", "active": True, "action_id": "x"}]
+    )
     mock_pipe_config_client.get_automation.return_value = {
         "id": "a1",
         "name": "Move to phase",
@@ -588,7 +596,7 @@ async def test_delete_phase_sublookups_run_in_parallel(
     Each mock blocks on a shared four-party barrier, so a parallel ``gather``
     releases it while a serial rewrite deadlocks at the first lookup; ``wait_for``
     turns that deadlock into a clean failure. It is four because ``get_automations``
-    returns ``[]``, so the inner per-automation gather never adds a fifth party.
+    returns an empty page, so the inner per-automation gather never adds a fifth party.
     """
     barrier = asyncio.Barrier(4)
 
@@ -602,7 +610,9 @@ async def test_delete_phase_sublookups_run_in_parallel(
     mock_pipe_config_client.get_field_conditions.side_effect = _rendezvous(
         {"phase": {"fieldConditions": []}}
     )
-    mock_pipe_config_client.get_automations.side_effect = _rendezvous([])
+    mock_pipe_config_client.get_automations.side_effect = _rendezvous(
+        _automation_page([])
+    )
     mock_pipe_config_client.get_phase_cards_count.side_effect = _rendezvous(0)
     mock_pipe_config_client.get_phase_fields.side_effect = _rendezvous({"fields": []})
 
@@ -624,7 +634,7 @@ async def test_delete_phase_cards_not_enumerated(
     mock_pipe_config_client.get_field_conditions.return_value = {
         "phase": {"fieldConditions": []}
     }
-    mock_pipe_config_client.get_automations.return_value = []
+    mock_pipe_config_client.get_automations.return_value = _automation_page([])
     mock_pipe_config_client.get_phase_cards_count.return_value = 3
     mock_pipe_config_client.get_phase_fields.return_value = {"fields": []}
     async with pipe_config_session as session:

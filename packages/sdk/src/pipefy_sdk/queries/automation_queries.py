@@ -151,13 +151,42 @@ GET_PIPE_ORGANIZATION_ID_QUERY = gql(
 
 GET_AUTOMATIONS_BY_ORG_QUERY = gql(
     """
-    query automationsForOrganization($organizationId: ID!) {
-        automations(organizationId: $organizationId) {
+    query automationsForOrganization($organizationId: ID!, $first: Int, $after: String) {
+        automations(organizationId: $organizationId, first: $first, after: $after) {
+            totalCount
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
             nodes {
                 id
                 name
                 active
                 action_id
+                event_id
+                event_params {
+                    fromPhaseId
+                    inPhaseId
+                    kindOfSla
+                    to_phase_id
+                    triggerAutomationId
+                    triggerFieldIds
+                    phase {
+                        id
+                        name
+                    }
+                }
+                condition {
+                    id
+                    expressions {
+                        id
+                        structure_id
+                        field_address
+                        operation
+                        value
+                    }
+                    expressions_structure
+                }
             }
         }
     }
@@ -166,13 +195,42 @@ GET_AUTOMATIONS_BY_ORG_QUERY = gql(
 
 GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY = gql(
     """
-    query automationsForOrgAndRepo($organizationId: ID!, $repoId: ID!) {
-        automations(organizationId: $organizationId, repoId: $repoId) {
+    query automationsForOrgAndRepo($organizationId: ID!, $repoId: ID!, $first: Int, $after: String) {
+        automations(organizationId: $organizationId, repoId: $repoId, first: $first, after: $after) {
+            totalCount
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
             nodes {
                 id
                 name
                 active
                 action_id
+                event_id
+                event_params {
+                    fromPhaseId
+                    inPhaseId
+                    kindOfSla
+                    to_phase_id
+                    triggerAutomationId
+                    triggerFieldIds
+                    phase {
+                        id
+                        name
+                    }
+                }
+                condition {
+                    id
+                    expressions {
+                        id
+                        structure_id
+                        field_address
+                        operation
+                        value
+                    }
+                    expressions_structure
+                }
             }
         }
     }

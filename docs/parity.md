@@ -118,7 +118,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_automation_jobs_export_csv` | `pipefy export automation-jobs-csv` (also `pipefy automation export csv`) | shipped | (export id argument). |
 | `get_automation_logs` | `pipefy automation logs --automation` | shipped | (mutually exclusive with `--repo`). |
 | `get_automation_logs_by_repo` | `pipefy automation logs --repo` | shipped | — |
-| `get_automations` | `pipefy automation list` | shipped | (optional `--organization` / `--pipe`). |
+| `get_automations` | `pipefy automation list` | shipped | (optional `--organization` / `--pipe`; `--first` 1 to 50, `--after` cursor). Output is the page: `nodes`, `totalCount`, `pageInfo`. |
 | `get_automations_usage` | `pipefy usage automations` (also `pipefy automation usage`) | shipped | (`--organization`, `--from`, `--to` ISO range). |
 | `get_available_ai_models` | `pipefy ai-provider models` | shipped | LLM provider discovery; vendor model list (`--provider-name`). |
 | `get_card` | `pipefy card get` | shipped | Supports `--include-fields`. |

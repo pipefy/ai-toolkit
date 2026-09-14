@@ -191,6 +191,13 @@ async def test_get_automation_transport_error():
         await service.get_automation("998")
 
 
+_EMPTY_AUTOMATION_PAGE = {
+    "nodes": [],
+    "totalCount": 0,
+    "pageInfo": {"hasNextPage": False, "endCursor": None},
+}
+
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_automations_success():
@@ -198,14 +205,25 @@ async def test_get_automations_success():
         {"id": "a1", "name": "Rule 1", "active": True},
         {"id": "a2", "name": "Rule 2", "active": False},
     ]
-    service, executor = _make_service({"automations": {"nodes": rows}})
+    service, executor = _make_service(
+        {
+            "automations": {
+                "nodes": rows,
+                "totalCount": 2,
+                "pageInfo": {"hasNextPage": False, "endCursor": "c2"},
+            }
+        }
+    )
     result = await service.get_automations(organization_id="101", pipe_id="901")
 
     query, variables = executor.execute_query.call_args[0]
     assert query is GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY
     assert variables == {"organizationId": "101", "repoId": "901"}
-    assert isinstance(result, list)
-    assert result == rows
+    assert result == {
+        "nodes": rows,
+        "totalCount": 2,
+        "pageInfo": {"hasNextPage": False, "endCursor": "c2"},
+    }
 
 
 @pytest.mark.unit
@@ -228,7 +246,7 @@ async def test_get_automations_success_resolves_org_from_pipe():
     assert v1 == {"id": "901"}
     assert q2 is GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY
     assert v2 == {"organizationId": "300", "repoId": "901"}
-    assert result == rows
+    assert result["nodes"] == rows
 
 
 @pytest.mark.unit
@@ -241,7 +259,7 @@ async def test_get_automations_organization_only_omits_repo_id():
     query, variables = executor.execute_query.call_args[0]
     assert query is GET_AUTOMATIONS_BY_ORG_QUERY
     assert variables == {"organizationId": "201"}
-    assert result == rows
+    assert result["nodes"] == rows
 
 
 @pytest.mark.unit
@@ -251,7 +269,7 @@ async def test_get_automations_pipe_only_org_not_found_returns_empty():
     executor = mock_executor({"pipe": {"organizationId": None}})
     service = AutomationService(executor=executor)
     result = await service.get_automations(pipe_id="100")
-    assert result == []
+    assert result == _EMPTY_AUTOMATION_PAGE
 
 
 @pytest.mark.unit
@@ -261,7 +279,7 @@ async def test_get_automations_pipe_only_pipe_missing_returns_empty():
     executor = mock_executor({"pipe": None})
     service = AutomationService(executor=executor)
     result = await service.get_automations(pipe_id="100")
-    assert result == []
+    assert result == _EMPTY_AUTOMATION_PAGE
 
 
 @pytest.mark.unit
@@ -269,7 +287,7 @@ async def test_get_automations_pipe_only_pipe_missing_returns_empty():
 async def test_get_automations_null_nodes_returns_empty():
     service, _ = _make_service({"automations": {"nodes": None}})
     result = await service.get_automations(organization_id="1")
-    assert result == []
+    assert result == _EMPTY_AUTOMATION_PAGE
 
 
 @pytest.mark.unit
@@ -277,7 +295,32 @@ async def test_get_automations_null_nodes_returns_empty():
 async def test_get_automations_null_connection_returns_empty():
     service, _ = _make_service({"automations": None})
     result = await service.get_automations(organization_id="1")
-    assert result == []
+    assert result == _EMPTY_AUTOMATION_PAGE
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_automations_forwards_page_arguments_and_page_info():
+    """A truncated org listing must expose hasNextPage, endCursor, and totalCount."""
+    rows = [{"id": "a1", "name": "R", "active": True}]
+    service, executor = _make_service(
+        {
+            "automations": {
+                "nodes": rows,
+                "totalCount": 210,
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
+            }
+        }
+    )
+    result = await service.get_automations(
+        organization_id="201", first=50, after="cursor-0"
+    )
+
+    _, variables = executor.execute_query.call_args[0]
+    assert variables == {"organizationId": "201", "first": 50, "after": "cursor-0"}
+    assert result["nodes"] == rows
+    assert result["totalCount"] == 210
+    assert result["pageInfo"] == {"hasNextPage": True, "endCursor": "cursor-50"}
 
 
 @pytest.mark.unit
@@ -303,7 +346,7 @@ async def test_get_automations_both_none_returns_empty():
     service = AutomationService(executor=executor)
     result = await service.get_automations()
     executor.execute_query.assert_not_called()
-    assert result == []
+    assert result == _EMPTY_AUTOMATION_PAGE
 
 
 @pytest.mark.unit
@@ -790,3 +833,52 @@ async def test_get_automation_logs_by_repo_skips_graphql_when_pipe_has_no_automa
     assert out["automationLogsByRepo"]["nodes"] == []
     assert out["automationLogsByRepo"]["totalCount"] == 0
     assert out["automationLogsByRepo"]["pageInfo"]["hasNextPage"] is False
+
+
+@pytest.mark.parametrize(
+    "query", [GET_AUTOMATIONS_BY_ORG_QUERY, GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY]
+)
+def test_automation_listing_selects_trigger_and_condition(query):
+    """An audit must distinguish a missing condition from an omitted selection."""
+    operation = query.document.definitions[0]
+    connection = operation.selection_set.selections[0]
+    connection_fields = {
+        field.name.value: field for field in connection.selection_set.selections
+    }
+    assert {"totalCount", "pageInfo", "nodes"} <= connection_fields.keys()
+    assert {"first", "after"} <= {
+        definition.variable.name.value for definition in operation.variable_definitions
+    }
+    nodes = connection_fields["nodes"]
+    fields = {field.name.value: field for field in nodes.selection_set.selections}
+    assert {
+        "id",
+        "name",
+        "active",
+        "action_id",
+        "event_id",
+        "event_params",
+        "condition",
+    } <= fields.keys()
+    event_fields = {
+        field.name.value for field in fields["event_params"].selection_set.selections
+    }
+    assert {
+        "triggerFieldIds",
+        "fromPhaseId",
+        "inPhaseId",
+        "to_phase_id",
+        "kindOfSla",
+        "triggerAutomationId",
+        "phase",
+    } <= event_fields
+    condition_fields = {
+        field.name.value: field
+        for field in fields["condition"].selection_set.selections
+    }
+    assert {"id", "expressions", "expressions_structure"} <= condition_fields.keys()
+    expressions = {
+        field.name.value
+        for field in condition_fields["expressions"].selection_set.selections
+    }
+    assert {"id", "structure_id", "field_address", "operation", "value"} <= expressions
