@@ -44,120 +44,91 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 ## Authoring a section of `architecture.md`
 
-[`architecture.md`](architecture.md) fills part of the [arc42 template](https://docs.arc42.org). Where a rule below is arc42's, it says so. The rest are ours. These rules cover every heading:
+[`architecture.md`](architecture.md) fills part of the [arc42 template](https://docs.arc42.org). The rules in the four groups below hold in every section, and a rule that is arc42's says so. A block per section then carries only what holds for that section alone: its shape, its admission test, and the facts it owns.
 
-- A section that arc42 numbers takes arc42's position and arc42's name.
-- Every heading sits under a numbered one. A `##` heading takes arc42's name. A `###` heading under it takes arc42's name where arc42 numbers that sublevel, and it is ours to name where arc42 does not.
-- A heading deeper than `###` marks a deeper arc42 level. Arc42 5 holds each level 2 whitebox at `####`.
-- A section whose content another owner holds is a pointer to that owner, and never a copy. `Architecture decisions` at arc42 9 points at [`adr/`](adr/README.md).
+**Shape.**
+
+- A section that arc42 numbers takes arc42's position and arc42's name. A `##` heading takes arc42's name. A `###` heading takes arc42's name where arc42 numbers that sublevel, and it is ours to name where arc42 does not. A heading deeper than `###` marks a deeper arc42 level, so arc42 5 holds each level 2 whitebox at `####`.
 - A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 7 stays absent today.
-- The map explains rather than instructs, so every claim is a third-person declarative.
+- A part of the system goes under arc42 5. A rule that holds whichever part you are in goes under arc42 8, and arc42 never asks that a concept reach every part, so a rule that one component alone obeys still belongs there. A settled choice goes in `Solution strategy` where it serves a goal or where every contributor holds it whatever they change, and in [`adr/`](adr/README.md) otherwise. Sort a rule from a choice by whether a contributor follows it while writing code.
+- Where arc42 offers a form, the section says which form it took. Where this map departs from arc42, the rule that departs says so.
 
-A subsection that names a part of the system goes under arc42 5, and one that states a rule that holds whichever part you are in goes under arc42 8. Arc42 asks for practices, patterns, and regulations at 8, and it never asks that a concept reach every part, so a rule that one application alone obeys still belongs there.
+**Ownership.**
 
-**`Requirements overview`, arc42 1.1.** The business goal, then the functions the toolkit delivers, then the capabilities they act on. A function and a capability take one line each.
+- A section states what it owns and points at every other owner, under [Point at the owner of a fact](#point-at-the-owner-of-a-fact). A section whose whole content another owner holds is a pointer, which is what `Architecture decisions` is. A pointer sits under a table, never in a cell.
+- A name comes from its catalog. A capability comes from Pipefy's domain model, a quality from [`quality.arc42.org`](https://quality.arc42.org/), a category from Q42, and a block from the code. Where the catalog is silent, name the thing and settle nothing.
+- A permanent ID, `FR` or `QR`, follows the same rule as a convention ID above.
+- A `QR` handle runs from a demand to what serves it. A section names the `QR` it satisfies, `Quality goals` cites the one row each goal owns, and a `Solution strategy` driver cites the demand it answers. No other cell carries an `FR` or a `QR`, because a run of IDs costs every reader and pays only a completeness check.
+- A gap is stated once, in `Risks and technical debt`, under [Where a gap is documented](#where-a-gap-is-documented). Every other section states what the code does.
 
-- The opening states the business goal, which arc42 asks for here as the driving force. It says why Pipefy invests in reaching a Pipefy organization from outside, and which consumer each package carries that investment to. Every benefit it claims maps to a function or a capability below.
-- The opening defines no domain term and no package responsibility. Arc42 3 owns the first, and arc42 5 owns the second.
-- A function is the toolkit's own work. What Pipefy's API already offers is a capability instead.
-- Each function carries a permanent `FR` ID, under the same rule as a convention ID above.
-- Say who acts, what the act is, and what the consumer gets. Put the trigger first, where there is one.
-- Never say how it works, because a mechanism changes without the function changing.
-- Take every capability name, and what that name covers, from Pipefy's domain model. Never from the tool catalog or the CLI tree. The model is internal to Pipefy, so a contributor outside it asks the domain expert rather than coins a name.
-- Where the domain model leaves a question open, name the capability and settle nothing. Carry nothing that model marks as internal.
-- Name no tool, no command, and no count. The code owns all three.
+**Altitude.**
+
+- Level 1 names no mechanism, no parameter, no count, and no tool or command. The code owns each of them, and a mechanism changes without the function changing.
+- Every claim is a third-person declarative, because the map explains rather than instructs. A cell reads on its own, takes no referent from a neighbor, and matches the meaning of what it cites without overclaiming past it.
+- A risk, a quality mark, a cost, and a conflict each sit beside the decision or the concept that produced them, and nowhere else.
+
+**Components.**
+
+- A component is one of the four things a consumer reaches, and `Glossary` fixes the word. The vocabulary is `SDK`, `CLI`, `MCP`, and `Skills`, in that order, in every cell and every list that names the axis.
+- A section whose subject plays out differently per component ends with a `**By component.**` block: four bullets, one per component, in that order. A bullet states the difference in one or two sentences at level-1 altitude, or it reads `no difference`, or it reads `not reached`. A section whose subject is the same everywhere carries no block, and the absence is the statement.
+- A table that carries the axis as a column names that column by the verb that runs between the row and the component, such as `Applies to` or `Reached by`, and places it second, beside the row name. A cell lists the components it concerns, and no aggregate word stands for the list. `The repository` is the one wider referent, because it reaches `docs/` and the support packages too. A table whose rows are the components carries no axis column.
+- A stakeholder expectation that differs by component names each component, in the fixed order, inside its cell.
+
+**`Requirements overview`, arc42 1.1.** The business goal, then the functions the toolkit delivers, then the capabilities they act on.
+
+- The opening states the business goal, which arc42 asks for here as the driving force, and it says which consumer each component carries that goal to. It defines no domain term and no package responsibility, because arc42 3 owns the first and arc42 5 owns the second.
+- A function is the toolkit's own work, and what Pipefy's API already offers is a capability. A function line says who acts, what the act is, and what the consumer gets, with the trigger first.
 - If a new tool would add a bullet, the list is too detailed.
 
-**`Quality goals`, arc42 1.2.** The three to five qualities that dominate, in priority order.
+**`Quality goals`, arc42 1.2.** Three to five qualities, in the priority order that arc42 asks for here.
 
-- A goal is a name and one concrete scenario, and that scenario is the most important requirement in the goal's category. The scenario cites the one `QR` row it owns, and `Quality scenarios` points back rather than restating it. Arc42 10 asks for that direction.
-- Take the name from the quality catalog at [`quality.arc42.org`](https://quality.arc42.org/), and never from a Q42 category. A category covers several `QR` rows, so it can never name one goal.
-- The goal name is abstract, and the scenario makes it concrete.
-- Arc42 asks for the priority order here. The `QR` rows carry none, because a rank there would reopen where each new row slots in.
-
-Change the order when something outside this file changes what matters:
-
-- a business pivot, such as market reach giving way to enterprise adoption
-- an incident, a metric, or a load test that exposes a quality nobody ranked
-- a regulation, a privacy rule, or a certification
-- a cost or headcount limit that puts operability above speed
-- a deprecation or a vendor change that forces portability
-- new key stakeholders, who redefine what counts as success
+- A goal is a catalog name plus the one scenario that is the most important `QR` in its category. The name is abstract, and the scenario makes it concrete. `Quality scenarios` points back at the goal rather than restating it, which is the direction arc42 10 asks for.
+- The `QR` rows carry no rank, because a rank there would reopen where each new row slots in.
+- The order changes only when something outside this file changes what matters: a pivot, an incident, a regulation, a cost limit, a vendor change, or a new key stakeholder.
 
 **`Stakeholders`, arc42 1.3.** A role, a contact, and expectations in prose.
 
-- A party earns a row when it should know the architecture, has to be convinced of it, works with the architecture or the code, needs the documentation for its work, or decides about the system. Those are arc42's five criteria, and a party that is not a person can meet them.
+- A party earns a row on arc42's five criteria: it needs to know the architecture, it has to be convinced of it, it works with the architecture or the code, it needs the documentation for its work, or it decides about the system. A party that is not a person can meet them.
 - Expectations cover the architecture and its documentation, which is what arc42 asks for.
-- Name no `FR` and no `QR`. A run of IDs costs every reader legibility, and it pays only a completeness check, which is a different artifact.
 
-**`Architecture constraints`, arc42 2.** The limits every decision works inside, in two tables, technical then organizational, and a third block for the conventions we set.
+**`Architecture constraints`, arc42 2.** The limits every decision works inside: a technical table, an organizational table, and a block for the conventions we set.
 
-- A constraint takes a choice away from a contributor. It bounds a design, an implementation, or the way we work. Every one takes a row here, even where another file states the rules. A requirement is not a constraint, and `Requirements overview` lists a function while `Quality requirements` lists a demand.
-- The kind of limit picks the group. A limit on technology goes in the technical table, and a limit that a code change relieves is technical whoever set it. A limit from the organization, from a contract, or from law goes in the organizational table. A rule we set about how we write and work is a convention, and the `Conventions` block names its set.
-- A row leaves when we lift the limit. `Risks and technical debt` then carries the code that is still written against it.
-- A row carries a short name for the limit, and an explanation in the last column. The explanation says where the limit comes from, and another section says what we do about it.
-- A cell reads on its own. Use no term the map leaves undefined, and take no referent from the neighboring cell.
-- The `Applies to` cell names what a limit reaches: each of `SDK`, `CLI` and `MCP`, and a directory such as `skills/` beside them. It reads `The repository` instead where the limit reaches every part, including `docs/` and a support package.
-- A link that points at an owner goes under the table, never in a cell. See [Point at the owner of a fact](#point-at-the-owner-of-a-fact).
-- A reference runs from a demand to the constraint that shapes it. A cell therefore carries no `FR` and no `QR` handle, and the demand cites the constraint instead.
+- A constraint takes a choice away from a contributor, and every one takes a row here, even where another file states the rules. A requirement is not a constraint.
+- The kind of limit picks the group. A limit on technology is technical, and so is a limit that a code change relieves, whoever set it. A limit from the organization, from a contract, or from law is organizational. A rule we set about how we write and work is a convention, and the block names each set with its file.
+- A row names the limit and explains where it comes from, and another section says what we do about it. A row leaves when we lift the limit, and `Risks and technical debt` then carries the code still written against it.
 
-**`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it all acts on.
+**`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it acts on and who it acts as.
 
-- Draw the toolkit as one box, which is what arc42 asks for. Which package reaches a partner is a level-1 fact, so `Package decomposition` draws the same partners again, and arc42 asks that the two stay consistent.
-- Draw every partner. Completeness is arc42's demand here and almost nowhere else in the template. A host resource that holds or carries a credential is a partner, and so is a party that stands between an application and its consumer.
-- A table beside the diagram carries what crosses each boundary and which packages reach it, which arc42 recommends. It exists because no install reaches every partner, so the box alone would overstate each one.
-- An inbound arrow carries the channel a consumer arrives over. An outbound arrow carries no label, because the table holds what crosses it, and the level-1 diagram repeats every partner with no label, so the two pictures cannot come to claim different things.
-- One diagram carries the business context and the technical context, which arc42 allows. Technology appears only where it marks the boundary. A deployment fact that another section owns is a pointer here, and never a second statement.
-- The prose states what the toolkit acts on and who it acts as. It names no capability, because `Requirements overview` owns that list, and it names no endpoint, which is the altitude [Name no vendor behind a capability](#name-no-vendor-behind-a-capability) sets.
-- The legend says what a reader cannot read off the diagram or the table, and it points at the section that owns each fact they leave out.
-- Mark no risk and no quality goal on a partner, though arc42 offers both. `Quality requirements` and `Risks and technical debt` own them, and a second copy on a diagram would drift.
+- Draw the toolkit as one box, and draw every partner. Completeness is arc42's demand here and almost nowhere else in the template. A host that holds or carries a credential is a partner, and so is a party that stands between an application and its consumer.
+- A table beside the diagram carries which components reach each partner and what crosses, which arc42 recommends. It exists because no install reaches every partner. `Package decomposition` draws the same partners on the package that performs each crossing, and arc42 asks that the two stay consistent.
+- An inbound arrow carries the channel a consumer arrives over, and an outbound arrow carries no label, so the two pictures cannot come to claim different things.
+- One diagram carries the business context and the technical context, which arc42 allows, and technology appears only where it marks the boundary. Mark no risk and no quality goal on a partner, though arc42 offers both.
 
-**`Solution strategy`, arc42 4.** The most important decisions, in one table: a driver, the decision it produced, and the section that details it. The goal rows come first, in the priority order `Quality goals` sets.
+**`Solution strategy`, arc42 4.** The most important decisions in one table: a driver, the decision it produced, and the section that details it. The goal rows come first, in the `Quality goals` order, so they grow only when that section does.
 
-- A decision earns a place here on one of two tests. It satisfies a goal in `Quality goals`, or it is impactful enough that a contributor holds it whatever they change. Arc42 9 holds the important decisions that pass neither, and it refers back here.
-- The second test is the loose one. A decision that matters inside one application only fails it, and the section that owns that application takes it instead.
-- One table, because arc42's own first column holds a goal, a requirement, or a constraint. A second table would put a second grammar in one section, and a narrative above it would restate the rows below.
-- Every row states a driver, because arc42 asks this section to justify each decision. A driver says what happens, in words a person would say, and a compressed noun phrase hides whether the row answers the whole demand or half of it. Open the cell with the phrase and put a `QR` handle in parentheses after it, the way `Quality goals` cites its rows.
-- A driver states what drove the decision, and never the category it falls in. "A smaller learning curve for a contributor" is a driver, and "a technology decision" is not.
-- A driver that no `QR` carries is still a driver, and a stakeholder expectation is one place to find it. Write it out rather than borrow the nearest `QR`, because a borrowed handle sends the reader to a demand the row does not answer.
-- Where a `QR` admits more than one mechanism, the driver says which demand rules the others out. A `QR` that a manual process could meet leaves an automated answer unjustified.
-- A decision and the check that keeps it true are two rows. One row for both puts several sections in the last column, and the driver then covers half of what the cell claims.
-- A decision names the mechanism that meets its driver, and never the outcome alone. It states that mechanism and never explains it, because the section in the last column owns the explanation. Two short sentences are allowed where the mechanism has two parts.
-- A cell reads on its own, takes no referent from the section in the last column, and answers the whole scenario its driver states. Write it as a third-person declarative, because the map explains rather than instructs, and match the meaning of the `QR` row without overclaiming past it.
-- Where a goal's scenario has a half that no settled mechanism serves, leave that half out and let `Risks and technical debt` carry it. A row states what the code does.
-- An organizational commitment earns a row only where it shapes the architecture, which is what arc42 means by a relevant one. Name the structural consequence, or leave the commitment where it is set.
-- The last column is a link, and a row that cannot point at an owner does not belong here. No row links a decision record: the section that details the decision already names it, and [`adr/`](adr/README.md) already maps each one to the rule it produced.
-- The goal rows come from `Quality goals`, so they grow only when that section does, and arc42 caps that section at five.
-- The language and the distribution shape are stated here, with the reason that drove them. No other document owns them at this altitude. The module that imports a third-party package answers the lower question of why that package is present. Where no module imports it, a comment beside the line in the `pyproject.toml` answers that question.
-
-A decision here is a settled choice, and a concept at arc42 8 is a standing rule. Both hold whichever part you are in, so sort by whether a contributor follows it while writing code.
+- One table, because arc42's own first column holds a goal, a requirement, or a constraint. A second table would put a second grammar in one section.
+- A driver says what happens, in words a person would say, and never the category it falls in. It opens with the phrase and puts the `QR` handle in parentheses after it. Where no `QR` carries the driver, write it out rather than borrow the nearest handle. Where a `QR` admits more than one mechanism, the driver says which demand rules the others out.
+- A decision names the mechanism that meets its driver and never explains it, because the linked section owns the explanation. A decision and the check that keeps it true are two rows. Where a goal's scenario has a half that no settled mechanism serves, leave that half out.
+- The last column links the owner, and never a decision record. An organizational commitment earns a row only where it shapes the architecture. The language and the distribution shape are stated here, with the reason that drove them.
 
 **`Building block view`, arc42 5.** The static structure, with one subsection per whitebox, named after the axis that whitebox splits on.
 
-- Every part the diagram draws carries a responsibility line, because arc42 counts those lines as part of the level. A drawn part with no line leaves the level incomplete, which is how `pipefy-auth` and `pipefy-infra` went undescribed.
-- The reason says why the decomposition has these parts. A rule that the structure obeys fails as a reason, such as the import direction that `Package decomposition` gave, because every correct split obeys it.
-- Where the level needs a fact another document owns, it names the fact and points there. The kinds come from the scope list in [`DEPRECATION.md`](../DEPRECATION.md). The interface column says a check holds the SDK root closed, and it names no banned module, because `Dependency rule` owns those lists. Arc42's quality and open-issues blackbox fields stay out, because `Identity lifetime` and `Risks and technical debt` own them.
-- `Requirements overview` states what the toolkit does, and this level states which block does it. Where a function text names a package, that name belongs here instead.
-- This level draws the external partners, although the HtmlSanityCheck, Traffic Pursuit Unit, and biking2 examples each draw internal blocks alone. It is the only place that says which package performs a crossing, whereas [Context and scope](architecture.md#context-and-scope) says which install reaches a partner.
+- Every part the diagram draws carries a responsibility line, because arc42 counts those lines as part of the level. A drawn part with no line is how `pipefy-auth` and `pipefy-infra` went undescribed.
+- The reason says why the decomposition has these parts, and a rule the structure obeys fails as a reason, because every correct split obeys it. The kinds come from the scope list in [`DEPRECATION.md`](../DEPRECATION.md). `Requirements overview` says what the toolkit does, and this level says which block does it.
+- A blackbox takes arc42's columns, and the quality and open-issues fields stay out, because `Identity lifetime` and `Risks and technical debt` own them. This level draws the external partners, because it alone says which package performs a crossing.
 
-**`Runtime view`, arc42 6.** A few scenarios, each one a subsection that names what the reader watches happen.
+**`Runtime view`, arc42 6.** A few scenarios, each a subsection that names what the reader watches happen. A `###` name is ours, because arc42 6 numbers no sublevel.
 
-- A scenario earns its place on architectural relevancy, which is the test arc42 6 sets. The section holds a representative selection, because arc42 asks for one rather than for a complete set.
-- A scenario names blocks that `Building block view` already names, and it coins no participant. Arc42 asks that a scenario map onto existing blocks.
-- A scenario stays at the altitude of level 1, because arc42 recommends a schematic scenario over a detailed one. A parameter name, a scope string, and a measured cost all sit below it, and the document that serves a reader debugging a failure owns them.
-- Where behavior differs by application or by deployment profile, the difference goes in prose, or in a scenario of its own where that difference is the subject. It never goes in a second copy of the same flow.
-- A scenario that one application alone runs names that application. Otherwise a reader takes one application's behavior for the toolkit's.
-- A scenario that starts in the middle of a longer flow says what ran before it. Arc42 calls that a partial scenario, and it asks for the omitted context to be stated.
-- The section splits on the axis that the concept owning the subject already chose. For a credential that concept is `Identity lifetime`, and its two shapes are the two scenarios.
-- A `###` name is ours, because arc42 6 numbers no sublevel.
+- A scenario earns its place on architectural relevancy, and the section holds a representative selection, which is what arc42 asks for.
+- A scenario names blocks that `Building block view` already names, coins no participant, and stays at level-1 altitude, because arc42 recommends a schematic scenario over a detailed one.
+- The section splits on the axis that the concept owning the subject already chose. A difference by deployment profile goes in prose, or in a scenario of its own where that difference is the subject, and never in a second copy of the same flow.
+- A scenario that one component alone runs names that component. A scenario that starts in the middle of a longer flow says what ran before it, which arc42 calls a partial scenario.
 
-**`Quality requirements`, arc42 10.** Two subsections, as arc42 10.1 and 10.2 divide it. An overview by category, then the scenarios in arc42's two categories: a reaction while the system runs, and a change to the system or to what it depends on.
+**`Quality requirements`, arc42 10.** Two subsections, as arc42 10.1 and 10.2 divide it.
 
-- The overview at 10.1 groups every row by its Q42 category, and it is the only place that mapping is written. Find the row's quality in the catalog at [`quality.arc42.org`](https://quality.arc42.org/), then file the row under that quality's categories. The categories overlap by design, so a row can appear under several. Never force a row to one. Arc42 10.1 offers ISO 25010 or Q42, and we take Q42.
-- A scenario row at 10.2 carries a permanent ID, such as `QR-7`, under the same rule as a convention ID above, then the demand in one line in the words of the party that holds it, then an acceptance criterion.
-- A criterion is observable, it states what must hold, and it carries a number only where this repository owns that number. Where the code differs from a criterion, `Risks and technical debt` names the difference.
-- A row that `Quality goals` ranks states no demand of its own, because the goal states it.
-- The section states no cost and no conflict. Arc42 10 holds neither, and both belong beside the decision or the concept that produced them.
+- The overview at 10.1 groups every row by its Q42 category, and it is the only place that mapping is written. The categories overlap by design, so a row can appear under several, and never force a row to one. Arc42 10.1 offers ISO 25010 or Q42, and we take Q42.
+- A scenario row at 10.2 carries its ID, then the demand in one line in the words of the party that holds it, then an acceptance criterion. The rows sit in arc42's two categories: a reaction while the system runs, and a change to the system or to what it depends on.
+- A criterion is observable, it states what must hold, and it carries a number only where this repository owns that number. A row that `Quality goals` ranks states no demand of its own.
 
 **`Risks and technical debt`, arc42 11.** See [Where a gap is documented](#where-a-gap-is-documented). Arc42 11 wants those entries ordered by priority.
 
