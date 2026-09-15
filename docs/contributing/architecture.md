@@ -6,7 +6,7 @@ This document maps the architecture of the AI Toolkit. The toolkit is an MCP ser
 
 ### Requirements overview
 
-Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to an external LLM agent. A person at a terminal and a programmer in an editor came with the CLI and the SDK, first as a convenience of building them, and now as the second goal.
+Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to an external LLM agent. We built the CLI and the SDK for that agent too, and each one serves it as much as the MCP server does. Both also ship as artifacts, so a person at a terminal, a script, and a program are consumers in their own right.
 
 **Toolkit functions.** A consumer comes to the toolkit for these. Each one is work that Pipefy's API leaves to the consumer, or does not offer at all.
 
