@@ -6,15 +6,15 @@ This document maps the architecture of the AI Toolkit. The toolkit is an MCP ser
 
 ### Requirements overview
 
-Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to an external LLM agent. We built the CLI and the SDK for that agent too, and each one serves it as much as the MCP server does. Both also ship as artifacts, so a person at a terminal, a script, and a program are consumers in their own right.
+Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to an external LLM agent. We built the CLI and the SDK for that agent too, and each one serves it as much as the MCP server does. Both also ship as artifacts, so a person at a terminal and a program reach the domain too.
 
-**Toolkit functions.** A consumer comes to the toolkit for these. Each one is work that Pipefy's API leaves to the consumer, or does not offer at all.
+**Toolkit functions.** These are what the toolkit delivers. Each one is work that Pipefy's API leaves undone, or does not offer at all.
 
-- `FR-1` Persistent sign-in. A consumer signs in through a browser once, and later calls need no second sign-in.
-- `FR-2` Address by name. When a consumer identifies a resource by its name instead of its id, the toolkit finds that resource.
-- `FR-3` Validation without execution. Before a consumer applies a change, the toolkit reports what would fail. The check changes nothing.
-- `FR-4` Escape hatch. When no tool wraps an operation, a consumer still reaches it, and can discover what the API offers.
-- `FR-5` iPaaS reach. A consumer reaches the flows of a pipe's iPaaS workspace, and needs no second credential for the engine behind them.
+- `FR-1` Persistent sign-in. The toolkit signs in through a browser once, and later calls need no second sign-in.
+- `FR-2` Address by name. When a call identifies a resource by its name instead of its id, the toolkit finds that resource.
+- `FR-3` Validation without execution. Before a change is applied, the toolkit reports what would fail. The check changes nothing.
+- `FR-4` Escape hatch. When no tool wraps an operation, a call still reaches it, and can discover what the API offers.
+- `FR-5` iPaaS reach. A call reaches the flows of a pipe's iPaaS workspace, and needs no second credential for the engine behind them.
 
 **Pipefy capabilities.** The functions above act on these. Each name is a sub-domain of Pipefy's domain model. The model holds ten, and the toolkit reaches the nine below. Electronic Signature is the one that the toolkit does not reach. Pipefy maintains that model internally and does not publish it, so the Domain expert row in [Stakeholders](#stakeholders) is the way to reach its owners.
 
@@ -37,7 +37,7 @@ These qualities dominate every decision on this map. Where two of them conflict,
 | 1 | Authenticity | Two callers hold sessions on one remote process. Each request acts as the person who sent it, so neither caller can act as the other or read the other's data. (`QR-4`) |
 | 2 | Resource utilization | A model asks for one card by name. One tool call answers it, and no second call is needed to get there. (`QR-5`) |
 | 3 | Diagnosability | A GraphQL call is denied. The response states the likely cause, whether a retry can succeed, and the next step. (`QR-8`) |
-| 4 | Stability | Pipefy reshapes a GraphQL response. The change never reaches the consumer's code. (`QR-2`) |
+| 4 | Stability | Pipefy reshapes a GraphQL response. The change never reaches the code that imports the SDK. (`QR-2`) |
 | 5 | Backward compatibility | After v1.0, a release deprecates a public SDK function. A warning comes first, and the function works for two more minor releases. (`QR-11`) |
 
 The contributor, the maintainer, the domain expert, and Privacy, Legal and Compliance hold no quality goal.
@@ -75,8 +75,8 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 
 | Constraint | Applies to | Explanation |
 |---|---|---|
-| Schema as the only instruction we can count on | MCP | A client loads the schema at connect. A playbook in `skills/` reaches the model only where the consumer installed it |
-| A rate limit at the LLM vendor | CLI, MCP, Skills | The LLM vendor meters a consumer's use over a rolling period, and a longer cap sits above the meter |
+| Schema as the only instruction we can count on | MCP | A client loads the schema at connect. A playbook in `skills/` reaches the model only where a person installed it |
+| A rate limit at the LLM vendor | CLI, MCP, Skills | The LLM vendor meters use over a rolling period, and a longer cap sits above the meter |
 | A context window per call | CLI, MCP, Skills | The model carries a fixed window, so one call holds a bounded number of tokens whatever the meter allows |
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
 | Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
@@ -235,7 +235,7 @@ Because the CLI declares no edge to `pipefy-infra`, the diagram draws none, and 
 
 ### Inside each package
 
-Arc42 asks for a whitebox where a block is important, surprising, risky, complex, or volatile, rather than for one per block. Each section below is the whitebox of one package. The three packages that a consumer reaches earn one, and `pipefy-auth` earns one because every credential operation lives in it. `pipefy-infra` gets none, because it holds no subject to refine. Skills gets none either, because [`skills/README.md`](../../skills/README.md) owns the catalog and each `SKILL.md` owns its steps. A module that only re-exports, such as a package `__init__.py`, belongs to no block.
+Arc42 asks for a whitebox where a block is important, surprising, risky, complex, or volatile, rather than for one per block. Each section below is the whitebox of one package. The three packages that have a way in earn one, and `pipefy-auth` earns one because every credential operation lives in it. `pipefy-infra` gets none, because it holds no subject to refine. Skills gets none either, because [`skills/README.md`](../../skills/README.md) owns the catalog and each `SKILL.md` owns its steps. A module that only re-exports, such as a package `__init__.py`, belongs to no block.
 
 #### MCP server
 
@@ -327,13 +327,13 @@ flowchart TB
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Facade | Facade | Constructs each service, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
-| Preflight checks | Use case | Checks a change against the API rules before a consumer applies it, which is `FR-3` | Functions that a consumer calls ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
+| Preflight checks | Use case | Checks a change against the API rules before the change runs, which is `FR-3` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
 | Domain services | Driven adapter | Runs a named operation against the Pipefy API, where a few services fan out over several calls | One method per named operation, which the facade delegates to | `services/`, and `utils/organization_identifiers.py` |
 | Wire documents | Driven adapter | Holds the GraphQL document that each service sends | A document that a service imports | `queries/` |
 | GraphQL port and executor | Driven adapter | Declares the `GraphQLExecutor` port, and ships the authenticated implementation behind it | The port that a service takes, and the transport that fulfills it | `graphql_executor.py` |
-| Input models | Domain type | Validates what a consumer passes, before any call leaves | A pydantic model that a public method takes | `models/` |
-| Error classification | Domain type | Turns a GraphQL problem into the exception that a consumer catches | The exception hierarchy, and the problem parser behind it | `exceptions.py`, `graphql_problem.py` |
-| Pure helpers | Domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a service or a consumer calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
+| Input models | Domain type | Validates the input, before any call leaves | A pydantic model that a public method takes | `models/` |
+| Error classification | Domain type | Turns a GraphQL problem into a typed exception | The exception hierarchy, and the problem parser behind it | `exceptions.py`, `graphql_problem.py` |
+| Pure helpers | Domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a service or the package surface calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
 | Configuration and telemetry | Domain type | Holds the parsed configuration, and builds the outbound headers that name the caller | A settings object, and the `User-Agent` that every request carries | `settings.py`, `telemetry.py` |
 
 An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block on the chain that [Dependency rule](#dependency-rule) draws. A library owns no composition root, because the caller wires it, so the facade constructs the services that it delegates to.
@@ -422,7 +422,7 @@ flowchart TB
 
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
-| Credential chain | Facade and use case | Decides which credential a consumer holds, which is a static token, a service account, or a stored session, and builds the authentication that a client takes | `resolve_pipefy_auth`, which every application calls, and the message that states what is missing | `resolver.py` |
+| Credential chain | Facade and use case | Decides which credential the caller holds, which is a static token, a service account, or a stored session, and builds the authentication that a client takes | `resolve_pipefy_auth`, which every application calls, and the message that states what is missing | `resolver.py` |
 | Login flow | Use case | Runs the browser login end to end, which is `FR-1`, and returns the tokens without storing them | The `pipefy auth login` command reaches it through the package root | `flow.py` |
 | Loopback callback | Driving adapter | Serves the one redirect that the browser sends back on a loopback port, then stops | A redirect URI on localhost, with a port that the flow picks | `loopback.py` |
 | Issuer client | Driven adapter | Finds the OIDC endpoints, exchanges a code, and revokes a token | The endpoints that discovery returns, over one shared HTTP client | `discovery.py`, `revoke.py`, `_http.py` |
@@ -664,13 +664,13 @@ Today the server does more than this, because a destructive tool returns a previ
 **By component.**
 
 - SDK: asks nobody, and a missing input is an exception that the program handles.
-- CLI: states and decides, because nobody sits in front of it, and its consumer sets that policy with `--yes`.
+- CLI: states and decides, because nobody sits in front of it, and whoever runs it sets that policy with `--yes`.
 - MCP: states what a tool changes, and the client decides whether a human sees that statement.
 - Skills: carry the confirmation procedure, which a tool description must not teach.
 
 ### Tool surface
 
-A deployment decides how many tools a model sees, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, once at connect, before the consumer asks for anything. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
+A deployment decides how many tools a model sees, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, once at connect, before the first call. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
 
 Two axes classify the catalog. A domain is the one subject a tool is about, and the domains partition it, so every registered tool has exactly one. A tool profile is a journey-sized selection that crosses domains, and profiles overlap. `--toolsets` and `PIPEFY_MCP_TOOLSETS` name either kind, or a reserved keyword, so a deployment chooses without a source change, which is `QR-21`. [`docs/config.md`](../config.md) is the reference for those names and their precedence.
 
@@ -686,13 +686,13 @@ The machinery is this large because the catalog is. The tool names copy the API 
 
 This section is `PARSE-5` in [`conventions.md`](conventions.md) applied to what a tool returns.
 
-One shape carries both outcomes, so a consumer reads success and failure the same way. A migrated MCP tool returns `success` and `data`, with `message` and `pagination` when they apply.
+One shape carries both outcomes, so a caller reads success and failure the same way. A migrated MCP tool returns `success` and `data`, with `message` and `pagination` when they apply.
 
 An invalid argument does not reach a tool body. The argument error is reshaped into that same envelope, so a caller receives the field and the rule rather than a stack trace. That is `QR-1` at the tool boundary, and [Composition root](#composition-root) is the same requirement applied to configuration.
 
 A denial states the likely cause and the next step. A `debug` argument adds the vendor error codes and a correlation id to any GraphQL error. That is the cause half of `QR-8`. No response states whether a retry can succeed, so [Risks and technical debt](#risks-and-technical-debt) holds the other half.
 
-A partial result is not a failure. A read that the caller may perform in part returns what succeeded, plus a list of what was denied, which is `QR-12`. One exception comes with it: `success` stays true on that response, so the list is the only signal and a consumer that reads `success` alone misses it.
+A partial result is not a failure. A read that the caller may perform in part returns what succeeded, plus a list of what was denied, which is `QR-12`. One exception comes with it: `success` stays true on that response, so the list is the only signal and a caller that reads `success` alone misses it.
 
 An answer costs the caller context once per call, which is `QR-10`. What a read returns by default is therefore part of its shape, and [Risks and technical debt](#risks-and-technical-debt) holds the review of those defaults.
 
@@ -771,7 +771,7 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 | `QR-8` | [Quality goals](#quality-goals), priority 3 | A caller can decide from the response alone whether to retry, change the input, or stop |
 | `QR-9` | A model sees only the tools the deployment needs | The listed tool set holds no tool outside the deployer's selection |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
-| `QR-12` | A partial result states what did not succeed | A consumer can tell which parts succeeded and which did not from the response alone |
+| `QR-12` | A partial result states what did not succeed | A caller can tell which parts succeeded and which did not from the response alone |
 | `QR-15` | The toolkit checks where a URL points before it fetches it, and it refuses a private address | A URL the toolkit fetches is refused where it points at a private address, as a literal and after it resolves |
 | `QR-16` | A token issued for another service is refused | The bearer's audience is checked against this resource |
 | `QR-17` | A name in the toolkit matches the name the Pipefy product uses | A name the toolkit exposes can be found in the Pipefy domain model |
@@ -789,7 +789,7 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 
 | ID | Demand | Acceptance criterion |
 |---|---|---|
-| `QR-2` | [Quality goals](#quality-goals), priority 4 | A vendor schema change touches no type or signature that a consumer imports |
+| `QR-2` | [Quality goals](#quality-goals), priority 4 | A vendor schema change touches no type or signature on the SDK's public surface |
 | `QR-11` | [Quality goals](#quality-goals), priority 5 | A deprecated path keeps working for at least two minor releases |
 | `QR-13` | A test can be written for any unit, and a test that passes tells the truth about the released code | A unit can be exercised with a fake in place of every dependency, and the suite runs on every platform the toolkit ships to |
 | `QR-14` | A merged change never breaks the layer order | A merge that inverts the role direction fails a build check |
@@ -822,7 +822,7 @@ The map above holds today, with the exceptions below. Each entry ends with its t
 - `QR-2` does not hold for CLI output. The CLI prints the payload it received, so a vendor schema change reaches a script that parses `--json`. The machine-readable half of `QR-19` therefore ships without a shape anyone declared. The target is a declared output contract for the CLI.
 - The skills check copies the CLI command names. A build check compares every playbook in `skills/` against the current MCP tool names and the top-level `pipefy` commands. It reads the tool names from the registered tools, and it carries its own list of the command names. The CLI registers `service-account`, and that list does not carry it, so a playbook that names the command breaks the build for the wrong reason. The target is a check that reads the registered commands, as it already reads the registered tools.
 - Two functions in `Requirements overview` have no section that describes them: `FR-4` and `FR-5`. `Tool surface` names the raw GraphQL tools once, as members of the `power` branch, and no section states that they exist for what no tool wraps. The token exchange that reaches a pipe's iPaaS workspace lives in `packages/mcp/src/pipefy_mcp/core/ipaas_gateway.py`, and no section describes it. The target is a section for each, and each one then earns a requirement. [Runtime view](#runtime-view) closed this entry for `FR-1`, and it is where a scenario for either of these two goes.
-- The SDK's typed surface reaches no consumer, which is where `QR-2` stops holding. `Package decomposition` says the SDK returns a domain value, and most service reads return an untyped mapping instead, so a vendor entity change reaches the consumer's code. The models the SDK owns are input models, and validation is the half that ships. No package ships a `py.typed` marker either, so a type checker treats the distribution as untyped and offers nothing from the annotations that do exist. The targets are a return type per read and that marker, in each distributed package.
+- The SDK's typed surface does not reach the code that imports it, which is where `QR-2` stops holding. `Package decomposition` says the SDK returns a domain value, and most service reads return an untyped mapping instead, so a vendor entity change reaches that code. The models the SDK owns are input models, and validation is the half that ships. No package ships a `py.typed` marker either, so a type checker treats the distribution as untyped and offers nothing from the annotations that do exist. The targets are a return type per read and that marker, in each distributed package.
 - The tool domains are not the product's sub-domains. `DOMAINS` in `packages/mcp/src/pipefy_mcp/tools/toolsets.py` partitions every tool, and a build guard holds that partition disjoint and total. Its keys are feature areas of the product. Pipefy's domain model names sub-domains instead, and it treats AI as a technology woven through several of them. A builder defines an agent in Process Modeling, and the agent then acts inside Work Execution as a non-human assignee. Model choice and agent logs are one facet of Governance and Audit, and credit consumption is Billing. A woven technology does not survive a partition, so the catalog collects every AI tool under one key instead. That is `QR-17`. The target is one taxonomy, chosen against the model, and it costs the `--toolsets` vocabulary that a caller types today.
 - A coined name where the product has one. The key holding those tools is `intelligence`, and every AI element in the domain model carries the product's own prefix: AI Agent, AI Automation, AI Governance, AI credit. `skills/process-intelligence` coins a second name that the model does not carry. Neither is the partition above, because re-homing no tool would fix either one. That is `QR-17`. The target is the product's word in both places, plus an audit of `skills/` for the same coinage. That rename reaches the `PIPEFY_MCP_TOOLSETS` vocabulary in [`docs/config.md`](../config.md), and it is cheapest before v1.0, when `QR-11` starts to demand a warning first.
 - No stated bound on a call that cannot complete. Timeout constants sit in three packages, and `VALIDATE_FETCH_TIMEOUT_SECONDS` is defined twice, as `30` in `packages/mcp/src/pipefy_mcp/tools/ai_agent_tools.py` and as `30.0` in `packages/sdk/src/pipefy_sdk/ai_preflight.py`. `QR-18` states what a caller is owed, and no module owns the value. The target is one owner for that bound.
