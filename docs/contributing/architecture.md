@@ -49,7 +49,7 @@ The contributor row also holds what a tester, a code reviewer, and a developer w
 | Role/Name | Description | Expectations |
 |---|---|---|
 | Programmer | A person who writes a program against the SDK, or a script against the CLI | The public surface and its deprecation policy, and what a command prints for a program to parse: [`docs/sdk`](../sdk/README.md), [`DEPRECATION.md`](../DEPRECATION.md), and [`docs/cli`](../cli/README.md) |
-| Person at a terminal | A person who types a command | The command reference: [`docs/cli`](../cli/README.md) |
+| Terminal user | A person who types a command | The command reference: [`docs/cli`](../cli/README.md) |
 | MCP deployer | A person who wires an MCP client to the server, under the local profile or against a hosted one, and sets what the agent behind it may do | The tool catalog, what a destructive tool does before it runs, and where a credential lives: [`docs/mcp`](../mcp/README.md), [Tool surface](#tool-surface), and [Identity lifetime](#identity-lifetime) |
 | LLM agent | A program that runs a model's decisions. It calls an MCP tool, it runs a CLI command in a shell, or it writes a program against the SDK | Per component. SDK: the public surface that the Programmer row names. CLI: a discoverable command set whose output it can parse and pipe into the next call ([`docs/cli`](../cli/README.md)). MCP: the tool descriptions it receives at connect ([Tool surface](#tool-surface)). Skills: the playbooks in [`skills/`](../../skills/README.md) |
 | Contributor | Anyone who opens a pull request, under [`CONTRIBUTING.md`](../../CONTRIBUTING.md) | Where a change goes, what it may import, and whether a passing test means anything: [Package decomposition](#package-decomposition), [Dependency rule](#dependency-rule), [`conventions.md`](conventions.md), and [`AGENTS.md`](../../AGENTS.md) |
@@ -61,7 +61,7 @@ The contributor row also holds what a tester, a code reviewer, and a developer w
 | Pipefy platform | The team that owns the GraphQL API, at [`community.pipefy.com/api-76`](https://community.pipefy.com/api-76) | A stated outbound policy: a caller that identifies itself, that does not chain calls it could make in one, that gives up rather than hold a connection open, and that honors a refusal to serve |
 | Operator of the remote deployment | Whoever runs the remote profile. The hosted wrapper is built outside this repository, and no team is named here | For MCP alone, because no other component runs as a shared process. The deployment story: which tools a deployment exposes, where the credential comes from, who can use it, the deploy shape, what reaches a log, and what one caller costs another: [Identity lifetime](#identity-lifetime) |
 
-Each Pipefy party confirmed its own row. The programmer, the person at a terminal, the MCP deployer, and the LLM agent rows are our reading of what each one needs, because this project cannot ask them. [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) is where one of them corrects a row.
+Each Pipefy party confirmed its own row. The programmer, the terminal user, the MCP deployer, and the LLM agent rows are our reading of what each one needs, because this project cannot ask them. [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) is where one of them corrects a row.
 
 ## Architecture constraints
 
@@ -450,7 +450,7 @@ A browser login comes first, and the CLI alone runs it. It is `FR-1`, and it hap
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Person as Person at a terminal
+    participant Person as Terminal user
     participant Surface as Command surface
     participant Flow as Login flow
     participant Loopback as Loopback callback
