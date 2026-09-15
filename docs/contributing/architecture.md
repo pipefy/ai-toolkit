@@ -2,7 +2,7 @@
 
 ## Introduction and goals
 
-This document maps the architecture of the AI Toolkit. The toolkit is an MCP server, a CLI, and the SDK that both build on, over Pipefy's public API, plus the skills that teach an agent the first two.
+This document maps the architecture of the AI Toolkit. The toolkit is an MCP server, a CLI, and the SDK that both build on, over Pipefy's public API, plus the skills that carry the procedure an agent follows.
 
 ### Requirements overview
 
