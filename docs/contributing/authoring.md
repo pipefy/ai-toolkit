@@ -141,7 +141,7 @@ Neither document carries the inventory or the remediation plan for a gap. A conc
 
 ## Point at the owner of a fact
 
-Every fact has one owner: the code, a schema, an enforced contract, or another document. A document that restates a fact it does not own holds a copy, and that copy drifts. A reader then cannot tell which copy is current, so name the owner and point there. A document holds a copy only where the argument on its own page depends on that copy. [`architecture.md`](architecture.md) names the import-linter contract rather than listing the layer modules, and it names the GraphQL schema rather than describing entity shape.
+Every fact has one owner: the code, a schema, an enforced contract, or another document. A document that restates a fact it does not own holds a copy, and that copy drifts. A reader then cannot tell which copy is current, so name the owner and point there. A document holds a copy only where the argument on its own page depends on that copy. A measured count of what the code holds is one such copy. It goes stale on the next routine change, although the claim around it stays true, so state the claim and leave the number out. Keep a number only where the document owns the set it counts, or where the value itself is the defect. [`architecture.md`](architecture.md) names the import-linter contract rather than listing the layer modules, and it names the GraphQL schema rather than describing entity shape.
 
 Where the code owns a list, generate the document from that code: docstrings, pydantic `Field(description=...)`, the tool registry, or Typer help. Hand-author only where there is no code source, such as a concept doc. Do not keep a generated table and durable prose in the same file.
 
