@@ -6,7 +6,7 @@ This document maps the architecture of the AI Toolkit. Over Pipefy's public API,
 
 ### Requirements overview
 
-Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to external AI agents. Two forces drive most of the decisions in this repository: what the people who prompt those agents expect, and the limits of the model. A programmer and a terminal user hold expectations of their own, and those only apply to the CLI and the SDK.
+Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to external AI agents. In every component, two forces come first: what the people who prompt those agents expect, and the limits of the model. A programmer and a terminal user hold expectations of their own, and those only apply to the CLI and the SDK.
 
 **Toolkit functions.** These are what the toolkit delivers. Each one is work that Pipefy's API leaves undone, or does not offer at all.
 
