@@ -81,7 +81,7 @@ A constraint is dealt with rather than escaped. A limit that blocks us is negoti
 | No guaranteed answer from the client | MCP | The protocol makes the client's side of a question optional. An answer can also come from the model or from a setting rather than from a person |
 | Vendor-owned GraphQL shape | SDK, CLI, MCP | Pipefy's API team owns the entity shape and the error shape. A change serves every consumer of that API, so it needs the team's agreement and a deprecation cycle |
 | A tool catalog we do not own | MCP | The iPaaS engine publishes its own tools, and their names and their shapes come from that engine |
-| A deployment we do not build | MCP | Every deployment of the MCP server is built and run outside this repository, by Pipefy or by a consumer |
+| A deployment we do not build | MCP | Every deployment of the MCP server is built and run outside this repository, by Pipefy or by an MCP deployer |
 | Python 3.11 as the floor | The repository | Python 3.9 left upstream support in late 2025, and 3.10 leaves it on 2026-10-31. Python 3.11 is therefore the oldest runtime that still receives a security fix |
 | No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
 | No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
@@ -116,10 +116,14 @@ The diagram draws the toolkit as one box, with every party it exchanges data wit
 flowchart LR
     toolkit["AI Toolkit"]
 
-    person["Person working through an LLM"] --> client
-    client["MCP client"] -- "stdio or HTTP" --> toolkit
-    shell["Person or script at a terminal"] -- "a command" --> toolkit
-    program["Embedding program"] -- "an import" --> toolkit
+    person["Person"] --> agent["LLM agent"]
+    agent --> client["MCP client"]
+    client -- "a tool call, over stdio or HTTP" --> toolkit
+    agent -- "a command" --> toolkit
+    agent -- "an import" --> toolkit
+    person -- "a command" --> toolkit
+    program["Program"] -- "a command" --> toolkit
+    program -- "an import" --> toolkit
 
     toolkit --> graphql["Pipefy GraphQL API"]
     toolkit --> storage["File storage"]
@@ -146,7 +150,8 @@ The legend:
 
 - The table names what crosses as a concept, and never the class that implements it. [Package decomposition](#package-decomposition) draws the same partners on the package whose code performs each crossing.
 - Where a crossing has a port, [Ports and dependency inversion](#ports-and-dependency-inversion) names it, and [Risks and technical debt](#risks-and-technical-debt) carries every one that has none.
-- Which component each consumer uses is in [Package decomposition](#package-decomposition), and what each one does about a credential is in [Identity lifetime](#identity-lifetime). A deployment profile decides which channel the MCP server serves.
+- An LLM agent reaches all four components. A program reaches the SDK and the CLI, and a person reaches the CLI. A person stands up what an agent reaches, by wiring an MCP client and installing a playbook. [Package decomposition](#package-decomposition) holds the four.
+- What each component does about a credential is in [Identity lifetime](#identity-lifetime), and a deployment profile decides which channel the MCP server serves.
 
 ## Solution strategy
 
@@ -506,7 +511,7 @@ Four facts sit beside the diagrams.
 - The lock exists because two processes can hold the same stored session, and a renewal invalidates the token the other one is about to use.
 - A renewal that fails stops the invocation. No other source answers in its place, because the caller already chose this one, and a silent swap would act as somebody else.
 
-[`docs/cli/auth.md`](../cli/auth.md) owns what a consumer does about each source, and what a failed step reports.
+[`docs/cli/auth.md`](../cli/auth.md) owns the steps for each source, and what a failed step reports.
 
 ### A credential resolved once per request
 
@@ -644,7 +649,7 @@ A tool faces two kinds of question that look alike, although it must treat them 
 
 Where a tool lacks an input it needs, it asks the caller for that input, which is what `QR-22` demands. A question the model must answer costs a round trip, whereas a question that goes to the client costs `QR-5` nothing, so `QR-22` is the cheap way to satisfy `QR-5` and not a rival to it. Because not every client can take a question, [Risks and technical debt](#risks-and-technical-debt) states which callers a tool can ask, and what a tool does with the rest.
 
-When the consumer sets up their client, they settle permission for good, so `QR-25` leaves that decision where they made it. `QR-3` rules out any wait for an answer when nobody is present, and a question about permission survives that, because the consumer settled it before the run began. A question about data does not survive, because nobody can settle a value in advance, so there `QR-22` conflicts with `QR-3`.
+When the MCP deployer sets up the client, they settle permission for good, so `QR-25` leaves that decision where they made it. `QR-3` rules out any wait for an answer when nobody is present, and a question about permission survives that, because the deployer settled it before the run began. A question about data does not survive, because nobody can settle a value in advance, so there `QR-22` conflicts with `QR-3`.
 
 Each party does the one thing it alone can do:
 
@@ -764,7 +769,7 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 | `QR-6` | What a destructive operation will destroy can be learned without running it | The reach a caller learns before the call equals what the call destroys |
 | `QR-7` | A name that fits more than one resource never quietly picks one, and the caller gets the matches instead | The caller chooses between the matches, and the toolkit chooses none |
 | `QR-8` | [Quality goals](#quality-goals), priority 3 | A caller can decide from the response alone whether to retry, change the input, or stop |
-| `QR-9` | A model sees only the tools the consumer's work needs | The listed tool set holds no tool outside the consumer's selection |
+| `QR-9` | A model sees only the tools the deployment needs | The listed tool set holds no tool outside the deployer's selection |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
 | `QR-12` | A partial result states what did not succeed | A consumer can tell which parts succeeded and which did not from the response alone |
 | `QR-15` | The toolkit checks where a URL points before it fetches it, and it refuses a private address | A URL the toolkit fetches is refused where it points at a private address, as a literal and after it resolves |
@@ -776,7 +781,7 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 | `QR-22` | A tool that is missing something it needs asks for it, rather than failing | The tool asks the client for the input, and it says in its answer when it could not ask |
 | `QR-23` | A tool's description states briefly what the tool does, and it never teaches how to use it | A description states what the tool does and no steps for using it |
 | `QR-24` | A credential the toolkit stores is usable only by whoever it was issued to | A file the toolkit creates for a credential is readable by its owner alone |
-| `QR-25` | A consumer is stopped for approval only where they chose to be stopped | A consumer is stopped where their client's settings say, and nowhere else |
+| `QR-25` | A call is stopped for approval only where the deployer chose | A call is stopped where the client's settings say, and nowhere else |
 | `QR-27` | A logout ends the credential, and only a token already issued outlives it, until that token expires | After a logout, no new token can be issued, and the last one stops at its own expiry |
 | `QR-28` | A name that is incomplete or misspelled still finds the resource | An inexact name returns the resource, or the matches that `QR-7` demands |
 
@@ -806,7 +811,7 @@ The map above holds today, with the exceptions below. Each entry ends with its t
 - The outcome-shaped tool set, which is `QR-5`. The tool names copy the API operations today, so one piece of work can cost several calls, and a model pays a round trip for each one. `SURF-1` in [`conventions.md`](conventions.md) admits each replacement, and the gap closes when the tool set expresses outcomes.
 - `QR-1` does not hold end to end. The positive-id check has three homes and no owner, so a comment model accepts a negative card id today. The target is one owner for that check, under `PARSE-3` in [`conventions.md`](conventions.md).
 - A caller cannot learn what a destruction costs, which is `QR-6`. Not every destructive tool says in its first description line that the effect is permanent, and `delete_card` does not. No description states what else goes: `delete_phase` opens with "Delete a phase permanently", and it names the cards only as a count that a preview may list. Where a tool computes the reach, it does so inside a preview a caller may skip, and no CLI command computes it anywhere. The target is a permanence statement in every destructive description, and a dry run wherever the reach exceeds the arguments the caller passed. The CLI target is not yet chosen, because the reach is expensive to compute and a prompt is a poor place to print it.
-- A consumer is stopped in the wrong places, which is `QR-25`. Nearly every destructive tool returns a preview until a second call sets `confirm`, so a consumer whose client already granted permission is stopped anyway, and the second call reaches the model rather than a person. In the other direction, a large share of the registered tools write while declaring nothing, and the protocol reads an undeclared write as destructive, so a consumer who asked to be stopped before a delete is stopped before a create. The target is a declared kind on every write, held by a check that fails the build when one is missing, and no gate on any tool. It costs a break in every destructive tool's contract, which is cheapest before v1.0.
+- A call is stopped in the wrong places, which is `QR-25`. Nearly every destructive tool returns a preview until a second call sets `confirm`, so a call whose client already granted permission is stopped anyway, and the second call reaches the model rather than a person. In the other direction, a large share of the registered tools write while declaring nothing, and the protocol reads an undeclared write as destructive, so a deployer who asked to be stopped before a delete is stopped before a create. The target is a declared kind on every write, held by a check that fails the build when one is missing, and no gate on any tool. It costs a break in every destructive tool's contract, which is cheapest before v1.0.
 - `QR-22` holds for some callers and not others. `create_card` and `fill_card_phase_fields` ask only where `supports_elicitation` in `packages/mcp/src/pipefy_mcp/tools/mcp_capabilities.py` passes, and its docstring states what fails it. Where it fails, both tools proceed with the fields they were given and say nothing in the answer, which [`docs/mcp/tools/pipes-and-cards.md`](../mcp/tools/pipes-and-cards.md) states, with the conditions that produce it. The check is ours: the pinned `mcp` release decides how a question reaches the client, and on revision 2026-07-28 the question arrives in the tool result rather than over a back channel. The target is a tool parameter that the pinned release resolves before the body runs, and it costs the state that `create_card` holds across its `await` today.
 - A settled bound on the tool surface, which is `QR-9`. The taxonomy in [Tool surface](#tool-surface) tames a catalog that is too large, so it treats a symptom of the `QR-5` entry above. The target is not yet chosen, and the exploration is open.
 - The native response shape, which is `QR-1`, `QR-8`, and `QR-12`. One envelope for every outcome is the right requirement, and it arrives by wrapping: a flag, migrated tools only, and a patch on an MCP SDK internal that pins that dependency to one minor. The target is the envelope as a tool's own return type, which retires both the flag and the patch.
