@@ -9,8 +9,8 @@ The tree is mid-migration to this target. Where a file still sits in the wrong p
 Sort by audience first, then by kind.
 
 - Contributor docs live under `docs/contributing/`.
-- Consumer docs live by application under `docs/mcp/`, `docs/cli/`, and `docs/sdk/`.
-- A durable, cross-cutting consumer doc lives at the `docs/` root. A fast-changing one is generated instead (see below).
+- Docs for the parties who use the toolkit live by application under `docs/mcp/`, `docs/cli/`, and `docs/sdk/`.
+- A durable, cross-cutting one of those lives at the `docs/` root. A fast-changing one is generated instead (see below).
 
 Then keep a doc to one kind where practical. The Diataxis kinds are tutorial, how-to, reference, and explanation. A file that mixes several is a split candidate.
 
@@ -68,15 +68,15 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **Components.**
 
-- A component is one of the four things a consumer reaches, and `Glossary` fixes the word. The vocabulary is `SDK`, `CLI`, `MCP`, and `Skills`, in that order, in every cell and every list that names the axis.
+- A component is a unit of the toolkit with exactly one way in, and `Glossary` fixes the word. The vocabulary is `SDK`, `CLI`, `MCP`, and `Skills`, in that order, in every cell and every list that names the axis. A claim about the axis states the way in, and it names no party.
 - A section whose subject plays out differently per component ends with a `**By component.**` block: four bullets, one per component, in that order. A bullet states the difference in one or two sentences at level-1 altitude, or it reads `no difference`, or it reads `not reached`. A section whose subject is the same everywhere carries no block, and the absence is the statement.
 - A table that carries the axis as a column names that column by the verb that runs between the row and the component, such as `Applies to` or `Reached by`, and places it second, beside the row name. A cell lists the components it concerns, and no aggregate word stands for the list. `The repository` is the one wider referent, because it reaches `docs/` and the support packages too. A table whose rows are the components carries no axis column.
 - A stakeholder expectation that differs by component names each component, in the fixed order, inside its cell.
 
 **`Requirements overview`, arc42 1.1.** The business goal, then the functions the toolkit delivers, then the capabilities they act on.
 
-- The opening states the business goal, which arc42 asks for here as the driving force, and it says which consumer each component carries that goal to. It defines no domain term and no package responsibility, because arc42 3 owns the first and arc42 5 owns the second.
-- A function is the toolkit's own work, and what Pipefy's API already offers is a capability. A function line says who acts, what the act is, and what the consumer gets, with the trigger first.
+- The opening states the business goal, which arc42 asks for here as the driving force, and it names the party that holds it. It pairs no party with a component, because a party is not an axis. It defines no domain term and no package responsibility, because arc42 3 owns the first and arc42 5 owns the second.
+- A function is the toolkit's own work, and what Pipefy's API already offers is a capability. A function line says what the act is and what it delivers, with the trigger first, and it names no party.
 - If a new tool would add a bullet, the list is too detailed.
 
 **`Quality goals`, arc42 1.2.** Three to five qualities, in the priority order that arc42 asks for here.
@@ -88,6 +88,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 **`Stakeholders`, arc42 1.3.** A role, a contact, and expectations in prose.
 
 - A party earns a row on arc42's five criteria: it needs to know the architecture, it has to be convinced of it, it works with the architecture or the code, it needs the documentation for its work, or it decides about the system. A party that is not a person can meet them.
+- A row is keyed to the party, never to a component. A demand stated outside this table points at the row that holds it, and names no party of its own.
 - Expectations cover the architecture and its documentation, which is what arc42 asks for.
 
 **`Architecture constraints`, arc42 2.** The limits every decision works inside: a technical table, an organizational table, and a block for the conventions we set. Arc42 2 offers those three groups, and the third is a block rather than a table here, because each convention set lives in its own file.
@@ -98,9 +99,9 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **`Context and scope`, arc42 3.** The parties the toolkit exchanges data with, in one diagram and one table, under prose that states the domain it acts on and who it acts as.
 
-- Draw the toolkit as one box, and draw every partner. Completeness is arc42's demand here and almost nowhere else in the template. A host that holds or carries a credential is a partner, and so is a party that stands between an application and its consumer.
+- Draw the toolkit as one box, and draw every partner, inbound and outbound. Completeness is arc42's demand here and almost nowhere else in the template. A host that holds or carries a credential is a partner, and so is a party that stands between an application and the party that reaches it.
 - A table beside the diagram carries which components reach each partner and what crosses. Arc42 3.1 offers the table as an alternative to the diagram, and this map takes both. It exists because no install reaches every partner. `Package decomposition` draws the same partners on the package that performs each crossing, and arc42 asks that the two stay consistent.
-- An inbound arrow carries the channel a consumer arrives over, and an outbound arrow carries no label, so the two pictures cannot come to claim different things.
+- An inbound arrow carries the way in, and an outbound arrow carries no label, so the two pictures cannot come to claim different things.
 - One diagram carries the business context and the technical context, although arc42 keeps 3.1 and 3.2 apart, so the merge is this map's choice. Technology appears only where it marks the boundary. Mark no risk and no quality goal on a partner. Arc42 tip 3-4 recommends a risk mark, and this rule overrides that tip, because `Risks and technical debt` owns every risk.
 
 **`Solution strategy`, arc42 4.** The most important decisions in one table: a driver, the decision it produced, and the section that details it. The goal rows come first, in the `Quality goals` order, so they grow only when that section does.
