@@ -48,10 +48,9 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **Shape.**
 
-- A section that arc42 numbers takes arc42's position and arc42's name. A `##` heading takes arc42's name. A `###` heading takes arc42's name where arc42 numbers that sublevel, and it is ours to name where arc42 does not. A heading deeper than `###` marks a deeper arc42 level, so arc42 5 holds each level 2 whitebox at `####`.
+- The map takes arc42's sections, their names, and their breakdown, and a level that arc42 leaves to the author is ours to fill. Where a section merges or splits arc42's sublevels, renames one, or stops above one, its block below says so.
 - A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 7 stays absent today.
 - A part of the system goes under arc42 5. A rule that holds whichever part you are in goes under arc42 8, and arc42 8 says that a concept can concern a few elements rather than all, so a rule that one component alone obeys still belongs there. A settled choice goes in `Solution strategy` where it serves a goal or where every contributor holds it whatever they change, and in [`adr/`](adr/README.md) otherwise. Sort a rule from a choice by whether a contributor follows it while writing code.
-- Where arc42 offers a form, the section says which form it took. Where this map departs from arc42, the rule that departs says so.
 
 **Ownership.**
 
@@ -111,7 +110,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 - A decision names the mechanism that meets its driver and never explains it, because the linked section owns the explanation. A decision and the check that keeps it true are two rows. Where a goal's scenario has a half that no settled mechanism serves, leave that half out.
 - The last column links the owner, and never a decision record. An organizational commitment earns a row only where it shapes the architecture. The language and the distribution shape are stated here, with the reason that drove them.
 
-**`Building block view`, arc42 5.** The static structure, with one subsection per whitebox, named after the axis that whitebox splits on.
+**`Building block view`, arc42 5.** The static structure, with one subsection per whitebox, named after the axis that whitebox splits on. The two sublevels take our names, `Package decomposition` and `Inside each package`, where arc42 says `Whitebox overall system` and `Level 2`, because arc42's names label a slot and ours name the subject.
 
 - Every part the diagram draws carries a responsibility line, because arc42 counts those lines as part of the level. A drawn part with no line is how `pipefy-auth` and `pipefy-infra` went undescribed.
 - The reason says why the decomposition has these parts, and a rule the structure obeys fails as a reason, because every correct split obeys it. The kinds come from the scope list in [`DEPRECATION.md`](../DEPRECATION.md). `Requirements overview` says what the toolkit does, and this level says which block does it.
