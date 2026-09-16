@@ -12,7 +12,7 @@ Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the w
 
 - `FR-1` Persistent sign-in. When a caller has no credential, the toolkit runs a browser sign-in, stores the result, and reuses it on later calls.
 - `FR-2` Address by name. When a call identifies a resource by its name instead of its id, the toolkit finds that resource.
-- `FR-3` Validation without execution. Before a change runs, the toolkit checks it against the API rules, and it runs nothing that fails the check.
+- `FR-3` Validation without execution. Before a change is applied, the toolkit validates it against the API rules, and applies nothing that fails.
 - `FR-4` Schema discovery. When a caller does not know a name, the toolkit finds the type by keyword. It returns one type's shape, and never the whole schema.
 - `FR-5` iPaaS reach. The toolkit reaches the flows of a pipe's iPaaS workspace with no second credential for the engine behind them.
 
