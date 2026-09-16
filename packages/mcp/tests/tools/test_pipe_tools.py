@@ -16,7 +16,7 @@ from mcp.types import (
     ElicitRequestParams,
     ElicitResult,
 )
-from pipefy_sdk import PipefyClient, PipefyGraphQLError
+from pipefy_sdk import PartialCardUpdateError, PipefyClient, PipefyGraphQLError
 
 from pipefy_mcp.auth import RequestScopedIdentity
 from pipefy_mcp.core.runtime import McpRuntime
@@ -2091,6 +2091,158 @@ class TestUpdateCardTool:
                 due_date=None,
                 field_updates=[{"field_id": "status", "value": "done"}],
             )
+
+    async def test_partial_update_returns_split_envelope(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        """A half-applied batch names what landed instead of reading as a flat failure."""
+        mock_pipefy_client.update_card = AsyncMock(
+            side_effect=PartialCardUpdateError(
+                card_id="123",
+                applied_field_ids=["supplier_1"],
+                rejected=[
+                    {"field_id": "contact_email", "message": "not in a valid format"}
+                ],
+            )
+        )
+
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_card",
+                {
+                    "card_id": 123,
+                    "field_updates": [
+                        {"field_id": "supplier_1", "value": "x"},
+                        {"field_id": "contact_email", "value": "nope"},
+                    ],
+                },
+            )
+
+        assert result.is_error is False, "Raw exception leaked instead of envelope"
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert payload["error"]["code"] == "CARD_UPDATE_PARTIALLY_APPLIED"
+        assert payload["card_id"] == "123"
+        assert payload["applied_field_ids"] == ["supplier_1"]
+        assert payload["rejected_fields"] == [
+            {"field_id": "contact_email", "message": "not in a valid format"}
+        ]
+        assert payload["verified"] is True
+        assert "ADD" in tool_error_message(payload)
+
+    async def test_partial_update_unverified_flags_the_missing_readback(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        """When the re-read failed, the envelope says so rather than implying nothing landed."""
+        mock_pipefy_client.update_card = AsyncMock(
+            side_effect=PartialCardUpdateError(
+                card_id="123",
+                applied_field_ids=[],
+                rejected=[{"field_id": "a", "message": "nope"}],
+                verified=False,
+            )
+        )
+
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_card",
+                {"card_id": 123, "field_updates": [{"field_id": "a", "value": "x"}]},
+            )
+
+        payload = extract_payload(result)
+        assert payload["verified"] is False
+        assert "Could not re-read" in tool_error_message(payload)
+        assert "Retry only" in tool_error_message(payload)
+        assert "read it" not in tool_error_message(payload)
+
+    async def test_graphql_error_returns_envelope_not_raw_exception(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        """Parity with update_card_field: a raising call returns a structured envelope."""
+        mock_pipefy_client.update_card = AsyncMock(
+            side_effect=PipefyGraphQLError(
+                [
+                    {
+                        "message": "Field not found with id: nope_xyz",
+                        "extensions": {"code": "RESOURCE_NOT_FOUND"},
+                    }
+                ]
+            )
+        )
+
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_card",
+                {
+                    "card_id": 123,
+                    "field_updates": [{"field_id": "nope_xyz", "value": "x"}],
+                },
+            )
+
+        assert result.is_error is False, "Raw exception leaked instead of envelope"
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert "get_phase_fields" in tool_error_message(payload)
+
+    async def test_accepts_debug_argument(
+        self,
+        client_session,
+    ):
+        """``debug`` is part of the contract, matching update_card_field."""
+        async with client_session as session:
+            listed = await session.list_tools()
+        schema = {t.name: t.input_schema for t in listed.tools}["update_card"]
+        assert "debug" in schema["properties"]
+
+
+@pytest.mark.anyio
+class TestFillCardPhaseFieldsPartialUpdate:
+    async def test_partial_update_returns_split_envelope(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        """fill_card_phase_fields rides the same SDK path and must not leak the raise."""
+        mock_pipefy_client.get_phase_fields = AsyncMock(
+            return_value={
+                "fields": [
+                    {"id": "a", "type": "short_text", "editable": True, "label": "A"},
+                    {"id": "b", "type": "email", "editable": True, "label": "B"},
+                ]
+            }
+        )
+        mock_pipefy_client.update_card = AsyncMock(
+            side_effect=PartialCardUpdateError(
+                card_id="123",
+                applied_field_ids=["a"],
+                rejected=[{"field_id": "b", "message": "not in a valid format"}],
+            )
+        )
+
+        async with client_session as session:
+            result = await session.call_tool(
+                "fill_card_phase_fields",
+                {
+                    "card_id": 123,
+                    "phase_id": 456,
+                    "fields": {"a": "x", "b": "nope"},
+                },
+            )
+
+        assert result.is_error is False, "Raw exception leaked instead of envelope"
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert payload["applied_field_ids"] == ["a"]
 
 
 @pytest.mark.anyio

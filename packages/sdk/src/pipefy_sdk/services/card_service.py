@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+import json
+from typing import Any, NoReturn
 
+from pipefy_sdk.exceptions import PartialCardUpdateError
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.queries.card_queries import (
     CREATE_CARD_MUTATION,
@@ -9,6 +11,7 @@ from pipefy_sdk.queries.card_queries import (
     DELETE_CARD_MUTATION,
     DELETE_COMMENT_MUTATION,
     FIND_CARDS_QUERY,
+    GET_CARD_FIELD_IDS_QUERY,
     GET_CARD_QUERY,
     GET_CARD_RELATIONS_QUERY,
     GET_CARDS_QUERY,
@@ -23,6 +26,100 @@ from pipefy_sdk.utils.formatters import (
     convert_fields_to_array,
     convert_values_to_camel_case,
 )
+
+
+def _decode_user_error_message(raw: Any) -> str:
+    """Flatten one ``UserError.message`` into plain text.
+
+    The API sends this field two ways: a bare sentence ("Field not found"), and a
+    JSON-encoded array of sentences (``'["Value \\"x\\" is not in a valid
+    format"]'``). Returning the second verbatim hands the caller a doubly escaped
+    string, so decode it when it parses and fall back to the raw text otherwise.
+    """
+    if not isinstance(raw, str):
+        return str(raw)
+    text = raw.strip()
+    if not text.startswith("["):
+        return text
+    try:
+        decoded = json.loads(text)
+    except ValueError:
+        return text
+    if isinstance(decoded, list):
+        parts = [str(item) for item in decoded if item]
+        return "; ".join(parts) if parts else text
+    return text
+
+
+def _rejected_entries(payload: dict) -> list[dict[str, str]]:
+    """Read ``updateFieldsValues.userErrors`` into ``{field_id, message}`` rows.
+
+    ``UserError.field`` is ``[String!]``, a path whose last element is the field
+    id the entry named (``["values", "fieldId", "contact_email"]``). An entry
+    whose path is empty keeps an empty ``field_id`` so the message still reaches
+    the caller.
+    """
+    block = payload.get("updateFieldsValues")
+    if not isinstance(block, dict):
+        return []
+    raw_errors = block.get("userErrors")
+    if not isinstance(raw_errors, list):
+        return []
+
+    rows: list[dict[str, str]] = []
+    for item in raw_errors:
+        if not isinstance(item, dict):
+            continue
+        path = item.get("field")
+        field_id = ""
+        if isinstance(path, list) and path:
+            field_id = str(path[-1])
+        elif isinstance(path, str):
+            field_id = path
+        rows.append(
+            {
+                "field_id": field_id,
+                "message": _decode_user_error_message(item.get("message", "")),
+            }
+        )
+    return rows
+
+
+def _applied_candidate_ids(
+    requested_ids: list[str], rejected: list[dict[str, str]]
+) -> list[str]:
+    """Ids that might have been written: requested minus named rejections.
+
+    Any unattributed ``userErrors`` row (empty or missing ``field_id``) fail-closes
+    the set: a pre-filled field on the card is not evidence this batch wrote it.
+    """
+    if any(not entry.get("field_id") for entry in rejected):
+        return []
+    rejected_ids = {entry["field_id"] for entry in rejected}
+    return [fid for fid in requested_ids if fid not in rejected_ids]
+
+
+def _filled_field_ids(readback: dict) -> set[str]:
+    """Field ids present on the card after the write.
+
+    ``card.fields`` lists filled fields only, so absence here means the value did
+    not land.
+    """
+    card = readback.get("card")
+    if not isinstance(card, dict):
+        return set()
+    fields = card.get("fields")
+    if not isinstance(fields, list):
+        return set()
+
+    present: set[str] = set()
+    for item in fields:
+        if not isinstance(item, dict):
+            continue
+        definition = item.get("field")
+        if isinstance(definition, dict) and definition.get("id") is not None:
+            present.add(str(definition["id"]))
+    return present
 
 
 class CardService:
@@ -251,9 +348,60 @@ class CardService:
     async def _execute_update_fields_values(
         self, card_id: str | int, values: list[dict]
     ) -> dict:
-        """Execute updateFieldsValues mutation (incremental mode)."""
+        """Execute updateFieldsValues mutation (incremental mode).
+
+        Raises:
+            PartialCardUpdateError: When the payload carries ``userErrors``. The
+                mutation validates each entry in ``values`` separately, so this
+                covers both the batch that wrote nothing and the batch that
+                wrote part of itself; the re-read tells them apart.
+        """
         formatted_values = convert_values_to_camel_case(values)
         variables = {"input": {"nodeId": str(card_id), "values": formatted_values}}
-        return await self._executor.execute_query(
+        payload = await self._executor.execute_query(
             UPDATE_FIELDS_VALUES_MUTATION, variables
+        )
+
+        rejected = _rejected_entries(payload)
+        if not rejected:
+            return payload
+
+        requested_ids = [
+            str(entry["fieldId"]) for entry in formatted_values if entry.get("fieldId")
+        ]
+        await self._raise_partial_card_update(
+            card_id=str(card_id),
+            candidate_ids=_applied_candidate_ids(requested_ids, rejected),
+            rejected=rejected,
+        )
+
+    async def _raise_partial_card_update(
+        self,
+        *,
+        card_id: str,
+        candidate_ids: list[str],
+        rejected: list[dict[str, str]],
+    ) -> NoReturn:
+        """Confirm which candidates actually persisted, then raise.
+
+        ``updatedNode`` on the mutation payload is not consulted: it has been
+        observed omitting a field that a follow-up read showed had been written.
+        """
+        try:
+            readback = await self._executor.execute_query(
+                GET_CARD_FIELD_IDS_QUERY, {"card_id": card_id}
+            )
+        except Exception:  # noqa: BLE001 - the mutation outcome is the story, not this read
+            raise PartialCardUpdateError(
+                card_id=card_id,
+                applied_field_ids=[],
+                rejected=rejected,
+                verified=False,
+            ) from None
+
+        present = _filled_field_ids(readback)
+        raise PartialCardUpdateError(
+            card_id=card_id,
+            applied_field_ids=[fid for fid in candidate_ids if fid in present],
+            rejected=rejected,
         )

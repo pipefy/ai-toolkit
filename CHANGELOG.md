@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Writes (`update_card`, `fill_card_phase_fields`, CLI `card update` / `card fill`)**: `updateFieldsValues` validates each `field_updates` entry separately, so one bad entry could leave the rest written while the response reported a flat failure and named nothing. The SDK card path now reads `userErrors` and raises `PartialCardUpdateError`, which the MCP tools lift into a `CARD_UPDATE_PARTIALLY_APPLIED` envelope carrying `applied_field_ids`, `rejected_fields` (with the API's per-field message, decoded from its JSON-encoded form) and `verified`. `applied_field_ids` comes from re-reading the card rather than from the mutation's `updatedNode`, which has been observed omitting a field that did persist. An unattributed `userErrors` path (empty or null) fail-closes `applied_field_ids` rather than treating a pre-filled field as written by this batch. When the confirming read does not run, recovery is retry-only-rejected from the envelope, not a follow-up `get_card`. Retrying the whole batch after a partial write duplicated items on `operation: "ADD"`. `update_card` also gained the `try/except` envelope and the `debug` argument it lacked against `update_card_field`. (#675, absorbing #596)
+
+
 ## [0.5.2-beta.1] - 2026-09-11
 
 ### Changed

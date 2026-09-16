@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from pipefy_sdk import PartialCardUpdateError
+
 from pipefy_cli.main import app
 
 
@@ -326,6 +328,51 @@ def test_card_update_field_updates(runner, clean_pipefy_env, saved_cwd, oauth_en
     mock_client.update_card.assert_awaited_once()
     kwargs = mock_client.update_card.await_args.kwargs
     assert kwargs["field_updates"] == [{"fieldId": "f1", "value": "v"}]
+
+
+def test_card_update_partial_failure_reports_what_landed(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The CLI inherits the split from the SDK error, with no card-command change.
+
+    ``run_cli_command`` already maps ``PipefyError`` to exit 1 with the message on
+    stderr, so parity with the MCP tool holds by construction rather than by a
+    second copy of the logic.
+    """
+    oauth_env("upd-card-partial")
+    mock_client = MagicMock()
+    mock_client.update_card = AsyncMock(
+        side_effect=PartialCardUpdateError(
+            card_id="501",
+            applied_field_ids=["f1"],
+            rejected=[{"field_id": "f2", "message": "not in a valid format"}],
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "card",
+                "update",
+                "501",
+                "--field-updates",
+                json.dumps(
+                    [
+                        {"fieldId": "f1", "value": "v"},
+                        {"fieldId": "f2", "value": "bad"},
+                    ]
+                ),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 1
+    stderr = result.stderr or ""
+    assert "f1" in stderr
+    assert "not in a valid format" in stderr
+    assert "ADD" in stderr
 
 
 def test_card_delete_with_yes(runner, clean_pipefy_env, saved_cwd, oauth_env):
