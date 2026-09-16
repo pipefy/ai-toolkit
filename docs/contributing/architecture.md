@@ -218,7 +218,7 @@ Three reasons produced this split. The first is the shape of the call, which pro
 
 That second reason is what makes `pipefy-auth` and `pipefy-infra` two packages rather than one. Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares pydantic alone, so every package takes it cheaply. One shared package instead of two puts the login machinery in every SDK install.
 
-What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. The determinism of a behavior settles the rest, so deterministic resolution, such as a friendly identifier to a uuid, lives in the SDK. Ambiguous resolution lives above it, where a human or an LLM can decide.
+What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. Resolution sits above the SDK. The SDK offers a search as its own operation, over a paginated result, and takes an argument that already identifies a resource. The CLI and the MCP server compose the two, because picking one match out of many is a decision.
 
 | Name | Functions | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
