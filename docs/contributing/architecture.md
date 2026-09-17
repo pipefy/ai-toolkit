@@ -6,7 +6,7 @@ This document maps the architecture of the AI Toolkit. Over Pipefy's public API,
 
 ### Requirements overview
 
-Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to external AI agents. That reach is part of a wider opening, to every consumer that does not act through Pipefy's website. In every component, two forces come first: what the people who prompt external agents expect, and the limits of their model. A programmer and a terminal user hold expectations of their own, and those only apply to the CLI and the SDK.
+Pipefy is fully invested in the AI ecosystem. Its own AI agents already execute work and change how processes run. This toolkit opens the same reach to external AI agents. That reach is part of a wider opening, to every consumer that does not act through Pipefy's website. In every component, two forces come first: what the people who prompt external agents expect, and the limits of their model. A programmer and a terminal user hold expectations of their own, and those only apply to the CLI and the SDK.
 
 **Toolkit functions.** Pipefy's API provides full product functionality, but several steps sit between a caller's intent and the operation that serves it. This toolkit encapsulates API complexity through ergonomic components. [Package decomposition](#package-decomposition) says which component delivers each one.
 
@@ -162,7 +162,7 @@ These are the decisions everything else rests on. Some answer a goal that [Quali
 | Authenticity | Only the identity provider says who a caller is. A credential is read once for a process, or once for a request, and never held as shared state | [Identity lifetime](#identity-lifetime) |
 | Resource utilization | A tool does the whole job in code, so the model spends one call rather than a chain of them. A deployment also narrows the catalog it sees | [Tool surface](#tool-surface) |
 | Diagnosability | An application turns input into typed values at its edge, so nothing unchecked reaches the code behind it. Every reply has one shape, and a failure says what probably went wrong and what to do next | [Response shape](#response-shape), [Composition root](#composition-root) |
-| Stability | Most of the code is an adapter around a small hexagonal core, so a vendor change stops at the adapter that wraps it | [Dependency rule](#dependency-rule), [Ports and dependency inversion](#ports-and-dependency-inversion) |
+| Stability | Most of the code is presentation or gateway around a small service layer, so a vendor change stops at the part that wraps it | [Dependency rule](#dependency-rule), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | Each public surface keeps a deprecated path working for a stated period | [`DEPRECATION.md`](../DEPRECATION.md) |
 | One way in per component: an import, a command, a tool call, and a playbook that carries the procedure for two of them | The MCP server declares a schema that a client loads at connect, the CLI takes a command that composes with other commands, and a skill carries the procedure for either. Both applications sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
@@ -218,7 +218,7 @@ Three reasons produced this split. The first is the shape of the call, which pro
 
 That second reason is what makes `pipefy-auth` and `pipefy-infra` two packages rather than one. Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares pydantic alone, so every package takes it cheaply. One shared package instead of two puts the login machinery in every SDK install.
 
-What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. Resolution sits above the SDK. The SDK offers a search as its own operation, over a paginated result, and takes an argument that already identifies a resource. The CLI and the MCP server compose the two, because picking one match out of many is a decision.
+What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. That is why an application holds all four layers of [Dependency rule](#dependency-rule), while a library holds the bottom two. Resolution sits above the SDK. The SDK offers a search as its own operation, over a paginated result, and takes an argument that already identifies a resource. The CLI and the MCP server compose the two, because picking one match out of many is a decision.
 
 | Name | Functions | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
@@ -559,15 +559,18 @@ These rules hold whichever building block you are in, which is why none of them 
 
 ### Dependency rule
 
-The code has a hexagonal shape with a thin core. Most of this codebase is an adapter, because `pipefy-mcp-server` wraps the MCP SDK and the Pipefy SDK, while `pipefy-cli` wraps Typer over the Pipefy SDK. The logic that is genuinely ours is small, so the core is small. A module that touches a framework does the work of an adapter, and it is not a leak. This shape serves `QR-2`, because a vendor change stops at the adapter that wraps it. The reasoning behind the model is in the decision record [ADR-0001](adr/0001-layered-responsibility.md).
+The code has a thin service layer. Most of this codebase is presentation or gateway, because `pipefy-mcp-server` wraps the MCP SDK and the Pipefy SDK, while `pipefy-cli` wraps Typer over the Pipefy SDK. The logic that is genuinely ours is small, so the service layer is small. A module that touches a framework does the work of presentation or of a gateway, and it is not a leak. This shape serves `QR-2`, because a vendor change stops at the part that wraps it. The reasoning behind the model is in the decision record [ADR-0001](adr/0001-layered-responsibility.md).
 
-The hexagonal shape has these parts:
+The stack has four layers, top to bottom, which is the path a call travels:
 
-- Domain (core). Pure types and logic. It owns the ports that it needs from the outside. It imports no framework and no third-party SDK.
-- Adapter. It translates an outside type into a domain type, or it registers domain behavior with a framework. Framework and third-party SDK imports live here.
-- Composition root. The per-application wiring, which [Composition root](#composition-root) describes.
+- Presentation. What the outside touches, and what shapes the answer that goes back out. Framework and third-party SDK imports live here.
+- Application. Intent and orchestration, which is which operations run to satisfy one request.
+- Service. The domain rules and the domain types. It owns the ports that it needs from the outside, and it imports no framework and no third-party SDK.
+- Gateway. The outbound effect, which is the network, the keychain, the file system, and the log stream. Framework and third-party SDK imports live here too.
 
-Imports point inward. An outer part can import an inner one, never the reverse. The direction holds between packages, between the layers of one package, and between the roles inside it.
+Two positions are not layers. A facade is the published face of a layer. A composition root sits off the stack, and [Composition root](#composition-root) describes it. An application holds all four layers, whereas a library holds the bottom two, so the SDK and `packages/auth` hold no application layer.
+
+The stack above is not the import direction on every edge. Between packages an import points inward, and an outer package imports an inner one, never the reverse. Inside a package three edges agree with the stack, and the edge between the service layer and a gateway inverts where that edge carries a port.
 
 Between packages, ruff `TID251` bans the inward-breaking imports, where two rules produce every entry:
 
@@ -576,24 +579,34 @@ Between packages, ruff `TID251` bans the inward-breaking imports, where two rule
 
 Each package's own `pyproject.toml` holds its list, with one message per banned package. Within the MCP package, import-linter holds the folder order that [MCP server](#mcp-server) names, which is `QR-14`. A second import-linter contract forbids a `pipefy_mcp.settings` import from the `tools` layer, and every exception in it is reviewed as a per-deployment read or as a startup type import. The enforced spine is the acyclic import chain that holds today, and this section restates neither list.
 
-Inside a package, a role is the position a module takes in the inward chain, which is a domain type, a driven adapter, a use case, or a facade. The first two are the parts above at module scale, and the last two have no counterpart there. A facade imports a use case, a use case imports a driven adapter, and a driven adapter imports a domain type, whereas a domain type imports none of them. In an application a driving adapter sits outside the facade, because the outside touches it first, and a middleware around an inbound call is one. The composition root sits off that chain, because it constructs every part and therefore imports across the direction. [ADR-0004](adr/0004-vertical-slice-structure.md) holds that contract and the reasoning behind it, while `MODULE-1` and `MODULE-2` in [`conventions.md`](conventions.md) place a module by the role it takes. No package declares a check for this order, because the one contract that exists holds a folder order instead, and [Risks and technical debt](#risks-and-technical-debt) states what that leaves unheld.
+Inside a package, the four layers above place every module. Presentation imports application, and application imports service, so both edges agree with the stack. On the edge beneath, the service layer declares the port and a gateway fulfills it, so that import runs from the gateway to the service layer. Where the edge carries no port, the service layer imports the gateway, and `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md) decide which edges earn one. A facade is the published face of a layer, and it takes that layer's position in the direction. The composition root sits off the stack, because it constructs every part and therefore imports across the direction. [ADR-0001](adr/0001-layered-responsibility.md) holds the stack and the reasoning behind it, while `MODULE-1` and `MODULE-2` in [`conventions.md`](conventions.md) place a module by the layer it takes. No package declares a check for this order, because the one contract that exists holds a folder order instead, and [Risks and technical debt](#risks-and-technical-debt) states what that leaves unheld.
+
+```mermaid
+flowchart TB
+    presentation["Presentation"] --> application["Application"]
+    application --> service["Service"]
+    service --> gateway["Gateway"]
+```
+
+That is the stack, and an arrow is the path a call travels. The diagram below is the import direction, which differs on the bottom edge.
 
 ```mermaid
 flowchart LR
     root["Composition root"]
-    subgraph chain["The inward chain"]
+    subgraph chain["The import direction"]
         direction LR
-        driving["Driving adapter"] --> facade["Facade"]
-        facade --> usecase["Use case"]
-        usecase --> driven["Driven adapter"]
-        driven --> domain["Domain type"]
+        presentation["Presentation"] --> application["Application"]
+        application --> service["Service"]
+        service --> port["Port, declared in the service layer"]
+        gateway["Gateway"] --> port
+        service -->|"where no port exists"| gateway
     end
     root -.->|constructs| chain
 ```
 
-A solid arrow is an import that the chain permits. The dotted arrow is construction, and the composition root imports across the chain to perform it.
+A solid arrow is an import that the direction permits. The dotted arrow is construction, and the composition root imports across the stack to perform it.
 
-An application is entered through a driving port, and its driving adapter is what the outside touches, for example an MCP tool call or a CLI command. The core calls a driven adapter to reach the outside, for example Pipefy data access. A library is not entered this way, because a caller imports it and calls it directly.
+An application is entered through its presentation layer, for example an MCP tool call or a CLI command. The service layer reaches the outside through a gateway, for example Pipefy data access. A library is not entered this way, because a caller imports it and calls it directly.
 
 ### Declared dependencies
 
@@ -607,9 +620,9 @@ The five packages of this workspace are different. Each one takes a single exact
 
 ### Ports and dependency inversion
 
-Business logic depends on an interface shaped by what it needs, and the adapter implements it. This rule states where the boundary sits, so "invert" does not mean "invert everything". The boundary is domain to infrastructure: a third-party SDK, the network, a database. Ports are not universal, and the rules that add one are `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md).
+The service layer depends on an interface shaped by what it needs, and the gateway implements it. This rule states where the boundary sits, so "invert" does not mean "invert everything". The boundary is the service layer to a gateway: a third-party SDK, the network, a database. Ports are not universal, and the rules that add one are `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md).
 
-These are the ports the repository owns today. `GraphQLExecutor` in the SDK is a driven port over the GraphQL client. The attachment service owns `S3Uploader` and `UrlDownloader`. A test injects a fake against each, which is `QR-13`. Each one serves `QR-2` too, because a change behind a port stops at that port. The outbound HTTP chain of the iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
+These are the ports the repository owns today. `GraphQLExecutor` in the SDK is a port over the GraphQL client. The attachment service owns `S3Uploader` and `UrlDownloader`. A test injects a fake against each, which is `QR-13`. Each one serves `QR-2` too, because a change behind a port stops at that port. The outbound HTTP chain of the iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
 
 ### Composition root
 
