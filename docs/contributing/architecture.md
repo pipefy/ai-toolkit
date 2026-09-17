@@ -326,17 +326,17 @@ flowchart TB
 
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
-| Facade | Service, as the published facade | Constructs each service, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
+| Facade | Service, as the published facade | Constructs each gateway, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
 | Preflight validation | Service | Validates a change against the API rules before the change runs, which is `FR-3` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
-| Operation gateways | Gateway, with a service inside the few that fan out | Runs a named operation against the Pipefy API, where a few services fan out over several calls | One method per named operation, which the facade delegates to | `services/`, and `utils/organization_identifiers.py` |
-| Wire documents | Gateway | Holds the GraphQL document that each service sends | A document that a service imports | `queries/` |
-| GraphQL port and executor | Service port, with a gateway behind it | Declares the `GraphQLExecutor` port, and ships the authenticated implementation behind it | The port that a service takes, and the transport that fulfills it | `graphql_executor.py` |
+| Operation gateways | Gateway, with a service inside the few that fan out | Runs a named operation against the Pipefy API, where a few of them fan out over several calls | One method per named operation, which the facade delegates to | `services/`, and `utils/organization_identifiers.py` |
+| Wire documents | Gateway | Holds the GraphQL document that each gateway sends | A document that a gateway imports | `queries/` |
+| GraphQL port and executor | Service port, with a gateway behind it | Declares the `GraphQLExecutor` port, and ships the authenticated implementation behind it | The port that a gateway takes, and the transport that fulfills it | `graphql_executor.py` |
 | Input models | Service, as a domain type | Validates the input, before any call leaves | A pydantic model that a public method takes | `models/` |
 | Error classification | Service, as a domain type | Turns a GraphQL problem into a typed exception | The exception hierarchy, and the problem parser behind it | `exceptions.py`, `graphql_problem.py` |
-| Pure helpers | Service, as a domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a service or the package surface calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
+| Pure helpers | Service, as a domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a gateway or the package surface calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
 | Configuration and telemetry | Service, as a domain type | Holds the parsed configuration, and builds the outbound headers that name the caller | A settings object, and the `User-Agent` that every request carries | `settings.py`, `telemetry.py` |
 
-An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. A library owns no composition root, because the caller wires it, so the facade constructs the services that it delegates to.
+An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. A library owns no composition root, because the caller wires it, so the facade constructs the gateways that it delegates to.
 
 Preflight validation is a service, because one answer is correct for every caller, and the SDK holds no layer above its service layer. A narrower defect survives, because each function takes a `PipefyClient` and therefore imports the facade that publishes it. [Risks and technical debt](#risks-and-technical-debt) carries that, and the grouping inside the few operation gateways that fan out.
 
@@ -634,7 +634,7 @@ A tool module does not construct a concrete client. It receives what it needs fr
 
 **By component.**
 
-- SDK: owns no composition root, because the caller wires it, so the facade constructs the services it delegates to.
+- SDK: owns no composition root, because the caller wires it, so the facade constructs the gateways it delegates to.
 - CLI: wires at its entry point, without a single runtime module.
 - MCP: centralizes the wiring in `core/runtime.py`.
 - Skills: not reached.
