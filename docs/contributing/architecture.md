@@ -301,7 +301,7 @@ The SDK folders are role-pure, so a folder is one block here. The package root i
 flowchart TB
     subgraph sdk["SDK"]
         direction TB
-        preflight["Preflight checks"]
+        preflight["Preflight validation"]
         facade["Facade"]
         services["Domain services"]
         documents["Wire documents"]
@@ -327,7 +327,7 @@ flowchart TB
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Facade | Facade | Constructs each service, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
-| Preflight checks | Use case | Checks a change against the API rules before the change runs, which is `FR-3` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
+| Preflight validation | Use case | Validates a change against the API rules before the change runs, which is `FR-3` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
 | Domain services | Driven adapter | Runs a named operation against the Pipefy API, where a few services fan out over several calls | One method per named operation, which the facade delegates to | `services/`, and `utils/organization_identifiers.py` |
 | Wire documents | Driven adapter | Holds the GraphQL document that each service sends | A document that a service imports | `queries/` |
 | GraphQL port and executor | Driven adapter | Declares the `GraphQLExecutor` port, and ships the authenticated implementation behind it | The port that a service takes, and the transport that fulfills it | `graphql_executor.py` |
@@ -338,7 +338,7 @@ flowchart TB
 
 An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block on the chain that [Dependency rule](#dependency-rule) draws. A library owns no composition root, because the caller wires it, so the facade constructs the services that it delegates to.
 
-The preflight checks sit above the facade rather than below it, because each one takes a `PipefyClient` and calls it. That inverts the chain, and [Risks and technical debt](#risks-and-technical-debt) carries it.
+Preflight validation sits above the facade rather than below it, because each function takes a `PipefyClient` and calls it. That inverts the chain, and [Risks and technical debt](#risks-and-technical-debt) carries it.
 
 The `utils/` folder splits between two blocks, because `organization_identifiers.py` reaches a query document while the rest are pure. [Risks and technical debt](#risks-and-technical-debt) carries that grouping too.
 
