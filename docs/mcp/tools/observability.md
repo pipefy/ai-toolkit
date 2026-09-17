@@ -58,10 +58,12 @@ Empty lists (`totalCount: 0`) are valid: the pipe or automation may have no rece
 
 ## AI Agent log tools
 
+`llmConfigInfo` describes the configuration used for that execution, not the agent's current settings. The object and its model/name can be null when unavailable; preserve that distinction when auditing. The API does not expose effort or temperature in this object. SDK `get_ai_agent_log_details`, MCP, and `pipefy agent logs get --json` return the same fields.
+
 | Tool | Read-only | Role |
 |------|-----------|------|
 | `get_ai_agent_logs` | Yes | Lists AI agent execution logs for a pipe (`repo_uuid`). Filter by `status` (`processing`, `failed`, `success`) and `search_term`. Paginated with `first` / `after`. |
-| `get_ai_agent_log_details` | Yes | Detailed log by UUID: execution time, finish timestamp, and `tracingNodes` — step-by-step trace with per-node status (`success`, `failed`, `skipped`, `conditions_not_met`). |
+| `get_ai_agent_log_details` | Yes | Detailed log by UUID: execution time, finish timestamp, `llmConfigInfo` (`model`, `name`, `provider`), and `tracingNodes` — step-by-step trace with per-node status (`success`, `failed`, `skipped`, `conditions_not_met`). |
 
 ## Automation log tools
 

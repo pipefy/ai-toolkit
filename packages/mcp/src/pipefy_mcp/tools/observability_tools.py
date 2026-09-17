@@ -134,6 +134,10 @@ class ObservabilityTools:
         ) -> dict[str, Any]:
             """Get detailed AI agent execution log by UUID. Includes executionTime, finishedAt, and tracingNodes — a step-by-step trace of each action the agent performed with per-node status (success, failed, skipped, conditions_not_met).
 
+            ``llmConfigInfo`` reports the execution's ``model``, ``provider``, and
+            configuration ``name`` when available. Missing values stay null; this
+            is execution metadata, not the agent's current configuration.
+
             Args:
                 log_uuid: UUID of the AI agent log entry.
                 debug: When True, append GraphQL codes and correlation_id to errors.

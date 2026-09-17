@@ -30,7 +30,7 @@ Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
 | Tool (MCP) | CLI | Read-only | Purpose |
 |------------|-----|-----------|---------|
 | `get_ai_agent_logs` | `pipefy agent logs list` | Yes | Execution history for a specific AI agent. |
-| `get_ai_agent_log_details` | `pipefy agent logs get` | Yes | Single execution detail for an AI agent log entry. |
+| `get_ai_agent_log_details` | `pipefy agent logs get` | Yes | Execution trace and `llmConfigInfo` (`model`, `name`, `provider`); null means unavailable, not the current agent settings. |
 | `get_automation_logs` | `pipefy automation logs --automation` | Yes | Execution history for an automation (by automation ID). |
 | `get_automation_logs_by_repo` | `pipefy automation logs --repo` | Yes | Automation logs filtered by pipe. |
 | `get_agents_usage` | `pipefy usage agents` | Yes | Org-level AI agent execution count and trends. |
