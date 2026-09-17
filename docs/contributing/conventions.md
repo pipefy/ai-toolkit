@@ -148,32 +148,33 @@ Why: the type already carries the guarantee. A second check invites a third, and
 
 ## Module placement
 
-**MODULE-1. Place a module by the role it takes, not by the kind of file it is.**
+**MODULE-1. Place a module by the layer it takes, not by the kind of file it is.**
 
 Do
 
-- Decide the role before the file name: a domain type, a driven adapter, a use case, or a facade.
-- Treat a module that takes a client and orchestrates calls against it as a use case.
-- Treat a module with no client and no I/O as a domain type.
+- Decide the layer before the file name: presentation, application, service, or gateway.
+- Treat a module that takes a client and orchestrates calls against it as the application layer in an application, and as a service in a library.
+- Treat a module that performs the outbound effect as a gateway.
+- Treat a module with no client and no I/O as a domain type, which sits in the service layer.
 
 Do not
 
 - Group by file kind, such as a `validators` or a `helpers` module.
 
-Why: `QR-14` demands that a merged change never breaks the layer order, and a misplaced module breaks it in silence. [`architecture.md`](architecture.md) states the direction between the roles, and [ADR-0004](adr/0004-vertical-slice-structure.md) holds the reasoning.
+Why: `QR-14` demands that a merged change never breaks the layer order, and a misplaced module breaks it in silence. [`architecture.md`](architecture.md) states the stack and the import direction, and [ADR-0001](adr/0001-layered-responsibility.md) holds the reasoning.
 
-**MODULE-2. A use case lives with its package's use cases, never at the package root.**
+**MODULE-2. A library holds no application layer, and no service imports the facade that publishes it.**
 
 Do
 
-- Put SDK orchestration under `services/`.
-- Put an MCP tool's orchestration in that tool's helpers module.
+- Put SDK orchestration under `services/`, as a service.
+- Put an MCP tool's orchestration in that tool's helpers module, as the application layer.
 
 Do not
 
 - Let a module at the package root take a facade and call it.
 
-Why: `QR-14` again. A root use case sits in no layer, so no contract can hold it, and it reaches back to the facade that imports it.
+Why: `QR-14` again. The SDK and `packages/auth` are libraries, so multi-step logic inside them is a service and not a use case. A module that reaches back to the facade above it sits in no layer, and no contract can hold it.
 
 ## Type ownership
 
@@ -231,7 +232,7 @@ Why: a port is what makes a unit injectable, which is `QR-13`. `GraphQLExecutor`
 Do
 
 - Decide per module, by whether that module performs the I/O itself.
-- Ask the question of a shared support library and of a driving adapter alike.
+- Ask the question of a shared support library and of the presentation layer alike.
 - Read a patched module attribute in a test as a candidate.
 
 Do not
