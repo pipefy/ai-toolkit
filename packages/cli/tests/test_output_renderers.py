@@ -159,3 +159,28 @@ def test_rich_renderer_prints_bracketed_primitives_literally() -> None:
     out = console.file.getvalue()
     assert "[on hold] escalate" in out
     assert "Notify [/marketing] team" in out
+
+
+def test_rich_renderer_prints_bracketed_column_headers_literally() -> None:
+    """A column header with brackets must print literally, not as Rich markup.
+
+    Cells are wrapped in ``Text`` so their markup is inert, but header strings
+    are passed to ``Table`` directly. Without escaping, a ``[on hold] col``
+    header is swallowed and a ``Notify [/marketing] col`` header raises
+    ``MarkupError``.
+    """
+    console = _test_console()
+    render_rich(
+        [
+            {
+                "[on hold] col": "v1",
+                "Notify [/marketing] col": "v2",
+                "id": "3",
+            }
+        ],
+        console=console,
+    )
+    out = console.file.getvalue()
+    assert "[on hold] col" in out
+    assert "Notify [/marketing] col" in out
+    assert "id" in out
