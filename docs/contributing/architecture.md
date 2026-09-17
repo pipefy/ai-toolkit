@@ -8,7 +8,7 @@ This document maps the architecture of the AI Toolkit. Over Pipefy's public API,
 
 Pipefy is fully invested in the AI ecosystem. Its own AI agents already do the work inside a process and change how the process runs. This toolkit opens the same reach to external AI agents. That reach is part of a wider opening, to every consumer that does not act through Pipefy's website. In every component, two forces come first: what the people who prompt those agents expect, and the limits of the model. A programmer and a terminal user hold expectations of their own, and those only apply to the CLI and the SDK.
 
-**Toolkit functions.** These are what the toolkit delivers. Each one is work that Pipefy's API leaves undone, or does not offer at all.
+**Toolkit functions.** Pipefy's API provides full product functionality, but several steps sit between a caller's intent and the operation that serves it. This toolkit encapsulates API complexity through ergonomic components. [Package decomposition](#package-decomposition) says which component delivers each one.
 
 - `FR-1` Persistent sign-in. When a caller has no credential, the toolkit runs a browser sign-in, stores the result, and reuses it on later calls.
 - `FR-2` Address by name. When a call identifies a resource by its name instead of its id, the toolkit finds that resource.
