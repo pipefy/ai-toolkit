@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Skills (`pipefy-process-impact`)**: consulting playbook for whether a process change is worth it. Uses Pipefy context already in the conversation; a pipe diagnosis runs only when asked (or when `pipefy-process-intelligence` is already in flight). Process-design and process-intelligence emit a 1–2 line impact blurb on material changes.
+
 ### Fixed
 
 - **Automation listings**: SDK, MCP, and CLI now return trigger IDs, event parameters, conditions, `actionEnabled`, and `disabledReason` for organization and pipe listings, avoiding a detail call per rule to audit its filters and whether the action is enabled. Listings are paged: the API caps a page at 50 rules, so `get_automations` / `pipefy automation list` accept `first` / `after` and report `totalCount` and `hasNextPage` instead of silently returning the first 50. `get_ai_automations` / `pipefy ai-automation list` expose the same page block for the mixed connection they filter. Human `pipefy automation list` prints a table of each row's scalar columns plus the page counts, leaving the nested `event_params` and `condition` to `--json`. Phase-delete preview follows every page of rules, reads their details under a concurrency bound instead of one simultaneous call per rule, and says when the dependents list is a lower bound because a page or a detail read failed. An empty pipe no longer fails `get_automation_logs_by_repo`. The last page of an audit names itself so `11 of 61` is not read as a shortfall. (#612)
