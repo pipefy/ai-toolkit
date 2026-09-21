@@ -216,6 +216,8 @@ The legend:
 
 Four decisions produced this split. The first is the interface each component offers, which produced the four components: an import, a command, a tool call, and a playbook. Each one owes something different, which [Stakeholders](#stakeholders) states per component, so each one changes for a different reason. The second is shared need, which produced the libraries beneath. The third is the cost of an install, which divided them in two. The fourth is `QR-23`, which forbids a tool description that carries a procedure. A model still needs the procedure, so it ships as a playbook beside the code, which is the one home both front ends reach.
 
+The separation then lets each application ship on its own, and no other component runs as a shared process.
+
 The interface a component offers decides who sizes the answer. A tool call gives the server that job, because one listing carries every tool with its schema and its description. The server must therefore assume that all of it reaches the model, whether or not a caller ever reaches a tool. A command and an import give the caller that job. Only the tool listing needs a bound, and [Tool surface](#tool-surface) holds it.
 
 Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares `pydantic` and `pydantic-settings` and nothing else, so every package takes them cheaply. One shared package instead of two puts the login machinery in every SDK install.
