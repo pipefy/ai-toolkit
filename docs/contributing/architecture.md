@@ -782,7 +782,7 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 | `QR-6` | What a destructive operation will destroy can be learned without running it | The reach a caller learns before the call equals what the call destroys |
 | `QR-7` | A name that fits more than one resource never quietly picks one, and the caller gets the matches instead | The caller chooses between the matches, and the toolkit chooses none |
 | `QR-8` | [Quality goals](#quality-goals), priority 3 | A caller can decide from the response alone whether to retry, change the input, or stop |
-| `QR-9` | A model sees only the tools the deployment needs | The listed tool set holds no tool outside the deployer's selection |
+| `QR-9` | A deployment exposes only the tools it selected, and the remote profile exposes only a tool that is marked remote-safe | A selection removes and never widens, so the listing holds no tool outside the deployer's selection. On the remote profile it also holds no tool that carries no remote-safe mark |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
 | `QR-12` | A partial result states what did not succeed | A caller can tell which parts succeeded and which did not from the response alone |
 | `QR-15` | The toolkit checks where a URL points before it fetches it, and it refuses a private address | A URL the toolkit fetches is refused where it points at a private address, as a literal and after it resolves |
