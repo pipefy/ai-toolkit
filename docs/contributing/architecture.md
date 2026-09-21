@@ -677,7 +677,7 @@ Today the server does more than this, because a destructive tool returns a previ
 **By component.**
 
 - SDK: asks nobody, and a missing input is an exception that the program handles.
-- CLI: states and decides, because nobody sits in front of it, and whoever runs it sets that policy with `--yes`.
+- CLI: states and asks. A person at the terminal answers, and `--yes` answers in advance for a caller with nobody present.
 - MCP: states what a tool changes, and the client decides whether a human sees that statement.
 - Skills: carry the confirmation procedure, which a tool description must not teach.
 
