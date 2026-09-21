@@ -685,7 +685,7 @@ Today the server does more than this, because a destructive tool returns a previ
 
 ### Tool surface
 
-A deployment decides how many tools it lists, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, because the server must assume that every tool it lists reaches the model. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
+A deployment decides how many tools it lists, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, for the reason that [Package decomposition](#package-decomposition) states. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
 
 Two axes classify the catalog. A domain is the one subject a tool is about, and the domains partition it, so every registered tool has exactly one. A tool profile is a journey-sized selection that crosses domains, and profiles overlap. `--toolsets` and `PIPEFY_MCP_TOOLSETS` name either kind, or a reserved keyword, so a deployment chooses without a source change, which is `QR-21`. [`docs/config.md`](../config.md) is the reference for those names and their precedence.
 
