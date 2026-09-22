@@ -773,7 +773,7 @@ Each row belongs to one or more categories, and [`quality.arc42.org`](https://qu
 
 ### Quality scenarios
 
-A row states its demand, unless [Quality goals](#quality-goals) ranks that row, in which case the goal states the demand and the row points there.
+A row states its demand. [Quality goals](#quality-goals) ranks `QR-2`, `QR-4`, `QR-5`, `QR-8`, and `QR-11` above the rest.
 
 **Usage.** A demand that a caller holds while the system runs, including when a call cannot complete or a component it needs fails.
 
@@ -781,11 +781,11 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 |---|---|---|
 | `QR-1` | An invalid request names the field and the rule it broke | The response names one field and one rule, and a caller can locate the input that failed |
 | `QR-3` | When no human is present, a run never waits for an answer, and it either goes ahead with what it has or fails | No run blocks on input where no terminal is attached |
-| `QR-4` | [Quality goals](#quality-goals), priority 1 | A request's effect is limited to what its own caller may do |
-| `QR-5` | [Quality goals](#quality-goals), priority 2 | One tool call completes one unit of user work |
+| `QR-4` | Each request acts as the person who sent it, and no caller can act as another or read another's data | A request's effect is limited to what its own caller may do |
+| `QR-5` | One tool call answers one unit of user work, and no second call is needed to get there | One tool call completes one unit of user work |
 | `QR-6` | What a destructive operation will destroy can be learned without running it | The reach a caller learns before the call equals what the call destroys |
 | `QR-7` | A name that fits more than one resource never quietly picks one, and the caller gets the matches instead | The caller chooses between the matches, and the toolkit chooses none |
-| `QR-8` | [Quality goals](#quality-goals), priority 3 | A caller can decide from the response alone whether to retry, change the input, or stop |
+| `QR-8` | A denied call states the likely cause, whether a retry can succeed, and the next step | A caller can decide from the response alone whether to retry, change the input, or stop |
 | `QR-9` | A deployment exposes only the tools it selected, and the remote profile exposes only a tool that is marked remote-safe | A selection removes and never widens, so the listing holds no tool outside the deployer's selection. On the remote profile it also holds no tool that carries no remote-safe mark |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
 | `QR-12` | A partial result states what did not succeed | A caller can tell which parts succeeded and which did not from the response alone |
@@ -807,8 +807,8 @@ A row states its demand, unless [Quality goals](#quality-goals) ranks that row, 
 
 | ID | Demand | Acceptance criterion |
 |---|---|---|
-| `QR-2` | [Quality goals](#quality-goals), priority 4 | A vendor schema change touches no type or signature on the SDK's public surface |
-| `QR-11` | [Quality goals](#quality-goals), priority 5 | A deprecated path keeps working for at least two minor releases |
+| `QR-2` | A reshaped GraphQL response never reaches the code that imports the SDK | A vendor schema change touches no type or signature on the SDK's public surface |
+| `QR-11` | After v1.0, a deprecated public SDK function warns first and keeps working | A deprecated path keeps working for at least two minor releases |
 | `QR-13` | A test can be written for any unit, and a test that passes tells the truth about the released code | A unit can be exercised with a fake in place of every dependency, and the suite runs on every platform the toolkit ships to |
 | `QR-14` | A merged change never breaks the layer order | A merge that inverts the import direction fails a build check |
 | `QR-21` | A deployment picks which tools it exposes by configuration, and never by changing the source | A deployment changes its tool set without a release |
