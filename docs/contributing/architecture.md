@@ -65,9 +65,9 @@ Each Pipefy party confirmed its own row. The programmer, the terminal user, the 
 
 Every decision on this map works inside the constraints below. A limit that is not listed here binds no decision. Each row names the constraint, what it applies to, and where it comes from. Where another file holds the detail, a line under the table names that file.
 
-A limit on technology goes under `Technical`. A limit from the organization, from a contract, or from law goes under `Organizational`. The rules we set for ourselves are conventions, and the block below names each set with the file that holds it. Once we lift a limit, its row goes, and `Risks and technical debt` carries the code still written against it.
+A limit on technology goes under `Technical`. A limit from the organization, from a contract, or from law goes under `Organizational`. A rule we set for ourselves goes under `Conventions`.
 
-A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row.
+A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row. Once we lift a limit, its row goes, and [Risks and technical debt](#risks-and-technical-debt) carries the code still written against it.
 
 **Technical.**
 
