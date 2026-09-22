@@ -30,15 +30,15 @@ Pipefy is fully invested in the AI ecosystem, and its own AI agents already exec
 
 ### Quality goals
 
-These qualities dominate every decision on this map. Where two of them conflict, the higher row wins. Each row pairs a goal with the scenario that makes it concrete, and [Quality scenarios](#quality-scenarios) holds the rest of the set.
+These qualities dominate every decision on this map. Where two of them conflict, the higher row wins. Each row states why the goal earns its rank, [Solution strategy](#solution-strategy) states what it produced, and [Quality scenarios](#quality-scenarios) states what it demands.
 
-| Priority | Quality goal | Scenario |
+| Priority | Quality goal | Why it ranks here |
 |---|---|---|
-| 1 | Authenticity | Two callers hold sessions on one remote process. Each request acts as the person who sent it, so neither caller can act as the other or read the other's data. (`QR-4`) |
-| 2 | Resource utilization | A model asks for one card by name. One tool call answers it, and no second call is needed to get there. (`QR-5`) |
-| 3 | Diagnosability | A GraphQL call is denied. The response states the likely cause, whether a retry can succeed, and the next step. (`QR-8`) |
-| 4 | Stability | Pipefy reshapes a GraphQL response. The change never reaches the code that imports the SDK. (`QR-2`) |
-| 5 | Backward compatibility | After v1.0, a release deprecates a public SDK function. A warning comes first, and the function works for two more minor releases. (`QR-11`) |
+| 1 | Authenticity | A hosted server holds sessions for many people at once, and every call reaches a customer's own Pipefy data (`QR-4`) |
+| 2 | Resource utilization | A model pays for every call, and a long chain loses the thread before the work is done (`QR-5`) |
+| 3 | Diagnosability | Nobody watches a run an agent starts, so a failure explains itself or the work stops (`QR-8`) |
+| 4 | Stability | Pipefy owns the GraphQL schema, and this project does not (`QR-2`) |
+| 5 | Backward compatibility | The toolkit ships in the open, so a caller we cannot see depends on the surface (`QR-11`) |
 
 The contributor, the maintainer, the domain expert, and Privacy, Legal and Compliance hold no quality goal.
 
