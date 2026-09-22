@@ -30,7 +30,7 @@ Pipefy is fully invested in the AI ecosystem, and its own AI agents already exec
 
 ### Quality goals
 
-These qualities dominate every decision on this map. Where two of them conflict, the higher row wins. Each row states why the goal earns its rank, [Solution strategy](#solution-strategy) states what it produced, and [Quality scenarios](#quality-scenarios) states what it demands.
+The table below ranks the qualities that dominate every decision on this map. Where two of them conflict, the higher row wins. Each row states why the goal earns its rank. [Solution strategy](#solution-strategy) states what the goal produced, and [Quality scenarios](#quality-scenarios) states what the goal demands.
 
 | Priority | Quality goal | Why it ranks here |
 |---|---|---|
