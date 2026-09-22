@@ -81,7 +81,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **`Quality goals`, arc42 1.2.** Three to five qualities, in the priority order that arc42 asks for here.
 
-- A goal is a catalog name plus the one scenario that is the most important `QR` in its category. The name is abstract, and the scenario makes it concrete. `Quality scenarios` points back at the goal rather than restating it, so the demand is stated once. Arc42 1.2 points forward to arc42 10, and the pointer back is this map's choice.
+- A goal is a catalog name plus the reason it holds its rank, and it cites the most important `QR` in its category. The name is abstract, the `QR` carries the demand, and the reason says what is at stake. `Quality scenarios` states the demand, and `Solution strategy` states what the goal produced, so 1.2 states neither. Arc42's form for 1.2 suggests a scenario instead, and the reason is this map's choice.
 - The `QR` rows carry no rank, because a rank there would reopen where each new row slots in.
 - The order changes only when something outside this file changes what matters: a pivot, an incident, a regulation, a cost limit, a vendor change, or a new key stakeholder.
 
@@ -106,9 +106,9 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **`Solution strategy`, arc42 4.** The most important decisions in one table: a driver, the decision it produced, and the section that details it. The goal rows come first, in the `Quality goals` order, so they grow only when that section does.
 
-- One table with three columns, although arc42 4 suggests four: a quality goal, a scenario, a solution approach, and a link. The scenario sits inside the driver here, because `Quality goals` already states it. A second table would put a second grammar in one section.
+- One table with three columns, although arc42 4 suggests four: a quality goal, a scenario, a solution approach, and a link. No scenario column exists here, because `Quality scenarios` states every demand and `Quality goals` carries the handle that reaches it. A second table would put a second grammar in one section.
 - A driver says what happens, in words a person would say, and never the category it falls in. It opens with the phrase and puts the `QR` handle in parentheses after it. Where no `QR` carries the driver, write it out rather than borrow the nearest handle. Where a `QR` admits more than one mechanism, the driver says which demand rules the others out.
-- A decision names the mechanism that meets its driver and never explains it, because the linked section owns the explanation. A decision and the check that keeps it true are two rows. Where a goal's scenario has a half that no settled mechanism serves, leave that half out.
+- A decision names the mechanism that meets its driver and never explains it, because the linked section owns the explanation. A decision and the check that keeps it true are two rows. Where a demand has a half that no settled mechanism serves, leave that half out.
 - The last column links the owner, and never a decision record. An organizational commitment earns a row only where it shapes the architecture. The language and the distribution shape are stated here, with the reason that drove them.
 
 **`Building block view`, arc42 5.** The static structure, with one subsection per whitebox, named after the axis that whitebox splits on. The two sublevels take our names, `Package decomposition` and `Inside each package`, where arc42 says `Whitebox overall system` and `Level 2`, because arc42's names label a slot and ours name the subject.
@@ -128,7 +128,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 - The overview at 10.1 groups every row by its Q42 category, and it is the only place that mapping is written. The categories overlap by design, so a row can appear under several, and never force a row to one. Arc42 10.1 offers ISO 25010 or Q42, and we take Q42.
 - A scenario row at 10.2 carries its ID, then the demand in one line in the words of the party that holds it, then an acceptance criterion. The rows sit in arc42's two categories: a reaction while the system runs, and a change to the system or to what it depends on.
-- A criterion is observable, it states what must hold, and it carries a number only where this repository owns that number. A row that `Quality goals` ranks states no demand of its own.
+- A criterion is observable, it states what must hold, and it carries a number only where this repository owns that number.
 
 **`Risks and technical debt`, arc42 11.** See [Where a gap is documented](#where-a-gap-is-documented). Arc42 11 wants those entries ordered by priority.
 
