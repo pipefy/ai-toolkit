@@ -63,7 +63,7 @@ Each Pipefy party confirmed its own row. The programmer, the terminal user, the 
 
 ## Architecture constraints
 
-Every decision on this map works inside these constraints, and this section is the whole list. Each row names the constraint and says where it comes from. Where another file states the rules, the owner under the table points there.
+Every decision on this map works inside the constraints below. A limit that is not listed here binds no decision. Each row names the constraint, what it applies to, and where it comes from. Where another file holds the detail, a line under the table names that file.
 
 A limit on technology goes under `Technical`. A limit from the organization, from a contract, or from law goes under `Organizational`. The rules we set for ourselves are conventions, and the block below names each set with the file that holds it. Once we lift a limit, its row goes, and `Risks and technical debt` carries the code still written against it.
 
