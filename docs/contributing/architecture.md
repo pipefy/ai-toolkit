@@ -84,7 +84,7 @@ We work inside a constraint rather than around it. When a limit blocks us, we ne
 | No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
 | No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
 
-[`docs/ipaas.md`](../ipaas.md) owns the iPaaS flow, and each `pyproject.toml` owns the Python floor.
+[`docs/ipaas.md`](../ipaas.md) owns the tool catalog, and each `pyproject.toml` owns the Python floor.
 
 **Organizational.**
 
@@ -98,7 +98,7 @@ We work inside a constraint rather than around it. When a limit blocks us, we ne
 | A compliance review before a regulated skill merges | Skills | Pipefy's Privacy, Legal and Compliance team reviews a skill for a regulated industry, or one that decides about a person, before merge |
 | A compliance card on a regulated blueprint | Skills | Pipefy's terms set the card, and the contribution rules require one on a blueprint for a regulated industry |
 
-[`TERMS.md`](../../TERMS.md) owns the license notice. No check reads the license of a dependency, so a reviewer applies the row above before a new dependency lands. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card.
+[`TERMS.md`](../../TERMS.md) owns the license notice, and [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off, the review and the card. The compatible-license row has no file and no check behind it, so a reviewer applies it before a new dependency lands.
 
 **Conventions.**
 
