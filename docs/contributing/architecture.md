@@ -40,8 +40,6 @@ The table below ranks the qualities that dominate every decision on this map. Wh
 | 4 | Stability | Pipefy owns the GraphQL schema, and this project does not (`QR-2`) |
 | 5 | Backward compatibility | The toolkit ships in the open, so a caller we cannot see depends on the surface (`QR-11`) |
 
-The contributor, the maintainer, the domain expert, and Privacy, Legal and Compliance hold no quality goal.
-
 ### Stakeholders
 
 The contributor row also holds what a tester, a code reviewer, and a developer would ask for, because this project has nobody who plays those parts separately. A contributor can be an agent rather than a person, which is what [`AGENTS.md`](../../AGENTS.md) exists for.
