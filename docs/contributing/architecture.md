@@ -42,7 +42,7 @@ The table below ranks the qualities that dominate every decision on this map. Wh
 
 ### Stakeholders
 
-The contributor row also holds what a tester, a code reviewer, and a developer would ask for, because this project has nobody who plays those parts separately. A contributor can be an agent rather than a person, which is what [`AGENTS.md`](../../AGENTS.md) exists for.
+The table below says who the toolkit serves, and what each role expects. The contributor row is wider than its name. It holds what a tester, a code reviewer, and a developer would ask for, because this project has nobody who plays those parts separately. A contributor can also be an agent rather than a person.
 
 | Role/Name | Description | Expectations |
 |---|---|---|
