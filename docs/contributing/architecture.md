@@ -67,7 +67,7 @@ Every decision on this map works inside the constraints below. A limit that is n
 
 A limit on technology goes under `Technical`. A limit from the organization, from a contract, or from law goes under `Organizational`. A rule we set for ourselves goes under `Conventions`.
 
-A constraint is dealt with rather than escaped. A limit that blocks us is negotiated with the party that set it. A widening then lands as a decision record, and the record corrects the row. Once we lift a limit, its row goes, and [Risks and technical debt](#risks-and-technical-debt) carries the code still written against it.
+We work inside a constraint rather than around it. When a limit blocks us, we negotiate with the party that set it. A widened limit lands as a decision record, and the record corrects the row. A lifted limit takes its row with it, and [Risks and technical debt](#risks-and-technical-debt) carries the code still written against it.
 
 **Technical.**
 
