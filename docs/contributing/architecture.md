@@ -16,7 +16,7 @@ Pipefy is fully invested in the AI ecosystem, and its own AI agents already exec
 - `FR-4` Schema discovery. The toolkit returns the part of the schema a call asks for, by keyword or by type name, and never the whole schema.
 - `FR-5` iPaaS reach. The toolkit reaches the flows of a pipe's iPaaS workspace with no second credential for the engine behind them.
 
-**Pipefy capabilities.** The functions above act on these capabilities. Each one is a sub-domain of Pipefy's domain model. Pipefy does not publish that model, so the Domain expert row in [Stakeholders](#stakeholders) is the way to contact its owners.
+**Pipefy capabilities.** The list below is the toolkit's reach into the product. Each entry names a sub-domain of Pipefy's domain model, and gives only the operations the toolkit covers, not the whole sub-domain. Pipefy keeps that model internal, so an outside contributor cannot check a name against it, and must not invent one. The Domain expert row in [Stakeholders](#stakeholders) is the way to the model's owners.
 
 - Work Execution: create a card, move it through the phases of a pipe, fill what a phase requires, comment on it, attach a file, and read or send its email.
 - Process Modeling: create and change a pipe, its phases, its fields, its field conditions, its labels, and its automations. Create and change an AI agent, with the behaviors it runs and the knowledge it reads.
