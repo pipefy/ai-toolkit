@@ -136,11 +136,11 @@ flowchart LR
 
 The table lists the seven parties that the toolkit depends on, and which components reach each one, because no component works with all seven. The skills appear in no row, because a playbook runs no code of its own.
 
-| Partner | Reached by | What crosses |
+| Party | Reached by | What crosses |
 |---|---|---|
-| Pipefy GraphQL API | SDK, CLI, MCP | Every capability in [Requirements overview](#requirements-overview) |
+| Pipefy GraphQL API | SDK, CLI, MCP | Every capability in [Requirements overview](#requirements-overview) except an iPaaS flow |
 | File storage | SDK, CLI, MCP | The bytes of an attachment, up and down |
-| iPaaS HTTP API | MCP | The flows of a pipe's workspace, and the credential exchange they need |
+| iPaaS HTTP API | MCP | The flows of a pipe's iPaaS workspace, and the token exchange that reaches them |
 | Pipefy identity provider (OIDC) | CLI, MCP | A login, and the validation of an inbound bearer |
 | System web browser | CLI | A login handed off, and the authorization code that comes back |
 | OS keychain | CLI, MCP | A stored credential |
