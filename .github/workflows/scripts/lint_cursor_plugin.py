@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Cursor plugin packaging: manifest, published skill set, and .mcp.json."""
+"""Validate plugin packaging: Cursor manifest, both published skill lists, and .mcp.json."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ HOSTED_MCP_URL = "https://mcp.pipefy.com/mcp"
 HOSTED_MCP_TYPE = "http"
 HOSTED_CLIENT_ID = "pipefy-mcp"
 HOSTED_MCP_FILENAME = ".mcp.json"
+CLAUDE_PLUGIN_MANIFEST = Path(".claude-plugin/plugin.json")
 REQUIRED_MANIFEST_MCP_SERVERS = "./.mcp.json"
 FORBIDDEN_ROOT_MCP_JSON = "mcp.json"
 REQUIRED_DISPLAY_NAME = "Pipefy"
@@ -244,14 +245,14 @@ def _lint_skill_set(
     errors: list[str] = []
     for path in sorted(tree - declared):
         errors.append(
-            f"skills array is missing {path!r}; expected the manifest to list "
-            "every published skill directory from git ls-files "
+            f"{manifest_rel} skills array is missing {path!r}; expected the "
+            "manifest to list every published skill directory from git ls-files "
             "'skills/**/SKILL.md'"
         )
     for path in sorted(declared - tree):
         errors.append(
-            f"skills array lists {path!r}, which is not a tracked skill "
-            "directory; expected a path from git ls-files "
+            f"{manifest_rel} skills array lists {path!r}, which is not a tracked "
+            "skill directory; expected a path from git ls-files "
             "'skills/**/SKILL.md'"
         )
     return errors
@@ -366,6 +367,15 @@ def _lint_mcp(root: Path, mcp_path: Path) -> list[str]:
     return errors
 
 
+def _lint_tracked_skill_manifest(
+    root: Path, manifest_path: Path, tree: set[str]
+) -> list[str]:
+    loaded = _load_json(root, manifest_path)
+    if isinstance(loaded, str):
+        return [loaded]
+    return _lint_skill_set(_rel(root, manifest_path), loaded, tree)
+
+
 def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
     """Return packaging errors for a plugin rooted at ``root``.
 
@@ -387,8 +397,10 @@ def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
     errors.extend(_lint_no_forbidden_root_mcp_json(root))
     errors.extend(_lint_commands_suppressed(manifest_rel, loaded))
     errors.extend(_lint_logo(root, manifest_rel, loaded))
+    published = skill_dirs_from_ls_files(skill_md_paths)
+    errors.extend(_lint_tracked_skill_manifest(root, manifest_path, published))
     errors.extend(
-        _lint_skill_set(manifest_rel, loaded, skill_dirs_from_ls_files(skill_md_paths))
+        _lint_tracked_skill_manifest(root, root / CLAUDE_PLUGIN_MANIFEST, published)
     )
     for field, raw in _iter_path_values(loaded):
         err = _path_field_error(root, manifest_rel, field, raw)
