@@ -146,12 +146,7 @@ The table lists the seven parties that the toolkit depends on, and which compone
 | OS keychain | CLI, MCP | A stored credential |
 | Local filesystem | SDK, CLI, MCP | A config file, a stored credential, and the bytes of a local file |
 
-The legend:
-
-- The table names what crosses as a concept, and never the class that implements it. [Package decomposition](#package-decomposition) draws the same partners on the package whose code performs each crossing.
-- Where a crossing has a port, [Ports and dependency inversion](#ports-and-dependency-inversion) names it, and [Risks and technical debt](#risks-and-technical-debt) carries every one that has none.
-- An LLM agent reaches all four components. A program reaches the SDK and the CLI, and a person reaches the CLI. A person stands up what an agent reaches, by wiring an MCP client and installing a playbook. [Package decomposition](#package-decomposition) holds the four.
-- What each component does about a credential is in [Identity lifetime](#identity-lifetime), and a deployment profile decides which channel the MCP server serves.
+Where a crossing has a port, [Ports and dependency inversion](#ports-and-dependency-inversion) names it.
 
 ## Solution strategy
 
