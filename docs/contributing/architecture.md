@@ -110,7 +110,7 @@ In domain terms, the toolkit acts on the Pipefy organizations that a caller can 
 
 [Requirements overview](#requirements-overview) names every capability the toolkit reaches on pipes, cards, tables and records, and the GraphQL schema owns the shape of each. A flow of the iPaaS is the exception, because it runs on a separate engine, so the `Vocabulary` section of [`docs/ipaas.md`](../ipaas.md) defines it.
 
-The diagram draws the toolkit as one box, with every party it exchanges data with. The box holds four components, which are the SDK, the CLI, the MCP server and the skills.
+The diagram draws the toolkit as one box, with every party it exchanges data with. The box holds the components of the toolkit, which are the SDK, the CLI, the MCP server and the skills.
 
 ```mermaid
 flowchart LR
