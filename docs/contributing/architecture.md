@@ -134,7 +134,7 @@ flowchart LR
     toolkit --> files["Local filesystem"]
 ```
 
-No install reaches every partner, so the table says which components reach each one.
+The table lists the seven parties that the toolkit depends on, and which components reach each one, because no component works with all seven. The skills appear in no row, because a playbook runs no code of its own.
 
 | Partner | Reached by | What crosses |
 |---|---|---|
