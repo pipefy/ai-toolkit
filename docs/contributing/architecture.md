@@ -106,7 +106,9 @@ Every rule we set for ourselves lives in a file of its own, so this block has no
 
 ## Context and scope
 
-In domain terms, the toolkit acts on the Pipefy organizations that a caller can access. Every call acts as a member of one of them. Inside an organization, a pipe holds the definition of a process and a card is one run of that process. A table holds records of the business entities a process uses, and a record has no lifecycle of its own. [Requirements overview](#requirements-overview) names every capability the toolkit reaches around those, and the GraphQL schema owns the entity shape. The flows of the iPaaS are the exception, because they run on a separate engine, and [`docs/ipaas.md`](../ipaas.md) defines those terms.
+In domain terms, the toolkit acts on the Pipefy organizations that a caller can access, and each call runs under the caller's membership in one of them. Inside an organization, a pipe holds the definition of a process and a card is one run of that process. A database table holds records of the business entities a process uses. Unlike a card, a record has no lifecycle of its own, because it moves through no phases.
+
+[Requirements overview](#requirements-overview) names every capability the toolkit reaches on pipes, cards, tables and records, and the GraphQL schema owns the shape of each. A flow of the iPaaS is the exception, because it runs on a separate engine, so the `Vocabulary` section of [`docs/ipaas.md`](../ipaas.md) defines it.
 
 The diagram draws the toolkit as one box, with every party it exchanges data with.
 
