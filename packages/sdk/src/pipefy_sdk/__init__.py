@@ -9,6 +9,7 @@ from pipefy_sdk.exceptions import AiAgentConfigureError, PipefyAPIError, PipefyE
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
+    phase_fill_no_write_result,
     skipped_field_ids,
 )
 from pipefy_sdk.graphql_executor import PipefyGraphQLError
@@ -156,6 +157,7 @@ __all__ = [
     "download_bytes",
     "filter_editable_field_definitions",
     "filter_fields_by_definitions",
+    "phase_fill_no_write_result",
     "MePayload",
     "MemberInvite",
     "MemberRemovalResult",

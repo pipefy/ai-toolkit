@@ -22,6 +22,7 @@ from pipefy_sdk import (
 from pipefy_sdk import (
     filter_fields_by_definitions as _filter_fields_by_definitions,
 )
+from pipefy_sdk import phase_fill_no_write_result as _phase_fill_no_write_result
 from pipefy_sdk import skipped_field_ids as _skipped_field_ids
 from pipefy_sdk.models.form import MalformedFieldDefinitionError
 from pydantic import ValidationError
@@ -1262,23 +1263,13 @@ class PipeTools:
             await ctx.debug(f"Provided fields: {fields}")
 
             if not expected_fields:
-                read_message = phase_fields_result.get("message")
-                if required_fields_only and read_message:
-                    message = f"{read_message} Nothing was updated."
-                elif given_fields:
-                    message = (
-                        f"Phase '{phase_name}' has no editable fields; "
-                        "nothing was updated."
-                    )
-                else:
-                    message = "No fields to update."
-                return {
-                    "success": True,
-                    "message": message,
-                    "phase_id": phase_id,
-                    "phase_name": phase_name,
-                    "skipped_field_ids": _skipped_field_ids(given_fields, {}),
-                }
+                return _phase_fill_no_write_result(
+                    phase_fields_result,
+                    fields,
+                    {},
+                    phase_id=phase_id,
+                    required_fields_only=required_fields_only,
+                )
 
             field_data = given_fields
             elicited: dict[str, Any] | None = None
@@ -1302,27 +1293,14 @@ class PipeTools:
                 dropped = _skipped_field_ids(given_fields, field_data)
 
             if not field_data:
-                # The phase does have editable fields, so "No fields to
-                # update." would be false: values were needed and none were
-                # collected. Reachable when the caller passed no fields, or
-                # when every key it passed was dropped by the editable-field
-                # filter. An agent reading only the message must not
-                # conclude the card is complete.
-                message = (
-                    "No field values were collected, so nothing was updated. "
-                    f"Phase '{phase_name}' has {len(expected_fields)} editable "
-                    "field(s); pass 'fields' keyed by the IDs from "
-                    "get_phase_fields(phase_id)."
+                return _phase_fill_no_write_result(
+                    phase_fields_result,
+                    fields,
+                    field_data,
+                    phase_id=phase_id,
+                    required_fields_only=required_fields_only,
+                    include_skipped_field_ids=elicited is None,
                 )
-                no_write: dict[str, Any] = {
-                    "success": True,
-                    "message": message,
-                    "phase_id": phase_id,
-                    "phase_name": phase_name,
-                }
-                if elicited is None:
-                    no_write["skipped_field_ids"] = dropped
-                return no_write
 
             field_updates = [
                 {"field_id": field_id, "value": value}

@@ -24,6 +24,7 @@ from pipefy_sdk.exceptions import AiAgentConfigureError
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
+    phase_fill_no_write_result,
     skipped_field_ids,
 )
 from pipefy_sdk.graphql_executor import (
@@ -958,7 +959,7 @@ class PipefyClient:
     async def get_ai_automation(
         self, automation_id: str
     ) -> AutomationRuleRecord | None:
-        """MCP-named alias for :meth:`get_automation`."""
+        """Return an automation rule by id, or None when the id is missing."""
         return await self.get_automation(automation_id)
 
     async def get_ai_automations(
@@ -1145,7 +1146,7 @@ class PipefyClient:
     async def delete_ai_automation(
         self, automation_id: str
     ) -> DeleteAutomationServiceResult:
-        """MCP-named alias for :meth:`delete_automation`."""
+        """Delete an automation rule by id."""
         return await self.delete_automation(automation_id)
 
     async def get_ai_agent(self, agent_uuid: str) -> AiAgentGraphPayload:
@@ -1712,36 +1713,17 @@ class PipefyClient:
         expected_fields = filter_editable_field_definitions(
             phase_fields_result.get("fields", [])
         )
-        phase_name = phase_fields_result.get("phase_name") or f"Phase {phase_id}"
         given_fields = fields or {}
         field_data = filter_fields_by_definitions(given_fields, expected_fields)
-        dropped = skipped_field_ids(given_fields, field_data)
         if not field_data:
-            if expected_fields:
-                message = (
-                    "No field values were collected, so nothing was updated. "
-                    f"Phase '{phase_name}' has {len(expected_fields)} editable "
-                    "field(s); pass 'fields' keyed by the IDs from "
-                    "get_phase_fields(phase_id)."
-                )
-            else:
-                read_message = phase_fields_result.get("message")
-                if required_fields_only and read_message:
-                    message = f"{read_message} Nothing was updated."
-                elif given_fields:
-                    message = (
-                        f"Phase '{phase_name}' has no editable fields; "
-                        "nothing was updated."
-                    )
-                else:
-                    message = "No fields to update."
-            return {
-                "success": True,
-                "message": message,
-                "phase_id": phase_id,
-                "phase_name": phase_name,
-                "skipped_field_ids": dropped,
-            }
+            return phase_fill_no_write_result(
+                phase_fields_result,
+                fields,
+                field_data,
+                phase_id=phase_id,
+                required_fields_only=required_fields_only,
+            )
+        dropped = skipped_field_ids(given_fields, field_data)
         field_updates = [
             {"field_id": field_id, "value": value}
             for field_id, value in field_data.items()

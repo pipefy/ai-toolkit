@@ -41,3 +41,50 @@ def skipped_field_ids(
 ) -> list[str]:
     """Field ids present in ``fields`` but dropped by ``filter_fields_by_definitions``."""
     return [field_id for field_id in fields if field_id not in kept_fields]
+
+
+def phase_fill_no_write_result(
+    phase_fields_result: dict[str, Any],
+    fields: dict[str, Any] | None,
+    field_data: dict[str, Any],
+    *,
+    phase_id: str | int,
+    required_fields_only: bool,
+    include_skipped_field_ids: bool = True,
+) -> dict[str, Any]:
+    """Envelope for a phase fill that will not call ``update_card``.
+
+    Callers pass an empty ``field_data``. ``include_skipped_field_ids`` is false
+    when an accepted form already replaced the caller's keys.
+    """
+    expected_fields = filter_editable_field_definitions(
+        phase_fields_result.get("fields", [])
+    )
+    phase_name = phase_fields_result.get("phase_name") or f"Phase {phase_id}"
+    given_fields = fields or {}
+    if expected_fields:
+        message = (
+            "No field values were collected, so nothing was updated. "
+            f"Phase '{phase_name}' has {len(expected_fields)} editable "
+            "field(s); pass 'fields' keyed by the IDs from "
+            "get_phase_fields(phase_id)."
+        )
+    else:
+        read_message = phase_fields_result.get("message")
+        if required_fields_only and read_message:
+            message = f"{read_message} Nothing was updated."
+        elif given_fields:
+            message = (
+                f"Phase '{phase_name}' has no editable fields; nothing was updated."
+            )
+        else:
+            message = "No fields to update."
+    result: dict[str, Any] = {
+        "success": True,
+        "message": message,
+        "phase_id": phase_id,
+        "phase_name": phase_name,
+    }
+    if include_skipped_field_ids:
+        result["skipped_field_ids"] = skipped_field_ids(given_fields, field_data)
+    return result
