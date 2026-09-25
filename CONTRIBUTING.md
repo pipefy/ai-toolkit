@@ -65,15 +65,16 @@ Missing or mismatched `name` fails CI.
 ### Style guide
 
 - Action-first headlines: "Create a card" not "Card creation process".
-- Show MCP tool names in tables; add the CLI equivalent when it is **shipped** in [`docs/parity.md`](docs/parity.md), or mark deferred CLI as `— (deferred)`.
+- Keep `SKILL.md` surface-neutral: domain rules, payload shapes, steps and operation names. Move MCP controls to `references/mcp.md` and commands/flags to `references/cli.md`, linking each from the body. Only document **shipped** CLI equivalents from [`docs/parity.md`](docs/parity.md); mark missing ones deferred.
 - Prefer explicit IDs over names (Pipefy IDs are stable; labels change).
 - Keep the skill under 500 lines. Split by sub-domain if it grows larger.
-- Link to related skills with `See also:` rather than copying content.
+- Refer to related skills by name with `See also:` rather than paths or copied content, so flattened installations work.
 
 ### Tool references
 
-Every MCP tool name and top-level `pipefy` CLI token referenced in a `SKILL.md` table
-or example is checked in CI (`skills-lint.yml` runs `.github/workflows/scripts/lint_skill_refs.py`):
+Operation names in tables and top-level `pipefy` CLI tokens in `SKILL.md` and
+its `references/**/*.md` files are checked in CI (`skills-lint.yml` runs
+`.github/workflows/scripts/lint_skill_refs.py`):
 
 - MCP tool names in the first column of tool tables must exist in `PIPEFY_TOOL_NAMES`.
 - Invocations of the form `pipefy <subcommand>` must use a subcommand registered on the

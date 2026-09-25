@@ -3,19 +3,21 @@ name: pipefy-observability
 description: >
   Use this skill when the user wants to check AI agent logs, automation
   execution logs, org-level usage stats, AI credit consumption, or export
-  automation job history. Covers 11 MCP tools.
+  automation job history. Covers 11 operations.
 tags: [pipefy, observability, logs, usage, credits, exports]
 ---
 
 # Observability
 
-Monitor AI agent and automation execution, usage stats, credit consumption, and export job history. **11 MCP tools.**
+Read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for the surface you are using. Load only the relevant reference.
+
+Monitor AI agent and automation execution, usage stats, credit consumption, and export job history. **11 operations.**
 
 ---
 
 ## Identifiers reference
 
-Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
+Full identifier map: [observability identifiers](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/identifiers.md#observability).
 
 | Concept | What tools expect | How to obtain |
 |---------|-------------------|---------------|
@@ -27,19 +29,19 @@ Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
 
 ## Tools
 
-| Tool (MCP) | CLI | Read-only | Purpose |
-|------------|-----|-----------|---------|
-| `get_ai_agent_logs` | `pipefy agent logs list` | Yes | Execution history for a specific AI agent. |
-| `get_ai_agent_log_details` | `pipefy agent logs get` | Yes | Single execution detail for an AI agent log entry. |
-| `get_automation_logs` | `pipefy automation logs --automation` | Yes | Execution history for an automation (by automation ID). |
-| `get_automation_logs_by_repo` | `pipefy automation logs --repo` | Yes | Automation logs filtered by pipe. |
-| `get_agents_usage` | `pipefy usage agents` | Yes | Org-level AI agent execution count and trends. |
-| `get_automations_usage` | `pipefy usage automations` | Yes | Org-level automation execution stats. |
-| `get_automation_execution_metrics` | `pipefy usage execution-metrics` | Yes | Per-automation execution metrics (totalRuns, success/failure rate, avg duration, lastRun) over a rolling window; partial success returns `partial_errors` for denied ids. |
-| `get_ai_credit_usage` | `pipefy usage credits` | Yes | AI credit consumption and remaining balance. |
-| `export_automation_jobs` | `pipefy export automation-jobs` | Yes | Trigger async export of automation job history. |
-| `get_automation_jobs_export` | `pipefy automation export status` | Yes | Poll export job status (after `export_automation_jobs`). |
-| `get_automation_jobs_export_csv` | `pipefy export automation-jobs-csv` | Yes | Download finished automation-jobs export as CSV text. |
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_ai_agent_logs` | Yes | Execution history for a specific AI agent. |
+| `get_ai_agent_log_details` | Yes | Single execution detail for an AI agent log entry. |
+| `get_automation_logs` | Yes | Execution history for an automation (by automation ID). |
+| `get_automation_logs_by_repo` | Yes | Automation logs filtered by pipe. |
+| `get_agents_usage` | Yes | Org-level AI agent execution count and trends. |
+| `get_automations_usage` | Yes | Org-level automation execution stats. |
+| `get_automation_execution_metrics` | Yes | Per-automation execution metrics (totalRuns, success/failure rate, avg duration, lastRun) over a rolling window; partial success returns `partial_errors` for denied ids. |
+| `get_ai_credit_usage` | Yes | AI credit consumption and remaining balance. |
+| `export_automation_jobs` | Yes | Trigger async export of automation job history. |
+| `get_automation_jobs_export` | Yes | Poll export job status (after `export_automation_jobs`). |
+| `get_automation_jobs_export_csv` | Yes | Download finished automation-jobs export as CSV text. |
 
 ---
 
@@ -47,23 +49,23 @@ Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
 
 1. **Get the pipe UUID** (not the numeric pipe ID):
 
-   MCP: `get_pipe pipe_id=67890`
+   Operation: `get_pipe pipe_id=67890`
 
    Capture `pipe.uuid` from the response.
 
 2. **Fetch recent agent logs:**
 
-   MCP: `get_ai_agent_logs repo_uuid=<UUID> page=1`
+   Operation: `get_ai_agent_logs repo_uuid=<UUID> page=1`
 
 3. **Identify the failed execution** — look for `status: failed` entries.
 
 4. **Check credit usage** if the agent stopped unexpectedly:
 
-   MCP: `get_ai_credit_usage organization_id=123`
+   Operation: `get_ai_credit_usage organization_id=123`
 
-5. **Fix and re-enable** — update the agent config (see `skills/ai-agents/`) and toggle status:
+5. **Fix and re-enable** — update the agent config (see `pipefy-ai-agents`) and toggle status:
 
-   MCP: `toggle_ai_agent_status agent_id=456`
+   Operation: `toggle_ai_agent_status agent_id=456`
 
 ---
 
@@ -71,17 +73,17 @@ Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
 
 1. **Trigger the export:**
 
-   MCP: `export_automation_jobs organization_id=123 period="current_month"`
+   Operation: `export_automation_jobs organization_id=123 period="current_month"`
 
 2. **Poll for completion:**
 
-   MCP: `get_automation_jobs_export export_id=<EXPORT_ID>`
+   Operation: `get_automation_jobs_export export_id=<EXPORT_ID>`
 
    Repeat until `status` is `finished` or `failed`.
 
 3. **Fetch CSV text** (when finished):
 
-   MCP: `get_automation_jobs_export_csv export_id=<EXPORT_ID>`
+   Operation: `get_automation_jobs_export_csv export_id=<EXPORT_ID>`
 
 ---
 
@@ -99,5 +101,5 @@ Full cross-tool map: `docs/mcp/tools/identifiers.md#observability`.
 
 ## See also
 
-- `skills/ai-agents/` — create and configure AI agents.
-- `skills/automations/` — create and debug automation rules.
+- `pipefy-ai-agents` — create and configure AI agents.
+- `pipefy-automations` — create and debug automation rules.

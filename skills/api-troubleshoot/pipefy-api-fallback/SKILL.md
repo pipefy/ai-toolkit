@@ -1,7 +1,7 @@
 ---
 name: pipefy-api-fallback
 description: >
-  Use this skill when an MCP tool fails AND the introspection skill could
+  Use this skill when a toolkit operation fails AND the introspection skill could
   not resolve the problem. This is the last-resort fallback (Tier 3):
   call the Pipefy GraphQL API directly using curl or httpx, authenticating
   with the Service Account (OAuth2) or a Personal Access Token (PAT)
@@ -12,19 +12,19 @@ tags: [pipefy, graphql, api, fallback, troubleshooting, curl]
 
 # Pipefy API Fallback (Tier 3 — Last Resort)
 
-This skill activates only after Tiers 1 and 2 have failed. Call the Pipefy GraphQL API directly, bypassing the MCP server.
+Read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for the surface you are using. Load only the relevant reference.
+
+This skill activates only after Tiers 1 and 2 have failed. Call the Pipefy GraphQL API directly, bypassing the toolkit connection.
 
 ---
 
 ## 3-tier resolution strategy (always follow in order)
 
-| Tier | Method | When |
-|------|--------|------|
-| **1** | Dedicated MCP tool (`create_card`, `get_phase_cards`, `get_phase_allowed_move_targets`, `update_pipe`, etc.) | Always try first. For card/phase seeding and inventory, see [Seed pipe across phases](../../pipes-and-cards/pipefy-pipes-and-cards/SKILL.md#seed-pipe-across-phases). |
-| **2** | Introspection + `execute_graphql` | When no dedicated tool exists or a tool fails unexpectedly. See [skills/introspection/pipefy-introspection/SKILL.md](../../introspection/pipefy-introspection/SKILL.md). |
-| **3** | Direct HTTP via curl / httpx (this skill) | When the MCP server itself is unavailable, or `execute_graphql` fails with an infrastructure error. |
+1. Try a dedicated operation (`create_card`, `get_phase_cards`, `get_phase_allowed_move_targets`, `update_pipe`, etc.). For card/phase seeding and inventory, see `pipefy-pipes-and-cards` — Seed pipe across phases.
+2. Use schema introspection and `execute_graphql` when a dedicated operation is unavailable or fails unexpectedly. See `pipefy-introspection`.
+3. Use direct HTTP only when the toolkit connection is unavailable or GraphQL execution fails with an infrastructure error.
 
-**Do not jump to Tier 3 after a single tool failure.** Follow the tiers in order.
+**Do not jump to Tier 3 after a single failure.** Follow the tiers in order. Testing a new mutation belongs in Tier 2.
 
 ---
 
@@ -65,7 +65,7 @@ PATs are deprecated for new integrations but may still exist in the environment.
 | Schema introspection only | `https://app.pipefy.com/graphql` |
 | OAuth2 token | `https://app.pipefy.com/oauth/token` |
 
-Real operations go to `api.pipefy.com`; introspection goes to `app.pipefy.com`. The MCP server and CLI route between the two automatically (both derived from `PIPEFY_BASE_URL`); raw-API users must distinguish them by hand.
+Real operations go to `api.pipefy.com`; introspection goes to `app.pipefy.com`. Raw-API users must distinguish these endpoints by hand.
 
 ---
 
@@ -97,20 +97,9 @@ curl -s -X POST https://api.pipefy.com/graphql \
 
 ---
 
-## When to use direct API vs MCP tools
-
-| Situation | Use |
-|-----------|-----|
-| MCP server running normally | MCP tools (Tier 1 or 2) |
-| MCP server down / unreachable | Direct API (Tier 3) |
-| `execute_graphql` returns 500 error | Direct API (Tier 3) |
-| Testing a new mutation before MCP tool exists | `execute_graphql` (Tier 2) — not direct API |
-
----
-
 ## Introspection via raw API
 
-When you need to discover schema without MCP tools, call `app.pipefy.com/graphql`:
+When you need to discover schema over direct HTTP, call `app.pipefy.com/graphql`:
 
 ```bash
 # All queries and mutations
@@ -146,7 +135,7 @@ GraphQL always returns HTTP 200, even on errors. Check the `errors` array, not t
 
 ## Ambiguous write failure (re-read before retry)
 
-Write tools and `execute_graphql` can report failure even when the mutation already applied. Blind retry duplicates customer data (e.g. many cards created despite `success: false`).
+Write operations and `execute_graphql` can report failure even when the mutation already applied. Blind retry duplicates customer data (e.g. many cards created despite `success: false`).
 
 1. **Do not** immediately re-run the same create/mutation.
 2. **Re-read** first: `get_cards` / `get_phase_cards_count` / returned ids / `cards_count` on the pipe or phase you targeted. Prefer comparing to a count or id set you recorded **before** the write when available.
@@ -163,7 +152,7 @@ Write tools and `execute_graphql` can report failure even when the mutation alre
 - Instead, use `createCard` with the `throughConnectors` parameter. Prerequisite: a connector field with `canCreateNewConnected: true` must exist.
 
 ### Pipe listing shorter than `pipesCount`
-- `pipesCount` is the org-wide total; `organization { pipes { ... } }` and `search_pipes` return only the pipes the calling identity is a member of. A shorter listing, or an empty one, is expected behavior and not an error. Role does not widen it: a `super_admin` gets the same membership-scoped result. Detail and workarounds: [`docs/mcp/tools/organization.md`](../../../docs/mcp/tools/organization.md#why-counts-disagree).
+- `pipesCount` is the org-wide total; `organization { pipes { ... } }` and `search_pipes` return only the pipes the calling identity is a member of. A shorter listing, or an empty one, is expected behavior and not an error. Role does not widen it: a `super_admin` gets the same membership-scoped result. Detail and workarounds: [`docs/mcp/tools/organization.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/organization.md#why-counts-disagree).
 - `organization { pipes(include_publics: true) }` widens the listing with pipes that are public inside the org. It still normally returns fewer than `pipesCount`.
 - Service accounts hit this most often: an SA starts as a member of nothing.
 - Pipes created via API are automatically visible to the SA.
@@ -198,7 +187,7 @@ Search for the exact error message + "Pipefy GraphQL", or the mutation name + "e
 
 Only after all 3 tiers and external resources have failed:
 
-1. State exactly what was tried (MCP tool, introspection, raw API).
+1. State exactly what was tried (dedicated operation, introspection, raw API).
 2. Show the verbatim error response.
 3. Propose a concrete workaround (e.g., "create via the Pipefy UI, then continue via API with the resulting ID").
 4. Stop — do not loop.
@@ -226,4 +215,4 @@ Only after all 3 tiers and external resources have failed:
 
 ## See also
 
-- [skills/introspection/pipefy-introspection/SKILL.md](../../introspection/pipefy-introspection/SKILL.md) — Tier 2: use `execute_graphql` and introspection tools through the MCP server before falling back to direct HTTP.
+- `pipefy-introspection` — Tier 2: use `execute_graphql` and introspection tools before falling back to direct HTTP.

@@ -3,63 +3,50 @@ name: pipefy-introspection
 description: >
   Use this skill when you need to discover GraphQL type shapes, mutation
   signatures, enum values, or execute arbitrary GraphQL as a fallback.
-  This is the first fallback tier (Tier 2) when dedicated MCP tools fail
-  or don't exist for an operation. 7 MCP tools.
+  This is the first fallback tier (Tier 2) when dedicated operations fail
+  or don't exist for an operation. 7 operations.
 tags: [pipefy, introspection, graphql, schema, fallback]
 ---
 
 # Introspection & Raw GraphQL
 
-Schema discovery, organization info, and a fallback executor. **7 MCP tools.**
+Read only the reference for your active surface: [MCP](references/mcp.md) or [CLI](references/cli.md). The workflows below use shared operation names and arguments.
 
-This is **Tier 2** in the resolution strategy: when a dedicated MCP tool fails or doesn't exist, use introspection to understand the API, then `execute_graphql` to run the operation directly.
+Schema discovery, organization info, and a fallback executor. **7 operations.**
 
-**Tier 1:** dedicated MCP tool exists — use it.
+This is **Tier 2** in the resolution strategy: when a dedicated operation fails or doesn't exist, use introspection to understand the API, then `execute_graphql` to run the operation directly.
+
+**Tier 1:** dedicated operation exists — use it.
 **Tier 2:** use introspection + `execute_graphql` (this skill).
-**Tier 3:** direct curl/httpx fallback — see [skills/api-troubleshoot/pipefy-api-fallback/SKILL.md](../../api-troubleshoot/pipefy-api-fallback/SKILL.md).
+**Tier 3:** direct curl/httpx fallback — see `pipefy-api-fallback`.
 
 ---
 
 ## Tools
 
-| Tool (MCP) | CLI | Read-only | Purpose |
-|------------|-----|-----------|---------|
-| `introspect_type` | `pipefy introspect type` | Yes | Type shape: `fields`, `inputFields`, `enumValues`. Optional `max_depth`. |
-| `introspect_query` | `pipefy introspect query` | Yes | Root query arguments and return type. Optional `max_depth`. |
-| `introspect_mutation` | `pipefy introspect mutation` | Yes | Root mutation arguments and return type. Optional `max_depth`. |
-| `search_schema` | `pipefy introspect schema search` | Yes | Keyword search on type names/descriptions. Optional `kind` filter. |
-| `execute_graphql` | `pipefy graphql exec` | No | Execute arbitrary GraphQL. Queries ungated. Mutations: MCP two-step with `confirmation_token`; CLI `--yes`. |
-| `get_organization` | `pipefy org get` | Yes | Load organization info (name, plan, UUID, member count, pipe count). |
-| `list_organizations` | `pipefy org list` | Yes | List organizations the caller can access — no id required. The zero-knowledge entry point for org discovery. |
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `introspect_type` | Yes | Type shape: `fields`, `inputFields`, `enumValues`. Optional `max_depth`. |
+| `introspect_query` | Yes | Root query arguments and return type. Optional `max_depth`. |
+| `introspect_mutation` | Yes | Root mutation arguments and return type. Optional `max_depth`. |
+| `search_schema` | Yes | Keyword search on type names/descriptions. Optional `kind` filter. |
+| `execute_graphql` | No | Execute arbitrary GraphQL. |
+| `get_organization` | Yes | Load organization info (name, plan, UUID, member count, pipe count). |
+| `list_organizations` | Yes | List organizations the caller can access — no id required. The zero-knowledge entry point for org discovery. |
 
 ---
 
-## The `include_parsed` flag
-
-`execute_graphql`, `introspect_type`, `introspect_mutation`, `introspect_query`, and `get_organization` all accept an optional `include_parsed: bool` (default `false`).
-
-- **Default (`false`):** response is `{ success, result }` where `result` is the raw GraphQL JSON as a **string**.
-- **`true`:** response includes **both** `result` (the raw JSON string) AND `data` (the parsed dict). Drill into `data` programmatically; keep `result` to forward verbatim.
-
-Use `include_parsed=true` whenever you plan to read nested fields (e.g. iterating over `phases[].fields[]`). Leave it off for one-shot reads where the raw string is sufficient.
-
 ## `max_depth` (introspect_type / query / mutation)
 
-MCP tools accept `max_depth` (default `1`). CLI: `--max-depth`.
+`max_depth` defaults to `1`.
 
 - **`1`** — type/field info only (no inlined sub-types).
 - **`2+`** — resolves referenced input/output types inline (`resolvedType`), so one call can replace introspecting the mutation then each input type separately.
 
-Example (CLI):
-
-```bash
-pipefy introspect mutation createCard --max-depth 2 --json
-```
-
-Example (MCP):
+Example:
 
 ```
-introspect_mutation mutation_name="createCard" max_depth=2 include_parsed=true
+introspect_mutation mutation_name="createCard" max_depth=2
 ```
 
 Scalars (`ID`, `String`, `Int`, …) are never expanded.
@@ -70,10 +57,6 @@ Optional filter: `OBJECT`, `INPUT_OBJECT`, `ENUM`, `SCALAR`, `INTERFACE`, `UNION
 
 ```
 search_schema keyword="automation" kind="INPUT_OBJECT"
-```
-
-```bash
-pipefy introspect schema search automation --kind INPUT_OBJECT --json
 ```
 
 ---
@@ -88,12 +71,12 @@ pipefy introspect schema search automation --kind INPUT_OBJECT --json
 
 ## When to use `execute_graphql`
 
-- No dedicated MCP tool exists for the operation.
+- No dedicated operation exists for the operation.
 - A dedicated tool failed and you've used introspection to understand the correct payload.
 - Ad-hoc queries like resolving an org UUID via `pipe(id: $id) { organization { uuid } }`.
 - Complex nested queries that no single tool covers.
 
-**Always prefer dedicated MCP tools.** They validate inputs, handle pagination, and format errors consistently. `execute_graphql` is the fallback when dedicated tools can't solve the problem. Queries are ungated; MCP mutations need the two-step `confirmation_token`.
+**Always prefer dedicated operations.** They validate inputs, handle pagination, and format errors consistently. `execute_graphql` is the fallback when dedicated tools can't solve the problem.
 
 ---
 
@@ -117,25 +100,7 @@ pipefy introspect schema search automation --kind INPUT_OBJECT --json
    introspect_type type_name="CreateLabelInput"
    ```
 
-4. **Execute the mutation (CLI):**
-
-   ```bash
-   pipefy graphql exec --query "mutation …" --vars '{"input":{…}}' --yes --json
-   ```
-
-   > **Mutations:** the CLI exits with code 2 unless `--yes` is passed (guardrail for agents and scripts). It also exits 2, with or without `--yes`, when the document is too deeply nested to parse: nothing is sent, because a document that cannot be classified could carry an unconfirmed mutation. `execute_graphql` refuses the same document with an error payload.
-
-5. **Execute the mutation (MCP):** two-step. The first call returns a preview with `confirmation_token` and does not mutate. The preview names the mutation; it does not claim the write is irreversible, because this server cannot tell create from delete. Resend the call unchanged with `confirm=true` and the token; if the document changed, the response is a fresh preview whose token is bound to the new document.
-
-   ```
-   execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}'
-   ```
-
-   Then after the preview:
-
-   ```
-   execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}' confirm=true confirmation_token="<token from preview>"
-   ```
+4. **Execute** `execute_graphql` with the discovered mutation and its variables.
 
 ---
 
@@ -192,16 +157,10 @@ execute_graphql query='query($id: ID!) { pipe(id: $id) { organization { id uuid 
 
 ### Recipe 6 — Update a select field's options after creation
 
-`create_phase_field` does not accept options. Create first, then update. MCP mutations are two-step: preview, then `confirm=true` plus `confirmation_token`. Resend the call unchanged with `confirm=true` and the token; if the document changed, the response is a fresh preview whose token is bound to the new document. CLI `--yes` can stay one-shot.
+`create_phase_field` does not accept options. Create first, then update.
 
 ```
 execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}'
-```
-
-Then after the preview:
-
-```
-execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}' confirm=true confirmation_token="<token from preview>"
 ```
 
 ### Recipe 7 — Check phase transition rules
@@ -216,12 +175,6 @@ Returns the valid destination phases from the current phase.
 
 ---
 
-## Optional schema cache
-
-For long-running agent sessions, the MCP can reuse the fetched GraphQL schema across requests instead of re-introspecting on every call. Enable via the `gql_reuse_fetched_graphql_schema` setting (env or settings file). Off by default. After a breaking Pipefy schema change, the process must be restarted to pick up the new schema. Single-session agents rarely benefit — leave it off unless you measure real improvement.
-
----
-
 ## Success criteria
 
 - `introspect_type` returns the complete field list for the input type.
@@ -232,11 +185,11 @@ For long-running agent sessions, the MCP can reuse the fetched GraphQL schema ac
 - **`introspect_type` returns `null`** — type name is case-sensitive; try PascalCase (e.g., `CreateLabelInput`, not `create_label_input`).
 - **`search_schema` returns many hits** — case-insensitive substring matching; broad keywords like `"card"` flood results. Prefer specific names like `"AiAgent"`, `"FieldCondition"`.
 - **`introspect_mutation` is expensive** — fetches all root mutation fields and filters client-side (single large query). Prefer `introspect_type` on the specific input type when you already know the mutation name.
-- **`execute_graphql` returns GraphQL errors** — check `path` and `message`; pass `debug=true` on the next call to surface the `correlation_id`.
-- **Endpoint confusion** — introspection uses `app.pipefy.com/graphql`; real operations use `api.pipefy.com/graphql`. The MCP server handles this automatically; raw-API users must distinguish (see [api-fallback](../../api-troubleshoot/pipefy-api-fallback/SKILL.md)).
+- **`execute_graphql` returns GraphQL errors** — check `path` and `message`.
+- **Endpoint confusion** — introspection uses `app.pipefy.com/graphql`; real operations use `api.pipefy.com/graphql`. The toolkit routes these automatically; raw-API users must distinguish (see `pipefy-api-fallback`).
 
 ## See also
 
-- [docs/mcp/tools/introspection.md](../../../docs/mcp/tools/introspection.md) — MCP parameters, query/mutation mismatch hints on `execute_graphql`.
-- [skills/api-troubleshoot/pipefy-api-fallback/SKILL.md](../../api-troubleshoot/pipefy-api-fallback/SKILL.md) — Tier 3: direct HTTP fallback when MCP is unavailable.
-- [skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md](../../pipes-and-cards/pipefy-pipes-and-cards/SKILL.md) — most common dedicated tools (prefer over `execute_graphql`).
+- [docs/mcp/tools/introspection.md](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/introspection.md) — MCP parameters, query/mutation mismatch hints on `execute_graphql`.
+- `pipefy-api-fallback` — Tier 3: direct HTTP fallback when the toolkit is unavailable.
+- `pipefy-pipes-and-cards` — most common dedicated tools (prefer over `execute_graphql`).
