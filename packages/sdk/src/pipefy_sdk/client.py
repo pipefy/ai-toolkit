@@ -1719,7 +1719,6 @@ class PipefyClient:
             return phase_fill_no_write_result(
                 phase_fields_result,
                 fields,
-                field_data,
                 phase_id=phase_id,
                 required_fields_only=required_fields_only,
             )

@@ -46,16 +46,13 @@ def skipped_field_ids(
 def phase_fill_no_write_result(
     phase_fields_result: dict[str, Any],
     fields: dict[str, Any] | None,
-    field_data: dict[str, Any],
     *,
     phase_id: str | int,
     required_fields_only: bool,
-    include_skipped_field_ids: bool = True,
 ) -> dict[str, Any]:
     """Envelope for a phase fill that will not call ``update_card``.
 
-    Callers pass an empty ``field_data``. ``include_skipped_field_ids`` is false
-    when an accepted form already replaced the caller's keys.
+    Every key in ``fields`` is listed in ``skipped_field_ids``.
     """
     expected_fields = filter_editable_field_definitions(
         phase_fields_result.get("fields", [])
@@ -85,6 +82,5 @@ def phase_fill_no_write_result(
         "phase_id": phase_id,
         "phase_name": phase_name,
     }
-    if include_skipped_field_ids:
-        result["skipped_field_ids"] = skipped_field_ids(given_fields, field_data)
+    result["skipped_field_ids"] = list(given_fields)
     return result

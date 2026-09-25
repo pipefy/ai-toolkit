@@ -1266,7 +1266,6 @@ class PipeTools:
                 return _phase_fill_no_write_result(
                     phase_fields_result,
                     fields,
-                    {},
                     phase_id=phase_id,
                     required_fields_only=required_fields_only,
                 )
@@ -1296,10 +1295,8 @@ class PipeTools:
                 return _phase_fill_no_write_result(
                     phase_fields_result,
                     fields,
-                    field_data,
                     phase_id=phase_id,
                     required_fields_only=required_fields_only,
-                    include_skipped_field_ids=elicited is None,
                 )
 
             field_updates = [
