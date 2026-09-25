@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -23,8 +24,10 @@ _SKILL_MD = f"{_SKILL}/SKILL.md"
 _HOSTED_MCP = {
     "mcpServers": {
         "pipefy": {
+            "type": "http",
             "url": "https://mcp.pipefy.com/mcp",
             "auth": {"CLIENT_ID": "pipefy-mcp"},
+            "oauth": {"clientId": "pipefy-mcp"},
         }
     }
 }
@@ -319,6 +322,67 @@ def test_wrong_client_id_is_rejected_without_echoing_value(tmp_path):
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     _assert_redacted_field_failure(errors, "auth.CLIENT_ID")
     assert any("pipefy-mcp" in err for err in errors), errors
+
+
+def test_missing_type_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    del mcp["mcpServers"]["pipefy"]["type"]
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("type that is not 'http'" in err for err in errors), errors
+
+
+def test_type_must_be_http(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["type"] = "sse"
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("type that is not 'http'" in err for err in errors), errors
+
+
+def test_missing_oauth_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    del mcp["mcpServers"]["pipefy"]["oauth"]
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("oauth that is not an object" in err for err in errors), errors
+
+
+def test_oauth_client_id_is_required(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {}
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("oauth.clientId" in err for err in errors), errors
+    assert any("pipefy-mcp" in err for err in errors), errors
+
+
+def test_wrong_oauth_client_id_is_rejected_without_echoing_value(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {"clientId": _SENTINEL}
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    _assert_redacted_field_failure(errors, "oauth.clientId")
+
+
+def test_unenumerated_oauth_key_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {
+        "clientId": "pipefy-mcp",
+        "clientSecret": "literal-secret",
+    }
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("unexpected oauth key 'clientSecret'" in err for err in errors), errors
+    assert not any("literal-secret" in err for err in errors), errors
+
+
+def test_non_object_oauth_is_rejected_without_echoing_value(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = _SENTINEL
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    _assert_redacted_field_failure(errors, "oauth")
 
 
 def test_non_object_auth_is_rejected_without_echoing_value(tmp_path):
