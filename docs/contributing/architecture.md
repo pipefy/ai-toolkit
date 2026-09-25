@@ -102,7 +102,7 @@ We work inside a constraint rather than around it. When a limit blocks us, we ne
 
 **Conventions.**
 
-We set conventions, and every contributor works inside them. The code rules live in [`conventions.md`](conventions.md), each under a permanent ID that a review cites. The documentation rules live in [`authoring.md`](authoring.md). A skill, a commit and a pull request all follow [`CONTRIBUTING.md`](../../CONTRIBUTING.md). A version and a release follow [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md). A contributing agent starts at [`AGENTS.md`](../../AGENTS.md), which holds the rules for an agent and routes it to the file that owns each set.
+Every rule we set for ourselves lives in a file of its own, so this block has no table. [`conventions.md`](conventions.md) owns the code rules, each under a permanent ID that a review cites, and [`authoring.md`](authoring.md) owns the documentation rules. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the rules for a skill, a commit and a pull request, and [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md) own the rules for a version and a release. [`AGENTS.md`](../../AGENTS.md) owns the rules for a contributing agent and routes the agent to the file that owns each rule.
 
 ## Context and scope
 
