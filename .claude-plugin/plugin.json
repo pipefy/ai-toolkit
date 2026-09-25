@@ -2,9 +2,29 @@
   "name": "pipefy",
   "displayName": "Pipefy",
   "version": "0.5.2-beta.1",
-  "description": "Pipefy workflow integration for Claude Code.",
+  "description": "Pipefy MCP for Claude Code. Sign in through the browser to manage pipes, cards, tables, reports, automations, and AI agents, and use the included skills to build and analyze processes.",
   "author": { "name": "Pipefy", "url": "https://github.com/pipefy" },
   "homepage": "https://github.com/pipefy/ai-toolkit",
   "repository": "https://github.com/pipefy/ai-toolkit",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "keywords": ["pipefy", "mcp", "workflow", "kanban", "automation", "process"],
+  "skills": [
+    "./skills/ai-agents/pipefy-ai-agents",
+    "./skills/api-troubleshoot/pipefy-api-fallback",
+    "./skills/attachments/pipefy-attachments",
+    "./skills/automations/pipefy-automations",
+    "./skills/building/pipefy-building",
+    "./skills/database-tables/pipefy-database-tables",
+    "./skills/introspection/pipefy-introspection",
+    "./skills/ipaas/pipefy-ipaas",
+    "./skills/members-email-webhooks/pipefy-members-email-webhooks",
+    "./skills/observability/pipefy-observability",
+    "./skills/onboarding/pipefy-toolkit-setup",
+    "./skills/pipes-and-cards/pipefy-pipes-and-cards",
+    "./skills/portal-setup/pipefy-portal-setup",
+    "./skills/process-design/pipefy-process-design",
+    "./skills/process-intelligence/pipefy-process-intelligence",
+    "./skills/relations/pipefy-relations",
+    "./skills/reports/pipefy-reports"
+  ]
 }

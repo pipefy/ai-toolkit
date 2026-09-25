@@ -1,7 +1,8 @@
-"""Failure contracts for the Cursor plugin packaging linter."""
+"""Failure contracts for the plugin packaging linter."""
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -11,9 +12,9 @@ _SCRIPT = (
     / ".github"
     / "workflows"
     / "scripts"
-    / "lint_cursor_plugin.py"
+    / "lint_plugin_packaging.py"
 )
-_spec = importlib.util.spec_from_file_location("lint_cursor_plugin", _SCRIPT)
+_spec = importlib.util.spec_from_file_location("lint_plugin_packaging", _SCRIPT)
 assert _spec and _spec.loader
 _lint = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_lint)
@@ -23,8 +24,10 @@ _SKILL_MD = f"{_SKILL}/SKILL.md"
 _HOSTED_MCP = {
     "mcpServers": {
         "pipefy": {
+            "type": "http",
             "url": "https://mcp.pipefy.com/mcp",
             "auth": {"CLIENT_ID": "pipefy-mcp"},
+            "oauth": {"clientId": "pipefy-mcp"},
         }
     }
 }
@@ -42,6 +45,7 @@ def _write_plugin(
     root,
     *,
     skills=None,
+    claude_skills=None,
     mcp=None,
     name="pipefy",
     manifest_update=None,
@@ -53,11 +57,12 @@ def _write_plugin(
     skill_dir = root / _SKILL
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text("# skill\n", encoding="utf-8")
+    written_skills = skills if skills is not None else [f"./{_SKILL}"]
     body = {
         "name": name,
         "displayName": "Pipefy",
         "logo": "assets/logo.svg",
-        "skills": skills if skills is not None else [f"./{_SKILL}"],
+        "skills": written_skills,
         "commands": [],
         "mcpServers": "./.mcp.json",
     }
@@ -67,6 +72,17 @@ def _write_plugin(
         body.pop(key, None)
     (root / ".cursor-plugin" / "plugin.json").write_text(
         json.dumps(body),
+        encoding="utf-8",
+    )
+    claude = root / ".claude-plugin"
+    claude.mkdir()
+    (claude / "plugin.json").write_text(
+        json.dumps(
+            {
+                "name": "pipefy",
+                "skills": written_skills if claude_skills is None else claude_skills,
+            }
+        ),
         encoding="utf-8",
     )
     (root / ".cursor-plugin" / "marketplace.json").write_text(
@@ -97,15 +113,61 @@ def test_unlisted_skill_is_named(tmp_path):
     extra_dir.mkdir(parents=True)
     (extra_dir / "SKILL.md").write_text("# extra\n", encoding="utf-8")
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD, f"{extra}/SKILL.md"])
-    assert any(extra in err and "missing" in err for err in errors), errors
+    for manifest in (".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"):
+        assert any(
+            manifest in err and extra in err and "missing" in err for err in errors
+        ), errors
 
 
 def test_stale_manifest_entry_is_named(tmp_path):
     stale = "skills/does-not-exist/fake-skill"
     _write_plugin(tmp_path, skills=[f"./{_SKILL}", f"./{stale}"])
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    for manifest in (".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"):
+        assert any(
+            manifest in err and stale in err and "which is not a tracked skill" in err
+            for err in errors
+        ), errors
+
+
+def test_claude_manifest_missing_skill_names_that_file(tmp_path):
+    extra = "skills/observability/pipefy-observability"
+    _write_plugin(
+        tmp_path,
+        skills=[f"./{_SKILL}", f"./{extra}"],
+        claude_skills=[f"./{_SKILL}"],
+    )
+    extra_dir = tmp_path / extra
+    extra_dir.mkdir(parents=True)
+    (extra_dir / "SKILL.md").write_text("# extra\n", encoding="utf-8")
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD, f"{extra}/SKILL.md"])
     assert any(
-        stale in err and "which is not a tracked skill" in err for err in errors
+        ".claude-plugin/plugin.json" in err and extra in err and "missing" in err
+        for err in errors
+    ), errors
+    assert not any(".cursor-plugin/plugin.json" in err for err in errors), errors
+
+
+def test_claude_manifest_stale_skill_names_that_file(tmp_path):
+    stale = "skills/does-not-exist/fake-skill"
+    _write_plugin(tmp_path, claude_skills=[f"./{_SKILL}", f"./{stale}"])
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any(
+        ".claude-plugin/plugin.json" in err
+        and stale in err
+        and "which is not a tracked skill" in err
+        for err in errors
+    ), errors
+    assert not any(".cursor-plugin/plugin.json" in err for err in errors), errors
+
+
+def test_missing_claude_manifest_is_named(tmp_path):
+    _write_plugin(tmp_path)
+    (tmp_path / ".claude-plugin" / "plugin.json").unlink()
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any(
+        ".claude-plugin/plugin.json" in err and "could not read" in err
+        for err in errors
     ), errors
 
 
@@ -319,6 +381,67 @@ def test_wrong_client_id_is_rejected_without_echoing_value(tmp_path):
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     _assert_redacted_field_failure(errors, "auth.CLIENT_ID")
     assert any("pipefy-mcp" in err for err in errors), errors
+
+
+def test_missing_type_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    del mcp["mcpServers"]["pipefy"]["type"]
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("type that is not 'http'" in err for err in errors), errors
+
+
+def test_type_must_be_http(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["type"] = "sse"
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("type that is not 'http'" in err for err in errors), errors
+
+
+def test_missing_oauth_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    del mcp["mcpServers"]["pipefy"]["oauth"]
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("oauth that is not an object" in err for err in errors), errors
+
+
+def test_oauth_client_id_is_required(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {}
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("oauth.clientId" in err for err in errors), errors
+    assert any("pipefy-mcp" in err for err in errors), errors
+
+
+def test_wrong_oauth_client_id_is_rejected_without_echoing_value(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {"clientId": _SENTINEL}
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    _assert_redacted_field_failure(errors, "oauth.clientId")
+
+
+def test_unenumerated_oauth_key_is_rejected(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = {
+        "clientId": "pipefy-mcp",
+        "clientSecret": "literal-secret",
+    }
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any("unexpected oauth key 'clientSecret'" in err for err in errors), errors
+    assert not any("literal-secret" in err for err in errors), errors
+
+
+def test_non_object_oauth_is_rejected_without_echoing_value(tmp_path):
+    mcp = copy.deepcopy(_HOSTED_MCP)
+    mcp["mcpServers"]["pipefy"]["oauth"] = _SENTINEL
+    _write_plugin(tmp_path, mcp=mcp)
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    _assert_redacted_field_failure(errors, "oauth")
 
 
 def test_non_object_auth_is_rejected_without_echoing_value(tmp_path):
