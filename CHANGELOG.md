@@ -10,11 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **SDK methods named after MCP tools**: `PipefyClient.get_ai_automation`, `get_ai_automations`, `delete_ai_automation`, `remove_member_from_pipe`, and `fill_card_phase_fields` expose those operations as client methods, with the MCP tool names and parameters. The corresponding MCP tools and CLI commands now call these methods (MCP `fill_card_phase_fields` still elicits when a form can be shown). The AI-list filter, member-removal verification, and editable-field filter move into the SDK. Skills retarget `get_labels` to `get_pipe` and `get_pipe_report` to `get_pipe_reports`; those two names stay MCP aliases (projection remains in MCP and CLI). (#696)
+
 - **SDK pre-write validation**: `PipefyClient.validate_ai_agent_behaviors` and `PipefyClient.validate_ai_automation_prompt` expose the two read-only validators as client methods, with the MCP tool names and parameters, so an agent that builds its tools from `PipefyClient` can validate before it writes. The MCP tools and CLI commands now call these methods. The `pipefy_sdk.ai_preflight` module functions stay. (#694)
 
 ### Changed
 
 - **SDK AI agent create**: `PipefyClient.create_ai_agent` now writes the agent's instruction and behaviors. It creates the agent and chains `update_ai_agent`, as the MCP tool and CLI command did on their own; before, it dropped the required `instruction` and `behaviors` and returned an empty, disabled agent. When the update fails, it raises the new `AiAgentConfigureError`, which carries the created `agent_uuid`. `CreateAiAgentInput` and `UpdateAiAgentInput` now expand `template_params` / `instruction_template` and normalize instruction token aliases while they validate, so SDK callers get the same prep as the MCP tools. As a result, a raw behavior dict with a literal `{{name}}` and no `template_params` now fails `CreateAiAgentInput` / `UpdateAiAgentInput` validation, as it already failed in the MCP tools. Callers that expanded behaviors themselves can drop that step: a second expansion fails when a substituted value contains `{{name}}`. The MCP tools and CLI commands call these methods. A CLI `agent create` whose update fails now prints the created agent's UUID. The unused `pipefy_mcp.tools.behavior_placeholder_interpolation` re-export is removed; import the helpers from `pipefy_sdk.behavior_placeholders`. (#695)
+
+- **MCP `fill_card_phase_fields`**: no longer writes when the phase has no editable fields, on every path including a shown form; dropped keys return in `skipped_field_ids`. CLI `pipefy card fill --fields {}` on a phase with editable fields now returns the collected-nothing envelope instead of short-circuiting with "No fields to update."
+
+- **CLI `pipefy member remove`**: verifies membership after the mutation. `--json` now prints `{"data": <mutation result>, "warning": ...}` instead of the mutation result at the top level. `warning` is `null` when every member is gone.
 
 ### Fixed
 

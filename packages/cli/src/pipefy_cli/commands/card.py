@@ -12,9 +12,6 @@ from pipefy_sdk import (
     PipefyClient,
     UpdateCommentInput,
     copy_card_search,
-    filter_editable_field_definitions,
-    filter_fields_by_definitions,
-    skipped_field_ids,
 )
 from pydantic import ValidationError
 
@@ -408,39 +405,16 @@ def card_fill(
 ) -> None:
     """Fill phase fields on a card (non-interactive).
 
-    Filters ``--fields`` to editable phase field IDs before ``update_card``.
-    Stricter than MCP ``fill_card_phase_fields`` when the phase reports no
-    editable fields (CLI no-ops; MCP may pass values through unfiltered).
+    Filters ``--fields`` to editable phase field IDs. Dropped keys come back in
+    ``skipped_field_ids``. When nothing survives, no write is issued.
     """
 
     fields = parse_json_object(fields_json, "--fields") or {}
 
     async def factory(client: PipefyClient):
-        if not fields:
-            return {"success": True, "message": "No fields to update."}
-
-        phase_fields_result = await client.get_phase_fields(phase_id, required_only)
-        expected_fields = filter_editable_field_definitions(
-            phase_fields_result.get("fields", [])
+        return await client.fill_card_phase_fields(
+            card_id, phase_id, fields, required_fields_only=required_only
         )
-        field_data = filter_fields_by_definitions(fields, expected_fields)
-        dropped = skipped_field_ids(fields, field_data)
-        if not field_data:
-            result: dict[str, Any] = {
-                "success": True,
-                "message": "No fields to update.",
-            }
-            if dropped:
-                result["skipped_field_ids"] = dropped
-            return result
-        field_updates = [
-            {"field_id": field_id, "value": value}
-            for field_id, value in field_data.items()
-        ]
-        api_response = await client.update_card(card_id, field_updates=field_updates)
-        if dropped:
-            return {**api_response, "skipped_field_ids": dropped}
-        return api_response
 
     run_cli_command(ctx, json_out, factory)
 

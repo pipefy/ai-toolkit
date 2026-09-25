@@ -26,7 +26,7 @@ Pipe reports and organization reports: discovery, CRUD, and async exports. **17 
 | Tool (MCP) | CLI | Read-only | Purpose |
 |------------|-----|-----------|---------|
 | `get_pipe_reports` | `pipefy report-pipe list` | Yes | List all reports for a pipe. |
-| `get_pipe_report` | `pipefy report-pipe get` | Yes | Single report data. |
+| `get_pipe_reports` | `pipefy report-pipe get` | Yes | Single report: use `get_pipe_reports` (`report_id`) via MCP, or `pipefy report-pipe get` on the CLI. |
 | `get_pipe_report_columns` | `pipefy report-pipe columns` | Yes | Discover available columns for a report filter. |
 | `get_pipe_report_filterable_fields` | `pipefy report-pipe filterable-fields` | Yes | Discover filterable fields for a report. |
 | `create_pipe_report` | `pipefy report-pipe create` | No | Create a new pipe report. |

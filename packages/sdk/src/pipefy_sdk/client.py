@@ -11,6 +11,7 @@ from httpx import Auth
 from pipefy_sdk import __version__
 from pipefy_sdk.ai_pipe_validation import resolve_and_populate_field_refs
 from pipefy_sdk.ai_preflight import (
+    filter_ai_automation_summaries,
     validate_ai_agent_behaviors_sdk,
     validate_ai_automation_prompt_sdk,
 )
@@ -20,11 +21,18 @@ from pipefy_sdk.automation_preflight import (
     validate_traditional_automation_move_transition,
 )
 from pipefy_sdk.exceptions import AiAgentConfigureError
+from pipefy_sdk.field_filters import (
+    filter_editable_field_definitions,
+    filter_fields_by_definitions,
+    phase_fill_no_write_result,
+    skipped_field_ids,
+)
 from pipefy_sdk.graphql_executor import (
     AuthenticatedExecutor,
     GraphQLEndpoint,
     GraphQLExecutor,
 )
+from pipefy_sdk.member_removal import MemberRemovalResult, verify_member_removal
 from pipefy_sdk.models.ai_agent import (
     BehaviorInput,
     CreateAiAgentInput,
@@ -764,6 +772,19 @@ class PipefyClient:
         """
         return await self._member_service.remove_members_from_pipe(pipe_id, user_ids)
 
+    async def remove_member_from_pipe(
+        self, pipe_id: str, user_ids: list[str]
+    ) -> MemberRemovalResult:
+        """Remove users from a pipe, then read members back to detect a no-op.
+
+        Runs the same mutation as :meth:`remove_members_from_pipe` (the raw
+        mutation with no read-back), then verifies whether any requested user
+        remains. Org-level permissions can override pipe-level removal.
+        """
+        raw = await self.remove_members_from_pipe(pipe_id, user_ids)
+        warning = await verify_member_removal(self, pipe_id, user_ids)
+        return {"data": raw, "warning": warning}
+
     async def set_role(
         self, pipe_id: str, member_id: str, role_name: str
     ) -> dict[str, Any]:
@@ -935,6 +956,33 @@ class PipefyClient:
             after=after,
         )
 
+    async def get_ai_automation(
+        self, automation_id: str
+    ) -> AutomationRuleRecord | None:
+        """Return an automation rule by id, or None when the id is missing."""
+        return await self.get_automation(automation_id)
+
+    async def get_ai_automations(
+        self,
+        pipe_id: str,
+        organization_id: str | None = None,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> AutomationListPage:
+        """List one page of AI (``generate_with_ai``) automation rules for a pipe.
+
+        The row filter runs after the page, so ``totalCount`` and ``pageInfo``
+        describe the mixed connection.
+        """
+        page = await self.get_automations(
+            organization_id=organization_id,
+            pipe_id=pipe_id,
+            first=first,
+            after=after,
+        )
+        return {**page, "nodes": filter_ai_automation_summaries(page["nodes"])}
+
     async def get_automation_actions(self, pipe_id: str) -> list[AutomationActionRow]:
         """List available automation action types for a pipe (for building create/update payloads)."""
         return await self._automation_service.get_automation_actions(pipe_id)
@@ -1094,6 +1142,12 @@ class PipefyClient:
     ) -> DeleteAutomationServiceResult:
         """Delete a traditional automation rule by ID (permanent)."""
         return await self._automation_service.delete_automation(automation_id)
+
+    async def delete_ai_automation(
+        self, automation_id: str
+    ) -> DeleteAutomationServiceResult:
+        """Delete an automation rule by id."""
+        return await self.delete_automation(automation_id)
 
     async def get_ai_agent(self, agent_uuid: str) -> AiAgentGraphPayload:
         """Get an AI Agent by UUID (name, instruction, behaviors)."""
@@ -1633,6 +1687,50 @@ class PipefyClient:
             due_date=due_date,
             field_updates=field_updates,
         )
+
+    async def fill_card_phase_fields(
+        self,
+        card_id: str | int,
+        phase_id: str | int,
+        fields: dict[str, Any] | None,
+        *,
+        required_fields_only: bool = False,
+    ) -> dict[str, Any]:
+        """Fill a card's phase fields using only IDs the phase exposes as editable.
+
+        Reads :meth:`get_phase_fields` once, then writes via :meth:`update_card`
+        only when at least one value survives the editable-id filter. Dropped
+        keys are returned in ``skipped_field_ids``; a write that drops nothing
+        omits that key. When nothing survives, no
+        write is issued; the result reports ``success``, ``message``,
+        ``phase_id``, ``phase_name``, and ``skipped_field_ids``. Pass
+        ``required_fields_only=True`` to filter phase definitions to required
+        fields only (forwarded as ``required_only`` on :meth:`get_phase_fields`).
+        """
+        phase_fields_result = await self.get_phase_fields(
+            phase_id, required_only=required_fields_only
+        )
+        expected_fields = filter_editable_field_definitions(
+            phase_fields_result.get("fields", [])
+        )
+        given_fields = fields or {}
+        field_data = filter_fields_by_definitions(given_fields, expected_fields)
+        if not field_data:
+            return phase_fill_no_write_result(
+                phase_fields_result,
+                fields,
+                phase_id=phase_id,
+                required_fields_only=required_fields_only,
+            )
+        dropped = skipped_field_ids(given_fields, field_data)
+        field_updates = [
+            {"field_id": field_id, "value": value}
+            for field_id, value in field_data.items()
+        ]
+        api_response = await self.update_card(card_id, field_updates=field_updates)
+        if dropped:
+            return {**api_response, "skipped_field_ids": dropped}
+        return api_response
 
     async def delete_card(self, card_id: str | int) -> dict:
         """Delete a card by its ID."""

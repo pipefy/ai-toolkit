@@ -1208,13 +1208,12 @@ def test_ai_automation_list_json_includes_pagination(
     page = {
         "nodes": [
             {"id": "1", "name": "AI", "action_id": "generate_with_ai"},
-            {"id": "2", "name": "HTTP", "action_id": "send_http_request"},
         ],
         "totalCount": 210,
         "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
     }
     mock_client = MagicMock()
-    mock_client.get_automations = AsyncMock(return_value=page)
+    mock_client.get_ai_automations = AsyncMock(return_value=page)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -1245,9 +1244,10 @@ def test_ai_automation_list_json_includes_pagination(
         "page_size": 10,
         "total_count": 210,
     }
-    mock_client.get_automations.assert_awaited_once_with(
-        organization_id=None, pipe_id="9", first=10, after="cursor-40"
+    mock_client.get_ai_automations.assert_awaited_once_with(
+        "9", organization_id=None, first=10, after="cursor-40"
     )
+    mock_client.get_automations.assert_not_called()
 
 
 def test_automation_list_maps_value_error_to_exit_2(

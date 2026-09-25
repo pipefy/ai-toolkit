@@ -22,6 +22,8 @@ from pipefy_sdk import (
 from pipefy_sdk import (
     filter_fields_by_definitions as _filter_fields_by_definitions,
 )
+from pipefy_sdk import phase_fill_no_write_result as _phase_fill_no_write_result
+from pipefy_sdk import skipped_field_ids as _skipped_field_ids
 from pipefy_sdk.models.form import MalformedFieldDefinitionError
 from pydantic import ValidationError
 
@@ -1189,6 +1191,8 @@ class PipeTools:
             When ``skip_elicitation`` is True, field values from ``fields`` are
             filtered to editable phase field IDs and sent directly to the API.
             AI agents should set this to True when they already know the values.
+            Keys the phase does not expose as editable are never written; they
+            come back in ``skipped_field_ids``.
 
             When ``skip_elicitation`` is False (default) and the client supports
             elicitation, an interactive form is presented — ``fields`` pre-fills
@@ -1216,24 +1220,13 @@ class PipeTools:
                     ``fields`` directly to the API. Recommended for AI agent workflows.
 
             Returns:
-                dict: GraphQL response with success status and updated card information.
+                A write returns the ``update_card`` response. A no-write envelope
+                carries ``success``, ``message``, ``phase_id``, and ``phase_name``.
+                ``skipped_field_ids`` is present on every no-write envelope when
+                no form was shown (the list may be empty); on a write result only
+                when at least one key was dropped; absent after an accepted form.
             """
             client = get_pipefy_client(ctx)
-            try:
-                phase_fields_result = await client.get_phase_fields(
-                    phase_id, required_fields_only
-                )
-            except MalformedFieldDefinitionError as exc:
-                return tool_error(str(exc))
-            expected_fields = _filter_editable_field_definitions(
-                phase_fields_result.get("fields", [])
-            )
-            phase_name = phase_fields_result.get("phase_name", f"Phase {phase_id}")
-
-            await ctx.debug(f"Expected fields for phase {phase_id}: {expected_fields}")
-            await ctx.debug(f"Provided fields: {fields}")
-
-            field_data = fields or {}
             can_elicit = supports_elicitation(ctx)
             if not can_elicit and not skip_elicitation:
                 # Logged for the same reason the NoBackChannelError absorb in
@@ -1243,58 +1236,81 @@ class PipeTools:
                     "Elicitation unavailable: no interactive form for this "
                     "connection; proceeding with the supplied fields"
                 )
-
-            elicited: dict[str, Any] | None = None
-            if can_elicit and expected_fields and not skip_elicitation:
+            if skip_elicitation or not can_elicit:
                 try:
-                    elicited = await PipeTools._elicit_field_details(
-                        message=f"Filling fields for phase '{phase_name}' (ID: {phase_id})",
-                        prefilled_fields=fields,
-                        expected_fields=expected_fields,
-                        ctx=ctx,
+                    return await client.fill_card_phase_fields(
+                        card_id,
+                        phase_id,
+                        fields,
+                        required_fields_only=required_fields_only,
                     )
                 except MalformedFieldDefinitionError as exc:
                     return tool_error(str(exc))
-                except UserCancelledError:
-                    return tool_error("Phase field update cancelled by user.")
 
+            try:
+                phase_fields_result = await client.get_phase_fields(
+                    phase_id, required_fields_only
+                )
+            except MalformedFieldDefinitionError as exc:
+                return tool_error(str(exc))
+            expected_fields = _filter_editable_field_definitions(
+                phase_fields_result.get("fields", [])
+            )
+            phase_name = phase_fields_result.get("phase_name") or f"Phase {phase_id}"
+            given_fields = fields or {}
+
+            await ctx.debug(f"Expected fields for phase {phase_id}: {expected_fields}")
+            await ctx.debug(f"Provided fields: {fields}")
+
+            if not expected_fields:
+                return _phase_fill_no_write_result(
+                    phase_fields_result,
+                    fields,
+                    phase_id=phase_id,
+                    required_fields_only=required_fields_only,
+                )
+
+            field_data = given_fields
+            elicited: dict[str, Any] | None = None
+            try:
+                elicited = await PipeTools._elicit_field_details(
+                    message=f"Filling fields for phase '{phase_name}' (ID: {phase_id})",
+                    prefilled_fields=fields,
+                    expected_fields=expected_fields,
+                    ctx=ctx,
+                )
+            except MalformedFieldDefinitionError as exc:
+                return tool_error(str(exc))
+            except UserCancelledError:
+                return tool_error("Phase field update cancelled by user.")
+
+            dropped: list[str] = []
             if elicited is not None:
                 field_data = elicited
-            elif expected_fields:
+            else:
                 field_data = _filter_fields_by_definitions(field_data, expected_fields)
+                dropped = _skipped_field_ids(given_fields, field_data)
 
             if not field_data:
-                if expected_fields:
-                    # The phase does have editable fields, so "No fields to
-                    # update." would be false: values were needed and none were
-                    # collected. Reachable when no form could be shown and the
-                    # caller passed no fields, or when every key it passed was
-                    # dropped by the editable-field filter. An agent reading only
-                    # the message must not conclude the card is complete.
-                    message = (
-                        "No field values were collected, so nothing was updated. "
-                        f"Phase '{phase_name}' has {len(expected_fields)} editable "
-                        "field(s); pass 'fields' keyed by the IDs from "
-                        "get_phase_fields(phase_id)."
-                    )
-                else:
-                    message = "No fields to update."
-                return {
-                    "success": True,
-                    "message": message,
-                    "phase_id": phase_id,
-                    "phase_name": phase_name,
-                }
+                return _phase_fill_no_write_result(
+                    phase_fields_result,
+                    fields,
+                    phase_id=phase_id,
+                    required_fields_only=required_fields_only,
+                )
 
             field_updates = [
                 {"field_id": field_id, "value": value}
                 for field_id, value in field_data.items()
             ]
 
-            return await client.update_card(
+            api_response = await client.update_card(
                 card_id=card_id,
                 field_updates=field_updates,
             )
+            if dropped:
+                return {**api_response, "skipped_field_ids": dropped}
+            return api_response
 
         @mcp.tool(
             annotations=ToolAnnotations(

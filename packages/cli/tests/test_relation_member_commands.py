@@ -157,8 +157,8 @@ def test_member_add_service_account_blank_email_exit_2(
 def test_member_remove_happy_path_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("mem-rm-ok")
     mock_client = MagicMock()
-    mock_client.remove_members_from_pipe = AsyncMock(
-        return_value={"removeMembersFromPipe": {}}
+    mock_client.remove_member_from_pipe = AsyncMock(
+        return_value={"data": {"removeMembersFromPipe": {}}, "warning": None}
     )
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
@@ -178,7 +178,38 @@ def test_member_remove_happy_path_json(runner, clean_pipefy_env, saved_cwd, oaut
             ],
         )
     assert result.exit_code == 0
-    mock_client.remove_members_from_pipe.assert_awaited_once_with("1", ["u1", "u2"])
+    payload = json.loads(result.stdout)
+    assert "warning" in payload
+    assert payload["warning"] is None
+    assert payload["data"] == {"removeMembersFromPipe": {}}
+    mock_client.remove_member_from_pipe.assert_awaited_once_with("1", ["u1", "u2"])
+
+
+def test_member_remove_prints_warning_when_present(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("mem-rm-warn")
+    warning = (
+        "API returned success but member(s) [u1] are still present in the pipe. "
+        "They may have org-level permissions that override pipe-level removal."
+    )
+    mock_client = MagicMock()
+    mock_client.remove_member_from_pipe = AsyncMock(
+        return_value={"data": {"removeMembersFromPipe": {}}, "warning": warning}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            ["member", "remove", "--pipe", "1", "--user-ids", "u1", "--yes"],
+        )
+    assert result.exit_code == 0
+    compact = " ".join(result.stdout.split())
+    assert "still present in the pipe" in compact
+    assert "org-level permissions" in compact
+    mock_client.remove_member_from_pipe.assert_awaited_once_with("1", ["u1"])
 
 
 def test_member_invite_members_missing_role_bad_parameter(

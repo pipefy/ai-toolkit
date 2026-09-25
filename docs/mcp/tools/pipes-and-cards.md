@@ -77,10 +77,10 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 When elicitation is unavailable, `create_card` and `fill_card_phase_fields` still work but behave differently. That covers agents, CLIs, and SDK consumers, and also **the hosted server**, which serves `json_response=True` and so has no server-to-client back channel at any protocol revision:
 
 1. The tool fetches the start-form or phase field definitions internally.
-2. Provided `fields` are **filtered to editable field IDs only** — keys that do not match an editable field are silently discarded (no error).
-3. The filtered dict is sent directly to the Pipefy API.
+2. For `create_card`, provided `fields` are **filtered to editable field IDs only** — keys that do not match an editable field are silently discarded (no error). The filtered dict is sent directly to the Pipefy API.
+3. For `fill_card_phase_fields`, keys the phase does not expose as editable are returned in `skipped_field_ids`. When nothing survives the filter, nothing is written.
 
-Because non-editable keys are dropped without warning, agents should discover fields first and pass all required values explicitly:
+Agents should discover fields first and pass all required values explicitly:
 
 ```
 get_start_form_fields(pipe_id)   → learn field IDs, types, required flag

@@ -1351,9 +1351,8 @@ Usage: pipefy card fill [OPTIONS] CARD_ID
 
  Fill phase fields on a card (non-interactive).
 
- Filters ``--fields`` to editable phase field IDs before ``update_card``.
- Stricter than MCP ``fill_card_phase_fields`` when the phase reports no
- editable fields (CLI no-ops; MCP may pass values through unfiltered).
+ Filters ``--fields`` to editable phase field IDs. Dropped keys come back in
+ ``skipped_field_ids``. When nothing survives, no write is issued.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    card_id      TEXT  Card id. [required]                                  │
@@ -2446,6 +2445,11 @@ Usage: pipefy member list [OPTIONS]
 Usage: pipefy member remove [OPTIONS]
 
  Remove users from a pipe.
+
+ Reads members back after the mutation. Output includes ``data`` (mutation
+ result) and ``warning`` (null when every requested user is gone). A warning
+ string means a requested user is still present; org-level permissions can
+ override pipe-level removal.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe              TEXT  Pipe id. [required]                             │

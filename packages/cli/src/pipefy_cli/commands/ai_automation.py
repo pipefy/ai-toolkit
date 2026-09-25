@@ -11,7 +11,6 @@ from pipefy_sdk import (
     PipefyClient,
     UpdateAiAutomationInput,
 )
-from pipefy_sdk.ai_preflight import filter_ai_automation_summaries
 from pydantic import ValidationError
 
 from pipefy_cli.commands._common import (
@@ -99,17 +98,16 @@ def ai_automation_list(
     page_size = first if first is not None else AUTOMATIONS_LIST_MAX_PAGE_SIZE
 
     async def factory(client: PipefyClient):
-        page = await client.get_automations(
+        page = await client.get_ai_automations(
+            pipe,
             organization_id=organization,
-            pipe_id=pipe,
             first=first,
             after=cursor,
         )
-        filtered = filter_ai_automation_summaries(page["nodes"])
         info = page["pageInfo"]
         return {
             "success": True,
-            "data": filtered,
+            "data": page["nodes"],
             "message": "AI automations listed.",
             "pagination": {
                 "has_more": bool(info.get("hasNextPage")),
@@ -131,7 +129,7 @@ def ai_automation_get(
     """Load one automation row (``get_ai_automation`` / ``get_automation``)."""
 
     async def factory(client: PipefyClient):
-        row = await client.get_automation(automation_id)
+        row = await client.get_ai_automation(automation_id)
         if row is None:
             return {
                 "success": False,
@@ -346,6 +344,6 @@ def ai_automation_delete(
     )
 
     async def factory(client: PipefyClient):
-        return await client.delete_automation(automation_id)
+        return await client.delete_ai_automation(automation_id)
 
     run_cli_command(ctx, json_out, factory)

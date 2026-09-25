@@ -69,6 +69,18 @@ Two read-only `PipefyClient` methods dry-run a write before you make it. They ha
 
 Both return a dict. `valid` is true only when `problems` is empty, and `warnings` holds non-blocking notices. The agent result adds a `message`; the prompt result adds a `field_map` of the referenced field IDs to their labels. A failed pipe read sets `success` to false instead of raising: the agent result then gives the reason in `problems`, and the prompt result carries only `success`, `valid`, and `error`.
 
+## Methods named after the MCP tools
+
+Five `PipefyClient` methods share names and parameters with MCP tools so an agent that builds its tools from the client can call the same operations. MCP and CLI call these methods; MCP `fill_card_phase_fields` still owns elicitation when a form can be shown and the caller did not skip it.
+
+- **`get_ai_automation(automation_id)`** delegates to `get_automation`. Returns the rule record, or `None` when the id is missing.
+- **`get_ai_automations(pipe_id, organization_id=None, *, first=None, after=None)`** calls `get_automations`, then keeps only `generate_with_ai` rows in `nodes` (`pipefy_sdk.ai_preflight.filter_ai_automation_summaries`). `totalCount` and `pageInfo` still describe the mixed page.
+- **`delete_ai_automation(automation_id)`** delegates to `delete_automation`. Same result as that method.
+- **`remove_member_from_pipe(pipe_id, user_ids)`** runs the mutation, then reads members back. Returns `{"data": <mutation result>, "warning": <str or None>}`. `warning` is `None` when every requested user is gone, or when the members read fails. A non-numeric `pipe_id` raises `ValueError` before that read. Use the singular when the caller wants confirmation that the removal took effect. **`remove_members_from_pipe`** fetches the pipe before mutating and may fetch members when resolving numeric user ids; it skips post-mutation verification. The plural is not deprecated.
+- **`fill_card_phase_fields(card_id, phase_id, fields, *, required_fields_only=False)`** reads `get_phase_fields` once, filters `fields` to editable ids, and does not write a field the phase does not expose. When nothing survives: `success`, `message`, `phase_id`, `phase_name`, `skipped_field_ids`. When a write runs: the `update_card` dict, plus `skipped_field_ids` only when a key was dropped.
+
+Skills cite `get_pipe` (labels are on the pipe) and `get_pipe_reports` (the reports connection). There is no `PipefyClient.get_labels` or `PipefyClient.get_pipe_report`; MCP keeps those names as aliases, and projection stays in MCP and CLI.
+
 ## Configuration
 
 OAuth and endpoint variables are documented in **[`../config.md`](../config.md)** and **[`../../.env.example`](../../.env.example)**. Integration tests use `@pytest.mark.integration` and the same `PIPEFY_*` keys from local **`.env`** (e.g. `PIPEFY_PORTAL_ORG_UUID` for portal live tests). Unit tests use fictional ids in **[`../../packages/sdk/tests/_shared/fixture_ids.py`](../../packages/sdk/tests/_shared/fixture_ids.py)** — not production org UUIDs.

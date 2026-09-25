@@ -10,7 +10,6 @@ from pipefy_sdk import (
     PipefyId,
     UpdateAiAutomationInput,
 )
-from pipefy_sdk.ai_preflight import filter_ai_automation_summaries
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
@@ -158,7 +157,7 @@ class AiAutomationTools:
             if err is not None:
                 return build_automation_error_payload(message=tool_error_message(err))
             try:
-                raw = await client.get_automation(aid)
+                raw = await client.get_ai_automation(aid)
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
                     exc,
@@ -188,8 +187,8 @@ class AiAutomationTools:
         ) -> dict:
             """List AI automations (``action_id`` = ``generate_with_ai``) for a pipe.
 
-            Delegates to ``get_automations`` with this ``pipe_id`` and optional
-            ``organization_id``. Results are filtered to AI prompt automations only.
+            Delegates to ``get_ai_automations`` with this ``pipe_id`` and optional
+            ``organization_id``. Results are already filtered to AI prompt automations.
 
             The API returns at most 50 rules per call, mixed action types. Filtering
             happens after that page, so ``pagination`` describes the mixed connection,
@@ -235,9 +234,9 @@ class AiAutomationTools:
                 return size_err
             cursor = after.strip() if isinstance(after, str) and after.strip() else None
             try:
-                page = await client.get_automations(
+                page = await client.get_ai_automations(
+                    pid,
                     organization_id=org,
-                    pipe_id=pid,
                     first=page_size,
                     after=cursor,
                 )
@@ -253,9 +252,8 @@ class AiAutomationTools:
                 page_info=page["pageInfo"], page_size=page_size
             )
             pagination["total_count"] = page["totalCount"]
-            filtered = filter_ai_automation_summaries(page["nodes"])
             return build_automation_read_success_payload(
-                filtered,
+                page["nodes"],
                 "AI automations listed.",
                 pagination=pagination,
             )
@@ -308,7 +306,7 @@ class AiAutomationTools:
                 return guard
 
             try:
-                raw = await client.delete_automation(rid)
+                raw = await client.delete_ai_automation(rid)
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
                     exc,

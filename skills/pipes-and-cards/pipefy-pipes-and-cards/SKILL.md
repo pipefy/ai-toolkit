@@ -202,7 +202,7 @@ Read `pageInfo.hasNextPage` and `pageInfo.endCursor` from the response; pass `af
 
 | Tool (MCP) | CLI | Read-only | Purpose |
 |------------|-----|-----------|---------|
-| `get_labels` | `pipefy label list --pipe <id>` | Yes | List pipe labels. |
+| `get_pipe` | `pipefy label list --pipe <id>` | Yes | Pipe labels: use `get_pipe` (`labels` in the response) via MCP, or `pipefy label list` on the CLI. |
 | `create_label` | `pipefy label create` | No | Create a label with a color. |
 | `update_label` | `pipefy label update <id>` | No | Rename or recolor. |
 | `delete_label` | `pipefy label delete <id>` | No | **Two-step destructive.** |

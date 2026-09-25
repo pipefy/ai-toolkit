@@ -94,7 +94,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `export_organization_report` | `pipefy report-org export` | shipped | Exports + organization reports. |
 | `export_pipe_audit_logs` | `pipefy audit export` | shipped | (`--pipe`); API queues export (JSON payload only). |
 | `export_pipe_report` | `pipefy report-pipe export` | shipped | Exports + reports; `filter` preflight validates ReportCardsFilter shape (nested `operator` + `queries`). |
-| `fill_card_phase_fields` | `pipefy card fill` | shipped | (`--phase`, `--fields` JSON, optional `--required-only`). Non-interactive; filters to editable phase field IDs before `update_card`. CLI is stricter than MCP when the phase has no editable fields (no-op vs unfiltered pass-through). Response may include `skipped_field_ids` for keys dropped by the filter. |
+| `fill_card_phase_fields` | `pipefy card fill` | shipped | (`--phase`, `--fields` JSON, optional `--required-only`). Non-interactive. Both surfaces filter to editable phase field IDs and skip the write when nothing survives; `skipped_field_ids` lists dropped keys. |
 | `find_cards` | `pipefy card find` | shipped | (`--pipe`, `--field`, `--value`). |
 | `find_records` | `pipefy record find` | shipped | (`--filter` JSON with `field_id` + `field_value`). Unified MCP envelope: top-level `pagination` uses `has_more` / `end_cursor` / `page_size` (same as `get_table_records`). |
 | `get_agents_usage` | `pipefy usage agents` | shipped | (`--organization`, `--from`, `--to`, optional `--filters` / `--search` / `--sort` JSON). |
@@ -166,7 +166,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `list_portals` | `pipefy portal list` | shipped | `--organization-uuid`; at most one main portal per org. |
 | `move_card_to_phase` | `pipefy card move` | shipped | (`--phase`). On required-field failures MCP may return `success: false` naming the field (and an optional hide hint); CLI still returns the raw SDK / GraphQL error (known MCP-ahead behavior). |
 | `publish_sub_portal` | `pipefy portal sub-portal publish` | shipped | internal_api `updateSubPortalElement` on a templated `forms` element; check `subPortals[].published` via `get_portal`. |
-| `remove_member_from_pipe` | `pipefy member remove` | shipped | MCP two-step with `confirmation_token`; CLI `--yes` or interactive prompt. |
+| `remove_member_from_pipe` | `pipefy member remove` | shipped | MCP two-step with `confirmation_token`; CLI `--yes` or interactive prompt. Both surfaces read the members back and return `warning` when a user is still present. |
 | `reset_default_llm_provider` | `pipefy ai-provider default reset` | shipped | Organization-scoped; clears the org default (`--org-id`). |
 | `search_pipes` | `pipefy pipe list` | shipped | (`--name`, `--max-per-org`). |
 | `search_schema` | `pipefy introspect schema search` | shipped | (optional `--kind`). |

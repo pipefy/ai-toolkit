@@ -24,9 +24,9 @@ def mock_pipefy_client():
     client = MagicMock(spec=PipefyClient)
     client.create_ai_automation = AsyncMock()
     client.update_ai_automation = AsyncMock()
-    client.get_automation = AsyncMock()
-    client.get_automations = AsyncMock()
-    client.delete_automation = AsyncMock()
+    client.get_ai_automation = AsyncMock()
+    client.get_ai_automations = AsyncMock()
+    client.delete_ai_automation = AsyncMock()
     client.get_pipe_with_preferences = AsyncMock()
     client.get_automation_events = AsyncMock()
     client.get_ai_credit_usage = AsyncMock()
@@ -40,9 +40,9 @@ def mock_pipefy_client():
 def mock_pipefy_client_no_ai():
     """Client wired only for the read/list/delete tools (public GraphQL path)."""
     client = MagicMock(spec=PipefyClient)
-    client.get_automation = AsyncMock()
-    client.get_automations = AsyncMock()
-    client.delete_automation = AsyncMock()
+    client.get_ai_automation = AsyncMock()
+    client.get_ai_automations = AsyncMock()
+    client.delete_ai_automation = AsyncMock()
     return client
 
 
@@ -90,7 +90,7 @@ class TestGetAiAutomation:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automation.return_value = {
+        mock_pipefy_client.get_ai_automation.return_value = {
             "id": "501",
             "name": "AI rule",
             "action_id": "generate_with_ai",
@@ -102,10 +102,10 @@ class TestGetAiAutomation:
                 {"automation_id": "501"},
             )
         assert result.is_error is False
-        mock_pipefy_client.get_automation.assert_awaited_once_with("501")
+        mock_pipefy_client.get_ai_automation.assert_awaited_once_with("501")
         payload = extract_payload(result)
         assert payload["success"] is True
-        assert payload["data"] == mock_pipefy_client.get_automation.return_value
+        assert payload["data"] == mock_pipefy_client.get_ai_automation.return_value
         assert "AI automation retrieved" in payload["message"]
 
     async def test_graphql_error(
@@ -114,7 +114,7 @@ class TestGetAiAutomation:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automation.side_effect = PipefyGraphQLError(
+        mock_pipefy_client.get_ai_automation.side_effect = PipefyGraphQLError(
             [{"message": "boom"}]
         )
         async with client_session as session:
@@ -133,7 +133,7 @@ class TestGetAiAutomation:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automation.return_value = {}
+        mock_pipefy_client.get_ai_automation.return_value = {}
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automation",
@@ -154,7 +154,7 @@ class TestGetAiAutomation:
                 "get_ai_automation",
                 {"automation_id": ""},
             )
-        mock_pipefy_client.get_automation.assert_not_called()
+        mock_pipefy_client.get_ai_automation.assert_not_called()
         assert_invalid_arguments_envelope(result)
 
     async def test_rejects_non_positive_int_id(
@@ -168,7 +168,7 @@ class TestGetAiAutomation:
                 "get_ai_automation",
                 {"automation_id": -1},
             )
-        mock_pipefy_client.get_automation.assert_not_called()
+        mock_pipefy_client.get_ai_automation.assert_not_called()
         assert extract_payload(result)["success"] is False
 
     async def test_debug_true_includes_codes_on_graphql_error(
@@ -178,7 +178,7 @@ class TestGetAiAutomation:
         extract_payload,
     ):
         err = PipefyGraphQLError([{"message": "nope", "extensions": {"code": "GONE"}}])
-        mock_pipefy_client.get_automation.side_effect = err
+        mock_pipefy_client.get_ai_automation.side_effect = err
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automation",
@@ -194,7 +194,7 @@ class TestGetAiAutomation:
         mock_pipefy_client_no_ai,
         extract_payload,
     ):
-        mock_pipefy_client_no_ai.get_automation.return_value = {
+        mock_pipefy_client_no_ai.get_ai_automation.return_value = {
             "id": "1",
             "action_id": "generate_with_ai",
         }
@@ -206,7 +206,7 @@ class TestGetAiAutomation:
         assert result.is_error is False
         payload = extract_payload(result)
         assert payload["success"] is True
-        mock_pipefy_client_no_ai.get_automation.assert_awaited_once_with("1")
+        mock_pipefy_client_no_ai.get_ai_automation.assert_awaited_once_with("1")
 
 
 def _automation_page(rows, *, total=None, has_next=False, end_cursor=None):
@@ -225,7 +225,7 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = _automation_page(
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page(
             [
                 {
                     "id": "1",
@@ -234,18 +234,13 @@ class TestGetAiAutomations:
                     "action_id": "generate_with_ai",
                 },
                 {
-                    "id": "2",
-                    "name": "HTTP",
-                    "active": True,
-                    "action_id": "send_http_request",
-                },
-                {
                     "id": "3",
                     "name": "AI 2",
                     "active": True,
                     "action_id": "generate_with_ai",
                 },
-            ]
+            ],
+            total=3,
         )
         async with client_session as session:
             result = await session.call_tool(
@@ -253,9 +248,9 @@ class TestGetAiAutomations:
                 {"pipe_id": "303"},
             )
         assert result.is_error is False
-        mock_pipefy_client.get_automations.assert_awaited_once_with(
+        mock_pipefy_client.get_ai_automations.assert_awaited_once_with(
+            "303",
             organization_id=None,
-            pipe_id="303",
             first=50,
             after=None,
         )
@@ -280,16 +275,7 @@ class TestGetAiAutomations:
     ):
         """The list query emits snake ``action_id``; a camel ``actionId`` never occurs
         and is not treated as an AI automation."""
-        mock_pipefy_client.get_automations.return_value = _automation_page(
-            [
-                {
-                    "id": "9",
-                    "name": "AI",
-                    "active": True,
-                    "actionId": "generate_with_ai",
-                },
-            ]
-        )
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -304,16 +290,7 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = _automation_page(
-            [
-                {
-                    "id": "2",
-                    "name": "HTTP",
-                    "active": True,
-                    "action_id": "send_http_request",
-                },
-            ]
-        )
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
@@ -329,15 +306,8 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = _automation_page(
-            [
-                {
-                    "id": "1",
-                    "name": "HTTP",
-                    "active": True,
-                    "action_id": "send_http_request",
-                }
-            ],
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page(
+            [],
             total=210,
             has_next=True,
             end_cursor="cursor-50",
@@ -347,9 +317,9 @@ class TestGetAiAutomations:
                 "get_ai_automations",
                 {"pipe_id": "303", "first": 10, "after": "cursor-40"},
             )
-        mock_pipefy_client.get_automations.assert_awaited_once_with(
+        mock_pipefy_client.get_ai_automations.assert_awaited_once_with(
+            "303",
             organization_id=None,
-            pipe_id="303",
             first=10,
             after="cursor-40",
         )
@@ -371,7 +341,7 @@ class TestGetAiAutomations:
                 "get_ai_automations",
                 {"pipe_id": "303", "first": 51},
             )
-        mock_pipefy_client.get_automations.assert_not_called()
+        mock_pipefy_client.get_ai_automations.assert_not_called()
         assert_invalid_arguments_envelope(result)
 
     async def test_passes_organization_id_when_provided(
@@ -380,16 +350,16 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = _automation_page([])
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
                 {"pipe_id": "303", "organization_id": "9001"},
             )
         assert result.is_error is False
-        mock_pipefy_client.get_automations.assert_awaited_once_with(
+        mock_pipefy_client.get_ai_automations.assert_awaited_once_with(
+            "303",
             organization_id="9001",
-            pipe_id="303",
             first=50,
             after=None,
         )
@@ -401,7 +371,7 @@ class TestGetAiAutomations:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.side_effect = PipefyGraphQLError(
+        mock_pipefy_client.get_ai_automations.side_effect = PipefyGraphQLError(
             [{"message": "no access"}]
         )
         async with client_session as session:
@@ -423,7 +393,7 @@ class TestGetAiAutomations:
                 "get_ai_automations",
                 {"pipe_id": ""},
             )
-        mock_pipefy_client.get_automations.assert_not_called()
+        mock_pipefy_client.get_ai_automations.assert_not_called()
         assert_invalid_arguments_envelope(result)
 
     async def test_rejects_invalid_organization_id(
@@ -436,7 +406,7 @@ class TestGetAiAutomations:
                 "get_ai_automations",
                 {"pipe_id": "1", "organization_id": ""},
             )
-        mock_pipefy_client.get_automations.assert_not_called()
+        mock_pipefy_client.get_ai_automations.assert_not_called()
         assert_invalid_arguments_envelope(result)
 
     async def test_works_without_oauth_config(
@@ -445,7 +415,7 @@ class TestGetAiAutomations:
         mock_pipefy_client_no_ai,
         extract_payload,
     ):
-        mock_pipefy_client_no_ai.get_automations.return_value = _automation_page(
+        mock_pipefy_client_no_ai.get_ai_automations.return_value = _automation_page(
             [
                 {
                     "id": "a",
@@ -469,7 +439,7 @@ class TestGetAiAutomations:
         extract_payload,
     ):
         """When ``organization_id`` is omitted, the client lists with ``None`` (org resolved inside the service)."""
-        mock_pipefy_client.get_automations.return_value = _automation_page(
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page(
             [
                 {
                     "id": "1",
@@ -485,9 +455,9 @@ class TestGetAiAutomations:
                 {"pipe_id": "42"},
             )
         assert extract_payload(result)["success"] is True
-        mock_pipefy_client.get_automations.assert_awaited_once_with(
+        mock_pipefy_client.get_ai_automations.assert_awaited_once_with(
+            "42",
             organization_id=None,
-            pipe_id="42",
             first=50,
             after=None,
         )
@@ -507,7 +477,7 @@ class TestDeleteAiAutomation:
                 {"automation_id": "rm-1", "confirm": False},
             )
         assert result.is_error is False
-        mock_pipefy_client.delete_automation.assert_not_called()
+        mock_pipefy_client.delete_ai_automation.assert_not_called()
         p = extract_payload(result)
         assert p["success"] is False
         assert p.get("requires_confirmation") is True
@@ -518,14 +488,14 @@ class TestDeleteAiAutomation:
         client_session,
         mock_pipefy_client,
     ):
-        mock_pipefy_client.delete_automation.return_value = {"success": True}
+        mock_pipefy_client.delete_ai_automation.return_value = {"success": True}
         async with client_session as session:
             payload = await confirm_after_preview(
                 session,
                 "delete_ai_automation",
                 {"automation_id": "rm-1", "confirm": True},
             )
-        mock_pipefy_client.delete_automation.assert_awaited_once_with("rm-1")
+        mock_pipefy_client.delete_ai_automation.assert_awaited_once_with("rm-1")
         assert payload["success"] is True
 
     async def test_graphql_error(
@@ -533,7 +503,7 @@ class TestDeleteAiAutomation:
         client_session,
         mock_pipefy_client,
     ):
-        mock_pipefy_client.delete_automation.side_effect = PipefyGraphQLError(
+        mock_pipefy_client.delete_ai_automation.side_effect = PipefyGraphQLError(
             [{"message": "forbidden"}]
         )
         async with client_session as session:
@@ -551,14 +521,14 @@ class TestDeleteAiAutomation:
         mock_pipefy_client_no_ai,
     ):
         """Delete uses public GraphQL, not the Internal API. OAuth is not required."""
-        mock_pipefy_client_no_ai.delete_automation.return_value = {"success": True}
+        mock_pipefy_client_no_ai.delete_ai_automation.return_value = {"success": True}
         async with client_session_no_ai as session:
             payload = await confirm_after_preview(
                 session,
                 "delete_ai_automation",
                 {"automation_id": "1", "confirm": True},
             )
-        mock_pipefy_client_no_ai.delete_automation.assert_awaited_once_with("1")
+        mock_pipefy_client_no_ai.delete_ai_automation.assert_awaited_once_with("1")
         assert payload["success"] is True
 
     async def test_api_success_false_returns_error_payload(
@@ -566,7 +536,7 @@ class TestDeleteAiAutomation:
         client_session,
         mock_pipefy_client,
     ):
-        mock_pipefy_client.delete_automation.return_value = {"success": False}
+        mock_pipefy_client.delete_ai_automation.return_value = {"success": False}
         async with client_session as session:
             payload = await confirm_after_preview(
                 session,
@@ -586,7 +556,7 @@ class TestDeleteAiAutomation:
                 "delete_ai_automation",
                 {"automation_id": "", "confirm": True},
             )
-        mock_pipefy_client.delete_automation.assert_not_called()
+        mock_pipefy_client.delete_ai_automation.assert_not_called()
         assert_invalid_arguments_envelope(result)
 
     async def test_has_destructive_hint(self, client_session):
@@ -1085,7 +1055,7 @@ class TestPipefyIdCoercion:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automation.return_value = {"id": "900", "name": "x"}
+        mock_pipefy_client.get_ai_automation.return_value = {"id": "900", "name": "x"}
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automation",
@@ -1093,7 +1063,7 @@ class TestPipefyIdCoercion:
             )
         assert result.is_error is False
         assert extract_payload(result)["success"] is True
-        mock_pipefy_client.get_automation.assert_awaited_once_with("900")
+        mock_pipefy_client.get_ai_automation.assert_awaited_once_with("900")
 
     async def test_get_ai_automations_coerces_int_pipe_and_org_ids(
         self,
@@ -1101,16 +1071,16 @@ class TestPipefyIdCoercion:
         mock_pipefy_client,
         extract_payload,
     ):
-        mock_pipefy_client.get_automations.return_value = _automation_page([])
+        mock_pipefy_client.get_ai_automations.return_value = _automation_page([])
         async with client_session as session:
             result = await session.call_tool(
                 "get_ai_automations",
                 {"pipe_id": 303, "organization_id": 9001},
             )
         assert extract_payload(result)["success"] is True
-        mock_pipefy_client.get_automations.assert_awaited_once_with(
+        mock_pipefy_client.get_ai_automations.assert_awaited_once_with(
+            "303",
             organization_id="9001",
-            pipe_id="303",
             first=50,
             after=None,
         )
@@ -1120,7 +1090,7 @@ class TestPipefyIdCoercion:
         client_session,
         mock_pipefy_client,
     ):
-        mock_pipefy_client.delete_automation.return_value = {"success": True}
+        mock_pipefy_client.delete_ai_automation.return_value = {"success": True}
         async with client_session as session:
             payload = await confirm_after_preview(
                 session,
@@ -1128,7 +1098,7 @@ class TestPipefyIdCoercion:
                 {"automation_id": 501, "confirm": True},
             )
         assert payload["success"] is True
-        mock_pipefy_client.delete_automation.assert_awaited_once_with("501")
+        mock_pipefy_client.delete_ai_automation.assert_awaited_once_with("501")
 
 
 ## ---------------------------------------------------------------------------
