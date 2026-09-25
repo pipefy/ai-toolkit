@@ -134,7 +134,7 @@ flowchart LR
     toolkit --> files["Local filesystem"]
 ```
 
-The table lists the seven parties that the toolkit depends on, and which components reach each one, because no component works with all seven. The skills appear in no row, because a playbook runs no code of its own.
+The table lists the parties that the toolkit depends on, and which components reach each one, because no component works with every party. The skills appear in no row, because a playbook runs no code of its own.
 
 | Party | Reached by | What crosses |
 |---|---|---|
