@@ -413,17 +413,17 @@ def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
 def main() -> int:
     listing = _tracked_skill_md_paths(REPO_ROOT)
     if isinstance(listing, str):
-        print("Cursor plugin packaging FAILED:", file=sys.stderr)
+        print("Plugin packaging FAILED:", file=sys.stderr)
         print(f"  {listing}", file=sys.stderr)
         return 1
 
     errors = collect_errors(REPO_ROOT, listing)
     if errors:
-        print("Cursor plugin packaging FAILED:", file=sys.stderr)
+        print("Plugin packaging FAILED:", file=sys.stderr)
         for err in errors:
             print(f"  {err}", file=sys.stderr)
         return 1
-    print("Cursor plugin packaging passed.")
+    print("Plugin packaging passed.")
     return 0
 
 

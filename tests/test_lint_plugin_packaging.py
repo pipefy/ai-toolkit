@@ -1,4 +1,4 @@
-"""Failure contracts for the Cursor plugin packaging linter."""
+"""Failure contracts for the plugin packaging linter."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ _SCRIPT = (
     / ".github"
     / "workflows"
     / "scripts"
-    / "lint_cursor_plugin.py"
+    / "lint_plugin_packaging.py"
 )
-_spec = importlib.util.spec_from_file_location("lint_cursor_plugin", _SCRIPT)
+_spec = importlib.util.spec_from_file_location("lint_plugin_packaging", _SCRIPT)
 assert _spec and _spec.loader
 _lint = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_lint)
