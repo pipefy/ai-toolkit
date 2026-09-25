@@ -3,15 +3,17 @@ name: pipefy-portal-setup
 description: >
   Use this skill when the user wants to list, create, or configure Pipefy
   portals (main hub, pages, page elements, sub-portals, publish/unpublish).
-  Covers 20 MCP tools on Interfaces + internal_api. Not for pipes/cards.
+  Covers 20 operations on Interfaces + internal_api. Not for pipes/cards.
 tags: [pipefy, portal, interfaces, sub-portal, pages, elements]
 ---
 
 # Portal setup
 
-Configure an organization's Pipefy portal: bootstrap the main hub, add pages and widgets, wire and publish sub-portals. **20 MCP tools** (Interfaces GraphQL + internal_api for sub-portal wiring).
+MCP clients: read [references/mcp.md](references/mcp.md). CLI users: read [references/cli.md](references/cli.md). Examples below describe shared operation arguments.
 
-Deep reference: [`docs/mcp/tools/portal.md`](../../../docs/mcp/tools/portal.md). Parity matrix: [`docs/parity.md`](../../../docs/parity.md). Env vars: [`docs/config.md`](../../../docs/config.md).
+Configure an organization's Pipefy portal: bootstrap the main hub, add pages and widgets, wire and publish sub-portals. **20 operations** (Interfaces GraphQL + internal_api for sub-portal wiring).
+
+Deep reference: [`docs/mcp/tools/portal.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/portal.md). Parity matrix: [`docs/parity.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/parity.md). Env vars: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
 
 ---
 
@@ -23,18 +25,17 @@ Deep reference: [`docs/mcp/tools/portal.md`](../../../docs/mcp/tools/portal.md).
 
 Do **not** use for:
 
-- Pipes, phases, cards, or automations — see `skills/pipes-and-cards/`, `skills/automations/`.
+- Pipes, phases, cards, or automations — see `pipefy-pipes-and-cards`, `pipefy-automations`.
 - Raw GraphQL when a portal tool exists — prefer the tools below.
-- Bootstrapping a portal via undocumented `createInterface` GraphQL — always use **`create_portal`** / **`pipefy portal create`**.
+- Bootstrapping a portal via undocumented `createInterface` GraphQL — always use **`create_portal`**.
 
 ---
 
 ## Prerequisites
 
-- **Organization id:** UUID or **numeric org id** from `pipefy org get` / the Pipefy URL (examples below use fictional `123456789` per [`fixture_ids.py`](../../../packages/sdk/tests/_shared/fixture_ids.py)). SDK resolves numeric ids before Interfaces calls. The org you pass to **`list_portals`** / **`create_portal`** must be the same org your token can write on.
+- **Organization id:** UUID or **numeric org id** from the organization lookup or the Pipefy URL (examples below use fictional `123456789` per [`fixture_ids.py`](https://github.com/pipefy/ai-toolkit/blob/main/packages/sdk/tests/_shared/fixture_ids.py)). SDK resolves numeric ids before Interfaces calls. The org you pass to **`list_portals`** / **`create_portal`** must be the same org your token can write on.
 - **Portal writes:** token needs **`create_portal`** and/or **`manage_portals`** on that org. Many service accounts only have pipe/card scope on their default org → `PERMISSION_DENIED` on portal mutations even when reads succeed elsewhere.
 - **One main portal per org** — `create_portal` is idempotent (second call returns the same portal UUID).
-- **Cursor MCP:** after changing `PIPEFY_*` in `.env`, restart the MCP server so tools pick up the new credentials.
 
 ### Confirm access before writes
 
@@ -75,7 +76,6 @@ If **`get_portal`** shows a main page with **no elements**, call **`create_porta
 
 | Topic | Rule |
 |-------|------|
-| **Response ids** | GraphQL field is `id`; MCP/CLI expose **`uuid`** (same value). |
 | **`published` on list** | **`list_portals` does not return `published`** — call **`get_portal`**. |
 | **Sub-portal in layout** | Tiles may appear under **`pages[].elements[]`** with `type: subPortal` even when top-level `subPortals[]` is empty. |
 | **Publish wire** | Use **`publish_sub_portal`** / **`update_sub_portal_element`** on an existing **`forms`** element (`updateSubPortalElement` on internal_api). **`create_portal_element` with `type: subPortal`** is not a substitute for publish. |
@@ -88,28 +88,28 @@ If **`get_portal`** shows a main page with **no elements**, call **`create_porta
 
 ## Tools needed
 
-| Tool (MCP) | CLI equivalent | Read-only |
-|------------|----------------|-----------|
-| `list_portals` | `pipefy portal list` | Yes |
-| `get_portal` | `pipefy portal get` | Yes |
-| `create_portal` | `pipefy portal create` | No |
-| `update_portal` | `pipefy portal update` | No |
-| `delete_portal` | `pipefy portal delete` | No |
-| `create_portal_page` | `pipefy portal page create` | No |
-| `update_portal_page` | `pipefy portal page update` | No |
-| `delete_portal_page` | `pipefy portal page delete` | No |
-| `sort_portal_pages` | `pipefy portal page sort` | No |
-| `update_portal_page_layout` | `pipefy portal page layout update` | No |
-| `create_portal_element` | `pipefy portal element create` | No |
-| `update_portal_element` | `pipefy portal element update` | No |
-| `delete_portal_element` | `pipefy portal element delete` | No |
-| `duplicate_portal_element` | `pipefy portal element duplicate` | No |
-| `create_sub_portal` | `pipefy portal sub-portal create` | No |
-| `update_sub_portal_element` | `pipefy portal sub-portal attach` | No |
-| `publish_sub_portal` | `pipefy portal sub-portal publish` | No |
-| `unpublish_sub_portal` | `pipefy portal sub-portal unpublish` | No |
-| `delete_sub_portal_element` | `pipefy portal sub-portal detach` | No |
-| `delete_sub_portal` | `pipefy portal sub-portal delete` | No |
+| Operation | Read-only |
+| ------------ | ----------- |
+| `list_portals` | Yes |
+| `get_portal` | Yes |
+| `create_portal` | No |
+| `update_portal` | No |
+| `delete_portal` | No |
+| `create_portal_page` | No |
+| `update_portal_page` | No |
+| `delete_portal_page` | No |
+| `sort_portal_pages` | No |
+| `update_portal_page_layout` | No |
+| `create_portal_element` | No |
+| `update_portal_element` | No |
+| `delete_portal_element` | No |
+| `duplicate_portal_element` | No |
+| `create_sub_portal` | No |
+| `update_sub_portal_element` | No |
+| `publish_sub_portal` | No |
+| `unpublish_sub_portal` | No |
+| `delete_sub_portal_element` | No |
+| `delete_sub_portal` | No |
 
 Element `type` values (15): `text`, `table`, `field`, `embedLink`, `embedVideo`, `embedImage`, `button`, `divider`, `link`, `forms`, `pages`, `subPortal`, `automationButton`, `contentBlock`, `document`.
 
@@ -119,100 +119,76 @@ Element `type` values (15): `text`, `table`, `field`, `embedLink`, `embedVideo`,
 
 1. **List or bootstrap the main portal**
 
-   MCP:
-   ```
-   list_portals organization_uuid="123456789"
+   Operation arguments:
+
+   ```text
+   list_portals(organization_uuid="123456789")
    ```
 
    Expect **at most one** main portal row. If none:
 
-   MCP:
-   ```
-   create_portal organization_uuid="123456789"
-   ```
+   Operation arguments:
 
-   CLI:
-   ```bash
-   pipefy portal list --organization-uuid 123456789
-   pipefy portal create --organization-uuid 123456789
+   ```text
+   create_portal(organization_uuid="123456789")
    ```
 
    Capture `uuid` where `subType` is the main portal.
 
 2. **Inspect structure**
 
-   MCP:
-   ```
-   get_portal portal_uuid="<MAIN_PORTAL_UUID>"
-   ```
+   Operation arguments:
 
-   CLI:
-   ```bash
-   pipefy portal get <MAIN_PORTAL_UUID>
+   ```text
+   get_portal(portal_uuid="<MAIN_PORTAL_UUID>")
    ```
 
    Note `pages[]`, `elements[]`, and **`forms`** element ids. If the main page has **zero elements**, run **`create_portal_page`** (title only) on that portal before adding widgets.
 
 3. **Optional — add a `forms` element** (if no templated `forms` slot exists)
 
-   MCP:
-   ```
-   create_portal_element page_id="<PAGE_ID>" type="forms" metadata={"name": "Request access", "gridMap": {"height": 66, "columns": 4, "minColumns": 4}}
+   Operation arguments:
+
+   ```text
+   create_portal_element(page_id="<PAGE_ID>", type="forms", metadata={"name": "Request access", "gridMap": {"height": 66, "columns": 4, "minColumns": 4}})
    ```
 
    If **`create_portal_element`** returns an opaque or `INTERNAL_SERVER_ERROR` from Interfaces, **`duplicate_portal_element`** from an existing link on the **same** `portal_uuid` and `page_id` instead of retrying create blindly.
 
-   CLI:
-   ```bash
-   pipefy portal element create --page-id <PAGE_ID> --type forms \
-     --metadata '{"name":"Request access","gridMap":{"height":66,"columns":4,"minColumns":4}}'
-   ```
-
 4. **Create a sub-portal**
 
-   MCP:
-   ```
-   create_sub_portal main_portal_uuid="<MAIN_PORTAL_UUID>" name="Partner hub"
-   ```
+   Operation arguments:
 
-   CLI:
-   ```bash
-   pipefy portal sub-portal create --main-portal-uuid <MAIN_PORTAL_UUID> --name "Partner hub"
+   ```text
+   create_sub_portal(main_portal_uuid="<MAIN_PORTAL_UUID>", name="Partner hub")
    ```
 
    Capture the sub-portal `uuid`. **`get_portal` will list it under `subPortals[]` with `published: false`** — the main hub UI is unchanged until step 5.
 
 5. **Publish on a `forms` element**
 
-   MCP:
-   ```
-   publish_sub_portal portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>" sub_portal_uuid="<SUB_PORTAL_UUID>"
-   ```
+   Operation arguments:
 
-   CLI:
-   ```bash
-   pipefy portal sub-portal publish <MAIN_PORTAL_UUID> <FORMS_ELEMENT_ID> <SUB_PORTAL_UUID>
+   ```text
+   publish_sub_portal(portal_uuid="<MAIN_PORTAL_UUID>", element_id="<FORMS_ELEMENT_ID>", sub_portal_uuid="<SUB_PORTAL_UUID>")
    ```
 
 6. **Verify publish state**
 
-   MCP:
-   ```
-   get_portal portal_uuid="<MAIN_PORTAL_UUID>"
+   Operation arguments:
+
+   ```text
+   get_portal(portal_uuid="<MAIN_PORTAL_UUID>")
    ```
 
    Success: target **`subPortals[].published`** is **`true`**. End users can see the sub-portal only after this (and hub visibility rules).
 
 7. **Optional — make the main hub public**
 
-   MCP:
-   ```
-   update_portal portal_uuid="<MAIN_PORTAL_UUID>" visibility="public"
-   ```
+   Operation arguments:
 
-   CLI:
-   ```bash
-   pipefy portal update <MAIN_PORTAL_UUID> --visibility public
+   ```text
+   update_portal(portal_uuid="<MAIN_PORTAL_UUID>", visibility="public")
    ```
 
 ---
@@ -223,13 +199,13 @@ Use a **disposable page** for element/layout experiments on a shared org main po
 
 1. **`create_portal_page`** with a unique title (e.g. `Agent smoke 2026-06-01`).
 2. Run **`create_portal_element`**, **`update_portal_element`**, **`duplicate_portal_element`**, **`update_portal_page_layout`** on that page only.
-3. **`delete_portal_page`** with MCP two-step (`confirmation_token` from the preview, then `confirm=true`), or CLI **`--yes`**.
+3. Review and approve deletion of the disposable page, then use `delete_portal_page`.
 
 **`duplicate_portal_element`:** `element_id`, `portal_uuid`, and `page_id` must refer to the **same page** that already contains the source element (duplicate on the same page, not cross-page).
 
 **`update_portal_page_layout`:** read `layout` from **`get_portal`** for that page and send the full array back with intentional edits. Never invent `{ "rows": [ ... ] }` stubs.
 
-**`sort_portal_pages`:** pass a non-empty `page_ids` list with no duplicates. If the raw response exposes nested `success: false`, treat the operation as failed even when the MCP envelope looks ambiguous.
+**`sort_portal_pages`:** pass a non-empty `page_ids` list with no duplicates. If the response exposes nested `success: false`, treat the operation as failed.
 
 **Link element metadata (create/update, full replace):**
 
@@ -243,61 +219,19 @@ Use a **disposable page** for element/layout experiments on a shared org main po
 
 ---
 
-## Two-step destructive deletes
-
-MCP deletes (`delete_portal`, `delete_portal_page`, `delete_portal_element`, `delete_sub_portal`, `delete_sub_portal_element`) return a preview with `confirmation_token`. Echo that token with `confirm=true` on the second call. CLI uses `--yes`. `unpublish_sub_portal` is not gated.
-
----
-
 ## Steps — unpublish or remove sub-portal
 
 **Unpublish** (keeps sub-portal entity; visitors lose access):
 
-MCP:
-```
-unpublish_sub_portal portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>"
-```
+Operation arguments:
 
-CLI:
-```bash
-pipefy portal sub-portal unpublish <MAIN_PORTAL_UUID> <FORMS_ELEMENT_ID>
+```text
+unpublish_sub_portal(portal_uuid="<MAIN_PORTAL_UUID>", element_id="<FORMS_ELEMENT_ID>")
 ```
 
-**Detach** element wiring (destructive: MCP two-step with `confirmation_token`, `--yes` on CLI):
+**Detach** element wiring with `delete_sub_portal_element` after reviewing the impact and obtaining approval.
 
-MCP:
-```
-delete_sub_portal_element portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>" confirm=false
-```
-Then after approval, echo the preview's `confirmation_token`:
-
-```
-delete_sub_portal_element portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>" confirm=true confirmation_token="<token from preview>"
-```
-
-CLI:
-```bash
-pipefy portal sub-portal detach <MAIN_PORTAL_UUID> <FORMS_ELEMENT_ID> --yes
-```
-
-**Delete sub-portal interface** (irreversible):
-
-MCP two-step `delete_sub_portal` (echo `confirmation_token`) / CLI:
-```bash
-pipefy portal sub-portal delete <SUB_PORTAL_UUID> --yes
-```
-
----
-
-## MCP response shape
-
-- Read tools return `{ success: true, data: { ... } }` when `PIPEFY_MCP_UNIFIED_ENVELOPE` is enabled (default). Parse **`data`** for `portals`, `pages`, `subPortals`, etc.
-- GraphQL/transport failures → `{ success: false, error: { message: "..." } }` — do not treat transport errors as success.
-- **`PERMISSION_DENIED`** on portal tools usually names **`create_portal`** or **`manage_portals`**. Re-check org id, token, and SA **`joinAsAdmin`** (see [Confirm access](#confirm-access-before-writes)).
-- Only **`PERMISSION_DENIED`** is rewritten to the portal permission hint; other GraphQL codes surface as generic errors with the API message.
-- Destructive deletes: default **`confirm=false`** returns a preview (`requires_confirmation: true`, `confirmation_token`); call again with **`confirm=true`** and that token only after explicit human approval.
-
-CLI `--json` prints the raw SDK payload (no `success` wrapper).
+**Delete sub-portal interface** with `delete_sub_portal` (irreversible); review and approve before deletion.
 
 ---
 
@@ -333,5 +267,5 @@ CLI `--json` prints the raw SDK payload (no `success` wrapper).
 
 ## See also
 
-- [`docs/mcp/tools/portal.md`](../../../docs/mcp/tools/portal.md) — endpoints, wire naming, maintainer introspection
-- [`skills/introspection/pipefy-introspection/SKILL.md`](../../introspection/pipefy-introspection/SKILL.md) — verify Interfaces / internal_api mutations before changing tools
+- [`docs/mcp/tools/portal.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/portal.md) — endpoints, wire naming, maintainer introspection
+- `pipefy-introspection` — verify Interfaces / internal_api mutations before changing tools

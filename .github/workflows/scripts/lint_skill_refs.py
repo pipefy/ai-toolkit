@@ -102,7 +102,14 @@ def _load_pipefy_tool_names() -> frozenset[str]:
 
 
 def _iter_skill_files(skills_root: Path) -> list[Path]:
-    return sorted(p for p in skills_root.rglob("SKILL.md") if p.is_file())
+    files: set[Path] = set()
+    for skill in skills_root.rglob("SKILL.md"):
+        if skill.is_file():
+            files.add(skill)
+            files.update(
+                p for p in (skill.parent / "references").rglob("*.md") if p.is_file()
+            )
+    return sorted(files)
 
 
 def _lint_file(path: Path, tool_names: frozenset[str]) -> list[str]:

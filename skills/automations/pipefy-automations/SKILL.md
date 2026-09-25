@@ -3,34 +3,36 @@ name: pipefy-automations
 description: >
   Use this skill when the user wants to create, read, update, or delete
   traditional automations (if/then rules) or AI automations (prompt-driven).
-  Covers 16 MCP tools. For AI agents (conversational), see skills/ai-agents/.
+  Covers 16 operations. For AI agents (conversational), see `pipefy-ai-agents`.
 tags: [pipefy, automations, ai-automations, rules]
 ---
 
 # Automations
 
-Traditional automations (if/then rules), AI automations (prompt-driven), task automations, and simulation. **16 MCP tools.**
+Read only the reference for your active surface: [MCP](references/mcp.md) or [CLI](references/cli.md). The workflows below use shared operation names and arguments.
 
-For AI agents (conversational agents with behaviors), see [skills/ai-agents/pipefy-ai-agents/SKILL.md](../../ai-agents/pipefy-ai-agents/SKILL.md).
+Traditional automations (if/then rules), AI automations (prompt-driven), task automations, and simulation. **16 operations.**
+
+For AI agents (conversational agents with behaviors), see `pipefy-ai-agents`.
 
 ---
 
 ## Traditional automations (rules engine)
 
-| Tool (MCP) | CLI | Purpose |
-|------------|-----|---------|
-| `get_automations` | `pipefy automation list` | List all automations for a pipe. |
-| `get_automation` | `pipefy automation get` | Single automation with full rule config — returns `event_params` and `action_params` (including `aiParams` for AI rules). |
-| `create_automation` | `pipefy automation create` | Create an if/then rule. `active` defaults to true. First-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)); other fields via `extra_input`. |
-| `update_automation` | `pipefy automation update` | Patch a rule: first-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)) and/or `extra_input`. |
-| `delete_automation` | `pipefy automation delete` | **(Two-step destructive)**[^mcp-confirm] |
-| `simulate_automation` | `pipefy automation simulate` | **AI-only** dry-run (`generate_with_ai` action). |
-| `get_automation_events` | `pipefy automation events list` | Available trigger events. |
-| `get_automation_event_attributes` | `pipefy automation event-attributes` | Official `field_map.value` event-attribute tokens. |
-| `get_automation_actions` | `pipefy automation actions list` | Available action types for a pipe. |
-| `create_send_task_automation` | `pipefy automation send-task create` | Shortcut for send-a-task rules. |
+| Operation | Purpose |
+| ------------ | --------- |
+| `get_automations` | List all automations for a pipe. |
+| `get_automation` | Single automation with full rule config — returns `event_params` and `action_params` (including `aiParams` for AI rules). |
+| `create_automation` | Create an if/then rule. `active` defaults to true. First-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)); other fields via `extra_input`. |
+| `update_automation` | Patch a rule: first-class typed `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)) and/or `extra_input`. |
+| `delete_automation` | Destructive delete. |
+| `simulate_automation` | **AI-only** dry-run (`generate_with_ai` action). |
+| `get_automation_events` | Available trigger events. |
+| `get_automation_event_attributes` | Official `field_map.value` event-attribute tokens. |
+| `get_automation_actions` | Available action types for a pipe. |
+| `create_send_task_automation` | Shortcut for send-a-task rules. |
 
-Logs, usage, and job exports for automations live in [skills/observability/pipefy-observability/SKILL.md](../../observability/pipefy-observability/SKILL.md) (`get_automation_logs`, `get_automation_logs_by_repo`, `get_automations_usage`, `export_automation_jobs`, and related tools).
+Logs, usage, and job exports for automations live in `pipefy-observability` (`get_automation_logs`, `get_automation_logs_by_repo`, `get_automations_usage`, `export_automation_jobs`, and related tools).
 
 ---
 
@@ -38,16 +40,14 @@ Logs, usage, and job exports for automations live in [skills/observability/pipef
 
 **Consent:** create or suggest an AI automation only when the user explicitly asked for AI. If it seems useful but was not requested, ask first — never introduce AI automations without being asked.
 
-| Tool (MCP) | CLI | Purpose |
-|------------|-----|---------|
-| `get_ai_automations` | `pipefy ai-automation list` | List AI automations for a pipe. |
-| `get_ai_automation` | `pipefy ai-automation get` | Full config including prompt, fields, condition. |
-| `create_ai_automation` | `pipefy ai-automation create` | Create a prompt-driven automation (requires AI enabled on the pipe). |
-| `update_ai_automation` | `pipefy ai-automation update` | Change name, `active`, prompt, `field_ids`, or `condition`. |
-| `delete_ai_automation` | `pipefy ai-automation delete` | **(Two-step destructive)**[^mcp-confirm] |
-| `validate_ai_automation_prompt` | `pipefy ai-automation validate-prompt` | **Pre-flight check.** Returns `{valid, problems, warnings, field_map}` — also detects prompt `%{id}` ∩ `field_ids` overlap. |
-
-[^mcp-confirm]: MCP two-step: echo `confirmation_token` from the preview with `confirm=true`. CLI: `--yes`.
+| Operation | Purpose |
+| ------------ | --------- |
+| `get_ai_automations` | List AI automations for a pipe. |
+| `get_ai_automation` | Full config including prompt, fields, condition. |
+| `create_ai_automation` | Create a prompt-driven automation (requires AI enabled on the pipe). |
+| `update_ai_automation` | Change name, `active`, prompt, `field_ids`, or `condition`. |
+| `delete_ai_automation` | Destructive delete. |
+| `validate_ai_automation_prompt` | **Pre-flight check.** Returns `{valid, problems, warnings, field_map}` — also detects prompt `%{id}` ∩ `field_ids` overlap. |
 
 ---
 
@@ -91,7 +91,7 @@ Logs, usage, and job exports for automations live in [skills/observability/pipef
 
 ## Conditions — gate a rule on field tests
 
-`create_automation` and `update_automation` take a first-class `condition` (CLI: `--condition`). Do **not** guess the shape from GraphQL introspection — it is:
+`create_automation` and `update_automation` take a first-class `condition`. Do **not** guess the shape from GraphQL introspection — it is:
 
 ```json
 {
@@ -112,7 +112,7 @@ Omit `condition` to leave a traditional rule unconditional (no default is inject
 
 ## Steps — update a card field with a dynamic value
 
-Use when the user wants an if/then rule to **stamp or copy values** onto the triggering card (for example, set a datetime when `card_created` fires). This is **`create_automation`** with `action_id: update_card_field` and `extra_input.action_params.field_map` — **not** the MCP tool `update_card_field` (that tool uses field **slug** for one-off card edits).
+Use when the user wants an if/then rule to **stamp or copy values** onto the triggering card (for example, set a datetime when `card_created` fires). This is **`create_automation`** with `action_id: update_card_field` and `extra_input.action_params.field_map` — **not** the one-off `update_card_field` operation (that tool uses field **slug** for one-off card edits).
 
 1. **Discover field `internal_id`s** (digits only — never slug in `fieldId`):
 
@@ -129,7 +129,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
    get_automation_event_attributes
    ```
 
-   For `update_card_field`, `acceptedParameters` omits `field_map`; use the payload shape below (see `docs/mcp/tools/automations-and-ai.md`). Prefer `value_token` from `get_automation_event_attributes` when stamping execution time.
+   For `update_card_field`, `acceptedParameters` omits `field_map`; use the payload shape below (see [docs/mcp/tools/automations-and-ai.md](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/automations-and-ai.md)). Prefer `value_token` from `get_automation_event_attributes` when stamping execution time.
 
 3. **Create disabled** (`active=false`) so the rule does not fire while you verify:
 
@@ -184,7 +184,7 @@ Before `create_automation`, confirm the chosen `event_id` is listed in that acti
 
 What to do with that intent:
 
-1. **Send the intent to the product, not to a script.** A label rule belongs in the customer's process, where it keeps firing without anyone driving it. The API and MCP cannot create it, so hand the user a manual step: configure the rule in Pipefy and confirm there what the interface offers for that trigger. State that step in the plan or summary you hand the user, the same way you would for an email template.
+1. **Send the intent to the product, not to a script.** A label rule belongs in the customer's process, where it keeps firing without anyone driving it. The API cannot create it, so hand the user a manual step: configure the rule in Pipefy and confirm there what the interface offers for that trigger. State that step in the plan or summary you hand the user, the same way you would for an email template.
 2. **Offer the rule that does exist, when it fits.** `update_card_field` accepts `sla_based`, so "when the card goes overdue, stamp a field on the card" is createable through `create_automation` today. A status or flag field carries the same signal as a label and keeps the rule inside the process. Discover a suitable destination field first with `get_start_form_fields` / `get_phase_fields`: many pipes have no field named Status, and the automation needs a real `internal_id`. Propose it, do not impose it: the user may want the label specifically.
 
    `sla_based` takes its parameter as `event_params.kindOfSla`, **camelCase**, even though `get_automation_events` reports it as `kind_of_sla`. Values are capitalized: `Expired`, `Late`, `Overdue`. Sending the catalog spelling fails with "Field is not defined on AutomationEventParamsInput". Shape the action with the `field_map` recipe below, including `inputMode`.
@@ -194,13 +194,13 @@ What to do with that intent:
 
 ### `field_map` destination `fieldId`
 
-On `create_automation`, when `extra_input.action_params.field_map` is present, the SDK checks each `fieldId` against numeric `internal_id` values on the action pipe (`action_repo_id`, default `pipe_id`). Slug-shaped `fieldId` values and unknown numeric ids fail before GraphQL with `success: false` and the offending id. Recovery: `get_start_form_fields` / `get_phase_fields` → use `internal_id`, not slug.
+On `create_automation`, when `extra_input.action_params.field_map` is present, the SDK checks each `fieldId` against numeric `internal_id` values on the action pipe (`action_repo_id`, default `pipe_id`). Slug-shaped `fieldId` values and unknown numeric ids fail before GraphQL with the offending id. Recovery: `get_start_form_fields` / `get_phase_fields` → use `internal_id`, not slug.
 
 ### Phase transition (`move_single_card`)
 
 For `move_single_card` actions with trigger `card_moved`, **`create_automation` only** validates that the destination phase is reachable from the source via `cards_can_be_moved_to_phases` (same read-only data as `move_card_to_phase`). `update_automation` does not run this check.
 
-If invalid, the tool returns `success: false` with a **text** error message listing allowed destination phases by name and id, plus a hint that transition rules are configured in the Pipefy UI only (not editable via API). There is no structured `valid_destinations` field on this envelope.
+If invalid, read the error message listing permitted destination phases and the UI-only transition configuration hint.
 
 Recovery: read the allowed phases in `error.message`, or call `get_phase_allowed_move_targets(phase_id=<source_phase_id>)` on the source phase from `event_params.to_phase_id`, then re-issue `create_automation` with a permitted destination phase id.
 
@@ -213,13 +213,13 @@ Pick the right tool for "notification" intent:
 | User signal words | Tool | Why |
 |-------------------|------|-----|
 | "notificação", "tarefa", "lembrete para alguém validar" | `create_send_task_automation` | Built-in: handles `event_id`, `task_title`, `recipients`, optional `event_params` and `condition`. |
-| "enviar e-mail", "responder ao cliente" | `send_email_with_template` / `send_inbox_email` ([members-email-webhooks](../../members-email-webhooks/pipefy-members-email-webhooks/SKILL.md)) | Email surface, not automations. |
-| "webhook", "chamar serviço externo" | `create_webhook` ([members-email-webhooks](../../members-email-webhooks/pipefy-members-email-webhooks/SKILL.md)) | HTTP callback on card events. |
+| "enviar e-mail", "responder ao cliente" | `send_email_with_template` / `send_inbox_email` (`pipefy-members-email-webhooks`) | Email surface, not automations. |
+| "webhook", "chamar serviço externo" | `create_webhook` (`pipefy-members-email-webhooks`) | HTTP callback on card events. |
 | "automação", "regra if/then" | `create_automation` | Generic rules engine. |
 
 Do NOT hand-build `action_params.taskParams` via `create_automation` when `create_send_task_automation` is the right tool.
 
-An automation that sends email depends on a template that already exists: template create, edit and delete have no API or MCP path, only the Pipefy UI. When the process needs a new or changed template, state that manual UI step in the plan or summary you give the user.
+An automation that sends email depends on a template that already exists: template create, edit and delete have no API path, only the Pipefy UI. When the process needs a new or changed template, state that manual UI step in the plan or summary you give the user.
 
 ---
 
@@ -233,7 +233,7 @@ Example flow:
 2. `create_send_task_automation`: when the AI-filled field is updated, send a task to the manager — "Validate the classification on card [title]".
 3. `create_automation` or `create_field_condition`: when the manager marks "Approved", move the card to the next phase.
 
-Use this pattern for approvals, financial decisions, content publication, and any step where errors have real-world consequences. See also: [skills/process-design/](../../process-design/pipefy-process-design/SKILL.md) Orchestration patterns.
+Use this pattern for approvals, financial decisions, content publication, and any step where errors have real-world consequences. See also: `pipefy-process-design` Orchestration patterns.
 
 ---
 
@@ -251,7 +251,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 2. Re-check event×action: `event_id` must be in the action's `triggerEvents` (see [Event×action compatibility](#eventaction-compatibility)); known dead pairs never run even when create succeeded.
 3. Empty logs are not proof of a platform outage — the rule may be dormant, inactive, or incompatible.
 4. Invalid `fieldId` in `field_map` may fail without updating the card (see below).
-5. Read the tool error payload and required-field / phase-transition hints **before** concluding "MCP down" or blaming the platform.
+5. Read the tool error payload and required-field / phase-transition hints **before** concluding "service unavailable" or blaming the platform.
 
 ### Other failure modes
 
@@ -270,16 +270,16 @@ Use this pattern for approvals, financial decisions, content publication, and an
 - **Simulation reuses real rule params.** Before simulating, call `get_automation` to read `event_params` and `action_params` of a working rule and pass them verbatim. Don't hand-craft params.
 - **`field_map` uses slug in `fieldId`.** Preflight rejects non-numeric `fieldId` before GraphQL; slugs (e.g. `due_date`) used to surface as `INTERNAL_SERVER_ERROR`. Recovery: `get_start_form_fields` / `get_phase_fields` → use `internal_id`.
 - **Unknown `field_map` `fieldId`.** `create_automation` preflight fails with the offending id when the destination field is not on the action pipe. Re-discover ids on `action_repo_id` (not only the trigger pipe for cross-pipe actions).
-- **Used `update_card_field` MCP tool for a rule.** That tool updates one card by **slug**; automations need `create_automation` + `field_map` with numeric `fieldId`.
+- **Used `update_card_field` operation for a rule.** That tool updates one card by **slug**; automations need `create_automation` + `field_map` with numeric `fieldId`.
 - **Missing or wrong `card_id`.** Set `action_params.card_id` to `"%{id}"` for the triggering card; empty/wrong values prevent the intended update.
 - **Token typo in `field_map.value`.** Typos in `%{…}` templates leave fields unchanged at runtime. Compare with [Automation Event Attributes](https://developers.pipefy.com/reference/automation-event-attributes) and a working rule from `get_automation`.
 - **Rule runs but field unchanged.** Check `get_automation_logs` / `get_automation_logs_by_repo` for execution errors; invalid `fieldId` may fail silently (no card update).
 
 ## See also
 
-- [skills/building/pipefy-building/SKILL.md](../../building/pipefy-building/SKILL.md) — intent → domain skill router for build asks.
-- [skills/ai-agents/pipefy-ai-agents/SKILL.md](../../ai-agents/pipefy-ai-agents/SKILL.md) — conversational agents with behaviors (different from AI automations).
-- [skills/observability/pipefy-observability/SKILL.md](../../observability/pipefy-observability/SKILL.md) — execution logs and usage stats.
-- [skills/introspection/pipefy-introspection/SKILL.md](../../introspection/pipefy-introspection/SKILL.md) — discover trigger and action types via raw schema.
-- [skills/process-design/pipefy-process-design/SKILL.md](../../process-design/pipefy-process-design/SKILL.md) — Orchestration patterns (agentic + human validation).
-- `docs/mcp/tools/identifiers.md#field-references-slug-vs-internal_id` — canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id (`field_address` and `field_map[].fieldId` want internal_id).
+- `pipefy-building` — intent → domain skill router for build asks.
+- `pipefy-ai-agents` — conversational agents with behaviors (different from AI automations).
+- `pipefy-observability` — execution logs and usage stats.
+- `pipefy-introspection` — discover trigger and action types via raw schema.
+- `pipefy-process-design` — Orchestration patterns (agentic + human validation).
+- [docs/mcp/tools/identifiers.md#field-references-slug-vs-internal_id](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/identifiers.md#field-references-slug-vs-internal_id) — canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id (`field_address` and `field_map[].fieldId` want internal_id).

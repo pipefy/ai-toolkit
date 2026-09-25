@@ -12,6 +12,8 @@ tags: [pipefy, process-design, orchestration, pipes, consulting]
 
 # Pipefy Process Design
 
+Read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for the surface you are using. Load only the relevant reference.
+
 This skill activates when the user wants **consulting help** to design a process — not when they want you to build one. If the user already knows what they want (gave you phases, fields, a spec, or a clear use case), **do not use this skill**. Execute directly.
 
 ---
@@ -38,8 +40,8 @@ This skill activates when the user wants **consulting help** to design a process
 
 1. **Research existing org structure:**
 
-   MCP: `search_pipes name=""`  (empty search returns all visible pipes)
-   MCP: `get_organization organization_id=<id>`
+   Operation: `search_pipes name=""`  (empty search returns all visible pipes)
+   Operation: `get_organization organization_id=<id>`
 
 2. **Understand the process intent:**
    - What triggers a new case? (form submission, email, manual)
@@ -111,11 +113,11 @@ Next step: [execute with pipes-and-cards skill? or more questions?]
 
 - User has clarity on phases, fields, and automation triggers before execution starts.
 - No duplicate pipes created (checked via `search_pipes`).
-- The design is buildable with available MCP tools (no features promised that don't exist).
+- The design is buildable with available operations (no features promised that don't exist).
 
 ## See also
 
-- [pipefy-building](../../building/pipefy-building/SKILL.md) — for execution / build asks, read the router then the domain skill (do not expand this consulting skill into a build playbook).
-- `skills/pipes-and-cards/` — execute the design once finalized.
-- `skills/automations/` — add automation rules to the new pipe.
-- `skills/process-intelligence/` — analyze an existing process for improvement (distinct from designing new).
+- `pipefy-building` — for execution / build asks, read the router then the domain skill (do not expand this consulting skill into a build playbook).
+- `pipefy-pipes-and-cards` — execute the design once finalized.
+- `pipefy-automations` — add automation rules to the new pipe.
+- `pipefy-process-intelligence` — analyze an existing process for improvement (distinct from designing new).

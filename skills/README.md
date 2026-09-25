@@ -14,6 +14,11 @@ npx skills add pipefy/ai-toolkit -g -a claude-code -y      # CI-friendly
 
 `skills.sh` reads canonical `skills/**/SKILL.md` files directly from this repo; no install or wheel needed.
 
+Each entrypoint contains shared domain guidance. MCP clients load its
+`references/mcp.md`; CLI users load `references/cli.md`, when present. Copy the
+whole skill directory so these references travel with it. Skills refer to each
+other by name, so a flat `<skill-name>/SKILL.md` installation works too.
+
 **Reference from source (no install):**
 
 ```bash

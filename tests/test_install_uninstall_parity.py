@@ -421,6 +421,8 @@ _ONBOARDING = (
 def test_the_onboarding_skill_verifies_without_a_repository_checkout():
     """Hosted MCP and the plugin give the agent no clone to run a script from."""
     body = _ONBOARDING.read_text(encoding="utf-8")
+    assert "(references/mcp.md)" in body
+    body = (_ONBOARDING.parent / "references/mcp.md").read_text(encoding="utf-8")
     verify = body.split("4. **Verify**", 1)[1].split("## Failure modes", 1)[0]
     assert "curl -LsSf" in verify
     assert "uninstall.sh | sh -s -- --scan" in verify
