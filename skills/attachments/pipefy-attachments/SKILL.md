@@ -6,6 +6,8 @@ description: >
   and a downloaded file_url — plus a presigned-URL handshake for uploading a
   file the server can't read, through the MCP tools and the CLI.
 tags: [pipefy, attachments, upload, card, table-record]
+metadata:
+  surfaces: "mcp cli"
 ---
 
 # Attachments

@@ -7,6 +7,8 @@ description: >
   /pipefy:install, or set up mcp.pipefy.com. Do not use for day-to-day Pipefy workflows
   after MCP is already working.
 tags: [pipefy, onboarding, install, mcp, setup, claude, cursor]
+metadata:
+  surfaces: "mcp cli"
 ---
 
 # Pipefy toolkit setup (first-time onboarding)

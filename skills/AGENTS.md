@@ -108,8 +108,20 @@ All fields are **required** unless noted:
 | `name` | Yes | Must match the directory name exactly. |
 | `description` | Yes | One-line summary; used by agents to select this skill. |
 | `tags` | No | Optional list of relevant keywords. |
+| `metadata.surfaces` | No | Space-separated string of supported surfaces: `sdk`, `mcp`, `cli`. Omission means all three. |
 
-CI (`skills-lint.yml`) validates these on every PR.
+Declare only the surfaces on which the skill's workflow applies. `sdk` means SDK consumers that build agent tools from `PipefyClient`, `mcp` means MCP clients, and `cli` means the `pipefy` command. This describes applicability, not identical call signatures or availability under every deployment profile; document prerequisites separately.
+
+For a skill limited to MCP and CLI:
+
+```yaml
+metadata:
+  surfaces: "mcp cli"
+```
+
+Use `"mcp"` for MCP-only skills such as iPaaS. Do not use a YAML list, an empty value, duplicate tokens, or other surface names. Unrelated metadata does not change the default. Existing readers may ignore this optional metadata. Duplicate YAML keys are rejected, including repeated `metadata` or `surfaces` keys.
+
+CI (`skills-lint.yml`) validates these fields with `uv run python .github/workflows/scripts/lint_skill_frontmatter.py`.
 
 ---
 

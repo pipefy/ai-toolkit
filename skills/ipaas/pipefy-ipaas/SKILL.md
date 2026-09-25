@@ -8,6 +8,8 @@ description: >
   per-pipe catalog discovered at runtime. For native if/then rules or
   prompt-driven AI automations, use skills/automations/ instead.
 tags: [pipefy, ipaas, advanced-automations, flows, integrations]
+metadata:
+  surfaces: "mcp"
 ---
 
 # iPaaS (Advanced Automations)
