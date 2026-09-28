@@ -150,7 +150,7 @@ Where a crossing has a port, [Ports and dependency inversion](#ports-and-depende
 
 ## Solution strategy
 
-These are the decisions everything else rests on. Some answer a goal that [Quality goals](#quality-goals) ranks, and those come first. The rest answer a stated requirement, or a commitment this project made.
+The table below holds the decisions that the rest of this map rests on. Every goal that [Quality goals](#quality-goals) ranks produced a row, and those rows come first, in rank order. The rows after them answer a quality requirement, an expectation in [Stakeholders](#stakeholders), or a commitment this project made.
 
 | Driver | Decision | Details |
 |---|---|---|
