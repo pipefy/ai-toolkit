@@ -265,12 +265,30 @@ UPDATE_FIELDS_VALUES_MUTATION = gql(
     """
 )
 
+GET_CARD_FIELD_IDS_QUERY = gql(
+    """
+    query ($card_id: ID!) {
+        card(id: $card_id) {
+            id
+            fields {
+                value
+                updated_at
+                field {
+                    id
+                }
+            }
+        }
+    }
+    """
+)
+
 __all__ = [
     "CREATE_CARD_MUTATION",
     "CREATE_COMMENT_MUTATION",
     "DELETE_CARD_MUTATION",
     "DELETE_COMMENT_MUTATION",
     "FIND_CARDS_QUERY",
+    "GET_CARD_FIELD_IDS_QUERY",
     "GET_CARD_QUERY",
     "GET_CARD_RELATIONS_QUERY",
     "GET_CARDS_QUERY",

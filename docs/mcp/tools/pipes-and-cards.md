@@ -72,6 +72,34 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 
 **Choosing card updates:** `update_card` + `field_updates` = several custom fields at once (prefer `operation` ADD/REMOVE for list-valued fields: connections, attachments, checklists). Pipe labels and assignees are card attributes (`label_ids` / `assignee_ids`, replace-all), not fields — `field_updates` cannot address them. `update_card_field` = one field, full replacement of the entire list — for connectors that means related-card **ids**; `get_card` field `value` is display titles only, so do not rebuild from it (read ids via `get_card_relations`, or GraphQL `array_value`). `update_card` with attribute args = metadata. The two modes are exclusive: if `field_updates` is present, `title` / `assignee_ids` / `label_ids` / `due_date` are discarded.
 
+### Partial writes in `update_card` field mode
+
+`updateFieldsValues` validates each entry in `field_updates` on its own and reports one
+`success` flag for the whole batch, so a batch with one bad entry can come back
+`success: false` with the other entries already written. Retrying the whole batch is
+the wrong recovery: on `operation: "ADD"` it appends the applied values a second time.
+
+When any entry is rejected, `update_card` and `fill_card_phase_fields` return:
+
+| Key | Meaning |
+| --- | --- |
+| `error.code` | `CARD_UPDATE_PARTIALLY_APPLIED` |
+| `applied_field_ids` | Requested field ids confirmed written |
+| `rejected_fields` | `{field_id, message}` per rejected entry, carrying the API's own text |
+| `verified` | Whether the confirming read ran |
+
+`applied_field_ids` comes from re-reading the card, not from the mutation's `updatedNode`:
+that block has been observed omitting a field whose value a follow-up read showed had
+persisted, so it cannot be used to decide what landed. When `verified` is `false` the
+re-read did not run, `applied_field_ids` is empty for lack of evidence rather than
+because nothing was written; retry only the rejected fields and do not resend an ADD
+operation for any other requested id.
+
+Retry only the entries named in `rejected_fields`.
+
+`update_card` in attribute mode (`title`, `assignee_ids`, `label_ids`, `due_date`) uses
+`updateCard`, whose payload has no `userErrors` field, so it has no partial-failure case.
+
 ### Headless / agent clients
 
 When elicitation is unavailable, `create_card` and `fill_card_phase_fields` still work but behave differently. That covers agents, CLIs, and SDK consumers, and also **the hosted server**, which serves `json_response=True` and so has no server-to-client back channel at any protocol revision:

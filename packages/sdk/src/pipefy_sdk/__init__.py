@@ -5,7 +5,12 @@ from __future__ import annotations
 __version__ = "0.5.2-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
-from pipefy_sdk.exceptions import AiAgentConfigureError, PipefyAPIError, PipefyError
+from pipefy_sdk.exceptions import (
+    AiAgentConfigureError,
+    PartialCardUpdateError,
+    PipefyAPIError,
+    PipefyError,
+)
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
@@ -162,6 +167,7 @@ __all__ = [
     "MemberInvite",
     "MemberRemovalResult",
     "NonBlankStr",
+    "PartialCardUpdateError",
     "PipefyAPIError",
     "PipefyClient",
     "PipefyEngine",
