@@ -30,5 +30,5 @@ Hard stop: creating, editing and deleting email templates is not part of the API
 |------|-----------|------|
 | `get_webhooks` | Yes | Lists webhooks for a pipe (`id`, `name`, `url`, `actions`, `headers`, `email`). |
 | `create_webhook` | No | Register a webhook for pipe events; `url` must be HTTPS; `actions` is a list of event names (e.g. `['card.move', 'card.create']`). Use `introspect_type('WebhookActions')` for valid actions. |
-| `update_webhook` | No | Patch an existing webhook (`webhook_id`, optional `name`, `url`, `actions`, `headers`). |
+| `update_webhook` | No | Patch an existing webhook (`webhook_id`, optional `name`, `url`, `actions`, `headers`). `headers` replaces the whole set: a key left out is deleted, so send every header to keep. |
 | `delete_webhook` | No | Permanently delete a webhook by ID (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
