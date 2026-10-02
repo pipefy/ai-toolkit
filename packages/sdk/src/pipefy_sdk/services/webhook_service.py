@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -22,6 +23,13 @@ from pipefy_sdk.services.card_service import CardService
 from pipefy_sdk.settings import PipefySettings
 
 logger = logging.getLogger(__name__)
+
+
+def _webhook_input_value(key: str, value: Any) -> Any:
+    """Encode ``headers`` as a JSON string: the API's ``Json`` scalar rejects a dict."""
+    if key == "headers" and isinstance(value, dict):
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    return value
 
 
 class WebhookService:
@@ -231,7 +239,7 @@ class WebhookService:
             if key == "name":
                 continue
             if value is not None:
-                input_obj[key] = value
+                input_obj[key] = _webhook_input_value(key, value)
         return await self._executor.execute_query(
             CREATE_WEBHOOK_MUTATION,
             {"input": input_obj},
@@ -271,7 +279,7 @@ class WebhookService:
             if key == "id":
                 continue
             if value is not None:
-                input_obj[key] = value
+                input_obj[key] = _webhook_input_value(key, value)
         return await self._executor.execute_query(
             UPDATE_WEBHOOK_MUTATION,
             {"input": input_obj},
