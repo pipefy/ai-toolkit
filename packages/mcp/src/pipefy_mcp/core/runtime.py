@@ -64,14 +64,14 @@ class McpRuntime:
         # Narrow per-deployment facts resolved at startup. The runtime deliberately
         # holds no Settings tree: tools reach it off the request context, so
         # exposing the tree would let tool code read any process-global value at
-        # call time (#405; see the "Process-global configuration" section of AGENTS.md).
+        # call time (see the "Process-global configuration" section of AGENTS.md).
         self.is_remote = settings.mcp.profile == "remote"
         self.unified_envelope = settings.mcp.unified_envelope
         # The client telemetry deployment is derived from the resolved profile, not
         # configured: a hosted remote-profile server and a user's local stdio install
-        # both run the `mcp` surface, so the surface alone cannot tell them apart
-        # (#550). Deriving it here keeps the property #336 established for the
-        # surface — stamped at the composition root, never read from env or TOML.
+        # both run the `mcp` surface, so the surface alone cannot tell them apart.
+        # Deriving it here keeps the property the surface already has:
+        # stamped at the composition root, never read from env or TOML.
         self._engine = PipefyEngine.build(
             settings.pipefy,
             surface="mcp",

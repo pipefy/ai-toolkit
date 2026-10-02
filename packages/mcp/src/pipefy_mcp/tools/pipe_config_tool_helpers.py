@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Literal, cast
 
-from pipefy_sdk import PipefyClient
+from pipefy_sdk import AUTOMATIONS_LIST_MAX_PAGE_SIZE, PipefyClient
 from typing_extensions import NotRequired, TypedDict
 
 from pipefy_mcp.core.tool_error_envelope import ToolErrorDetail, tool_error
@@ -11,6 +11,11 @@ from pipefy_mcp.tools.graphql_error_helpers import (
     handle_tool_graphql_error,
 )
 from pipefy_mcp.tools.validation_helpers import UUID_RE
+
+#: Simultaneous ``get_automation`` detail reads while resolving phase dependents.
+#: Matches ``PHASE_FIELD_FETCH_CONCURRENCY`` in the SDK's AI pipe validation, the
+#: other place this package fans out per-row reads.
+AUTOMATION_DETAIL_FETCH_CONCURRENCY = 8
 
 
 class DeletePipeSuccessPayload(TypedDict):
@@ -33,6 +38,7 @@ class PipeMutationSuccessPayload(TypedDict):
     success: Literal[True]
     message: str
     result: dict[str, Any]
+    connection_hint: NotRequired[str]
 
 
 class FieldConditionMutationSuccessPayload(TypedDict):
@@ -82,18 +88,26 @@ def handle_pipe_config_tool_graphql_error(
 
 
 def build_pipe_mutation_success_payload(
-    *, label: str, data: dict[str, Any]
+    *, label: str, data: dict[str, Any], connection_hint: str | None = None
 ) -> PipeMutationSuccessPayload:
     """``success``, ``message`` (``label``), and raw GraphQL ``result`` dict.
 
     Args:
         label: Short summary shown as ``message``.
         data: Full mutation response subtree (not a JSON string).
+        connection_hint: Optional advisory that this call did not configure phase
+            Connections (UI-only). Callers pass ``TRANSITION_RULES_HINT`` so the
+            same copy is reused rather than duplicated; omitted keeps the key off
+            the envelope for mutations where it does not apply.
     """
-    return cast(
-        PipeMutationSuccessPayload,
-        {"success": True, "message": label, "result": data},
-    )
+    payload: PipeMutationSuccessPayload = {
+        "success": True,
+        "message": label,
+        "result": data,
+    }
+    if connection_hint is not None:
+        payload["connection_hint"] = connection_hint
+    return payload
 
 
 def build_pipe_tool_error_payload(
@@ -420,13 +434,26 @@ def _filter_automations_by_phase(
 
 
 def _build_phase_dependents_hint(deps: dict[str, Any]) -> str:
-    """Human-readable count summary of phase dependents for destructive preview."""
+    """Human-readable count summary of phase dependents for destructive preview.
+
+    When ``automations_partial`` is set, some rules could not be read, so the
+    automation count is a floor. The hint says so: an operator confirming a delete
+    must not read a short count as the whole story.
+    """
     cards = deps.get("cards_count")
     field_count = deps.get("phase_fields_count")
     conditions = deps.get("field_conditions")
     automations = deps.get("automations")
+    partial = bool(deps.get("automations_partial"))
     n_cond = len(conditions) if isinstance(conditions, list) else 0
     n_auto = len(automations) if isinstance(automations, list) else 0
+
+    caveat = (
+        " Some automation rules could not be read, so the automation count is a "
+        "lower bound."
+        if partial
+        else ""
+    )
 
     phrases: list[str] = []
     if isinstance(cards, int):
@@ -438,10 +465,11 @@ def _build_phase_dependents_hint(deps: dict[str, Any]) -> str:
             f"{n_cond} field condition(s)" if n_cond != 1 else "1 field condition"
         )
     if n_auto:
-        phrases.append(f"{n_auto} automation(s)" if n_auto != 1 else "1 automation")
+        label = f"{n_auto} automation(s)" if n_auto != 1 else "1 automation"
+        phrases.append(f"at least {label}" if partial else label)
 
     if not phrases:
-        return "Deleting this phase is irreversible."
+        return f"Deleting this phase is irreversible.{caveat}"
 
     if len(phrases) == 1:
         body = phrases[0]
@@ -449,31 +477,87 @@ def _build_phase_dependents_hint(deps: dict[str, Any]) -> str:
         body = f"{phrases[0]} and {phrases[1]}"
     else:
         body = ", ".join(phrases[:-1]) + f" and {phrases[-1]}"
-    return f"Deleting this phase will remove {body}. This action is irreversible."
+    return (
+        f"Deleting this phase will remove {body}. This action is irreversible.{caveat}"
+    )
+
+
+async def _list_pipe_automation_summaries(
+    client: PipefyClient, pipe_id: str
+) -> tuple[list[dict[str, Any]], bool]:
+    """Collect every listing row for ``pipe_id``, following ``pageInfo`` until the end.
+
+    Returns the rows and whether the walk completed. A page that fails ends the walk
+    and reports ``False`` while keeping the rows already collected: a partial
+    dependents list a caller knows is partial beats none at all.
+
+    The organization is resolved once up front. ``get_automations`` resolves it per
+    call when it is omitted, which on a paged pipe would repeat the same lookup for
+    the same answer on every page.
+    """
+    org_id = await client.get_pipe_organization_id(str(pipe_id))
+    rows: list[dict[str, Any]] = []
+    after: str | None = None
+    while True:
+        try:
+            page = await client.get_automations(
+                organization_id=org_id,
+                pipe_id=str(pipe_id),
+                first=AUTOMATIONS_LIST_MAX_PAGE_SIZE,
+                after=after,
+            )
+        except Exception:  # noqa: BLE001 - a failed page must not discard earlier ones
+            return rows, False
+        rows.extend(page["nodes"])
+        info = page["pageInfo"]
+        if info.get("hasNextPage") is not True:
+            return rows, True
+        cursor = info.get("endCursor")
+        if not isinstance(cursor, str) or not cursor or cursor == after:
+            return rows, True
+        after = cursor
+
+
+async def _automation_detail(
+    client: PipefyClient, automation_id: str, semaphore: asyncio.Semaphore
+) -> Any:
+    """Fetch one automation's detail, holding a slot of the concurrency bound."""
+    async with semaphore:
+        return await client.get_automation(automation_id)
 
 
 async def _automations_referencing_phase(
     client: PipefyClient, pipe_id: str, phase_id: str
-) -> list[dict[str, Any]]:
-    """List automations in ``pipe_id`` whose config references ``phase_id`` (summary rows).
+) -> tuple[list[dict[str, Any]], bool]:
+    """Automations in ``pipe_id`` whose config references ``phase_id``, and completeness.
 
-    Returns a filtered summary list. Exceptions propagate to the outer gather.
-    Inner per-automation detail fetches are allowed to fail individually.
+    Pages the pipe's rules, then reads each rule's detail, because a phase reference
+    can live in ``action_params``, which the listing row does not carry. Detail reads
+    run at most ``AUTOMATION_DETAIL_FETCH_CONCURRENCY`` at a time: one call per rule
+    all at once would be hundreds of simultaneous requests on a busy pipe.
+
+    The second element is False when any page or any detail read failed. The caller
+    must surface that: this list feeds a destructive confirm prompt, and a count
+    short by the rules that failed to load reads exactly like a count that is
+    complete.
     """
-    rows = await client.get_automations(pipe_id=str(pipe_id))
+    rows, complete = await _list_pipe_automation_summaries(client, pipe_id)
     if not rows:
-        return []
+        return [], complete
     ids = [str(r.get("id")) for r in rows if isinstance(r, dict) and r.get("id")]
     if not ids:
-        return []
+        return [], complete
+    semaphore = asyncio.Semaphore(AUTOMATION_DETAIL_FETCH_CONCURRENCY)
     full_list = await asyncio.gather(
-        *[client.get_automation(i) for i in ids],
+        *[_automation_detail(client, i, semaphore) for i in ids],
         return_exceptions=True,
     )
     full_rows: list[dict[str, Any]] = [
         item for item in full_list if isinstance(item, dict) and item
     ]
-    return _filter_automations_by_phase(full_rows, str(phase_id))
+    if len(full_rows) != len(full_list):
+        complete = False
+    return _filter_automations_by_phase(full_rows, str(phase_id)), complete
 
 
 async def resolve_phase_dependents(
@@ -520,8 +604,14 @@ async def resolve_phase_dependents(
                 {"id": c.get("id"), "name": c.get("name")} for c in conds
             ]
     aut = rmap["automations"]
-    if not isinstance(aut, BaseException) and aut:
-        out["automations"] = aut
+    if not isinstance(aut, BaseException):
+        automations, automations_complete = cast(
+            "tuple[list[dict[str, Any]], bool]", aut
+        )
+        if automations:
+            out["automations"] = automations
+        if not automations_complete:
+            out["automations_partial"] = True
     cc = rmap["cards_count"]
     if not isinstance(cc, BaseException) and isinstance(cc, int):
         out["cards_count"] = cc

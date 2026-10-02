@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from types import MethodType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _shared.ai_agent_test_payloads import minimal_behavior_dict
+from pipefy_sdk import PipefyClient, PipefyGraphQLError
 from typer.testing import CliRunner
 
 from pipefy_cli.main import app
@@ -17,11 +19,14 @@ def test_agent_validate_behaviors_json(
 ):
     oauth_env("ag-val")
     mock_client = MagicMock()
+    mock_client.validate_ai_agent_behaviors = MethodType(
+        PipefyClient.validate_ai_agent_behaviors, mock_client
+    )
     mock_client.get_pipe = AsyncMock(
         return_value={"pipe": {"phases": [], "start_form_fields": []}}
     )
     mock_client.get_pipe_relations = AsyncMock(
-        return_value={"children": [], "parents": []}
+        return_value={"pipe": {"childrenRelations": [], "parentsRelations": []}}
     )
     mock_client.get_phase_allowed_move_targets = AsyncMock(
         return_value={"phase": {"cards_can_be_moved_to_phases": []}}
@@ -131,6 +136,9 @@ def test_ai_automation_validate_prompt_json(
 ):
     oauth_env("ai-val")
     mock_client = MagicMock()
+    mock_client.validate_ai_automation_prompt = MethodType(
+        PipefyClient.validate_ai_automation_prompt, mock_client
+    )
     mock_client.get_pipe_with_preferences = AsyncMock(
         return_value={
             "pipe": {
@@ -370,11 +378,12 @@ def test_agent_create_happy_path_chains_create_then_update(
     """``agent create`` runs preflight, then ``create_ai_agent`` + ``update_ai_agent``."""
     oauth_env("ag-create-ok")
     mock_client = MagicMock()
-    mock_client.create_ai_agent = AsyncMock(
-        return_value={"agent_uuid": "uuid-1", "disabled_at": None}
+    mock_client.create_ai_agent = MethodType(PipefyClient.create_ai_agent, mock_client)
+    mock_client._ai_agent_service.create_agent = AsyncMock(
+        return_value={"agent_uuid": "uuid-1", "disabled_at": "2026-08-04T12:00:00Z"}
     )
     mock_client.update_ai_agent = AsyncMock(
-        return_value={"agent_uuid": "uuid-1", "disabled_at": None}
+        return_value={"agent_uuid": "uuid-1", "disabled_at": None, "active": True}
     )
 
     preflight_ok = {
@@ -390,8 +399,9 @@ def test_agent_create_happy_path_chains_create_then_update(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=preflight_ok),
         ),
         patch(
@@ -427,12 +437,67 @@ def test_agent_create_happy_path_chains_create_then_update(
         "disabled_at": None,
         "active": True,
     }
-    mock_client.create_ai_agent.assert_awaited_once()
-    create_arg = mock_client.create_ai_agent.call_args.args[0]
+    mock_client._ai_agent_service.create_agent.assert_awaited_once()
+    create_arg = mock_client._ai_agent_service.create_agent.call_args.args[0]
     assert create_arg.disabled_at is None
     mock_client.update_ai_agent.assert_awaited_once()
     update_arg = mock_client.update_ai_agent.call_args.args[0]
     assert update_arg.disabled_at is None
+
+
+def test_agent_create_update_failure_prints_created_uuid_and_error_code(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A failed configure update names the created agent and keeps the GraphQL code."""
+    oauth_env("ag-create-partial")
+    mock_client = MagicMock()
+    mock_client.create_ai_agent = MethodType(PipefyClient.create_ai_agent, mock_client)
+    mock_client._ai_agent_service.create_agent = AsyncMock(
+        return_value={"agent_uuid": "uuid-1", "disabled_at": "2026-08-04T12:00:00Z"}
+    )
+    mock_client.update_ai_agent = AsyncMock(
+        side_effect=PipefyGraphQLError(
+            [{"message": "Invalid", "extensions": {"code": "RECORD_NOT_SAVED"}}]
+        )
+    )
+
+    with (
+        patch(
+            "pipefy_cli.commands._common.get_authenticated_client",
+            return_value=mock_client,
+        ),
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
+            new=AsyncMock(
+                return_value={"success": True, "valid": True, "problems": []}
+            ),
+        ),
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "agent",
+                "create",
+                "--repo-uuid",
+                "repo-uuid-1",
+                "--pipe",
+                "1",
+                "--name",
+                "Acme",
+                "--instruction",
+                "Be helpful.",
+                "--behaviors",
+                json.dumps([_AGENT_BEHAVIOR]),
+            ],
+        )
+
+    assert r.exit_code == 1
+    stderr = " ".join(r.stderr.split())
+    assert "uuid-1" in stderr
+    assert "Invalid (RECORD_NOT_SAVED)" in stderr
+    assert "is disabled" in stderr
+    assert "toggle_ai_agent_status" in stderr
 
 
 def test_agent_update_invokes_field_ref_resolution_via_facade(
@@ -474,8 +539,9 @@ def test_agent_update_invokes_field_ref_resolution_via_facade(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=preflight_ok),
         ),
         patch(
@@ -531,8 +597,9 @@ def test_agent_create_blocks_when_preflight_invalid(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=preflight_block),
         ),
     ):
@@ -629,6 +696,9 @@ def test_ai_automation_create_succeeds_without_service_account(
     """
     oauth_env("ai-create-public")
     mock_client = MagicMock()
+    mock_client.validate_ai_automation_prompt = MethodType(
+        PipefyClient.validate_ai_automation_prompt, mock_client
+    )
     # Prompt references field 9 as input; output field 88 is distinct so overlap preflight passes.
     mock_client.get_pipe_with_preferences = AsyncMock(
         return_value={
@@ -935,6 +1005,9 @@ def test_ai_automation_update_auto_fetches_prompt_when_omitted(
     # Prompt references field 9 as input; output field 88 is distinct so overlap preflight passes.
     existing = _ai_automation_row("Summarize: %{9}", ["88"])
     mock_client = MagicMock()
+    mock_client.validate_ai_automation_prompt = MethodType(
+        PipefyClient.validate_ai_automation_prompt, mock_client
+    )
     mock_client.get_automation = AsyncMock(return_value=existing)
     mock_client.get_pipe_with_preferences = AsyncMock(
         return_value={
@@ -1023,3 +1096,191 @@ def test_ai_automation_update_errors_when_existing_row_missing_ai_params(
 
     assert r.exit_code != 0
     assert "infer" in r.stderr.lower() or "prompt" in r.stderr.lower()
+
+
+def test_automation_list_json_forwards_page_flags(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The CLI prints the page as-is so callers see totalCount and hasNextPage."""
+    oauth_env("automation-list-page")
+    page = {
+        "nodes": [{"id": "a1", "name": "R", "active": True}],
+        "totalCount": 210,
+        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
+    }
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock(return_value=page)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "automation",
+                "list",
+                "--org",
+                "7",
+                "--first",
+                "10",
+                "--after",
+                "cursor-40",
+                "--json",
+            ],
+        )
+    assert r.exit_code == 0, r.stdout + (r.stderr or "")
+    assert json.loads(r.stdout) == page
+    mock_client.get_automations.assert_awaited_once_with(
+        organization_id="7", pipe_id=None, first=10, after="cursor-40"
+    )
+
+
+def test_automation_list_human_prints_table_and_page_counts(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("automation-list-human")
+    page = {
+        "nodes": [{"id": "a1", "name": "R", "active": True}],
+        "totalCount": 210,
+        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
+    }
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock(return_value=page)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(app, ["automation", "list", "--org", "7"])
+    assert r.exit_code == 0, r.stdout + (r.stderr or "")
+    assert "R" in r.stdout
+    assert "a1" in r.stdout
+    assert "totalCount=210" in r.stdout
+    assert "hasNextPage=True" in r.stdout
+    assert '"nodes"' not in r.stdout
+
+
+def test_automation_list_human_table_omits_nested_columns(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Nested structures would blow the table up; the human path keeps scalars."""
+    oauth_env("automation-list-columns")
+    page = {
+        "nodes": [
+            {
+                "id": "a1",
+                "name": "Move on approval",
+                "active": True,
+                "action_id": "move_single_card",
+                "actionEnabled": True,
+                "disabledReason": None,
+                "event_id": "card_moved",
+                "event_params": {"inPhaseId": "NESTEDPHASEMARKER"},
+                "condition": {"id": "NESTEDCONDMARKER", "expressions": []},
+            }
+        ],
+        "totalCount": 1,
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock(return_value=page)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app, ["automation", "list", "--org", "7"], env={"COLUMNS": "220"}
+        )
+    assert r.exit_code == 0, r.stdout + (r.stderr or "")
+    for scalar in ("id", "name", "active", "action_id", "actionEnabled", "event_id"):
+        assert scalar in r.stdout
+    assert "card_moved" in r.stdout
+    assert "move_single_card" in r.stdout
+    assert "event_params" not in r.stdout
+    assert "condition" not in r.stdout
+    assert "NESTEDPHASEMARKER" not in r.stdout
+    assert "NESTEDCONDMARKER" not in r.stdout
+
+
+def test_ai_automation_list_json_includes_pagination(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ai-automation-list-page")
+    page = {
+        "nodes": [
+            {"id": "1", "name": "AI", "action_id": "generate_with_ai"},
+        ],
+        "totalCount": 210,
+        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-50"},
+    }
+    mock_client = MagicMock()
+    mock_client.get_ai_automations = AsyncMock(return_value=page)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "ai-automation",
+                "list",
+                "--pipe",
+                "9",
+                "--first",
+                "10",
+                "--after",
+                "cursor-40",
+                "--json",
+            ],
+        )
+    assert r.exit_code == 0, r.stdout + (r.stderr or "")
+    payload = json.loads(r.stdout)
+    assert payload["success"] is True
+    assert payload["data"] == [
+        {"id": "1", "name": "AI", "action_id": "generate_with_ai"}
+    ]
+    assert payload["pagination"] == {
+        "has_more": True,
+        "end_cursor": "cursor-50",
+        "page_size": 10,
+        "total_count": 210,
+    }
+    mock_client.get_ai_automations.assert_awaited_once_with(
+        "9", organization_id=None, first=10, after="cursor-40"
+    )
+    mock_client.get_automations.assert_not_called()
+
+
+def test_automation_list_maps_value_error_to_exit_2(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Rendering the page here instead of through run_cli_command keeps exit 2."""
+    oauth_env("automation-list-value-error")
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock(
+        side_effect=ValueError("automations missing from response")
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(app, ["automation", "list", "--org", "7"])
+    assert r.exit_code == 2
+    assert "automations missing from response" in (r.stderr or "") + r.stdout
+
+
+def test_automation_list_rejects_first_above_api_cap(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("automation-list-cap")
+    mock_client = MagicMock()
+    mock_client.get_automations = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app, ["automation", "list", "--org", "7", "--first", "51", "--json"]
+        )
+    assert r.exit_code == 2
+    assert "between 1 and 50" in (r.stderr or "") + r.stdout
+    mock_client.get_automations.assert_not_called()

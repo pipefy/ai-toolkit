@@ -9,7 +9,11 @@ tags: [pipefy, template]
 # [Skill title]
 
 [One or two sentences: what this skill does and when an agent should load it.]
-[Optional: MCP tool count, e.g. **N MCP tools**.]
+[Optional: number of shared operations.]
+
+[When surface-specific guidance exists, create references/mcp.md and/or
+references/cli.md and link them here. MCP clients load the MCP reference;
+CLI users load the CLI reference. Keep domain rules and payloads in this body.]
 
 ---
 
@@ -25,30 +29,26 @@ Do not use this skill for:
 ## Prerequisites
 
 - [IDs, roles, or config that must exist first — e.g. `pipe_id`, org access.]
-- [Any install path: Hosted MCP, local MCP, CLI — if it matters.]
+- [Shared access prerequisites; put surface-specific setup in references.]
 
 ## Tools needed
 
-| Tool (MCP) | CLI equivalent | Read-only |
-|------------|----------------|-----------|
-| `[mcp_tool_name]` | `pipefy [domain] [action]` | Yes/No |
+| Operation | Read-only | Purpose |
+|-----------|-----------|---------|
+| `[operation_name]` | Yes/No | [Domain outcome] |
 
 Replace bracket placeholders with real MCP tool names from the live server
-(or [`docs/parity.md`](../../../docs/parity.md)) and shipped CLI commands only.
+(or [`docs/parity.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/parity.md)).
+Put shipped CLI mappings in references/cli.md and MCP controls in references/mcp.md.
 Unknown names fail CI in this repository.
 
 ## Steps
 
 1. **[Step name]** — [what to do and why.]
 
-   MCP:
+   Shared operation arguments (adapt to the active surface):
    ```
-   [mcp_tool_name] [arg]=[value]
-   ```
-
-   CLI:
-   ```bash
-   pipefy [domain] [action] --[flag] [value]
+   [operation_name] [arg]=[value]
    ```
 
 2. **[Next step]** — ...
@@ -65,4 +65,4 @@ Unknown names fail CI in this repository.
 
 ## See also
 
-- [Related skill path, e.g. `skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md`]
+- [Related skill name, e.g. `pipefy-pipes-and-cards`; no cross-skill paths.]

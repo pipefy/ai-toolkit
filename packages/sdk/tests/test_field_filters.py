@@ -5,6 +5,7 @@ from __future__ import annotations
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
+    phase_fill_no_write_result,
     skipped_field_ids,
 )
 
@@ -60,3 +61,33 @@ def test_filter_fields_by_definitions_skips_definitions_without_id() -> None:
 
 def test_skipped_field_ids_lists_dropped_keys() -> None:
     assert skipped_field_ids({"a": 1, "b": 2}, {"a": 1}) == ["b"]
+
+
+def test_phase_fill_no_write_when_nothing_editable() -> None:
+    result = phase_fill_no_write_result(
+        {"phase_name": "Review", "fields": [{"id": "a", "editable": False}]},
+        {"gone": "x"},
+        phase_id="9",
+        required_fields_only=False,
+    )
+    assert result == {
+        "success": True,
+        "message": "Phase 'Review' has no editable fields; nothing was updated.",
+        "phase_id": "9",
+        "phase_name": "Review",
+        "skipped_field_ids": ["gone"],
+    }
+
+
+def test_phase_fill_no_write_lists_every_given_key() -> None:
+    result = phase_fill_no_write_result(
+        {
+            "phase_name": "Review",
+            "fields": [{"id": "a", "editable": True}],
+        },
+        {"a": "x", "b": "y"},
+        phase_id="9",
+        required_fields_only=False,
+    )
+    assert result["skipped_field_ids"] == ["a", "b"]
+    assert result["message"].startswith("No field values were collected")

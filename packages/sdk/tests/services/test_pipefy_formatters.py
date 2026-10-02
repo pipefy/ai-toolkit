@@ -170,8 +170,8 @@ def test_normalize_field_condition_drops_expression_id_on_create():
 
 
 @pytest.mark.unit
-def test_normalize_field_condition_coerces_string_indices_to_int():
-    """String indices come from the MCP docstring; Pipefy's API rejects them in 5xx form."""
+def test_normalize_field_condition_coerces_string_structure_ids_to_int():
+    """Callers may pass structure_id as a numeric string; the API rejects that form with a 5xx."""
     condition = {
         "expressions": [{"structure_id": "42", "field_address": "f", "value": "v"}],
         "expressions_structure": [["42"]],

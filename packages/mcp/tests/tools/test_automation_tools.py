@@ -10,6 +10,7 @@ from _mcp_compat import (
 from pipefy_sdk import AutomationConditionInput, PipefyClient, PipefyGraphQLError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
+from pipefy_mcp.tools.automation_tool_helpers import build_automations_listed_message
 from pipefy_mcp.tools.automation_tools import AutomationTools
 from tools.conftest import assert_invalid_arguments_envelope, build_tool_test_server
 from tools.destructive_confirm_test_support import confirm_after_preview
@@ -146,6 +147,14 @@ async def test_get_automation_rejects_non_positive_int_id(
     assert extract_payload(result)["success"] is False
 
 
+def _automation_page(rows, *, total, has_next, end_cursor):
+    return {
+        "nodes": rows,
+        "totalCount": total,
+        "pageInfo": {"hasNextPage": has_next, "endCursor": end_cursor},
+    }
+
+
 @pytest.mark.anyio
 async def test_get_automations_rejects_empty_string_filters(
     automation_session, mock_automation_client
@@ -220,7 +229,9 @@ async def test_get_automations_success(
     automation_session, mock_automation_client, extract_payload
 ):
     rows = [{"id": "1", "name": "R1", "active": True}]
-    mock_automation_client.get_automations.return_value = rows
+    mock_automation_client.get_automations.return_value = _automation_page(
+        rows, total=1, has_next=False, end_cursor="c1"
+    )
 
     async with automation_session as session:
         result = await session.call_tool(
@@ -229,11 +240,73 @@ async def test_get_automations_success(
 
     assert result.is_error is False
     mock_automation_client.get_automations.assert_awaited_once_with(
-        organization_id=None, pipe_id="p9"
+        organization_id=None, pipe_id="p9", first=50, after=None
     )
     payload = extract_payload(result)
     assert payload["success"] is True
     assert payload["data"] == rows
+    assert payload["pagination"] == {
+        "has_more": False,
+        "end_cursor": "c1",
+        "page_size": 50,
+        "total_count": 1,
+    }
+    assert payload["message"] == ("Automations listed: 1 of 1. This is the last page.")
+
+
+@pytest.mark.anyio
+async def test_get_automations_signals_truncated_listing(
+    automation_session, mock_automation_client, extract_payload
+):
+    """An org with more rules than one page must not read as fully listed."""
+    rows = [{"id": "1", "name": "R1", "active": True}]
+    mock_automation_client.get_automations.return_value = _automation_page(
+        rows, total=210, has_next=True, end_cursor="cursor-50"
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automations",
+            {"organization_id": "7", "first": 10, "after": "cursor-40"},
+        )
+
+    mock_automation_client.get_automations.assert_awaited_once_with(
+        organization_id="7", pipe_id=None, first=10, after="cursor-40"
+    )
+    payload = extract_payload(result)
+    assert payload["success"] is True
+    assert payload["pagination"]["has_more"] is True
+    assert payload["pagination"]["end_cursor"] == "cursor-50"
+    assert payload["pagination"]["total_count"] == 210
+    assert "1 of 210" in payload["message"]
+    assert "after=pagination.end_cursor" in payload["message"]
+    assert "last page" not in payload["message"]
+
+
+def test_build_automations_listed_message_last_page_is_not_a_shortfall():
+    message = build_automations_listed_message(11, 61, has_more=False)
+    assert message == ("Automations listed: 11 of 61. This is the last page.")
+
+
+def test_build_automations_listed_message_has_more_explains_how_to_continue():
+    message = build_automations_listed_message(50, 61, has_more=True)
+    assert "50 of 61" in message
+    assert "after=pagination.end_cursor" in message
+    assert "last page" not in message
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("first", [0, 51])
+async def test_get_automations_rejects_page_size_outside_api_cap(
+    automation_session, mock_automation_client, first
+):
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automations", {"organization_id": "7", "first": first}
+        )
+
+    mock_automation_client.get_automations.assert_not_called()
+    assert_invalid_arguments_envelope(result)
 
 
 @pytest.mark.anyio

@@ -360,10 +360,10 @@ class FieldConditionTools:
                     ]
                 )
 
-            ``expressions_structure`` is an array of arrays of indices (e.g.
-            ``[[0]]`` for one expression, ``[[0, 1]]`` for AND). Each expression
-            must carry a ``structure_id`` referencing its position in the
-            structure. Omitting either causes ``"Structure can't be blank"``.
+            ``expressions_structure`` is an array of arrays of ``structure_id`` values,
+            not positions (e.g. ``[[0]]`` for one expression, ``[[0, 1]]`` for AND).
+            Each expression must carry its own ``structure_id``. Omitting either causes
+            ``"Structure can't be blank"``.
 
             The SDK normalizes the payload before calling the API
             (``pipefy_sdk.utils.normalize_field_condition_payload``): it drops any
@@ -378,7 +378,7 @@ class FieldConditionTools:
                     Discover via: ``get_pipe(pipe_id)`` then inspect ``phases[].id``.
                 condition: ``ConditionInput`` dict. Must include ``expressions`` (list of expression
                     objects with ``structure_id``, ``field_address``, ``operation``, ``value``) and
-                    ``expressions_structure`` (array of arrays of string indices).
+                    ``expressions_structure`` (array of arrays of ``structure_id`` values).
                     Discover via: ``get_phase_fields(phase_id)[].internal_id`` for ``field_address``.
                 actions: List of ``FieldConditionActionInput`` dicts; each needs ``phaseFieldId``.
                     ``phaseFieldId`` is usually the field's ``internal_id`` from ``get_phase_fields``,

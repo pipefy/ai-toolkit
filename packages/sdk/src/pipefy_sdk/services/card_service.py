@@ -58,12 +58,12 @@ class CardService:
         return await self._executor.execute_query(CREATE_COMMENT_MUTATION, variables)
 
     async def update_comment(self, comment_id: str | int, text: str) -> dict:
-        """Update an existing comment by its ID. Returns raw GraphQL response (see issue #23)."""
+        """Update an existing comment by its ID. Returns the raw GraphQL response."""
         variables = {"input": {"id": str(comment_id), "text": text}}
         return await self._executor.execute_query(UPDATE_COMMENT_MUTATION, variables)
 
     async def delete_comment(self, comment_id: str | int) -> dict:
-        """Delete a comment by its ID. Returns raw GraphQL response (see issue #23)."""
+        """Delete a comment by its ID. Returns the raw GraphQL response."""
         variables = {"input": {"id": str(comment_id)}}
         return await self._executor.execute_query(DELETE_COMMENT_MUTATION, variables)
 

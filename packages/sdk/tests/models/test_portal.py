@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
+    DeletePortalElementInput,
     UpdatePortalElementInput,
     UpdatePortalInput,
 )
@@ -260,4 +261,213 @@ def test_update_portal_input_rejects_invalid_visibility() -> None:
         UpdatePortalInput(
             interface_uuid=_PORTAL_UUID,
             visibility="public_visibility",  # type: ignore[arg-type]
+        )
+
+
+_LAYOUT_ROWS = [
+    {"id": "row-1", "type": "row", "children": ["el-existing"]},
+    {"id": "row-2", "type": "row", "children": [_ELEMENT_ID]},
+]
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_accepts_layout_rows_placing_element() -> None:
+    """layout is the page row array; the row listing element_id is what places it."""
+    element_input = CreatePortalElementInput(
+        page_id=_PAGE_ID,
+        type="link",
+        metadata=_VALID_LINK_METADATA,
+        element_id=_ELEMENT_ID,
+        layout=_LAYOUT_ROWS,
+    )
+    assert [row.model_dump() for row in element_input.layout] == _LAYOUT_ROWS
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_object_layout() -> None:
+    """The API stores an object wrapper verbatim, so it has to be rejected locally."""
+    with pytest.raises(ValidationError):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id=_ELEMENT_ID,
+            layout={"rows": _LAYOUT_ROWS},
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_layout_without_element_id() -> None:
+    with pytest.raises(ValidationError, match="element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            layout=_LAYOUT_ROWS,
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_layout_that_omits_the_element() -> None:
+    with pytest.raises(ValidationError, match="children include element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id="el-not-in-layout",
+            layout=_LAYOUT_ROWS,
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_empty_layout_array() -> None:
+    """An empty array places nothing, so create still requires a row for element_id."""
+    with pytest.raises(ValidationError, match="children include element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id=_ELEMENT_ID,
+            layout=[],
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "layout",
+    [
+        [{"children": [_ELEMENT_ID]}],
+        [{"id": "row-1", "children": [_ELEMENT_ID]}],
+        [{"id": "row-1", "type": "column", "children": [_ELEMENT_ID]}],
+        [{"id": "row-1", "type": "row", "children": [1]}],
+        [{"id": " ", "type": "row", "children": [_ELEMENT_ID]}],
+        [{"id": "row-1", "type": "row", "children": [" "]}],
+    ],
+)
+def test_create_portal_element_input_rejects_malformed_layout_rows(
+    layout: list[dict[str, object]],
+) -> None:
+    """A complete write replaces the grid, so a partial row must not be stored."""
+    with pytest.raises(ValidationError, match="type 'row'"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id=_ELEMENT_ID,
+            layout=layout,
+        )
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_keeps_unknown_layout_keys() -> None:
+    """Rows copied from get_portal may carry keys besides id, type, and children."""
+    row = {
+        "id": "row-1",
+        "type": "row",
+        "children": [_ELEMENT_ID],
+        "minHeight": 2,
+    }
+    element_input = CreatePortalElementInput(
+        page_id=_PAGE_ID,
+        type="link",
+        metadata=_VALID_LINK_METADATA,
+        element_id=_ELEMENT_ID,
+        layout=[dict(row)],
+    )
+    assert [row.model_dump() for row in element_input.layout] == [row]
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_strips_padded_layout_ids() -> None:
+    """A padded id still places the element, and id and row match once stripped."""
+    element_input = CreatePortalElementInput(
+        page_id=_PAGE_ID,
+        type="link",
+        metadata=_VALID_LINK_METADATA,
+        element_id=f" {_ELEMENT_ID} ",
+        layout=[{"id": " row-1 ", "type": "row", "children": [f" {_ELEMENT_ID} "]}],
+    )
+    assert element_input.element_id == _ELEMENT_ID
+    assert [row.model_dump() for row in element_input.layout] == [
+        {"id": "row-1", "type": "row", "children": [_ELEMENT_ID]}
+    ]
+
+
+@pytest.mark.unit
+def test_create_portal_element_input_rejects_blank_element_id() -> None:
+    with pytest.raises(ValidationError, match="element_id"):
+        CreatePortalElementInput(
+            page_id=_PAGE_ID,
+            type="link",
+            metadata=_VALID_LINK_METADATA,
+            element_id="   ",
+        )
+
+
+_PRUNED_LAYOUT = [
+    {"id": "row-1", "type": "row", "children": ["el-existing"]},
+    {"id": "row-2", "type": "row", "children": []},
+]
+
+
+@pytest.mark.unit
+def test_delete_portal_element_input_accepts_layout_without_the_element() -> None:
+    delete_input = DeletePortalElementInput(
+        element_id=_ELEMENT_ID, page_id=_PAGE_ID, layout=_PRUNED_LAYOUT
+    )
+    assert [row.model_dump() for row in delete_input.layout] == _PRUNED_LAYOUT
+
+
+@pytest.mark.unit
+def test_delete_portal_element_input_leaves_layout_unset_by_default() -> None:
+    assert (
+        DeletePortalElementInput(element_id=_ELEMENT_ID, page_id=_PAGE_ID).layout
+        is None
+    )
+
+
+@pytest.mark.unit
+def test_delete_portal_element_input_rejects_layout_still_listing_the_element() -> None:
+    """The layout is stored with the delete, so a leftover child is an orphan ref."""
+    with pytest.raises(ValidationError, match=r"layout\[1\] still lists element_id"):
+        DeletePortalElementInput(
+            element_id=_ELEMENT_ID, page_id=_PAGE_ID, layout=_LAYOUT_ROWS
+        )
+
+
+@pytest.mark.unit
+def test_delete_portal_element_input_rejects_padded_leftover_child() -> None:
+    with pytest.raises(ValidationError, match="still lists element_id"):
+        DeletePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            layout=[{"id": "row-1", "type": "row", "children": [f" {_ELEMENT_ID} "]}],
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "layout",
+    [
+        [{"children": []}],
+        [{"id": "row-1", "type": "column", "children": []}],
+        [{"id": "row-1", "type": "row", "children": [1]}],
+    ],
+)
+def test_delete_portal_element_input_rejects_malformed_layout_rows(
+    layout: list[dict[str, object]],
+) -> None:
+    with pytest.raises(ValidationError, match="type 'row'"):
+        DeletePortalElementInput(
+            element_id=_ELEMENT_ID, page_id=_PAGE_ID, layout=layout
+        )
+
+
+@pytest.mark.unit
+def test_delete_portal_element_input_rejects_object_layout() -> None:
+    with pytest.raises(ValidationError):
+        DeletePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            layout={"rows": _PRUNED_LAYOUT},
         )

@@ -1,4 +1,4 @@
-"""Tests for the default-deny remote-profile tool allowlist (#304)."""
+"""Tests for the default-deny remote-profile tool allowlist."""
 
 from types import SimpleNamespace
 
@@ -40,12 +40,12 @@ REMOTE_SEED = frozenset(
         "introspect_query",
         "introspect_mutation",
         "introspect_type",
-        # Raw-GraphQL escape hatch (#308): arbitrary queries and mutations as the
+        # Raw-GraphQL escape hatch: arbitrary queries and mutations as the
         # request-scoped bearer, governed entirely by API permissions like its
         # introspection siblings. No filesystem or process-global reads; its
         # write reach is bounded by the caller's own API authorization.
         "execute_graphql",
-        # AI agent & automation reads (#437): read/validate tools that reach the
+        # AI agent & automation reads: read/validate tools that reach the
         # API with the request-scoped bearer and are governed by API permissions;
         # no filesystem or per-user process-global settings reads.
         "get_ai_agent",
@@ -59,7 +59,7 @@ REMOTE_SEED = frozenset(
         "validate_ai_automation_prompt",
         "get_ai_credit_usage",
         "get_available_ai_models",
-        # knowledge base & LLM provider reads (#438): read/validate tools that
+        # knowledge base & LLM provider reads: read/validate tools that
         # reach the API with the request-scoped bearer and are governed by API
         # permissions; no filesystem or per-user process-global settings reads.
         "get_ai_knowledge_bases",
@@ -71,7 +71,7 @@ REMOTE_SEED = frozenset(
         "get_llm_provider_dependencies",
         "get_default_llm_provider",
         "validate_llm_provider_access",
-        # traditional automation reads (#439): read/log tools that reach the API
+        # traditional automation reads: read/log tools that reach the API
         # with the request-scoped bearer and are governed by API permissions; no
         # filesystem or per-user process-global settings reads. The export CSV
         # tool downloads in-memory (no local file) with per-call size caps.
@@ -86,7 +86,7 @@ REMOTE_SEED = frozenset(
         "get_automations_usage",
         "get_automation_jobs_export",
         "get_automation_jobs_export_csv",
-        # report reads (#440): read/status tools that reach the API with the
+        # report reads: read/status tools that reach the API with the
         # request-scoped bearer and are governed by API permissions; no filesystem
         # or per-user process-global settings reads. The export tools poll export
         # status (a GraphQL query returning a fileURL string), not a local write.
@@ -98,12 +98,12 @@ REMOTE_SEED = frozenset(
         "get_pipe_report_columns",
         "get_pipe_report_filterable_fields",
         "get_pipe_report_export",
-        # pipe / card / field / member / webhook / portal reads (#441): read tools
+        # pipe / card / field / member / webhook / portal reads: read tools
         # that reach the API with the request-scoped bearer and are governed by API
         # permissions; no filesystem or per-user process-global settings reads. The
         # relation reads use the public GraphQL API only and the portal reads use
         # the Interfaces schema; Pipefy's Internal API is reached only by mutations
-        # such as delete_card_relation, which is seeded under #472 below.
+        # such as delete_card_relation, which is seeded with the card writes below.
         "get_card_relations",
         "get_card_inbox_emails",
         "get_field_condition",
@@ -131,7 +131,7 @@ REMOTE_SEED = frozenset(
         "create_service_account",
         "delete_service_account",
         "add_service_account_to_pipe",
-        # card / comment / card-relation writes (#472): create/update/delete and
+        # card / comment / card-relation writes: create/update/delete and
         # action-style mutations that reach the public (or, for delete_card_relation,
         # Internal) API with the request-scoped bearer and are governed by API
         # permissions; no filesystem or per-user process-global settings reads, and
@@ -148,7 +148,7 @@ REMOTE_SEED = frozenset(
         "delete_comment",
         "create_card_relation",
         "delete_card_relation",
-        # pipe / phase / phase-field / label writes (#473): create/update/delete
+        # pipe / phase / phase-field / label writes: create/update/delete
         # (plus clone_pipe) that reach the public API with the request-scoped bearer
         # and are governed by API permissions (pipe-admin to alter structure); no
         # filesystem or per-user process-global settings reads, every input a
@@ -166,7 +166,7 @@ REMOTE_SEED = frozenset(
         "create_label",
         "update_label",
         "delete_label",
-        # field-condition / pipe-relation writes (#474): create/update/delete that
+        # field-condition / pipe-relation writes: create/update/delete that
         # reach the public API with the request-scoped bearer and are governed by API
         # permissions; no filesystem or per-user process-global settings reads, every
         # input a per-request value. Deletes carry the two-step confirm UX guard.
@@ -176,12 +176,13 @@ REMOTE_SEED = frozenset(
         "create_pipe_relation",
         "update_pipe_relation",
         "delete_pipe_relation",
-        # table / table-field / record writes (#475): create/update/delete and
+        # table / table-field / record writes: create/update/delete and
         # set_table_record_field_value that reach the public API with the
         # request-scoped bearer and are governed by API permissions; no filesystem or
         # per-user process-global settings reads, every input a per-request value.
         # Deletes carry the two-step confirm UX guard.
-        # (upload_attachment_to_table_record is remote-safe via file_url; #305, below.)
+        # (upload_attachment_to_table_record is remote-safe via file_url; see the
+        # attachment uploads below.)
         "create_table",
         "update_table",
         "delete_table",
@@ -192,7 +193,7 @@ REMOTE_SEED = frozenset(
         "update_table_record",
         "delete_table_record",
         "set_table_record_field_value",
-        # report writes (#476): pipe/organization report create/update/delete plus
+        # report writes: pipe/organization report create/update/delete plus
         # the export triggers, which reach the public API with the request-scoped
         # bearer and are governed by API permissions; no filesystem or per-user
         # process-global settings reads, every input a per-request value. The export
@@ -208,7 +209,7 @@ REMOTE_SEED = frozenset(
         "delete_organization_report",
         "export_organization_report",
         "export_pipe_audit_logs",
-        # portal / sub-portal / page / element writes (#477): create/update/delete
+        # portal / sub-portal / page / element writes: create/update/delete
         # and the action-style mutations (sort/layout/duplicate/publish/unpublish)
         # reach the Interfaces API with the request-scoped bearer and are governed by
         # API permissions; no filesystem or per-user process-global settings reads,
@@ -231,7 +232,7 @@ REMOTE_SEED = frozenset(
         "unpublish_sub_portal",
         "update_sub_portal_element",
         "delete_sub_portal_element",
-        # webhook / member / email writes (#478): create/update/delete, membership
+        # webhook / member / email writes: create/update/delete, membership
         # ops, and inbox/template email sends that reach the public API with the
         # request-scoped bearer and are governed by API permissions (pipe-admin to
         # add/remove members); no filesystem reads, every input a per-request value.
@@ -239,7 +240,7 @@ REMOTE_SEED = frozenset(
         # allow_insecure_urls in the SDK, but both are per-deployment settings (a
         # cosmetic fallback name and the deployment's HTTPS-enforcement posture), not
         # per-user decisions — safe under the single-backend assumption (see
-        # AGENTS.md #306 audit). delete_webhook carries the two-step confirm UX guard.
+        # the AGENTS.md audit). delete_webhook carries the two-step confirm UX guard.
         "create_webhook",
         "update_webhook",
         "delete_webhook",
@@ -248,7 +249,7 @@ REMOTE_SEED = frozenset(
         "set_role",
         "send_inbox_email",
         "send_email_with_template",
-        # traditional & AI automation writes (#479): create/update/delete, the
+        # traditional & AI automation writes: create/update/delete, the
         # send-task automation, simulate_automation, and the automation-jobs export
         # trigger reach the public API with the request-scoped bearer and are
         # governed by API permissions; no filesystem or per-user process-global
@@ -264,7 +265,7 @@ REMOTE_SEED = frozenset(
         "create_ai_automation",
         "update_ai_automation",
         "delete_ai_automation",
-        # AI agent writes (#480): create/update/delete and the enable/disable toggle
+        # AI agent writes: create/update/delete and the enable/disable toggle
         # reach the public API with the request-scoped bearer and are governed by API
         # permissions (manage_ai_agents); no filesystem or per-user process-global
         # settings reads, every input a per-request value. delete carries the
@@ -273,12 +274,12 @@ REMOTE_SEED = frozenset(
         "update_ai_agent",
         "delete_ai_agent",
         "toggle_ai_agent_status",
-        # knowledge-base writes (#481): plain-text and data-lookup CRUD plus document
+        # knowledge-base writes: plain-text and data-lookup CRUD plus document
         # metadata update/delete reach the public API with the request-scoped bearer
         # and are governed by API permissions (manage_ai_agents); no filesystem or
         # per-user process-global settings reads, every input a per-request value.
         # update_ai_knowledge_base_document edits metadata only (no file input).
-        # create_ai_knowledge_base_document stays withheld (local-file upload, #305).
+        # create_ai_knowledge_base_document stays withheld (local-file upload).
         # Deletes carry the two-step confirm UX guard.
         "create_ai_knowledge_base_plain_text",
         "update_ai_knowledge_base_plain_text",
@@ -288,7 +289,7 @@ REMOTE_SEED = frozenset(
         "create_ai_knowledge_base_data_lookup",
         "update_ai_knowledge_base_data_lookup",
         "delete_ai_knowledge_base_data_lookup",
-        # LLM provider owner ops (#482): delete, active-status toggle, and the
+        # LLM provider owner ops: delete, active-status toggle, and the
         # organization default set/reset reach the public API with the request-scoped
         # bearer and are governed by API permissions; no filesystem or per-user
         # process-global settings reads, every input a per-request value, and none
@@ -299,14 +300,14 @@ REMOTE_SEED = frozenset(
         "set_default_llm_provider",
         "reset_default_llm_provider",
         "set_llm_provider_active_status",
-        # attachment uploads (#305): remote-safe via the file_url input, which the
+        # attachment uploads: remote-safe via the file_url input, which the
         # SDK downloads under an SSRF guard + 100 MiB cap (no filesystem read, no
         # per-user settings). The local file_path input is rejected per call under
         # the remote profile (is_remote_profile) — the exposure-vs-input-restriction
         # pattern — so the hosted surface accepts only URL sources.
         "upload_attachment_to_card",
         "upload_attachment_to_table_record",
-        # attachment presigned-url handshake (#506): mints an S3 upload target
+        # attachment presigned-url handshake: mints an S3 upload target
         # (createPresignedUrl) for a client-side upload; reaches the public API with
         # the request-scoped bearer, reads no filesystem, transfers no bytes through
         # the server, returns no durable secret.
@@ -387,7 +388,7 @@ class TestSeedDriftGuard:
 
 class TestRetainOnlyReuse:
     def test_arbitrary_predicate_keeps_only_matches_and_spares_foreign(self):
-        """retain_only is the reusable seam #308 (dynamic toolsets) builds on.
+        """retain_only is the reusable seam dynamic toolsets build on.
 
         It is independent of the remote marker: any predicate works, and tools
         outside PIPEFY_TOOL_NAMES (third-party, test) are never removed.

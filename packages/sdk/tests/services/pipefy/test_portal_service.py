@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from pipefy_sdk.exceptions import PortalPermissionError
 from pipefy_sdk.graphql_executor import PipefyGraphQLError
+from pipefy_sdk.models.portal import parse_portal_page_layout
 from pipefy_sdk.queries.observability_queries import RESOLVE_ORGANIZATION_UUID_QUERY
 from pipefy_sdk.queries.portal_queries import GET_PORTAL_QUERY, LIST_PORTALS_QUERY
 from pipefy_sdk.services.portal_service import PortalService
@@ -110,6 +111,7 @@ _PORTAL_DETAIL_GRAPHQL = {
         {
             "id": "page-1",
             "title": "Home",
+            "layout": [{"id": "row-1", "type": "row", "children": ["el-1"]}],
             "elements": [
                 {
                     "id": "el-1",
@@ -130,6 +132,7 @@ _PORTAL_DETAIL = {
             "id": "page-1",
             "uuid": "page-1",
             "title": "Home",
+            "layout": [{"id": "row-1", "type": "row", "children": ["el-1"]}],
             "elements": [
                 {
                     "id": "el-1",
@@ -839,7 +842,7 @@ async def test_sort_portal_pages_calls_sort_pages_with_page_ids_list() -> None:
 @pytest.mark.asyncio
 async def test_update_portal_page_layout_does_not_send_interface_uuid() -> None:
     """update_portal_page_layout uses updatePageLayout with page_id and layout only."""
-    layout = {"rows": [{"columns": [{"width": 12}]}]}
+    layout = [{"id": "row-1", "type": "row", "children": ["el-1"]}]
     service, _public, interfaces_executor = _make_interfaces_service(
         {"updatePageLayout": {"success": True}},
     )
@@ -857,6 +860,84 @@ async def test_update_portal_page_layout_does_not_send_interface_uuid() -> None:
     }
     assert "interface_uuid" not in variables["input"]
     assert result == {"updatePageLayout": {"success": True}}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_page_layout_accepts_empty_array() -> None:
+    """A page with no elements has an empty grid."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updatePageLayout": {"success": True}},
+    )
+
+    await service.update_portal_page_layout(_PAGE_ID, [])
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["layout"] == "[]"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_page_layout_accepts_row_with_empty_children() -> None:
+    """A row may list no elements; only a missing or non-string children value is rejected."""
+    layout = [{"id": "row-1", "type": "row", "children": []}]
+    expected = json.dumps(layout, separators=(",", ":"), ensure_ascii=False)
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updatePageLayout": {"success": True}},
+    )
+
+    await service.update_portal_page_layout(_PAGE_ID, layout)
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["layout"] == expected
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_page_layout_keeps_unknown_row_keys() -> None:
+    """Round-trip must send keys get_portal stored besides id, type, and children."""
+    layout = [{"id": "row-1", "type": "row", "children": ["el-1"], "minHeight": 2}]
+    expected = json.dumps(layout, separators=(",", ":"), ensure_ascii=False)
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updatePageLayout": {"success": True}},
+    )
+
+    await service.update_portal_page_layout(_PAGE_ID, layout)
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["layout"] == expected
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_page_layout_sends_ids_stripped() -> None:
+    """The API stores layout verbatim, so a padded id would never match its element."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updatePageLayout": {"success": True}},
+    )
+
+    await service.update_portal_page_layout(
+        _PAGE_ID, [{"id": " row-1 ", "type": "row", "children": [" el-1 "]}]
+    )
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["layout"] == (
+        '[{"id":"row-1","type":"row","children":["el-1"]}]'
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_page_layout_rejects_malformed_row_before_query() -> None:
+    """The API stores layout JSON verbatim, so an incomplete row must not be sent."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updatePageLayout": {"success": True}},
+    )
+
+    with pytest.raises(ValueError, match="type 'row'"):
+        await service.update_portal_page_layout(_PAGE_ID, [{}])
+
+    interfaces_executor.execute_query.assert_not_called()
 
 
 @pytest.mark.unit
@@ -919,6 +1000,73 @@ async def test_create_portal_element_calls_create_element_with_validated_input()
             "data_sources": [{"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": []}],
         }
     }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_portal_element_sends_layout_rows_as_interfaces_json() -> None:
+    """layout rides on createElement as the serialized row array plus the client id."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        _CREATE_ELEMENT_RESPONSE,
+    )
+    rows = [{"id": "row-1", "type": "row", "children": ["el-new"]}]
+
+    await service.create_portal_element(
+        _PAGE_ID,
+        type="link",
+        metadata={"linkName": "Docs", "linkUrl": "https://example.com"},
+        element_id="el-new",
+        layout=rows,
+    )
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["id"] == "el-new"
+    assert variables["input"]["layout"] == json.dumps(
+        rows, separators=(",", ":"), ensure_ascii=False
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_portal_element_sends_element_id_matching_its_row() -> None:
+    """The element is stored under the id sent, so it must match the stripped child."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        _CREATE_ELEMENT_RESPONSE,
+    )
+
+    await service.create_portal_element(
+        _PAGE_ID,
+        type="link",
+        metadata={"linkName": "Docs", "linkUrl": "https://example.com"},
+        element_id=" el-new ",
+        layout=[{"id": "row-1", "type": "row", "children": [" el-new "]}],
+    )
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["id"] == "el-new"
+    assert variables["input"]["layout"] == (
+        '[{"id":"row-1","type":"row","children":["el-new"]}]'
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_portal_element_rejects_malformed_layout_before_query() -> None:
+    """createElement.layout replaces the page grid, so a partial row stops locally."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        _CREATE_ELEMENT_RESPONSE,
+    )
+
+    with pytest.raises(ValidationError, match="type 'row'"):
+        await service.create_portal_element(
+            _PAGE_ID,
+            type="link",
+            metadata={"linkName": "Docs", "linkUrl": "https://example.com"},
+            element_id="el-new",
+            layout=[{"children": ["el-new"]}],
+        )
+
+    interfaces_executor.execute_query.assert_not_called()
 
 
 @pytest.mark.unit
@@ -1134,6 +1282,46 @@ async def test_delete_portal_element_calls_delete_element_with_ids() -> None:
         "input": {"element_id": _ELEMENT_ID, "page_id": _PAGE_ID},
     }
     assert result == {"deleteElement": {"success": True}}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_delete_portal_element_sends_pruned_layout_in_the_same_call() -> None:
+    """deleteElement takes the pruned grid, so no orphan row outlives the element."""
+    pruned = [{"id": "row-1", "type": "row", "children": ["el-other"], "minHeight": 2}]
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"deleteElement": {"success": True}},
+    )
+
+    await service.delete_portal_element(
+        _ELEMENT_ID, _PAGE_ID, layout=parse_portal_page_layout(pruned)
+    )
+
+    interfaces_executor.execute_query.assert_called_once()
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables == {
+        "input": {
+            "element_id": _ELEMENT_ID,
+            "page_id": _PAGE_ID,
+            "layout": json.dumps(pruned, separators=(",", ":"), ensure_ascii=False),
+        },
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_delete_portal_element_rejects_layout_listing_the_element() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"deleteElement": {"success": True}},
+    )
+    layout = parse_portal_page_layout(
+        [{"id": "row-1", "type": "row", "children": [_ELEMENT_ID]}]
+    )
+
+    with pytest.raises(ValidationError, match="still lists element_id"):
+        await service.delete_portal_element(_ELEMENT_ID, _PAGE_ID, layout=layout)
+
+    interfaces_executor.execute_query.assert_not_called()
 
 
 @pytest.mark.unit
@@ -1406,3 +1594,15 @@ async def test_sub_portal_internal_api_non_permission_error_propagates() -> None
             _FORMS_ELEMENT_ID,
             _SUB_PORTAL_UUID,
         )
+
+
+def test_get_portal_selects_page_layout():
+    from pipefy_sdk.queries.portal_queries import GET_PORTAL_QUERY
+
+    portal = GET_PORTAL_QUERY.document.definitions[0].selection_set.selections[0]
+    pages = next(
+        field
+        for field in portal.selection_set.selections
+        if field.name.value == "pages"
+    )
+    assert "layout" in {field.name.value for field in pages.selection_set.selections}

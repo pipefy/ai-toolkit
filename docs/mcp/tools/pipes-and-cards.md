@@ -49,7 +49,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 | Group | Tools | Notes |
 |-------|-------|-------|
 | Pipe | `create_pipe`, `update_pipe`, `delete_pipe`, `clone_pipe` | `delete_pipe`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
-| Phase | `create_phase`, `update_phase`, `delete_phase` | `create_phase` `index`: 1-based insert among `get_pipe` workflow phases; omit to append. Prefer `1+` (not `0`). Index sets order only - not Connections / `allowed_phases` (UI-only). `delete_phase`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
+| Phase | `create_phase`, `update_phase`, `delete_phase` | `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` does not return this key. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. `delete_phase`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
 | Phase transitions | `get_phase_allowed_move_targets` | Read-only; mirrors **Phase → Connections** (`cards_can_be_moved_to_phases`). Call before `move_card_to_phase`. Edges are configured in the Pipefy UI only. |
 | Phase field | `create_phase_field`, `update_phase_field`, `delete_phase_field` | `field_type` maps to API `type`; `field_id` may be a slug or numeric ID. |
 | Label | `create_label`, `update_label`, `delete_label` | `color` must be a hex string (e.g. `#FF0000`), not a name. |
@@ -77,10 +77,10 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 When elicitation is unavailable, `create_card` and `fill_card_phase_fields` still work but behave differently. That covers agents, CLIs, and SDK consumers, and also **the hosted server**, which serves `json_response=True` and so has no server-to-client back channel at any protocol revision:
 
 1. The tool fetches the start-form or phase field definitions internally.
-2. Provided `fields` are **filtered to editable field IDs only** — keys that do not match an editable field are silently discarded (no error).
-3. The filtered dict is sent directly to the Pipefy API.
+2. For `create_card`, provided `fields` are **filtered to editable field IDs only** — keys that do not match an editable field are silently discarded (no error). The filtered dict is sent directly to the Pipefy API.
+3. For `fill_card_phase_fields`, keys the phase does not expose as editable are returned in `skipped_field_ids`. When nothing survives the filter, nothing is written.
 
-Because non-editable keys are dropped without warning, agents should discover fields first and pass all required values explicitly:
+Agents should discover fields first and pass all required values explicitly:
 
 ```
 get_start_form_fields(pipe_id)   → learn field IDs, types, required flag

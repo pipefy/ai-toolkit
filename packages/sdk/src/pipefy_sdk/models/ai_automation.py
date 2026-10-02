@@ -83,7 +83,7 @@ class ConditionExpressionInput(BaseModel):
     )
     structure_id: str | int | None = Field(
         default=None,
-        description="Groups this expression within expressions_structure.",
+        description="Id that expressions_structure uses to reference this expression (not its position).",
     )
     id: str | None = Field(
         default=None,
@@ -95,9 +95,9 @@ class AutomationConditionInput(BaseModel):
     """Pipefy ``ConditionInput``-shaped payload. Unknown top-level keys are preserved.
 
     ``expressions_structure`` is an array of arrays that groups the ``expressions``
-    (by their ``structure_id``) into an AND-of-ORs tree: each inner array is OR'd,
-    and the inner arrays are AND'd together — e.g. ``[[0, 1], [2]]`` means
-    ``(expr0 OR expr1) AND expr2``.
+    by their ``structure_id`` (not their position) into an OR-of-ANDs tree: the
+    expressions in one inner array are AND'd, and the inner arrays are OR'd. For
+    example, ``[[0, 1], [2]]`` means ``(expr0 AND expr1) OR expr2``.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -108,7 +108,11 @@ class AutomationConditionInput(BaseModel):
     )
     expressions_structure: list[Any] | None = Field(
         default=None,
-        description="AND-of-ORs grouping of expressions by structure_id (array of arrays).",
+        description=(
+            "Groups expressions by structure_id (array of arrays): expressions in one "
+            "inner array are AND'd, inner arrays are OR'd. [[0, 1], [2]] is "
+            "(expr0 AND expr1) OR expr2."
+        ),
     )
 
     def to_api_payload(self) -> dict[str, Any]:

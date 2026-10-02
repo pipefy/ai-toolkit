@@ -11,6 +11,8 @@ tags: [pipefy, process-intelligence, optimization, automation, analysis]
 
 # Process Intelligence
 
+Read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for the surface you are using. Load only the relevant reference.
+
 Analyze existing pipes for improvement opportunities and implement them progressively. **Investigate immediately. Diagnose with data. Improve progressively.**
 
 ---
@@ -23,7 +25,7 @@ The user asks to analyze or improve an existing process:
 - "Is this pipe optimized?"
 - "Where are the bottlenecks?"
 
-**Not for:** designing a new process from scratch → use `skills/process-design/`.
+**Not for:** designing a new process from scratch → use `pipefy-process-design`.
 
 ---
 
@@ -38,25 +40,25 @@ The user asks to analyze or improve an existing process:
 
 1. **Get pipe structure:**
 
-   MCP: `get_pipe pipe_id=<id>`
+   Operation: `get_pipe pipe_id=<id>`
 
    Capture: phases, field count per phase, automation count.
 
 2. **Sample recent cards** (last 30–50):
 
-   MCP: `get_cards pipe_id=<id> first=50 include_fields=true`
+   Operation: `get_cards pipe_id=<id> first=50 include_fields=true`
 
    Look for: stale cards (no updates), cards stuck in early phases, phases with 0 cards.
 
 3. **Check automations:**
 
-   MCP: `get_automations pipe_id=<id>`
+   Operation: `get_automations pipe_id=<id>`
 
    Look for: phases with no automations (manual handoffs), repeated manual steps.
 
 4. **Check AI configuration:**
 
-   MCP: `get_ai_agents repo_uuid=<PIPE_UUID>`
+   Operation: `get_ai_agents repo_uuid=<PIPE_UUID>`
 
    Look for: no AI agents despite manual categorization or triage patterns.
 
@@ -80,22 +82,22 @@ The user asks to analyze or improve an existing process:
 
 Each round focuses on 1–2 improvements; report results before proceeding.
 
-**Example: add an overdue automation**
+**Example: automate a repeated manual step**
 
-1. Identify the stalled phase and threshold (e.g., "Under Review" > 3 days).
-2. Check automation events: `get_automation_events`
+1. Identify the manual step and its trigger.
+2. Call `get_automation_events` and `get_automation_actions` for the pipe; select a supported event and action.
 3. Create the automation:
 
-   MCP: `create_automation pipe_id=<id> name="Overdue Alert" trigger_event="card_overdue" actions='[{"type":"send_email","to":"assignee"}]'`
+   Operation: `create_automation pipe_id=<id> name="Automate manual step" trigger_id=<EVENT_ID> action_id=<ACTION_ID> active=false`
 
-4. Report: "Added overdue automation to 'Under Review' phase — triggers after 3 days and emails the assignee."
+4. Verify the rule before activating it, then report the actual event and action used. If the desired event or action is unavailable, report the limitation instead of guessing an ID.
 
 **Example: add a field condition**
 
 1. Identify a field that should only show when another field has a specific value.
-2. Create the condition:
+2. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
 
-   MCP: `create_field_condition pipe_id=<id> phase_id=<phase_id> action="show" when='{"field_id":"<f1>","value":"Yes"}' fields='["<f2>"]'`
+   Operation: `create_field_condition phase_id=<PHASE_ID> name="Show follow-up" condition=<CONDITION_DICT> actions=<ACTION_DICTS>`
 
 ---
 
@@ -131,6 +133,6 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 ## See also
 
-- `skills/automations/` — detailed automation creation guide.
-- `skills/ai-agents/` — add conversational agents for user-facing automation.
-- `skills/observability/` — check credit and execution data to quantify improvement impact.
+- `pipefy-automations` — detailed automation creation guide.
+- `pipefy-ai-agents` — add conversational agents for user-facing automation.
+- `pipefy-observability` — check credit and execution data to quantify improvement impact.

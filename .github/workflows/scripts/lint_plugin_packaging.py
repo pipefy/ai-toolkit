@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Cursor plugin packaging: manifest, published skill set, and .mcp.json."""
+"""Validate plugin packaging: Cursor manifest, both published skill lists, and .mcp.json."""
 
 from __future__ import annotations
 
@@ -16,13 +16,16 @@ PLUGIN_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$")
 PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 PATH_LIST_FIELDS = ("skills", "commands", "agents", "rules", "hooks")
 ALLOWED_MCP_TOP_LEVEL_KEYS = ("mcpServers",)
-ALLOWED_MCP_SERVER_KEYS = ("url", "auth")
+ALLOWED_MCP_SERVER_KEYS = ("type", "url", "auth", "oauth")
 ALLOWED_MCP_AUTH_KEYS = ("CLIENT_ID",)
+ALLOWED_MCP_OAUTH_KEYS = ("clientId",)
 FORBIDDEN_MANIFEST_KEYS = ("variables",)
 HOSTED_SERVER_NAME = "pipefy"
 HOSTED_MCP_URL = "https://mcp.pipefy.com/mcp"
+HOSTED_MCP_TYPE = "http"
 HOSTED_CLIENT_ID = "pipefy-mcp"
 HOSTED_MCP_FILENAME = ".mcp.json"
+CLAUDE_PLUGIN_MANIFEST = Path(".claude-plugin/plugin.json")
 REQUIRED_MANIFEST_MCP_SERVERS = "./.mcp.json"
 FORBIDDEN_ROOT_MCP_JSON = "mcp.json"
 REQUIRED_DISPLAY_NAME = "Pipefy"
@@ -242,14 +245,14 @@ def _lint_skill_set(
     errors: list[str] = []
     for path in sorted(tree - declared):
         errors.append(
-            f"skills array is missing {path!r}; expected the manifest to list "
-            "every published skill directory from git ls-files "
+            f"{manifest_rel} skills array is missing {path!r}; expected the "
+            "manifest to list every published skill directory from git ls-files "
             "'skills/**/SKILL.md'"
         )
     for path in sorted(declared - tree):
         errors.append(
-            f"skills array lists {path!r}, which is not a tracked skill "
-            "directory; expected a path from git ls-files "
+            f"{manifest_rel} skills array lists {path!r}, which is not a tracked "
+            "skill directory; expected a path from git ls-files "
             "'skills/**/SKILL.md'"
         )
     return errors
@@ -283,6 +286,33 @@ def _lint_hosted_auth(rel: Path, name: str, server: dict[str, Any]) -> list[str]
     return errors
 
 
+def _lint_hosted_oauth(rel: Path, name: str, server: dict[str, Any]) -> list[str]:
+    """Check ``oauth`` against the same pins as ``auth``.
+
+    Cursor reads the client id from ``auth.CLIENT_ID`` and Claude Code from
+    ``oauth.clientId``; each ignores the other's key, so the shared file carries both.
+    """
+    errors: list[str] = []
+    oauth = server.get("oauth")
+    if not isinstance(oauth, dict):
+        errors.append(
+            f"{rel} server {name!r} has oauth that is not an object, "
+            f"expected an object with clientId {HOSTED_CLIENT_ID!r}"
+        )
+        return errors
+    client_id = oauth.get("clientId")
+    if client_id != HOSTED_CLIENT_ID:
+        errors.append(
+            f"{rel} server {name!r} has oauth.clientId that is not {HOSTED_CLIENT_ID!r}"
+        )
+    for key in sorted(set(oauth) - set(ALLOWED_MCP_OAUTH_KEYS)):
+        errors.append(
+            f"{rel} server {name!r} has unexpected oauth key {key!r}; expected "
+            f"only {', '.join(ALLOWED_MCP_OAUTH_KEYS)} on a URL-only server"
+        )
+    return errors
+
+
 def _lint_mcp(root: Path, mcp_path: Path) -> list[str]:
     loaded = _load_json(root, mcp_path)
     if isinstance(loaded, str):
@@ -310,6 +340,9 @@ def _lint_mcp(root: Path, mcp_path: Path) -> list[str]:
         ]
     if name != HOSTED_SERVER_NAME:
         errors.append(f"{rel} server key is {name!r}, expected {HOSTED_SERVER_NAME!r}")
+    # Claude Code parses a url entry without type as stdio and drops it at load.
+    if server.get("type") != HOSTED_MCP_TYPE:
+        errors.append(f"{rel} server {name!r} has type that is not {HOSTED_MCP_TYPE!r}")
     url = server.get("url")
     if url != HOSTED_MCP_URL:
         errors.append(f"{rel} server {name!r} has url that is not {HOSTED_MCP_URL!r}")
@@ -319,6 +352,7 @@ def _lint_mcp(root: Path, mcp_path: Path) -> list[str]:
             f"{', '.join(ALLOWED_MCP_SERVER_KEYS)} on a URL-only server"
         )
     errors.extend(_lint_hosted_auth(rel, name, server))
+    errors.extend(_lint_hosted_oauth(rel, name, server))
     try:
         text = mcp_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
@@ -331,6 +365,15 @@ def _lint_mcp(root: Path, mcp_path: Path) -> list[str]:
             "${...} placeholders"
         )
     return errors
+
+
+def _lint_tracked_skill_manifest(
+    root: Path, manifest_path: Path, tree: set[str]
+) -> list[str]:
+    loaded = _load_json(root, manifest_path)
+    if isinstance(loaded, str):
+        return [loaded]
+    return _lint_skill_set(_rel(root, manifest_path), loaded, tree)
 
 
 def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
@@ -354,8 +397,10 @@ def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
     errors.extend(_lint_no_forbidden_root_mcp_json(root))
     errors.extend(_lint_commands_suppressed(manifest_rel, loaded))
     errors.extend(_lint_logo(root, manifest_rel, loaded))
+    published = skill_dirs_from_ls_files(skill_md_paths)
+    errors.extend(_lint_tracked_skill_manifest(root, manifest_path, published))
     errors.extend(
-        _lint_skill_set(manifest_rel, loaded, skill_dirs_from_ls_files(skill_md_paths))
+        _lint_tracked_skill_manifest(root, root / CLAUDE_PLUGIN_MANIFEST, published)
     )
     for field, raw in _iter_path_values(loaded):
         err = _path_field_error(root, manifest_rel, field, raw)
@@ -368,17 +413,17 @@ def collect_errors(root: Path, skill_md_paths: list[str]) -> list[str]:
 def main() -> int:
     listing = _tracked_skill_md_paths(REPO_ROOT)
     if isinstance(listing, str):
-        print("Cursor plugin packaging FAILED:", file=sys.stderr)
+        print("Plugin packaging FAILED:", file=sys.stderr)
         print(f"  {listing}", file=sys.stderr)
         return 1
 
     errors = collect_errors(REPO_ROOT, listing)
     if errors:
-        print("Cursor plugin packaging FAILED:", file=sys.stderr)
+        print("Plugin packaging FAILED:", file=sys.stderr)
         for err in errors:
             print(f"  {err}", file=sys.stderr)
         return 1
-    print("Cursor plugin packaging passed.")
+    print("Plugin packaging passed.")
     return 0
 
 

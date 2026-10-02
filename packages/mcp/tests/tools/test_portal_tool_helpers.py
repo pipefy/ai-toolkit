@@ -5,10 +5,12 @@ from __future__ import annotations
 import pytest
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.models.portal import DeletePortalElementInput
 
 from pipefy_mcp.tools.portal_tool_helpers import (
     finalize_internal_api_mutation,
     map_portal_error_to_message,
+    plan_portal_element_delete_confirmation,
     validate_portal_page_index,
     validate_sort_page_ids_no_duplicates,
 )
@@ -164,3 +166,39 @@ def test_validate_sort_page_ids_no_duplicates_rejects_dupes() -> None:
     err = validate_sort_page_ids_no_duplicates(["a", "a"])
     assert err is not None
     assert "duplicate" in str(err["error"]["message"]).lower()
+
+
+def _delete_input(layout=None):
+    return DeletePortalElementInput(element_id="el-1", page_id="page-1", layout=layout)
+
+
+@pytest.mark.unit
+def test_delete_confirmation_without_layout_binds_element_and_page_only() -> None:
+    plan = plan_portal_element_delete_confirmation(_delete_input())
+    assert plan.resource_identity == {"element_id": "el-1", "page_id": "page-1"}
+    assert plan.resource_descriptor == (
+        "portal element (UUID: el-1) on page (UUID: page-1)"
+    )
+
+
+@pytest.mark.unit
+def test_delete_confirmation_with_layout_names_the_grid_rewrite() -> None:
+    plan = plan_portal_element_delete_confirmation(
+        _delete_input([{"id": "row-1", "type": "row", "children": []}])
+    )
+    assert "replacing that page's layout (1 row sent)" in plan.resource_descriptor
+
+
+@pytest.mark.unit
+def test_delete_confirmation_binds_the_exact_layout_rows() -> None:
+    """A token previewed for one grid must not confirm a delete that writes another."""
+    row_a = {"id": "row-1", "type": "row", "children": ["el-2"]}
+    row_b = {"id": "row-2", "type": "row", "children": ["el-3"]}
+    no_layout = plan_portal_element_delete_confirmation(_delete_input())
+    empty = plan_portal_element_delete_confirmation(_delete_input([]))
+    ordered = plan_portal_element_delete_confirmation(_delete_input([row_a, row_b]))
+    reordered = plan_portal_element_delete_confirmation(_delete_input([row_b, row_a]))
+    identities = [
+        plan.resource_identity for plan in (no_layout, empty, ordered, reordered)
+    ]
+    assert len({tuple(sorted(identity.items())) for identity in identities}) == 4

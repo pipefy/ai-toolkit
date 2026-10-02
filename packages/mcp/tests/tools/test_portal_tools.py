@@ -13,6 +13,7 @@ from _shared.fixture_ids import EXAMPLE_NUMERIC_ORG_ID, EXAMPLE_PIPE_REPO_ID
 from gql.transport.exceptions import TransportError
 from pipefy_sdk import PipefyClient, PipefyGraphQLError
 from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.models.portal import parse_portal_page_layout
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.portal_tools import PortalTools
@@ -38,6 +39,7 @@ _PORTAL_DETAIL = {
             "id": "page-1",
             "uuid": "page-1",
             "title": "Home",
+            "layout": [{"id": "row-1", "type": "row", "children": ["el-1"]}],
             "elements": [
                 {
                     "id": "el-1",
@@ -85,7 +87,7 @@ _CREATED_PAGE = {
     "elements": [{"id": "el-1", "uuid": "el-1", "type": "text"}],
 }
 
-_PAGE_LAYOUT = {"rows": [{"columns": [{"width": 12}]}]}
+_PAGE_LAYOUT = [{"id": "row-1", "type": "row", "children": ["el-1"]}]
 
 _ELEMENT_UUID = "el-uuid-1"
 _FORMS_METADATA = {"name": "Request form"}
@@ -278,6 +280,7 @@ async def test_get_portal_success(portal_session, mock_portal_client, extract_pa
     assert payload["data"]["uuid"] == "portal-uuid-1"
     assert payload["data"]["published"] is True
     assert payload["data"]["pages"][0]["title"] == "Home"
+    assert payload["data"]["pages"][0]["layout"] == _PAGE_LAYOUT
     assert payload["data"]["subPortals"][0]["name"] == "Sub Portal 1"
 
 
@@ -1084,11 +1087,56 @@ async def test_update_portal_page_layout_success(
 
     assert result.is_error is False
     mock_portal_client.update_portal_page_layout.assert_awaited_once_with(
-        _PAGE_UUID, _PAGE_LAYOUT
+        _PAGE_UUID, parse_portal_page_layout(_PAGE_LAYOUT)
     )
     payload = extract_payload(result)
     assert payload["success"] is True
     assert payload["data"]["updatePageLayout"]["success"] is True
+
+
+@pytest.mark.anyio
+async def test_update_portal_page_layout_accepts_empty_array(
+    portal_session, mock_portal_client
+):
+    mock_portal_client.update_portal_page_layout = AsyncMock(
+        return_value={"updatePageLayout": {"success": True}}
+    )
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_page_layout",
+            {"page_id": _PAGE_UUID, "layout": []},
+        )
+
+    assert result.is_error is False
+    mock_portal_client.update_portal_page_layout.assert_awaited_once_with(
+        _PAGE_UUID, []
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "layout",
+    [
+        [{}],
+        [{"children": ["el-new"]}],
+        [{"id": "row-1", "type": "column", "children": ["el-new"]}],
+    ],
+)
+async def test_update_portal_page_layout_rejects_malformed_rows(
+    portal_session, mock_portal_client, extract_payload, layout
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_page_layout",
+            {"page_id": _PAGE_UUID, "layout": layout},
+        )
+
+    mock_portal_client.update_portal_page_layout.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+    assert "type 'row'" in tool_error_message(payload)
 
 
 @pytest.mark.anyio
@@ -1107,7 +1155,7 @@ async def test_update_portal_page_layout_fails_when_success_false(
 
     assert result.is_error is False
     mock_portal_client.update_portal_page_layout.assert_awaited_once_with(
-        _PAGE_UUID, _PAGE_LAYOUT
+        _PAGE_UUID, parse_portal_page_layout(_PAGE_LAYOUT)
     )
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -1218,6 +1266,76 @@ async def test_create_portal_element_success(
     assert payload["success"] is True
     assert payload["data"]["uuid"] == _ELEMENT_UUID
     assert payload["data"]["type"] == "forms"
+
+
+_PLACING_LINK_METADATA = {"linkName": "Docs", "linkUrl": "https://example.com"}
+_PLACING_LAYOUT = [
+    {"id": "row-1", "type": "row", "children": ["el-1"]},
+    {"id": "row-2", "type": "row", "children": ["el-new"]},
+]
+
+
+@pytest.mark.anyio
+async def test_create_portal_element_with_layout_places_element(
+    portal_session, mock_portal_client
+):
+    mock_portal_client.create_portal_element = AsyncMock(return_value=_CREATED_ELEMENT)
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_portal_element",
+            {
+                "page_id": _PAGE_UUID,
+                "type": "link",
+                "metadata": _PLACING_LINK_METADATA,
+                "element_id": "el-new",
+                "layout": _PLACING_LAYOUT,
+            },
+        )
+
+    assert result.is_error is False
+    mock_portal_client.create_portal_element.assert_awaited_once_with(
+        _PAGE_UUID,
+        type="link",
+        metadata=_PLACING_LINK_METADATA,
+        data_sources=[],
+        element_id="el-new",
+        layout=parse_portal_page_layout(_PLACING_LAYOUT),
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"element_id": "el-new", "layout": {"rows": _PLACING_LAYOUT}},
+        {"layout": _PLACING_LAYOUT},
+        {"element_id": "el-elsewhere", "layout": _PLACING_LAYOUT},
+        {"element_id": "el-new", "layout": [{"children": ["el-new"]}]},
+    ],
+    ids=[
+        "object-wrapper",
+        "missing-element-id",
+        "element-not-in-rows",
+        "incomplete-row",
+    ],
+)
+async def test_create_portal_element_rejects_unplaceable_layout_before_client(
+    portal_session, mock_portal_client, extract_payload, arguments
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_portal_element",
+            {
+                "page_id": _PAGE_UUID,
+                "type": "link",
+                "metadata": _PLACING_LINK_METADATA,
+                **arguments,
+            },
+        )
+
+    mock_portal_client.create_portal_element.assert_not_called()
+    assert extract_payload(result)["success"] is False
 
 
 @pytest.mark.anyio
@@ -1445,6 +1563,103 @@ async def test_delete_portal_element_fails_when_success_false(
 
     assert payload["success"] is False
     assert "failed to delete" in tool_error_message(payload).lower()
+
+
+_PRUNED_LAYOUT = [{"id": "row-1", "type": "row", "children": ["el-1"]}]
+
+
+@pytest.mark.anyio
+async def test_delete_portal_element_forwards_pruned_layout(
+    portal_session, mock_portal_client
+):
+    mock_portal_client.delete_portal_element = AsyncMock(
+        return_value={"deleteElement": {"success": True}}
+    )
+
+    async with portal_session as session:
+        payload = await confirm_after_preview(
+            session,
+            "delete_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "layout": _PRUNED_LAYOUT,
+                "confirm": True,
+            },
+        )
+
+    assert payload["success"] is True
+    mock_portal_client.delete_portal_element.assert_awaited_once_with(
+        _ELEMENT_UUID, _PAGE_UUID, layout=parse_portal_page_layout(_PRUNED_LAYOUT)
+    )
+
+
+@pytest.mark.anyio
+async def test_delete_portal_element_preview_names_the_layout_rewrite(
+    portal_session, extract_payload
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "delete_portal_element",
+            {"element_id": _ELEMENT_UUID, "page_id": _PAGE_UUID, "layout": []},
+        )
+
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert "replacing that page's layout" in payload["resource"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "layout",
+    [
+        [{"id": "row-1", "type": "row", "children": [_ELEMENT_UUID]}],
+        [{"children": []}],
+    ],
+    ids=["still-lists-element", "incomplete-row"],
+)
+async def test_delete_portal_element_rejects_bad_layout_before_preview(
+    portal_session, extract_payload, layout
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "delete_portal_element",
+            {"element_id": _ELEMENT_UUID, "page_id": _PAGE_UUID, "layout": layout},
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+    assert "confirmation_token" not in payload
+
+
+@pytest.mark.anyio
+async def test_delete_portal_element_token_without_layout_does_not_confirm_layout(
+    portal_session, mock_portal_client, extract_payload
+):
+    """A token minted without layout must not confirm a delete that rewrites the grid."""
+    async with portal_session as session:
+        preview = extract_payload(
+            await session.call_tool(
+                "delete_portal_element",
+                {"element_id": _ELEMENT_UUID, "page_id": _PAGE_UUID},
+            )
+        )
+        result = await session.call_tool(
+            "delete_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "layout": _PRUNED_LAYOUT,
+                "confirm": True,
+                "confirmation_token": preview["confirmation_token"],
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert "does not match" in payload["message"]
+    mock_portal_client.delete_portal_element.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -2301,3 +2516,16 @@ async def test_delete_sub_portal_docstring_warns_irreversible(portal_session):
     tool_map = {t.name: t for t in listed.tools}
     description = (tool_map["delete_sub_portal"].description or "").lower()
     assert "irreversible" in description
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("layout", [{"rows": []}, "not-json", ["element-1"]])
+async def test_page_layout_rejects_non_row_arrays(
+    portal_session, mock_portal_client, extract_payload, layout
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_page_layout", {"page_id": _PAGE_UUID, "layout": layout}
+        )
+    assert extract_payload(result)["success"] is False
+    mock_portal_client.update_portal_page_layout.assert_not_called()

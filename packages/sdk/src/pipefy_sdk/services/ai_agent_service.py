@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import re
 import uuid
 from typing import Any
 
@@ -23,9 +24,27 @@ from pipefy_sdk.services.types import (
 )
 from pipefy_sdk.utils.relay import unwrap_relay_connection_nodes
 
+_ACTION_PLACEHOLDER_LINE = re.compile(r"[ \t]*(?:%\{action:[^}]+\}[ \t]*)+")
+
+
+def _drop_action_placeholder_lines(instruction: str) -> str:
+    return "\n".join(
+        line
+        for line in instruction.split("\n")
+        if not _ACTION_PLACEHOLDER_LINE.fullmatch(line)
+    )
+
 
 def inject_reference_ids(behaviors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Deep-copy behaviors and assign a UUID ``referenceId`` per action; append ``%{action:<uuid>}`` lines to instruction.
+
+    Lines that hold only ``%{action:…}`` tokens are dropped first: they point at the
+    ``referenceId`` values of an earlier save, which this call replaces. Tokens
+    inside other text stay where they are.
+
+    Each action's ``id`` is dropped too. It is a persisted key from a read, and
+    the behavior that owned it is replaced on save, so the API rejects it
+    (``RECORD_NOT_SAVED``).
 
     Args:
         behaviors: Behavior dicts with ``actionParams.aiBehaviorParams.actionsAttributes``.
@@ -43,11 +62,12 @@ def inject_reference_ids(behaviors: list[dict[str, Any]]) -> list[dict[str, Any]
 
         placeholders: list[str] = []
         for action in actions:
+            action.pop("id", None)
             ref_id = str(uuid.uuid4())
             action["referenceId"] = ref_id
             placeholders.append(f"%{{action:{ref_id}}}")
 
-        instruction = ai_params.get("instruction") or ""
+        instruction = _drop_action_placeholder_lines(ai_params.get("instruction") or "")
         separator = "\n" if instruction else ""
         ai_params["instruction"] = instruction + separator + "\n".join(placeholders)
 
@@ -146,9 +166,10 @@ class AiAgentService:
             "name": agent_input.name,
             "repoUuid": agent_input.repo_uuid,
             "instruction": agent_input.instruction or "",
-            "dataSourceIds": agent_input.data_source_ids,
             "behaviors": behaviors_with_refs,
         }
+        if agent_input.data_source_ids is not None:
+            agent_payload["dataSourceIds"] = agent_input.data_source_ids
         if disabled_at is not None:
             agent_payload["disabledAt"] = disabled_at
 

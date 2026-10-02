@@ -161,7 +161,7 @@ def test_form_model_with_default_values():
 
 @pytest.mark.unit
 def test_create_form_model_raises_on_malformed_field_definitions():
-    """Malformed API field shapes return a clear error instead of crashing (issue #30)."""
+    """Malformed API field shapes return a clear error instead of crashing."""
     field_definitions = [
         {"label": "Status", "type": "select"},
         "not a dict",

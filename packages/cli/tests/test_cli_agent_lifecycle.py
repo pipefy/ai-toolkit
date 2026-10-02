@@ -36,22 +36,16 @@ _PREFLIGHT_OK = {
 }
 
 
-def test_agent_create_default_sets_preserve_disabled_at_false_on_update_chain(
+def test_agent_create_default_sends_no_disabled_at(
     runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
 ):
-    """Default ``agent create`` passes ``preserve_disabled_at=False`` on chained update."""
+    """Default ``agent create`` builds an input without ``disabled_at`` (the SDK chain activates it)."""
     oauth_env("ag-create-active")
     mock_client = MagicMock()
     mock_client.create_ai_agent = AsyncMock(
         return_value={
             "agent_uuid": "active-uuid",
-            "disabled_at": "2026-08-04T12:00:00+00:00",
-            "active": False,
-        }
-    )
-    mock_client.update_ai_agent = AsyncMock(
-        return_value={
-            "agent_uuid": "active-uuid",
+            "message": "AI Agent created and configured successfully. UUID: active-uuid",
             "disabled_at": None,
             "active": True,
         }
@@ -62,8 +56,9 @@ def test_agent_create_default_sets_preserve_disabled_at_false_on_update_chain(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=_PREFLIGHT_OK),
         ),
         patch(
@@ -98,28 +93,19 @@ def test_agent_create_default_sets_preserve_disabled_at_false_on_update_chain(
 
     create_arg = mock_client.create_ai_agent.call_args.args[0]
     assert create_arg.disabled_at is None
-    update_arg = mock_client.update_ai_agent.call_args.args[0]
-    assert update_arg.disabled_at is None
-    assert update_arg.preserve_disabled_at is False
 
 
-def test_agent_create_inactive_sets_disabled_at_on_create_and_update_chain(
+def test_agent_create_inactive_sets_disabled_at_on_the_create_input(
     runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
 ):
-    """``agent create --inactive`` sets the same ``disabled_at`` on create + chained update."""
+    """``agent create --inactive`` sets an ISO ``disabled_at`` on the create input."""
     oauth_env("ag-create-inactive")
     stub_disabled_at = "2026-08-04T13:00:00+00:00"
     mock_client = MagicMock()
     mock_client.create_ai_agent = AsyncMock(
         return_value={
             "agent_uuid": "inactive-uuid",
-            "disabled_at": stub_disabled_at,
-            "active": False,
-        }
-    )
-    mock_client.update_ai_agent = AsyncMock(
-        return_value={
-            "agent_uuid": "inactive-uuid",
+            "message": "AI Agent created and configured successfully. UUID: inactive-uuid",
             "disabled_at": stub_disabled_at,
             "active": False,
         }
@@ -130,8 +116,9 @@ def test_agent_create_inactive_sets_disabled_at_on_create_and_update_chain(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=_PREFLIGHT_OK),
         ),
         patch(
@@ -168,9 +155,6 @@ def test_agent_create_inactive_sets_disabled_at_on_create_and_update_chain(
     create_arg = mock_client.create_ai_agent.call_args.args[0]
     assert create_arg.disabled_at is not None
     datetime.fromisoformat(create_arg.disabled_at)
-    update_arg = mock_client.update_ai_agent.call_args.args[0]
-    assert update_arg.disabled_at == create_arg.disabled_at
-    assert update_arg.preserve_disabled_at is False
 
 
 def test_agent_update_json_exposes_active_when_disabled_at_null(
@@ -193,8 +177,9 @@ def test_agent_update_json_exposes_active_when_disabled_at_null(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=_PREFLIGHT_OK),
         ),
         patch(
@@ -250,8 +235,9 @@ def test_agent_update_json_exposes_active_false_when_disabled(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=_PREFLIGHT_OK),
         ),
         patch(
@@ -307,8 +293,9 @@ def test_agent_update_passes_disabled_at_when_provided(
             "pipefy_cli.commands._common.get_authenticated_client",
             return_value=mock_client,
         ),
-        patch(
-            "pipefy_cli.commands.agent.validate_ai_agent_behaviors_sdk",
+        patch.object(
+            mock_client,
+            "validate_ai_agent_behaviors",
             new=AsyncMock(return_value=_PREFLIGHT_OK),
         ),
         patch(
@@ -343,6 +330,7 @@ def test_agent_update_passes_disabled_at_when_provided(
     update_arg = mock_client.update_ai_agent.call_args.args[0]
     assert update_arg.disabled_at == stub_disabled_at
     assert update_arg.preserve_disabled_at is True
+    assert update_arg.data_source_ids is None
     body = json.loads(r.stdout)
     assert body["disabled_at"] == stub_disabled_at
     assert body["active"] is False

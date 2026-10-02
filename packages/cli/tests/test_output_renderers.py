@@ -134,3 +134,53 @@ def test_rich_renderer_primitive_snapshot() -> None:
     console = _test_console()
     render_rich("plain", console=console)
     assert console.file.getvalue().strip() == "plain"
+
+
+def test_rich_renderer_prints_bracketed_dict_values_literally() -> None:
+    """Rich markup must not eat or reject a resource name that contains brackets."""
+    console = _test_console()
+    render_rich(
+        [
+            {"id": "a1", "name": "[on hold] escalate"},
+            {"id": "a2", "name": "Notify [/marketing] team"},
+            {"id": "a3", "name": "[HR] Review"},
+        ],
+        console=console,
+    )
+    out = console.file.getvalue()
+    assert "[on hold] escalate" in out
+    assert "Notify [/marketing] team" in out
+    assert "[HR] Review" in out
+
+
+def test_rich_renderer_prints_bracketed_primitives_literally() -> None:
+    console = _test_console()
+    render_rich(["[on hold] escalate", "Notify [/marketing] team"], console=console)
+    out = console.file.getvalue()
+    assert "[on hold] escalate" in out
+    assert "Notify [/marketing] team" in out
+
+
+def test_rich_renderer_prints_bracketed_column_headers_literally() -> None:
+    """A column header with brackets must print literally, not as Rich markup.
+
+    Cells are wrapped in ``Text`` so their markup is inert, but header strings
+    are passed to ``Table`` directly. Without escaping, a ``[on hold] col``
+    header is swallowed and a ``Notify [/marketing] col`` header raises
+    ``MarkupError``.
+    """
+    console = _test_console()
+    render_rich(
+        [
+            {
+                "[on hold] col": "v1",
+                "Notify [/marketing] col": "v2",
+                "id": "3",
+            }
+        ],
+        console=console,
+    )
+    out = console.file.getvalue()
+    assert "[on hold] col" in out
+    assert "Notify [/marketing] col" in out
+    assert "id" in out

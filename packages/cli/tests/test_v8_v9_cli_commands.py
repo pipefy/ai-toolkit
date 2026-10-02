@@ -257,14 +257,19 @@ def test_automation_list_json(
 ):
     oauth_env("au")
     mock_client = MagicMock()
-    mock_client.get_automations = AsyncMock(return_value=[{"id": "1", "name": "R"}])
+    page = {
+        "nodes": [{"id": "1", "name": "R"}],
+        "totalCount": 1,
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+    mock_client.get_automations = AsyncMock(return_value=page)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
     ):
         r = runner.invoke(app, ["automation", "list", "--pipe", "5", "--json"])
     assert r.exit_code == 0
-    assert json.loads(r.stdout) == [{"id": "1", "name": "R"}]
+    assert json.loads(r.stdout) == page
 
 
 def test_automation_logs_requires_automation_xor_repo(

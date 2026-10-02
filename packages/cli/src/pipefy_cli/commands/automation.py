@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 from pipefy_sdk import (
+    AUTOMATIONS_LIST_MAX_PAGE_SIZE,
     AutomationConditionInput,
     CreateSendTaskAutomationInput,
     PipefyClient,
@@ -17,15 +18,32 @@ from pipefy_cli.commands._common import (
     parse_json_value,
     resource_id_argument,
     run_cli_command,
+    run_pipefy_client_coroutine,
+    validate_cards_page_size,
 )
+from pipefy_cli.output import render_json, render_rich
 
 automation_app = typer.Typer(
     help="Traditional automations and related exports.", no_args_is_help=True
 )
+
 export_app = typer.Typer(help="Automation jobs export (async).", no_args_is_help=True)
 send_task_app = typer.Typer(help="Send-a-task automation helper.", no_args_is_help=True)
 events_app = typer.Typer(help="Automation trigger catalog.", no_args_is_help=True)
 actions_app = typer.Typer(help="Automation action catalog.", no_args_is_help=True)
+
+#: Scalar columns of a listing row, in the order the table prints them. The row also
+#: carries ``event_params`` and ``condition``, which are nested structures a terminal
+#: cell cannot show; ``--json`` is where an audit reads those.
+_LIST_TABLE_COLUMNS = (
+    "id",
+    "name",
+    "active",
+    "action_id",
+    "actionEnabled",
+    "disabledReason",
+    "event_id",
+)
 
 
 @automation_app.command("list")
@@ -38,6 +56,17 @@ def automation_list(
         help="Optional organization id filter.",
     ),
     pipe: str | None = typer.Option(None, "--pipe", help="Optional pipe id filter."),
+    first: int | None = typer.Option(
+        None,
+        "--first",
+        help=(
+            f"Page size, 1 to {AUTOMATIONS_LIST_MAX_PAGE_SIZE} (the API cap). "
+            "Defaults to the cap."
+        ),
+    ),
+    after: str | None = typer.Option(
+        None, "--after", help="pageInfo.endCursor from the previous page."
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -45,15 +74,37 @@ def automation_list(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """List automation rules (``get_automations``)."""
+    """List one page of automation rules (``get_automations``).
+
+    The API caps a page at 50 rules. ``--json`` prints the whole page (``nodes``,
+    ``totalCount``, and ``pageInfo``). Without ``--json``, the scalar columns of
+    each row print as a table with ``totalCount`` and ``hasNextPage`` beside it;
+    ``event_params`` and ``condition`` are nested and read from ``--json``.
+    """
+
+    first = validate_cards_page_size(first, max_size=AUTOMATIONS_LIST_MAX_PAGE_SIZE)
+    cursor = after.strip() if after and after.strip() else None
 
     async def factory(client: PipefyClient):
         return await client.get_automations(
             organization_id=organization,
             pipe_id=pipe,
+            first=first,
+            after=cursor,
         )
 
-    run_cli_command(ctx, json_out, factory)
+    page = run_pipefy_client_coroutine(ctx, factory, value_error_exit_code=2)
+    if json_out:
+        render_json(page)
+        return
+    render_rich(
+        [{k: row[k] for k in _LIST_TABLE_COLUMNS if k in row} for row in page["nodes"]]
+    )
+    info = page["pageInfo"]
+    typer.echo(
+        f"totalCount={page['totalCount']} hasNextPage={info.get('hasNextPage')} "
+        f"endCursor={info.get('endCursor')}"
+    )
 
 
 @automation_app.command("get", context_settings=ID_POSITIONAL_CONTEXT_SETTINGS)
@@ -103,7 +154,9 @@ _CONDITION_HELP = (
     '{"expressions": [{"field_address": "<internal_id>", "operation": "equals", '
     '"value": "x", "structure_id": 0}], "expressions_structure": [[0]]}. '
     "field_address is a field internal_id (not a slug); operations include equals, "
-    "not_equals, present, blank, string_contains, number_greater_than, date_is_after."
+    "not_equals, present, blank, string_contains, number_greater_than, date_is_after. "
+    "expressions_structure lists structure_id values: AND inside an inner array, OR "
+    "across inner arrays, so [[0, 1], [2]] is (0 AND 1) OR 2."
 )
 
 

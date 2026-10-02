@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from pipefy_mcp.tools.behavior_placeholder_interpolation import (
+from pipefy_sdk.behavior_placeholders import (
     expand_behavior_placeholders,
     expand_behaviors_placeholders,
     extract_referenced_field_ids,

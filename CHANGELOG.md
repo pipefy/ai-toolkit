@@ -8,12 +8,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SDK methods named after MCP tools**: `PipefyClient.get_ai_automation`, `get_ai_automations`, `delete_ai_automation`, `remove_member_from_pipe`, and `fill_card_phase_fields` expose those operations as client methods, with the MCP tool names and parameters. The corresponding MCP tools and CLI commands now call these methods (MCP `fill_card_phase_fields` still elicits when a form can be shown). The AI-list filter, member-removal verification, and editable-field filter move into the SDK. Skills retarget `get_labels` to `get_pipe` and `get_pipe_report` to `get_pipe_reports`; those two names stay MCP aliases (projection remains in MCP and CLI). (#696)
+
+- **SDK pre-write validation**: `PipefyClient.validate_ai_agent_behaviors` and `PipefyClient.validate_ai_automation_prompt` expose the two read-only validators as client methods, with the MCP tool names and parameters, so an agent that builds its tools from `PipefyClient` can validate before it writes. The MCP tools and CLI commands now call these methods. The `pipefy_sdk.ai_preflight` module functions stay. (#694)
+
+### Changed
+
+- **SDK AI agent create**: `PipefyClient.create_ai_agent` now writes the agent's instruction and behaviors. It creates the agent and chains `update_ai_agent`, as the MCP tool and CLI command did on their own; before, it dropped the required `instruction` and `behaviors` and returned an empty, disabled agent. When the update fails, it raises the new `AiAgentConfigureError`, which carries the created `agent_uuid`. `CreateAiAgentInput` and `UpdateAiAgentInput` now expand `template_params` / `instruction_template` and normalize instruction token aliases while they validate, so SDK callers get the same prep as the MCP tools. As a result, a raw behavior dict with a literal `{{name}}` and no `template_params` now fails `CreateAiAgentInput` / `UpdateAiAgentInput` validation, as it already failed in the MCP tools. Callers that expanded behaviors themselves can drop that step: a second expansion fails when a substituted value contains `{{name}}`. The MCP tools and CLI commands call these methods. A CLI `agent create` whose update fails now prints the created agent's UUID. The unused `pipefy_mcp.tools.behavior_placeholder_interpolation` re-export is removed; import the helpers from `pipefy_sdk.behavior_placeholders`. (#695)
+
+- **MCP `fill_card_phase_fields`**: no longer writes when the phase has no editable fields, on every path including a shown form; dropped keys return in `skipped_field_ids`. CLI `pipefy card fill --fields {}` on a phase with editable fields now returns the collected-nothing envelope instead of short-circuiting with "No fields to update."
+
+- **CLI `pipefy member remove`**: verifies membership after the mutation. `--json` now prints `{"data": <mutation result>, "warning": ...}` instead of the mutation result at the top level. `warning` is `null` when every member is gone.
+
 ### Fixed
 
 - **AI agent logs**: log details now include the execution's `llmConfigInfo` (`model`, `name`, `provider`) across SDK, MCP, and CLI, preserving unavailable values as null (#619).
 
+- **Automation conditions**: the `pipefy-automations` skill, the `create_automation` and `update_automation` descriptions, the SDK `AutomationConditionInput` docs and the MCP tool docs described `expressions_structure` as AND-of-ORs, so a compound condition built from them matched the inverted rule. Pipefy evaluates it as OR-of-ANDs: the expressions in one inner array are AND'd and the inner arrays are OR'd, so `[[0, 1], [2]]` is `(expr0 AND expr1) OR expr2`. `pipefy automation create` / `update --condition` help now states the rule too. The skill, the docs and `create_automation` also say the numbers are `structure_id` values and name what the API drops on save without an error. Dropping one expression from an AND group can make the rule match more cards; dropping the only expression in an OR group removes that group, so the rule matches fewer cards. Two expressions that share a `structure_id`, sent as `[[0], [0]]`, save with `expressions` empty and `expressions_structure` still `[[0], [0]]`, and that rule does not match cards. `create_field_condition` no longer calls them positions. The old rule shipped in 0.4.0-beta.2 and is in every release through 0.5.2-beta.1.
+
+- **Portal layout**: `get_portal` now reads the full page layout, and SDK/MCP/CLI page-layout updates accept the API's row array instead of an object. `create_portal_element` accepts the same row array with `element_id` to create and place an element in one call (CLI `--element-id` / `--layout`), and rejects a layout that does not reference the new element. Each row needs a non-empty id, type "row", and children as non-empty strings; an incomplete row is rejected before the call because the API stores layout JSON verbatim, while `[]` stays valid for an empty page. `delete_portal_element` (CLI `--layout`) accepts the same row array with the element removed and writes it in the same call, rejecting a layout that still lists the deleted element; the MCP preview names the layout rewrite and its confirmation token covers the exact rows. Row ids and children reach the API without surrounding whitespace. Guidance distinguishes row placement from element dimensions and requires read-back after edits (#524).
+
+- **Claude Code plugin**: the plugin now loads its MCP server and its skill catalog. `.mcp.json` declares `"type": "http"` and `oauth.clientId`, the two keys Claude Code reads (without `type` it parsed the hosted entry as stdio and dropped it at load; the Cursor keys `auth.CLIENT_ID` stay in the same file, since each client ignores the other's key). `.claude-plugin/plugin.json` lists the 17 `skills/<domain>/<skill>` directories, which the default one-level `skills/` scan did not find, so an install exposed only `install` and `pipefy-login`. The plugin description names the hosted MCP connection and browser sign-in for pipes, cards, tables, reports, automations, AI agents, and process skills; the marketplace file carries a description and the entry a category. `lint_plugin_packaging.py` pins the two new keys alongside the Cursor ones, and checks that `.claude-plugin/plugin.json` lists every tracked skill directory the same way it checks the Cursor manifest. A missing or stale path names which file.
+
+- **Automation listings**: SDK, MCP, and CLI now return trigger IDs, event parameters, conditions, `actionEnabled`, and `disabledReason` for organization and pipe listings, avoiding a detail call per rule to audit its filters and whether the action is enabled. Listings are paged: the API caps a page at 50 rules, so `get_automations` / `pipefy automation list` accept `first` / `after` and report `totalCount` and `hasNextPage` instead of silently returning the first 50. `get_ai_automations` / `pipefy ai-automation list` expose the same page block for the mixed connection they filter. Human `pipefy automation list` prints a table of each row's scalar columns plus the page counts, leaving the nested `event_params` and `condition` to `--json`. Phase-delete preview follows every page of rules, reads their details under a concurrency bound instead of one simultaneous call per rule, and says when the dependents list is a lower bound because a page or a detail read failed. An empty pipe no longer fails `get_automation_logs_by_repo`. The last page of an audit names itself so `11 of 61` is not read as a shortfall. (#612)
+
+- **Automations skill and docs, event and action compatibility**: the skill named `field_updated` + `move_single_card` a dead pairing and told agents to gate a rule on the action's `triggerEvents`. The pairing fires, and `triggerEvents` is not a compatibility allowlist: actions return it empty, list their own `eventsBlacklist` entries inside it, and run with events outside it. Both surfaces now state the rule the catalog supports, a pair is invalid when the event is in the action's `eventsBlacklist`, name the `event_action_blacklist` rejection `create_automation` returns for one, and record that `update_automation` does not enforce the denylist, so a rule can be patched into a blacklisted pair. The skill also carries the full catalog-to-input spelling map for `event_params` (`trigger_field_ids` is `triggerFieldIds`, and `to_phase_id` is the only key that stays snake_case) and the `scheduler_frequency` plus five-field `schedulerCron` shape recurring rules need. (#689)
+
+### Changed
+
+- **SDK `get_automations`**: returns the connection page (`nodes`, `totalCount`, `pageInfo`) instead of a bare list, so callers can detect a truncated listing.
+
+## [0.5.2-beta.1] - 2026-09-11
+
+### Changed
+
+- **Release track**: `0.5.2-beta.1` is the next published pre-release after `0.5.0-beta.1`. `0.5.1` on `main` was not tagged; there is no new tool surface since that version.
+
+## [0.5.1] - 2026-09-11
+
+### Fixed
+
+- **MCP errors**: the shared error envelope now supplies `Tool request failed.` for blank or whitespace-only messages while preserving non-blank domain guidance, error codes, and details (#593).
+
 - **Cursor Marketplace plugin**: hosted MCP config is `.mcp.json` only. `.cursor-plugin/plugin.json` points `mcpServers` at `./.mcp.json`, the same file Claude Code auto-discovers.
 - **Cursor plugin listing title**: adding this repo as a GitHub marketplace title-cased the slug `ai-toolkit` to "Ai Toolkit". `.cursor-plugin/marketplace.json` names the marketplace `pipefy`, and the plugin `displayName` is `Pipefy`, matching other company plugins.
+- **MCP (`create_ipaas_connection`)**: `readOnlyHint` is false. The tool upserts credentials and was advertised as read-only. (#644)
 
 ### Changed
 

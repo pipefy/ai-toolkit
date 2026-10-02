@@ -65,6 +65,16 @@ GET_AI_AGENT_QUERY = gql(
                                     inputMode
                                     value
                                 }
+                                emails
+                                title
+                                mcpServerId
+                                toolName
+                                toolInputs {
+                                    fieldId
+                                    name
+                                    source
+                                    value
+                                }
                             }
                         }
                     }

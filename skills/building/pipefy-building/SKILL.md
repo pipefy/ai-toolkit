@@ -23,18 +23,18 @@ If the user already has a building skill or a detailed build prompt/spec, use th
 
 | User intent (examples) | Read |
 |------------------------|------|
-| Design / architecture / "help me structure this process" | [pipefy-process-design](../../process-design/pipefy-process-design/SKILL.md) (consulting only) |
-| Pipes, phases, fields, labels, cards, field conditions | [pipefy-pipes-and-cards](../../pipes-and-cards/pipefy-pipes-and-cards/SKILL.md) |
-| Traditional or AI automations (if/then, prompt-driven rules) | [pipefy-automations](../../automations/pipefy-automations/SKILL.md) |
-| Conversational AI agents and behaviors | [pipefy-ai-agents](../../ai-agents/pipefy-ai-agents/SKILL.md) |
-| External integration / integrate with Slack, Gmail, Sheets, or another app | [pipefy-ipaas](../../ipaas/pipefy-ipaas/SKILL.md) |
-| Portals, pages, elements, sub-portals | [pipefy-portal-setup](../../portal-setup/pipefy-portal-setup/SKILL.md) |
-| Members, email templates, inbox email, webhooks | [pipefy-members-email-webhooks](../../members-email-webhooks/pipefy-members-email-webhooks/SKILL.md) |
-| Database tables and records | [pipefy-database-tables](../../database-tables/pipefy-database-tables/SKILL.md) |
-| Pipe/card relations | [pipefy-relations](../../relations/pipefy-relations/SKILL.md) |
-| Reports and exports | [pipefy-reports](../../reports/pipefy-reports/SKILL.md) |
-| Logs, usage, credits, job exports | [pipefy-observability](../../observability/pipefy-observability/SKILL.md) |
-| First-time toolkit setup | [pipefy-toolkit-setup](../../onboarding/pipefy-toolkit-setup/SKILL.md) |
+| Design / architecture / "help me structure this process" | `pipefy-process-design` (consulting only) |
+| Pipes, phases, fields, labels, cards, field conditions | `pipefy-pipes-and-cards` |
+| Traditional or AI automations (if/then, prompt-driven rules) | `pipefy-automations` |
+| Conversational AI agents and behaviors | `pipefy-ai-agents` |
+| External integration / integrate with Slack, Gmail, Sheets, or another app | `pipefy-ipaas` |
+| Portals, pages, elements, sub-portals | `pipefy-portal-setup` |
+| Members, email templates, inbox email, webhooks | `pipefy-members-email-webhooks` |
+| Database tables and records | `pipefy-database-tables` |
+| Pipe/card relations | `pipefy-relations` |
+| Reports and exports | `pipefy-reports` |
+| Logs, usage, credits, job exports | `pipefy-observability` |
+| First-time toolkit setup | `pipefy-toolkit-setup` |
 
 **Do not re-teach domain workflows here — open the linked skill.**
 
@@ -46,5 +46,5 @@ Hard stops and quirks (phase connections UI-only, email template create/edit UI-
 
 ## See also
 
-- [pipefy-process-design](../../process-design/pipefy-process-design/SKILL.md) — consulting when the ask is design, not build.
-- [skills/README.md](../../README.md) — full catalog.
+- `pipefy-process-design` — consulting when the ask is design, not build.
+- [skills/README.md](https://github.com/pipefy/ai-toolkit/blob/main/skills/README.md) — full catalog.
