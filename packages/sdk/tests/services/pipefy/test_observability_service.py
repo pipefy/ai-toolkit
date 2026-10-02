@@ -787,3 +787,30 @@ async def test_get_automation_execution_metrics_partial_sort_criteria():
 
     _, variables = executor.execute.call_args[0]
     assert variables["sort"] == {"by": "created_at"}
+
+
+def test_agent_log_details_selects_execution_llm_config():
+    selection = GET_AI_AGENT_LOG_DETAILS_QUERY.document.definitions[
+        0
+    ].selection_set.selections[0]
+    fields = {field.name.value: field for field in selection.selection_set.selections}
+    assert "llmConfigInfo" in fields
+    config_fields = {
+        field.name.value for field in fields["llmConfigInfo"].selection_set.selections
+    }
+    assert config_fields == {"model", "name", "provider"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "config",
+    [
+        None,
+        {"model": None, "name": None, "provider": "openai"},
+        {"model": "model-a", "name": "Default config", "provider": "openai"},
+    ],
+)
+async def test_agent_log_details_preserves_available_config(config):
+    payload = {"aiAgentLogDetails": {"uuid": "log-1", "llmConfigInfo": config}}
+    service, _ = _make_service(payload)
+    assert await service.get_ai_agent_log_details("log-1") == payload

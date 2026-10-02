@@ -32,7 +32,7 @@ Full identifier map: [observability identifiers](https://github.com/pipefy/ai-to
 | Operation | Read-only | Purpose |
 | ------------ | ----------- | --------- |
 | `get_ai_agent_logs` | Yes | Execution history for a specific AI agent. |
-| `get_ai_agent_log_details` | Yes | Single execution detail for an AI agent log entry. |
+| `get_ai_agent_log_details` | Yes | Execution trace and `llmConfigInfo` (`model`, `name`, `provider`); null means unavailable, not the current agent settings. |
 | `get_automation_logs` | Yes | Execution history for an automation (by automation ID). |
 | `get_automation_logs_by_repo` | Yes | Automation logs filtered by pipe. |
 | `get_agents_usage` | Yes | Org-level AI agent execution count and trends. |
