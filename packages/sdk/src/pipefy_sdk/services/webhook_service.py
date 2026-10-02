@@ -8,6 +8,7 @@ from typing import Any
 from pipefy_infra import security
 
 from pipefy_sdk.graphql_executor import GraphQLExecutor, PipefyGraphQLError
+from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.queries.webhook_queries import (
     CREATE_AND_SEND_INBOX_EMAIL_MUTATION,
     CREATE_WEBHOOK_MUTATION,
@@ -144,7 +145,7 @@ class WebhookService:
             {"input": input_obj},
         )
 
-    async def send_email_with_template(
+    async def draft_email_from_template(
         self,
         card_id: str,
         email_template_id: str,
@@ -152,8 +153,10 @@ class WebhookService:
         to: list[str] | None = None,
         from_: str | None = None,
         **attrs: Any,
-    ) -> dict[str, Any]:
-        """Send an email using a template with placeholders resolved for the card.
+    ) -> InboxEmailDraft:
+        """Resolve a template for a card into the email a send would deliver.
+
+        Reads only: nothing is sent.
 
         Args:
             card_id: Numeric card ID (GraphQL ``ID`` as digits).
@@ -177,8 +180,6 @@ class WebhookService:
             card_uuid=card_uuid,
         )
         pt = parsed.get("parsedEmailTemplate") or {}
-        subject = pt.get("subject") or ""
-        body = pt.get("body") or ""
         from_email = from_ or pt.get("fromEmail") or ""
         if not from_email:
             raise ValueError("Template has no fromEmail; provide from_ explicitly.")
@@ -194,13 +195,43 @@ class WebhookService:
         pipe_obj = card_obj.get("pipe") or {}
         if isinstance(pipe_obj, dict) and pipe_obj.get("id"):
             extra["repoId"] = str(pipe_obj["id"])
-        return await self.send_inbox_email(
-            card_id_str,
-            to_emails,
-            subject,
-            body,
+        return InboxEmailDraft(
+            card_id=card_id_str,
+            to=to_emails,
+            subject=pt.get("subject") or "",
+            body=pt.get("body") or "",
             from_=from_email,
-            **extra,
+            extra=extra,
+        )
+
+    async def send_email_with_template(
+        self,
+        card_id: str,
+        email_template_id: str,
+        *,
+        to: list[str] | None = None,
+        from_: str | None = None,
+        **attrs: Any,
+    ) -> dict[str, Any]:
+        """Send an email using a template with placeholders resolved for the card.
+
+        Args:
+            card_id: Numeric card ID (GraphQL ``ID`` as digits).
+            email_template_id: Email template ID.
+            to: Optional recipient override; defaults to template ``toEmail``.
+            from_: Optional sender override; defaults to template ``fromEmail``.
+            **attrs: Extra CreateAndSendInboxEmailInput fields (cc, bcc, repoId, etc.).
+        """
+        draft = await self.draft_email_from_template(
+            card_id, email_template_id, to=to, from_=from_, **attrs
+        )
+        return await self.send_inbox_email(
+            draft.card_id,
+            list(draft.to),
+            draft.subject,
+            draft.body,
+            from_=draft.from_,
+            **draft.extra,
         )
 
     async def create_webhook(

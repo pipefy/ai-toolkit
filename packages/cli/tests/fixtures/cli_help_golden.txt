@@ -1528,6 +1528,8 @@ Usage: pipefy email inbox send [OPTIONS]
 
  Send an inbox email from a card (``send_inbox_email``).
 
+ Without ``--yes``, prints the email and exits 2 without sending.
+
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --card                TEXT  Card id. [required]                           │
 │ *  --to                  TEXT  Recipient emails (comma-separated).           │
@@ -1538,6 +1540,8 @@ Usage: pipefy email inbox send [OPTIONS]
 │                                [required]                                    │
 │    --extra               TEXT  Optional JSON object: extra                   │
 │                                CreateAndSendInboxEmailInput fields.          │
+│    --yes         -y            Send the email. Without it, print the email   │
+│                                and send nothing.                             │
 │    --json        -j            Print machine-readable JSON to stdout.        │
 │    --help                      Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1578,6 +1582,8 @@ Usage: pipefy email template send [OPTIONS]
 
  Send using an email template (``send_email_with_template``).
 
+ Without ``--yes``, prints the email the template resolves to for the card
+ (recipients, subject, body) and exits 2 without sending.
  Hard stop: there is no API, MCP or CLI path to create or change an email
  template. A new or edited template is a manual step in the Pipefy UI; the
  template must exist before sending.
@@ -1589,6 +1595,8 @@ Usage: pipefy email template send [OPTIONS]
 │    --from-email          TEXT  Optional sender override.                     │
 │    --extra               TEXT  Optional JSON object: extra send fields (cc,  │
 │                                bcc, repoId, etc.).                           │
+│    --yes         -y            Send the email. Without it, print the         │
+│                                resolved email and send nothing.              │
 │    --json        -j            Print machine-readable JSON to stdout.        │
 │    --help                      Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯

@@ -41,8 +41,14 @@ pipefy member invite --pipe 67890 --members '[{"email":"alice@example.com","role
 pipefy member add-service-account --pipe 67890 --email svc-automations@your-org.pipefy-service.com
 ```
 
+Without `--yes`, an email send prints the email (recipients, subject, body) and exits 2 without sending. Show it to the user, then re-run with `--yes` after approval:
+
 ```bash
 pipefy email inbox send --card 12345 --to customer@example.com --subject "Your request is in progress" --body "Hi, we are processing your request." --from-email you@example.com
+```
+
+```bash
+pipefy email inbox send --card 12345 --to customer@example.com --subject "Your request is in progress" --body "Hi, we are processing your request." --from-email you@example.com --yes
 ```
 
 ```bash

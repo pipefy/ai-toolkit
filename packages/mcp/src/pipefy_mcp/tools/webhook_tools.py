@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pipefy_sdk import PipefyId
+from pipefy_sdk import InboxEmailDraft, PipefyId
 
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
 from pipefy_mcp.tools.remote_profile import REMOTE
@@ -20,6 +22,26 @@ from pipefy_mcp.tools.webhook_tool_helpers import (
     build_webhook_success_payload,
     handle_webhook_tool_graphql_error,
 )
+
+
+def _email_descriptor(draft: InboxEmailDraft) -> str:
+    return f"email from card {draft.card_id} to {', '.join(draft.to)}"
+
+
+def _email_irreversible_sentence(draft: InboxEmailDraft) -> str:
+    return (
+        f"Sending the {_email_descriptor(draft)} cannot be undone: a sent email "
+        "cannot be recalled. The full message (recipients, cc/bcc, subject, "
+        "body) is under 'email'."
+    )
+
+
+def _email_digest(draft: InboxEmailDraft) -> str:
+    """Bind the token to the exact message, so a changed email needs a new preview."""
+    canonical = json.dumps(
+        draft.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class WebhookTools:
@@ -137,11 +159,18 @@ class WebhookTools:
             from_: str,
             ctx: Context,
             extra_input: dict[str, Any] | None = None,
+            confirm: bool = False,
+            confirmation_token: str | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
             """Send an email from a card's inbox.
 
-            Requires the card to have an email inbox enabled.
+            Requires the card to have an email inbox enabled. A sent email cannot
+            be recalled, so sending is two-step: the first call returns the
+            message under ``email`` with a ``confirmation_token`` and sends
+            nothing. Show it to the user; once they approve, call again with the
+            same arguments plus ``confirm=True`` and that token. The token covers
+            that one message: change any argument and it no longer verifies.
 
             Args:
                 card_id: ID of the card.
@@ -150,6 +179,8 @@ class WebhookTools:
                 body: Email body (plain text or HTML).
                 from_: Sender email address (required by API).
                 extra_input: Optional extra CreateAndSendInboxEmailInput fields (html, cc, bcc).
+                confirm: Set to True with the preview token to send (step 2).
+                confirmation_token: Token from the preview response.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -181,14 +212,36 @@ class WebhookTools:
             )
             if bad is not None:
                 return bad
+            draft = InboxEmailDraft(
+                card_id=cid,
+                to=to,
+                subject=subject.strip(),
+                body=body,
+                from_=from_,
+                extra=extra_input or {},
+            )
+            guard = await check_destructive_confirmation(
+                ctx,
+                confirm=confirm,
+                resource_descriptor=_email_descriptor(draft),
+                irreversible_sentence=_email_irreversible_sentence(draft),
+                resource_identity={
+                    "card_id": draft.card_id,
+                    "email": _email_digest(draft),
+                },
+                tool_name="send_inbox_email",
+                confirmation_token=confirmation_token,
+            )
+            if guard is not None:
+                return {**guard, "email": draft.model_dump(mode="json")}
             try:
                 raw = await client.send_inbox_email(
-                    cid,
-                    [e.strip() for e in to],
-                    subject.strip(),
-                    body,
-                    from_=from_.strip(),
-                    **(extra_input or {}),
+                    draft.card_id,
+                    list(draft.to),
+                    draft.subject,
+                    draft.body,
+                    from_=draft.from_,
+                    **draft.extra,
                 )
             except Exception as exc:  # noqa: BLE001
                 return handle_webhook_tool_graphql_error(
@@ -214,6 +267,8 @@ class WebhookTools:
             to: list[str] | None = None,
             from_: str | None = None,
             extra_input: dict[str, Any] | None = None,
+            confirm: bool = False,
+            confirmation_token: str | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
             """Send an email from a card's inbox using an existing email template.
@@ -221,6 +276,14 @@ class WebhookTools:
             Fetches the template with placeholders (e.g. {{card.title}}) resolved
             for the card, then sends via createAndSendInboxEmail. Use
             get_email_templates to find template IDs.
+
+            A sent email cannot be recalled, so sending is two-step: the first
+            call returns the resolved message (recipients, subject, body) under
+            ``email`` with a ``confirmation_token`` and sends nothing. Show it
+            to the user; once they approve, call again with the same arguments
+            plus ``confirm=True`` and that token. If the resolved message
+            changes before step 2 (the card was edited), the token no longer
+            verifies and a fresh preview comes back.
 
             Hard stop: there is no API or MCP path to create or change an email
             template. A flow that needs a new or edited template requires a
@@ -232,6 +295,8 @@ class WebhookTools:
                 to: Optional override for recipients; if omitted, uses template's toEmail.
                 from_: Optional override for sender; if omitted, uses template's fromEmail.
                 extra_input: Optional extra CreateAndSendInboxEmailInput fields (cc, bcc).
+                confirm: Set to True with the preview token to send (step 2).
+                confirmation_token: Token from the preview response.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -254,10 +319,11 @@ class WebhookTools:
             )
             if bad is not None:
                 return bad
+            template_id = email_template_id.strip()
             try:
-                raw = await client.send_email_with_template(
+                draft = await client.draft_email_from_template(
                     cid,
-                    email_template_id.strip(),
+                    template_id,
                     to=to,
                     from_=from_,
                     **(extra_input or {}),
@@ -271,6 +337,42 @@ class WebhookTools:
                     debug=debug,
                     resource_kind="email_template",
                     resource_id=str(email_template_id),
+                )
+            guard = await check_destructive_confirmation(
+                ctx,
+                confirm=confirm,
+                resource_descriptor=_email_descriptor(draft),
+                irreversible_sentence=_email_irreversible_sentence(draft),
+                resource_identity={
+                    "card_id": cid,
+                    "email_template_id": template_id,
+                    "email": _email_digest(draft),
+                },
+                tool_name="send_email_with_template",
+                confirmation_token=confirmation_token,
+            )
+            if guard is not None:
+                return {
+                    **guard,
+                    "email_template_id": template_id,
+                    "email": draft.model_dump(mode="json"),
+                }
+            try:
+                raw = await client.send_inbox_email(
+                    draft.card_id,
+                    list(draft.to),
+                    draft.subject,
+                    draft.body,
+                    from_=draft.from_,
+                    **draft.extra,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return handle_webhook_tool_graphql_error(
+                    exc,
+                    "Send email with template failed.",
+                    debug=debug,
+                    resource_kind="card",
+                    resource_id=str(cid),
                 )
             return build_webhook_success_payload(
                 message="Email sent with template.",

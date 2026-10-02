@@ -37,7 +37,15 @@ Example Cursor config (still valid):
 
 ## Tool names and parameters — unchanged
 
-All MCP tools keep the same names, parameters, and behavior as in the pre-monorepo server. No renames, no removed tools. If you have agent prompts or workflows referencing specific tool names, they continue to work.
+All MCP tools keep the same names, parameters, and behavior as in the pre-monorepo server, except that the email send tools now ask for confirmation (below). No renames, no removed tools. If you have agent prompts or workflows referencing specific tool names, they continue to work.
+
+---
+
+## Email sends need confirmation
+
+`send_inbox_email` and `send_email_with_template` no longer send on the first call. The first call returns a preview of the message (under `email`) with a `confirmation_token`; the email goes out only when the call is repeated with `confirm=true` and that token, the same [two-step](mcp/tools/cross-cutting.md#destructive-operations) the destructive tools use. A caller that sent in one call now gets `success: false` with `requires_confirmation: true` and must make the second call.
+
+On the CLI, `pipefy email inbox send` and `pipefy email template send` print the email and exit 2 unless `--yes` is set. Scripts that send mail need `--yes`.
 
 ---
 

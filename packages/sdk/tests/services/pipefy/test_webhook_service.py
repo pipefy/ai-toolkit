@@ -6,7 +6,7 @@ import pytest
 from _shared.mock_clients import mock_executor
 from _shared.pagination_test_defaults import DEFAULT_FIRST
 
-from pipefy_sdk import PipefyGraphQLError
+from pipefy_sdk import InboxEmailDraft, PipefyGraphQLError
 from pipefy_sdk.queries.webhook_queries import (
     CREATE_AND_SEND_INBOX_EMAIL_MUTATION,
     CREATE_WEBHOOK_MUTATION,
@@ -181,6 +181,100 @@ async def test_send_email_with_template_success(mock_settings):
     assert second_inp["input"]["text"] == "Body"
     assert "html" not in second_inp["input"]
     assert result["createAndSendInboxEmail"]["emailSent"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_draft_email_from_template_resolves_without_sending(mock_settings):
+    card_service = AsyncMock()
+    card_service.get_card = AsyncMock(
+        return_value={
+            "card": {
+                "uuid": "550e8400-e29b-41d4-a716-446655440000",
+                "pipe": {"id": "307061640"},
+            }
+        }
+    )
+    executor = mock_executor(
+        {
+            "parsedEmailTemplate": {
+                "subject": "Hello",
+                "body": "Body",
+                "fromEmail": "from@x.com",
+                "toEmail": "a@x.com, b@x.com",
+            }
+        }
+    )
+    service = WebhookService(
+        executor=executor, settings=mock_settings, card_service=card_service
+    )
+
+    draft = await service.draft_email_from_template(
+        "1320616225", "tmpl-42", cc=["c@x.com"]
+    )
+
+    assert executor.execute_query.await_count == 1
+    query, variables = executor.execute_query.call_args[0]
+    assert query is GET_PARSED_EMAIL_TEMPLATE_QUERY
+    assert variables == {
+        "emailTemplateId": "tmpl-42",
+        "cardUuid": "550e8400-e29b-41d4-a716-446655440000",
+    }
+    assert draft == InboxEmailDraft(
+        card_id="1320616225",
+        to=["a@x.com", "b@x.com"],
+        subject="Hello",
+        body="Body",
+        from_="from@x.com",
+        extra={"cc": ["c@x.com"], "repoId": "307061640"},
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_draft_email_from_template_overrides_recipients_and_sender(
+    mock_settings,
+):
+    card_service = AsyncMock()
+    card_service.get_card = AsyncMock(return_value={"card": {"uuid": "u-1"}})
+    executor = mock_executor(
+        {"parsedEmailTemplate": {"subject": "S", "toEmail": "", "fromEmail": ""}}
+    )
+    service = WebhookService(
+        executor=executor, settings=mock_settings, card_service=card_service
+    )
+
+    draft = await service.draft_email_from_template(
+        "1", "tmpl-1", to=["o@x.com"], from_="me@x.com"
+    )
+
+    assert draft.to == ("o@x.com",)
+    assert draft.from_ == "me@x.com"
+    assert draft.body == ""
+    assert draft.extra == {}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("template", "message"),
+    [
+        ({"toEmail": "a@x.com"}, "no fromEmail"),
+        ({"fromEmail": "f@x.com", "toEmail": " , "}, "no toEmail"),
+    ],
+)
+async def test_draft_email_from_template_rejects_missing_sender_or_recipients(
+    mock_settings, template, message
+):
+    card_service = AsyncMock()
+    card_service.get_card = AsyncMock(return_value={"card": {"uuid": "u-1"}})
+    executor = mock_executor({"parsedEmailTemplate": template})
+    service = WebhookService(
+        executor=executor, settings=mock_settings, card_service=card_service
+    )
+
+    with pytest.raises(ValueError, match=message):
+        await service.draft_email_from_template("1", "tmpl-1")
 
 
 @pytest.mark.unit

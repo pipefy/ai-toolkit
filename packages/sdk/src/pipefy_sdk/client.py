@@ -49,6 +49,7 @@ from pipefy_sdk.models.attachment import (
     AttachmentUploadResult,
     PresignedUploadTarget,
 )
+from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
 from pipefy_sdk.services.advanced_automations_service import AdvancedAutomationsService
 from pipefy_sdk.services.ai_agent_service import AiAgentService
@@ -861,6 +862,35 @@ class PipefyClient:
         return await self._webhook_service.get_parsed_email_template(
             email_template_id,
             card_uuid=card_uuid,
+        )
+
+    async def draft_email_from_template(
+        self,
+        card_id: str,
+        email_template_id: str,
+        *,
+        to: list[str] | None = None,
+        from_: str | None = None,
+        **attrs: Any,
+    ) -> InboxEmailDraft:
+        """Resolve a template for a card into the email a send would deliver.
+
+        Reads only: nothing is sent. Show the draft for approval, then send it
+        with ``send_inbox_email``.
+
+        Args:
+            card_id: Numeric ID of the card with inbox.
+            email_template_id: ID of the email template.
+            to: Optional override for recipients; if omitted, uses template's toEmail.
+            from_: Optional override for sender; if omitted, uses template's fromEmail.
+            **attrs: Extra CreateAndSendInboxEmailInput fields (cc, bcc, repoId, etc.).
+        """
+        return await self._webhook_service.draft_email_from_template(
+            card_id,
+            email_template_id,
+            to=to,
+            from_=from_,
+            **attrs,
         )
 
     async def send_email_with_template(

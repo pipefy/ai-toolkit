@@ -22,8 +22,14 @@ add_service_account_to_pipe pipe_id=67890 email=svc-automations@your-org.pipefy-
 get_card_inbox_emails card_id=12345
 ```
 
+The first send call returns a preview under `email` with a `confirmation_token` and sends nothing. After the user approves, repeat it with the token:
+
 ```text
 send_inbox_email card_id=12345 to='["customer@example.com"]' from_="you@example.com" subject="Your request is in progress" body="Hi, we are processing your request."
+```
+
+```text
+send_inbox_email card_id=12345 to='["customer@example.com"]' from_="you@example.com" subject="Your request is in progress" body="Hi, we are processing your request." confirm=true confirmation_token="<token from the preview>"
 ```
 
 ```text
