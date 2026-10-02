@@ -1,5 +1,5 @@
 """Back-compat coverage for the ``PIPEFY_OAUTH_*`` → ``PIPEFY_SERVICE_ACCOUNT_*`` rename
-and the ``PIPEFY_BASE_URL`` rewrite (issue #238).
+and the ``PIPEFY_BASE_URL`` rewrite.
 
 The legacy ``PIPEFY_OAUTH_CLIENT`` / ``PIPEFY_OAUTH_SECRET`` env vars and
 ``oauth_client`` / ``oauth_secret`` TOML keys are still honored via an

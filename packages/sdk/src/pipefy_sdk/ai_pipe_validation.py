@@ -51,6 +51,8 @@ KNOWN_AI_ACTION_TYPES = frozenset(
         "create_card",
         "create_connected_card",
         "create_table_record",
+        "human_validation",
+        "mcp_tool",
         "move_card",
         "send_email_template",
         "update_card",
@@ -591,12 +593,13 @@ async def fetch_pipe_validation_context(
             timeout=timeout,
         )
         related_pipe_ids = set()
-        for rel in relations.get("children") or []:
-            cid = rel.get("child", {}).get("id")
+        pipe_relations = relations.get("pipe") or {}
+        for rel in pipe_relations.get("childrenRelations") or []:
+            cid = ((rel or {}).get("child") or {}).get("id")
             if cid:
                 related_pipe_ids.add(str(cid))
-        for rel in relations.get("parents") or []:
-            pid = rel.get("parent", {}).get("id")
+        for rel in pipe_relations.get("parentsRelations") or []:
+            pid = ((rel or {}).get("parent") or {}).get("id")
             if pid:
                 related_pipe_ids.add(str(pid))
     except Exception:  # noqa: BLE001

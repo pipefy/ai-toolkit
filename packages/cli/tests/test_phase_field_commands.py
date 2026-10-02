@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from pipefy_sdk.transition_hints import TRANSITION_RULES_HINT
+
 from pipefy_cli.main import app
 
 
@@ -40,6 +42,10 @@ def test_phase_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     mock_client.create_phase.assert_awaited_once_with(
         "9", "Review", done=False, index=None, description=None
     )
+    # Hint prints on success, on stderr so it never pollutes --json stdout.
+    assert TRANSITION_RULES_HINT in result.stderr
+    assert result.stdout.strip() != ""
+    json.loads(result.stdout)
 
 
 def test_phase_update_resolves_name_json(
@@ -61,6 +67,8 @@ def test_phase_update_resolves_name_json(
         )
     assert result.exit_code == 0
     mock_client.update_phase.assert_awaited_once_with("3", description="x", name="Todo")
+    assert TRANSITION_RULES_HINT in result.stderr
+    json.loads(result.stdout)
 
 
 def test_phase_delete_yes(runner, clean_pipefy_env, saved_cwd, oauth_env):

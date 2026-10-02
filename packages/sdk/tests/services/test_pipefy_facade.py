@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -5,7 +6,9 @@ from pipefy_auth import StaticBearerAuth
 
 from pipefy_sdk import __version__
 from pipefy_sdk.client import PipefyClient, build_executors
-from pipefy_sdk.graphql_executor import GraphQLResult
+from pipefy_sdk.exceptions import AiAgentConfigureError
+from pipefy_sdk.graphql_executor import GraphQLResult, PipefyGraphQLError
+from pipefy_sdk.models.ai_agent import CreateAiAgentInput
 from pipefy_sdk.services.ai_agent_service import AiAgentService
 from pipefy_sdk.services.attachment_service import AttachmentService
 from pipefy_sdk.services.automation_service import AutomationService
@@ -540,7 +543,7 @@ async def test_pipefy_client_facade_delegates_to_services_without_modifying_args
 
     assert await client.get_automations(pipe_id="pid") == {"ok": "get_automations"}
     automation_service.get_automations.assert_awaited_once_with(
-        organization_id=None, pipe_id="pid"
+        organization_id=None, pipe_id="pid", first=None, after=None
     )
 
     assert await client.get_automation_actions("p1") == {"ok": "get_automation_actions"}
@@ -700,19 +703,15 @@ async def test_pipefy_client_introspection_methods_delegate_to_introspection_ser
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_pipefy_client_ai_agent_write_methods_delegate_to_ai_agent_service():
-    """Facade forwards create/update/toggle AI agent to AiAgentService."""
+    """Facade forwards update/toggle AI agent to AiAgentService."""
     from _shared.ai_agent_test_payloads import minimal_behavior_dict
 
     from pipefy_sdk.models.ai_agent import (
         BehaviorInput,
-        CreateAiAgentInput,
         UpdateAiAgentInput,
     )
 
     ai_agent_service = AsyncMock()
-    ai_agent_service.create_agent = AsyncMock(
-        return_value={"agent_uuid": "new-1", "message": "created"}
-    )
     ai_agent_service.update_agent = AsyncMock(
         return_value={"agent_uuid": "new-1", "message": "updated"}
     )
@@ -722,22 +721,6 @@ async def test_pipefy_client_ai_agent_write_methods_delegate_to_ai_agent_service
 
     client = PipefyClient.__new__(PipefyClient)
     client._ai_agent_service = ai_agent_service
-
-    cin = CreateAiAgentInput(
-        name="n",
-        repo_uuid="00000000-0000-0000-0000-000000000001",
-        instruction="purpose",
-        behaviors=[
-            BehaviorInput.model_validate(
-                minimal_behavior_dict(name="b", event_id="evt")
-            )
-        ],
-    )
-    assert await client.create_ai_agent(cin) == {
-        "agent_uuid": "new-1",
-        "message": "created",
-    }
-    ai_agent_service.create_agent.assert_awaited_once_with(cin)
 
     uin = UpdateAiAgentInput(
         uuid="00000000-0000-0000-0000-000000000002",
@@ -773,6 +756,116 @@ async def test_pipefy_client_ai_agent_write_methods_delegate_to_ai_agent_service
     ai_agent_service.toggle_agent_status.assert_awaited_once_with(
         agent_uuid="a", active=True
     )
+
+
+def _create_chain_client(
+    *, created_disabled_at: str | None, update_error: Exception | None = None
+) -> tuple[PipefyClient, AsyncMock]:
+    ai_agent_service = AsyncMock()
+    ai_agent_service.create_agent = AsyncMock(
+        return_value={
+            "agent_uuid": "new-1",
+            "message": "created",
+            "disabled_at": created_disabled_at,
+            "active": created_disabled_at is None,
+        }
+    )
+    ai_agent_service.update_agent = AsyncMock(
+        side_effect=update_error,
+        return_value={
+            "agent_uuid": "new-1",
+            "message": "updated",
+            "disabled_at": None,
+            "active": True,
+        },
+    )
+    client = PipefyClient.__new__(PipefyClient)
+    client._ai_agent_service = ai_agent_service
+    return client, ai_agent_service
+
+
+def _create_input(**overrides: Any) -> CreateAiAgentInput:
+    from _shared.ai_agent_test_payloads import minimal_behavior_dict
+
+    return CreateAiAgentInput(
+        name="n",
+        repo_uuid="00000000-0000-0000-0000-000000000001",
+        instruction="purpose",
+        behaviors=[minimal_behavior_dict(name="b", event_id="evt")],
+        data_source_ids=["ds-1"],
+        **overrides,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_ai_agent_writes_behaviors_with_a_chained_update():
+    """create_ai_agent creates, then updates without preserving the create's disabledAt."""
+    client, service = _create_chain_client(created_disabled_at="2026-08-04T12:00:00Z")
+    cin = _create_input()
+
+    result = await client.create_ai_agent(cin)
+
+    service.create_agent.assert_awaited_once_with(cin)
+    forwarded = service.update_agent.await_args.args[0]
+    assert forwarded.uuid == "new-1"
+    assert (forwarded.name, forwarded.repo_uuid) == (cin.name, cin.repo_uuid)
+    assert forwarded.instruction == "purpose"
+    assert forwarded.data_source_ids == ["ds-1"]
+    assert [b.name for b in forwarded.behaviors] == ["b"]
+    assert forwarded.disabled_at is None
+    assert forwarded.preserve_disabled_at is False
+    assert result == {
+        "agent_uuid": "new-1",
+        "message": "AI Agent created and configured successfully. UUID: new-1",
+        "disabled_at": None,
+        "active": True,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_ai_agent_inactive_sends_disabled_at_on_the_update():
+    client, service = _create_chain_client(created_disabled_at="2026-08-04T12:00:00Z")
+
+    await client.create_ai_agent(_create_input(disabled_at="2026-08-04T12:00:00Z"))
+
+    forwarded = service.update_agent.await_args.args[0]
+    assert forwarded.disabled_at == "2026-08-04T12:00:00Z"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_ai_agent_update_failure_raises_configure_error():
+    """The created agent's UUID survives a failed update, with the cause chained."""
+    cause = PipefyGraphQLError([{"message": "RECORD_NOT_SAVED"}])
+    client, _ = _create_chain_client(
+        created_disabled_at="2026-08-04T12:00:00Z", update_error=cause
+    )
+
+    with pytest.raises(AiAgentConfigureError) as excinfo:
+        await client.create_ai_agent(_create_input())
+
+    assert excinfo.value.agent_uuid == "new-1"
+    assert excinfo.value.disabled_at == "2026-08-04T12:00:00Z"
+    assert excinfo.value.__cause__ is cause
+    message = str(excinfo.value)
+    assert "new-1" in message
+    assert "RECORD_NOT_SAVED" in message
+    assert "is disabled" in message
+    assert "toggle_ai_agent_status" in message
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_ai_agent_create_failure_raises_the_original_error():
+    client, service = _create_chain_client(created_disabled_at=None)
+    service.create_agent.side_effect = ValueError("create failed")
+
+    with pytest.raises(ValueError, match="create failed"):
+        await client.create_ai_agent(_create_input())
+
+    service.update_agent.assert_not_awaited()
 
 
 @pytest.mark.unit
@@ -893,7 +986,7 @@ async def test_pipefy_client_invite_members_propagates_value_error(mock_settings
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_automation_extra_input_camel_aliases_reach_service_as_api_names():
-    """`extra_input` camelCase aliases are rewritten to the API field names (issue #275)."""
+    """`extra_input` camelCase aliases are rewritten to the API field names."""
     automation_service = AsyncMock()
     automation_service.create_automation = AsyncMock(
         return_value={"ok": "create_automation"}

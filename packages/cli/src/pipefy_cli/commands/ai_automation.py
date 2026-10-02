@@ -6,13 +6,10 @@ from typing import Any
 
 import typer
 from pipefy_sdk import (
+    AUTOMATIONS_LIST_MAX_PAGE_SIZE,
     CreateAiAutomationInput,
     PipefyClient,
     UpdateAiAutomationInput,
-)
-from pipefy_sdk.ai_preflight import (
-    filter_ai_automation_summaries,
-    validate_ai_automation_prompt_sdk,
 )
 from pydantic import ValidationError
 
@@ -23,6 +20,7 @@ from pipefy_cli.commands._common import (
     parse_json_value,
     resource_id_argument,
     run_cli_command,
+    validate_cards_page_size,
 )
 
 ai_automation_app = typer.Typer(
@@ -76,17 +74,48 @@ def ai_automation_list(
     organization: str | None = typer.Option(
         None, "--organization", "--org", help="Optional organization id."
     ),
+    first: int | None = typer.Option(
+        None,
+        "--first",
+        help=(
+            f"Page size of the mixed listing, 1 to {AUTOMATIONS_LIST_MAX_PAGE_SIZE} "
+            "(the API cap). Defaults to the cap."
+        ),
+    ),
+    after: str | None = typer.Option(
+        None, "--after", help="pageInfo.endCursor from the previous page."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j"),
 ) -> None:
-    """List AI automations for a pipe (``get_ai_automations`` / filtered ``get_automations``)."""
+    """List AI automations for a pipe (``get_ai_automations`` / filtered ``get_automations``).
+
+    One page of the pipe's rules (cap 50) is fetched, then filtered to
+    ``generate_with_ai``. Pagination describes that mixed page, not the AI subset.
+    """
+
+    first = validate_cards_page_size(first, max_size=AUTOMATIONS_LIST_MAX_PAGE_SIZE)
+    cursor = after.strip() if after and after.strip() else None
+    page_size = first if first is not None else AUTOMATIONS_LIST_MAX_PAGE_SIZE
 
     async def factory(client: PipefyClient):
-        rows = await client.get_automations(
+        page = await client.get_ai_automations(
+            pipe,
             organization_id=organization,
-            pipe_id=pipe,
+            first=first,
+            after=cursor,
         )
-        filtered = filter_ai_automation_summaries(rows or [])
-        return {"success": True, "data": filtered, "message": "AI automations listed."}
+        info = page["pageInfo"]
+        return {
+            "success": True,
+            "data": page["nodes"],
+            "message": "AI automations listed.",
+            "pagination": {
+                "has_more": bool(info.get("hasNextPage")),
+                "end_cursor": info.get("endCursor"),
+                "page_size": page_size,
+                "total_count": page["totalCount"],
+            },
+        }
 
     run_cli_command(ctx, json_out, factory)
 
@@ -100,7 +129,7 @@ def ai_automation_get(
     """Load one automation row (``get_ai_automation`` / ``get_automation``)."""
 
     async def factory(client: PipefyClient):
-        row = await client.get_automation(automation_id)
+        row = await client.get_ai_automation(automation_id)
         if row is None:
             return {
                 "success": False,
@@ -132,8 +161,8 @@ def ai_automation_validate_prompt(
     fids = _parse_field_ids(field_ids)
 
     async def factory(client: PipefyClient):
-        return await validate_ai_automation_prompt_sdk(
-            client, pipe.strip(), prompt, fids, event_id
+        return await client.validate_ai_automation_prompt(
+            pipe.strip(), prompt, fids, event_id
         )
 
     run_cli_command(ctx, json_out, factory)
@@ -179,8 +208,8 @@ def ai_automation_create(
         skills = list(skills_raw)
 
     async def factory(client: PipefyClient):
-        pre = await validate_ai_automation_prompt_sdk(
-            client, pipe.strip(), prompt, fids, event_id
+        pre = await client.validate_ai_automation_prompt(
+            pipe.strip(), prompt, fids, event_id
         )
         _raise_if_prompt_preflight_blocks(pre)
         try:
@@ -270,8 +299,7 @@ def ai_automation_update(
                 "Pass --prompt and --field-ids explicitly."
             )
         ev = str(row.get("event_id") or "")
-        pre = await validate_ai_automation_prompt_sdk(
-            client,
+        pre = await client.validate_ai_automation_prompt(
             pipe.strip(),
             effective_prompt,
             effective_fids,
@@ -316,6 +344,6 @@ def ai_automation_delete(
     )
 
     async def factory(client: PipefyClient):
-        return await client.delete_automation(automation_id)
+        return await client.delete_ai_automation(automation_id)
 
     run_cli_command(ctx, json_out, factory)

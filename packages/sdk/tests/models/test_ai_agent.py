@@ -358,14 +358,14 @@ def test_update_ai_agent_input_strips_disabled_at_whitespace():
 
 
 @pytest.mark.unit
-def test_update_ai_agent_input_optional_data_source_ids_defaults_empty():
+def test_update_ai_agent_input_optional_data_source_ids_defaults_none():
     inp = UpdateAiAgentInput(
         uuid="agent-123",
         name="My Agent",
         repo_uuid="repo-456",
         behaviors=[_make_behavior()],
     )
-    assert inp.data_source_ids == []
+    assert inp.data_source_ids is None
 
 
 @pytest.mark.unit
@@ -845,3 +845,72 @@ def test_behavior_input_snake_case_dumps_to_camel_case():
     assert "actionId" in dumped
     assert "action_id" not in dumped
     assert inp.action_params is not None
+
+
+def _templated_behavior() -> dict:
+    behavior = _make_behavior()
+    behavior["template_params"] = {"field": "123"}
+    behavior["instruction_template"] = "Read %{field:{{field}}} and {456}."
+    return behavior
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"uuid": "agent-1"}],
+    ids=["create", "update"],
+)
+def test_agent_inputs_expand_placeholders_and_normalize_tokens(extra):
+    model = UpdateAiAgentInput if extra else CreateAiAgentInput
+    inp = model(
+        name="A",
+        repo_uuid="repo-1",
+        instruction="Use {field:9} and %{10}.",
+        behaviors=[_templated_behavior()],
+        **extra,
+    )
+    assert inp.instruction == "Use %{field:9} and %{field:10}."
+    abp = inp.behaviors[0].action_params.ai_behavior_params
+    assert abp.instruction == "Read %{field:123} and %{field:456}."
+    dumped = inp.behaviors[0].model_dump(by_alias=True)
+    assert "template_params" not in dumped
+    assert "instruction_template" not in dumped
+
+
+@pytest.mark.unit
+def test_agent_input_rejects_placeholder_without_template_params():
+    behavior = _make_behavior()
+    behavior["actionParams"]["aiBehaviorParams"]["instruction"] = "Read {{field}}."
+    with pytest.raises(ValidationError, match="template_params"):
+        CreateAiAgentInput(
+            name="A", repo_uuid="repo-1", instruction="P", behaviors=[behavior]
+        )
+
+
+@pytest.mark.unit
+def test_agent_input_does_not_expand_behavior_input_instances_again():
+    """A validated BehaviorInput passes through, so its text is never re-interpolated."""
+    behavior = _make_behavior()
+    behavior["actionParams"]["aiBehaviorParams"]["instruction"] = "Keep {{literal}}."
+    validated = BehaviorInput.model_validate(behavior)
+    inp = UpdateAiAgentInput(
+        uuid="agent-1", name="A", repo_uuid="repo-1", behaviors=[validated]
+    )
+    assert inp.behaviors[0] is validated
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "wrap",
+    [tuple, lambda items: (b for b in items)],
+    ids=["tuple", "generator"],
+)
+def test_agent_input_expands_behaviors_from_any_iterable(wrap):
+    inp = CreateAiAgentInput(
+        name="A",
+        repo_uuid="repo-1",
+        instruction="P",
+        behaviors=wrap([_templated_behavior()]),
+    )
+    abp = inp.behaviors[0].action_params.ai_behavior_params
+    assert abp.instruction == "Read %{field:123} and %{field:456}."

@@ -95,7 +95,9 @@ async def test_fetch_pipe_validation_context_surfaces_phase_fetch_warning() -> N
     client.get_pipe = AsyncMock(
         return_value={"pipe": {"phases": [{"id": "100"}], "start_form_fields": []}}
     )
-    client.get_pipe_relations = AsyncMock(return_value={"children": [], "parents": []})
+    client.get_pipe_relations = AsyncMock(
+        return_value={"pipe": {"childrenRelations": [], "parentsRelations": []}}
+    )
     client.get_phase_fields = AsyncMock(side_effect=RuntimeError("timeout"))
 
     (
@@ -130,7 +132,9 @@ async def test_fetch_pipe_validation_context_excludes_start_form_phase() -> None
             }
         }
     )
-    client.get_pipe_relations = AsyncMock(return_value={"children": [], "parents": []})
+    client.get_pipe_relations = AsyncMock(
+        return_value={"pipe": {"childrenRelations": [], "parentsRelations": []}}
+    )
     client.get_phase_fields = AsyncMock(return_value={"fields": []})
 
     _, phase_ids, _, _ = await fetch_pipe_validation_context(
@@ -139,6 +143,93 @@ async def test_fetch_pipe_validation_context_excludes_start_form_phase() -> None
 
     assert phase_ids == {"200", "300"}
     assert "100" not in phase_ids
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_fetch_pipe_validation_context_reads_get_pipe_relations_payload() -> None:
+    # ``get_pipe_relations`` returns the raw GetPipeRelations result: relations live
+    # under ``pipe.childrenRelations`` / ``pipe.parentsRelations``.
+    client = AsyncMock()
+    client.get_pipe = AsyncMock(
+        return_value={"pipe": {"phases": [], "start_form_fields": []}}
+    )
+    client.get_pipe_relations = AsyncMock(
+        return_value={
+            "pipe": {
+                "id": EXAMPLE_PIPE_ID,
+                "parentsRelations": [
+                    {
+                        "id": "rel-1",
+                        "parent": {"id": "parent-20", "name": "Parent"},
+                        "child": {"id": EXAMPLE_PIPE_ID, "name": "Source"},
+                    }
+                ],
+                "childrenRelations": [
+                    {
+                        "id": "rel-2",
+                        "parent": {"id": EXAMPLE_PIPE_ID, "name": "Source"},
+                        "child": {"id": "child-10", "name": "Child"},
+                    }
+                ],
+            }
+        }
+    )
+
+    _, _, related_pipe_ids, _ = await fetch_pipe_validation_context(
+        client, EXAMPLE_PIPE_ID, timeout=5
+    )
+
+    assert related_pipe_ids == {"child-10", "parent-20"}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_fetch_pipe_validation_context_skips_null_relation_entries() -> None:
+    # The schema types relation items and their ``child`` / ``parent`` as nullable.
+    client = AsyncMock()
+    client.get_pipe = AsyncMock(
+        return_value={"pipe": {"phases": [], "start_form_fields": []}}
+    )
+    client.get_pipe_relations = AsyncMock(
+        return_value={
+            "pipe": {
+                "id": EXAMPLE_PIPE_ID,
+                "parentsRelations": [
+                    None,
+                    {"id": "rel-1", "parent": None},
+                    {"id": "rel-2", "parent": {"id": "parent-20"}},
+                ],
+                "childrenRelations": [
+                    None,
+                    {"id": "rel-3", "child": None},
+                    {"id": "rel-4", "child": {"id": "child-10"}},
+                ],
+            }
+        }
+    )
+
+    _, _, related_pipe_ids, _ = await fetch_pipe_validation_context(
+        client, EXAMPLE_PIPE_ID, timeout=5
+    )
+
+    assert related_pipe_ids == {"child-10", "parent-20"}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_fetch_pipe_validation_context_returns_none_when_relations_fail() -> None:
+    client = AsyncMock()
+    client.get_pipe = AsyncMock(
+        return_value={"pipe": {"phases": [], "start_form_fields": []}}
+    )
+    client.get_pipe_relations = AsyncMock(side_effect=RuntimeError("denied"))
+
+    _, _, related_pipe_ids, _ = await fetch_pipe_validation_context(
+        client, EXAMPLE_PIPE_ID, timeout=5
+    )
+
+    assert related_pipe_ids is None
 
 
 @pytest.mark.unit

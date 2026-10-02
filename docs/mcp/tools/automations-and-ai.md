@@ -13,7 +13,7 @@ Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe v
 | Tool | Read-only | Role |
 |------|-----------|------|
 | `get_automation` | Yes | Loads one rule by ID (trigger, actions, `active`). |
-| `get_automations` | Yes | Lists rules; optional `organization_id` and/or `pipe_id`. |
+| `get_automations` | Yes | Lists one page of rules (the API caps a page at 50) with `event_id`, `event_params`, `condition`, `actionEnabled`, and `disabledReason`; optional `organization_id` and/or `pipe_id`, `first` (1 to 50), `after`. `pagination.total_count` and `pagination.has_more` say whether the page is the whole set; continue with `after=pagination.end_cursor`. Use `get_automation` for full action parameters. |
 | `get_automation_actions` | Yes | Catalog of action types for a pipe (IDs and field metadata). |
 | `get_automation_events` | Yes | Catalog of trigger event definitions (global list; tool still takes `pipe_id` for context). |
 | `get_automation_event_attributes` | Yes | **Event-scoped only** (today: one token). Full `field_map.value` list: see [Common value tokens](#common-value-tokens-copy_from) below. |
@@ -24,6 +24,8 @@ Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe v
 | `delete_automation` | No | Permanently deletes a rule (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
 
 **Catalog limit: no action applies a label.** The action catalog has no label action, so an if/then rule that labels a card cannot be created through the API or MCP. `get_automation_actions(pipe_id)` is the dynamic source of truth for what a pipe offers; read it instead of assuming. The durable path for that intent is a rule configured in Pipefy itself, where it lives in the process and keeps running unattended. Record that manual step in the plan given to the user, and confirm in the product what is available for that trigger. `update_card(label_ids=[...])` **replaces** the whole label list on a single card as a one-off correction: include every id that should remain, not only the new one. Something has to run the call each time and nothing persists as process behavior, so it does not stand in for the missing action. `create_label` / `update_label` / `delete_label` manage label definitions on the pipe, not label assignment on cards.
+
+**Event and action compatibility.** A pair is invalid when the `event_id` appears in that action's `eventsBlacklist` (`get_automation_actions`), equivalently when the `action_id` appears in that event's `actionsBlacklist` (`get_automation_events`); the two lists agree throughout the catalog. `triggerEvents` is not that list. It reflects which pairings the builder offers first, and the denylist allows pairs outside it, so a membership test on `triggerEvents` refuses valid rules: `field_updated` + `move_single_card` sits outside `triggerEvents` and moves the card. `create_automation` rejects a blacklisted pair with an untranslated error whose readable part is the key `event_action_blacklist`, and writes nothing. `update_automation` does not enforce the denylist: patching a stored rule's `event_id` onto its action's `eventsBlacklist` succeeds and persists, so a caller that updates a rule checks the pair itself.
 
 ### Traditional automation: `field_map` and dynamic values
 
@@ -131,8 +133,9 @@ Shape:
 
 - **`field_address`** is the field **`internal_id`** (numeric), **not** the slug. To test a field on a connected card, use the dotted path `<connectorFieldId>.<targetFieldId>`; only the last segment resolves to a field. Discover internal ids via `get_start_form_fields` / `get_phase_fields`.
 - **`operation`** is one of: `equals`, `not_equals`, `present`, `blank`, `string_contains`, `string_not_contains`, `number_greater_than`, `number_less_than`, `date_is_today`, `date_is_yesterday`, `date_in_current_week`, `date_in_last_week`, `date_in_current_month`, `date_in_last_month`, `date_in_current_year`, `date_in_last_year`, `date_is`, `date_is_after`, `date_is_before`. It is a **soft enum**: any string is passed through and the API validates it, so new operations work without an SDK release. Omit `value` for `present` / `blank`.
-- **`structure_id`** labels an expression so `expressions_structure` can reference it.
-- **`expressions_structure`** groups expressions into an AND-of-ORs tree: each inner array is OR'd, and the inner arrays are AND'd together. `[[0, 1], [2]]` means `(expr0 OR expr1) AND expr2`. A single group `[[0, 1]]` is `expr0 OR expr1`; one expression per group `[[0], [1]]` is `expr0 AND expr1`.
+- **`structure_id`** labels an expression so `expressions_structure` can reference it. The numbers in `expressions_structure` are these labels, not positions in `expressions`. Give each expression its own `structure_id`. Two expressions that share one, sent as `[[0], [0]]`, save with `expressions` empty and `expressions_structure` still `[[0], [0]]`. That rule does not match cards.
+- **`expressions_structure`** groups expressions into an OR-of-ANDs tree: the expressions in one inner array are AND'd, and the inner arrays are OR'd. `[[0, 1], [2]]` means `(expr0 AND expr1) OR expr2`. A single group `[[0, 1]]` is `expr0 AND expr1`; one expression per group `[[0], [1]]` is `expr0 OR expr1`.
+- **What the API drops on save.** The API removes these without returning an error: a number that matches no `structure_id`, an empty inner array, an expression whose `structure_id` is not listed, and an expression with no `field_address` or no `operation`. Dropping one expression from an AND group makes that group easier to satisfy, so the rule can match more cards (`[[0, 1]]` with one expression dropped saves as `[[0]]`). Dropping the only expression in an OR group removes that group, so the rule matches fewer cards (`[[0], [1]]` with one expression dropped saves as `[[0]]`). Read the rule back with `get_automation` after a write. An empty `expressions_structure`, including one left empty after the drops, is always true, so the rule fires on every card. A number listed twice makes the API reject the condition with `is invalid`.
 - A `condition` argument **wins** over any `condition` nested in `extra_input`.
 
 ---
@@ -146,13 +149,13 @@ AI automations are separate from traditional rules above. They are prompt-driven
 | `create_ai_automation` | No | Prompt-driven automation writing to one or more card fields (AI must be enabled on the pipe). |
 | `update_ai_automation` | No | Change name, `active`, prompt, `field_ids`, or `condition`. |
 | `get_ai_automation` | Yes | Loads one AI automation by id (same GraphQL read path as `get_automation`). |
-| `get_ai_automations` | Yes | Lists **only** `generate_with_ai` automations for the pipe (optional org resolution). |
+| `get_ai_automations` | Yes | Lists **only** `generate_with_ai` automations from one page of the pipe's rules (optional org resolution, `first` 1 to 50, `after`). `pagination` describes the mixed connection, not the AI subset; continue while `has_more` is true before concluding an AI rule does not exist. |
 | `delete_ai_automation` | No | Permanently deletes an AI automation (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
 | `validate_ai_automation_prompt` | Yes | Pre-flight validation: field refs in the prompt, `field_ids`, optional `event_id`, and `pipe.preferences.aiAgentsEnabled`. |
 
 ### `create_ai_automation`: `condition` (contract)
 
-The `condition` shape (expressions, `field_address` = internal_id, `operation` values, and the `expressions_structure` AND-of-ORs grouping) is the shared [Condition contract](#condition-contract-condition) documented above.
+The `condition` shape (expressions, `field_address` = internal_id, `operation` values, and the `expressions_structure` OR-of-ANDs grouping) is the shared [Condition contract](#condition-contract-condition) documented above.
 
 On **create**, if the caller omits `condition`, the MCP layer supplies `DEFAULT_CONDITION` (see `CreateAiAutomationInput` in `pipefy_sdk.models.ai_automation`) so Pipefy always receives an explicit condition object. Pass a `condition` dict to override. On **`update_ai_automation`**, omit `condition` to leave the existing rule unchanged; pass a dict to replace it. Traditional `create_automation` / `update_automation` do **not** inject a default — omit `condition` to leave the rule unconditional.
 
@@ -206,6 +209,8 @@ On **create**, if the caller omits `condition`, the MCP layer supplies `DEFAULT_
 | `create_connected_card` | `{ "pipeId": "<pipe_id>", "fieldsAttributes": [...] }` |
 | `create_table_record` | `{ "tableId": "<table_id>", "fieldsAttributes": [...] }` (`pipeId` not required; MCP does not check table `fieldId` values against the pipe — use `get_table` / `get_table_record`.) |
 | `send_email_template` | `{ "emailTemplateId": "<template_id>" }` (optional: `allowTemplateModifications` boolean; MCP does not verify that the template ID exists.) |
+| `human_validation` | `{ "emails": ["<email>"], "title": "<task title>" }` (the API accepts either key alone and rejects empty `metadata`.) |
+| `mcp_tool` | `{ "mcpServerId": "<server_id>", "toolName": "<tool>", "toolInputs": [...] }` (each input has `name` and `source`: `fixed_value` with `value`, or `card_field` with `fieldId`.) |
 
 Optional inside `actionParams.aiBehaviorParams`:
 

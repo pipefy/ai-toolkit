@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
@@ -404,17 +405,59 @@ class BehaviorInput(BaseModel):
         return self
 
 
-class CreateAiAgentInput(BaseModel):
-    """Validated input for create-and-configure: name/repo_uuid plus optional disabled_at for inactive create."""
+def _normalize_agent_instruction(value: object) -> object:
+    """Rewrite instruction token aliases to the canonical ``%{field:…}`` / ``%{action:…}`` form."""
+    # Deferred: behavior_placeholders imports pipefy_sdk.models.
+    from pipefy_sdk.behavior_placeholders import normalize_pipefy_ai_instruction_tokens
 
-    name: NonBlankStr
-    repo_uuid: NonBlankStr
-    instruction: NonBlankStr
-    behaviors: list[BehaviorInput] = Field(
+    return (
+        normalize_pipefy_ai_instruction_tokens(value)
+        if isinstance(value, str)
+        else value
+    )
+
+
+def _expand_raw_behaviors(value: object) -> object:
+    """Expand ``{{placeholders}}`` and normalize tokens in raw behavior dicts.
+
+    ``BehaviorInput`` instances pass through as they are: expansion is not
+    idempotent, so a behavior that was already validated is never expanded again.
+    """
+    from pipefy_sdk.behavior_placeholders import expand_behavior_placeholders
+
+    # Any iterable, not only list: pydantic also coerces tuples and generators.
+    if isinstance(value, (str, bytes, dict)) or not isinstance(value, Iterable):
+        return value
+    return [
+        expand_behavior_placeholders(b) if isinstance(b, dict) else b for b in value
+    ]
+
+
+_AgentInstruction = Annotated[str, BeforeValidator(_normalize_agent_instruction)]
+_AgentBehaviors = Annotated[
+    list[BehaviorInput],
+    BeforeValidator(_expand_raw_behaviors),
+    Field(
         min_length=1,
         max_length=MAX_BEHAVIORS,
         description="List of behaviors (1 to MAX_BEHAVIORS)",
-    )
+    ),
+]
+
+
+class CreateAiAgentInput(BaseModel):
+    """Validated input for create-and-configure (``PipefyClient.create_ai_agent``).
+
+    Raw behavior dicts (not ``BehaviorInput`` instances) get the same prep as the
+    MCP tools: ``template_params`` / ``placeholders`` and ``instruction_template``
+    are expanded, and instruction token aliases are normalized, on the agent
+    ``instruction`` and on each behavior's. ``disabled_at`` creates the agent inactive.
+    """
+
+    name: NonBlankStr
+    repo_uuid: NonBlankStr
+    instruction: Annotated[NonBlankStr, BeforeValidator(_normalize_agent_instruction)]
+    behaviors: _AgentBehaviors
     data_source_ids: list[str] = Field(default_factory=list)
     disabled_at: NonBlankStr | None = None
 
@@ -422,23 +465,26 @@ class CreateAiAgentInput(BaseModel):
 class UpdateAiAgentInput(BaseModel):
     """Validated input for updating an AI Agent.
 
+    Raw behavior dicts and ``instruction`` get the same prep as on
+    :class:`CreateAiAgentInput`.
+
     Prefer passing ``disabled_at`` from a prior ``get_ai_agent`` read (pass-through;
     skips the preserve re-read). When ``preserve_disabled_at`` is True (default) and
     ``disabled_at`` is None, the adapter fetches the current agent and re-sends
     ``disabledAt`` if set (routine update must not clear a disabled agent). When
     False and ``disabled_at`` is None, ``disabledAt`` is omitted from the payload so
     the API can clear a default disabled shell (create-active configure chain).
+
+    When ``data_source_ids`` is None, ``dataSourceIds`` is omitted from the payload,
+    so the update keeps the agent's current knowledge bases. Pass ``[]`` to detach
+    them all.
     """
 
     uuid: NonBlankStr
     name: NonBlankStr
     repo_uuid: NonBlankStr
-    behaviors: list[BehaviorInput] = Field(
-        min_length=1,
-        max_length=MAX_BEHAVIORS,
-        description="List of behaviors (1 to MAX_BEHAVIORS)",
-    )
-    instruction: str | None = None
-    data_source_ids: list[str] = Field(default_factory=list)
+    behaviors: _AgentBehaviors
+    instruction: _AgentInstruction | None = None
+    data_source_ids: list[str] | None = None
     disabled_at: NonBlankStr | None = None
     preserve_disabled_at: bool = True

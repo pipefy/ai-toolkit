@@ -114,7 +114,7 @@ layers = [
     "pipefy_mcp.settings",
 ]
 
-# Hosted per-user safety (#306): settings reachable from the tool layer are
+# Hosted per-user safety: settings reachable from the tool layer are
 # process-global — under the remote profile they are shared across concurrent
 # callers, so such a read may only ever make a per-deployment decision, and each
 # one is reviewed onto ignore_imports (direct or via a core helper; the contract
@@ -136,8 +136,8 @@ ignore_imports = [
     # startup. The runtime holds no Settings tree — it exposes only the two
     # curated per-deployment booleans it resolves at construction (is_remote,
     # unified_envelope), never settings.* — so tool code reaching the runtime
-    # off the lifespan context has no import-free path to the Settings tree
-    # (#405). Reviewed per-deployment reads elsewhere still go through the
+    # off the lifespan context has no import-free path to the Settings tree.
+    # Reviewed per-deployment reads elsewhere still go through the
     # import exceptions listed here.
     "pipefy_mcp.core.runtime -> pipefy_mcp.settings",
     # Reviewed: imports the Settings type for startup identity resolution.

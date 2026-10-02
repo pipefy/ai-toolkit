@@ -119,7 +119,7 @@ Storing OAuth credentials in `config.toml` puts them on disk in plain text. The 
 └── refresh.lock     # cross-process refresh lock (auto-managed)
 ```
 
-A future file-backed keyring backend (#237) will write its credential store as `~/.config/pipefy/keyring.cfg` next to these — a separate file with its own format.
+A future file-backed keyring backend will write its credential store as `~/.config/pipefy/keyring.cfg` next to these — a separate file with its own format.
 
 ## MCP server (`pipefy-mcp-server`)
 

@@ -681,6 +681,50 @@ def test_validate_unknown_action_type_ignore_mode():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("action_type", "metadata"),
+    [
+        ("human_validation", {"emails": ["reviewer@example.com"], "title": "Review"}),
+        (
+            "mcp_tool",
+            {
+                "mcpServerId": "srv-1",
+                "toolName": "lookup",
+                "toolInputs": [
+                    {"name": "query", "source": "fixed_value", "value": "x"}
+                ],
+            },
+        ),
+    ],
+)
+def test_validate_accepts_human_validation_and_mcp_tool_in_strict_mode(
+    action_type, metadata
+):
+    behavior = {
+        "name": "API action type",
+        "event_id": "card_created",
+        "actionParams": {
+            "aiBehaviorParams": {
+                "instruction": "go",
+                "actionsAttributes": [
+                    {"name": "x", "actionType": action_type, "metadata": metadata},
+                ],
+            }
+        },
+    }
+    problems, warnings = validate_behaviors_against_pipe(
+        [behavior],
+        pipe_id="1",
+        pipe_field_ids=PIPE_FIELDS,
+        pipe_phase_ids=PIPE_PHASES,
+        related_pipe_ids=RELATED_PIPES,
+        unknown_action_types="error",
+    )
+    assert problems == []
+    assert warnings == []
+
+
+@pytest.mark.unit
 def test_validate_empty_field_ids_reports_unknown_field_id():
     problems, warnings = validate_behaviors_against_pipe(
         [_update_card_behavior(field_id="any-id")],

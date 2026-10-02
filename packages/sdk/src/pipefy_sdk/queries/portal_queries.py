@@ -40,6 +40,7 @@ GET_PORTAL_QUERY = gql(
             pages {
                 id
                 title
+                layout
                 elements {
                     id
                     type

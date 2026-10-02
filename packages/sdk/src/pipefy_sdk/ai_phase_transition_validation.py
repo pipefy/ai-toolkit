@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import ValidationError
 
-from pipefy_sdk.client import PipefyClient
 from pipefy_sdk.models import BehaviorPayload
 from pipefy_sdk.transition_hints import (
     TRANSITION_RULES_HINT,
     format_allowed_destinations_phrase,
 )
+
+if TYPE_CHECKING:
+    from pipefy_sdk.client import PipefyClient
 
 logger = logging.getLogger(__name__)
 

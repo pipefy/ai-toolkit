@@ -1,5 +1,6 @@
 {
   "name": "pipefy",
+  "description": "Pipefy plugins for Claude Code: the hosted Pipefy MCP server and skills for pipes, cards, automations and AI agents.",
   "owner": {
     "name": "Pipefy",
     "url": "https://github.com/pipefy"
@@ -8,7 +9,8 @@
     {
       "name": "pipefy",
       "source": "./",
-      "description": "Pipefy workflow integration for Claude Code.",
+      "description": "Pipefy MCP for Claude Code. Sign in through the browser to manage pipes, cards, tables, reports, automations, and AI agents, and use the included skills to build and analyze processes.",
+      "category": "productivity",
       "version": "0.5.2-beta.1",
       "homepage": "https://github.com/pipefy/ai-toolkit",
       "repository": "https://github.com/pipefy/ai-toolkit"

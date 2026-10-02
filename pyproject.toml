@@ -35,6 +35,7 @@ dev = [
     "pytest-mock>=3.14.0",
     "respx>=0.22.0",
     "ruff>=0.11.4",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.ruff]

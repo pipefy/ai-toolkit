@@ -413,28 +413,12 @@ def test_card_fill_filters_editable_and_updates(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):
     oauth_env("fill-card")
-    phase_fields = {
-        "phase_id": "100",
-        "phase_name": "Review",
-        "fields": [
-            {
-                "id": "status",
-                "label": "Status",
-                "type": "select",
-                "editable": True,
-            },
-            {
-                "id": "readonly",
-                "label": "RO",
-                "type": "short_text",
-                "editable": False,
-            },
-        ],
+    payload = {
+        "updateFieldsValues": {"success": True},
+        "skipped_field_ids": ["readonly"],
     }
-    update_resp = {"updateFieldsValues": {"success": True}}
     mock_client = MagicMock()
-    mock_client.get_phase_fields = AsyncMock(return_value=phase_fields)
-    mock_client.update_card = AsyncMock(return_value=update_resp)
+    mock_client.fill_card_phase_fields = AsyncMock(return_value=payload)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -454,30 +438,23 @@ def test_card_fill_filters_editable_and_updates(
             ],
         )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
-    assert json.loads(result.stdout) == {
-        **update_resp,
-        "skipped_field_ids": ["readonly"],
-    }
-    mock_client.get_phase_fields.assert_awaited_once_with("100", True)
-    mock_client.update_card.assert_awaited_once_with(
+    assert json.loads(result.stdout) == payload
+    mock_client.fill_card_phase_fields.assert_awaited_once_with(
         "99",
-        field_updates=[{"field_id": "status", "value": "done"}],
+        "100",
+        {"status": "done", "readonly": "nope"},
+        required_fields_only=True,
     )
+    mock_client.update_card.assert_not_called()
 
 
 def test_card_fill_missing_editable_key_counts_as_editable(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):
     oauth_env("fill-card-missing-editable")
-    update_resp = {"updateFieldsValues": {"success": True}}
+    payload = {"updateFieldsValues": {"success": True}}
     mock_client = MagicMock()
-    mock_client.get_phase_fields = AsyncMock(
-        return_value={
-            "phase_id": "100",
-            "fields": [{"id": "status", "type": "short_text"}],
-        }
-    )
-    mock_client.update_card = AsyncMock(return_value=update_resp)
+    mock_client.fill_card_phase_fields = AsyncMock(return_value=payload)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -496,11 +473,14 @@ def test_card_fill_missing_editable_key_counts_as_editable(
             ],
         )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
-    assert json.loads(result.stdout) == update_resp
-    mock_client.update_card.assert_awaited_once_with(
+    assert json.loads(result.stdout) == payload
+    mock_client.fill_card_phase_fields.assert_awaited_once_with(
         "99",
-        field_updates=[{"field_id": "status", "value": "done"}],
+        "100",
+        {"status": "done"},
+        required_fields_only=False,
     )
+    mock_client.update_card.assert_not_called()
 
 
 def test_card_fill_invalid_fields_exit_2(
@@ -526,7 +506,7 @@ def test_card_fill_invalid_fields_exit_2(
             ],
         )
     assert result.exit_code == 2
-    mock_client.get_phase_fields.assert_not_called()
+    mock_client.fill_card_phase_fields.assert_not_called()
     mock_client.update_card.assert_not_called()
 
 
@@ -534,14 +514,19 @@ def test_card_fill_no_fields_when_input_empty(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):
     oauth_env("fill-card-empty")
+    payload = {
+        "success": True,
+        "message": (
+            "No field values were collected, so nothing was updated. "
+            "Phase 'Review' has 1 editable field(s); pass 'fields' keyed by the "
+            "IDs from get_phase_fields(phase_id)."
+        ),
+        "phase_id": "100",
+        "phase_name": "Review",
+        "skipped_field_ids": [],
+    }
     mock_client = MagicMock()
-    mock_client.get_phase_fields = AsyncMock(
-        return_value={
-            "phase_id": "100",
-            "fields": [{"id": "status", "editable": True}],
-        }
-    )
-    mock_client.update_card = AsyncMock()
+    mock_client.fill_card_phase_fields = AsyncMock(return_value=payload)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -560,11 +545,10 @@ def test_card_fill_no_fields_when_input_empty(
             ],
         )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
-    assert json.loads(result.stdout) == {
-        "success": True,
-        "message": "No fields to update.",
-    }
-    mock_client.get_phase_fields.assert_not_called()
+    assert json.loads(result.stdout) == payload
+    mock_client.fill_card_phase_fields.assert_awaited_once_with(
+        "99", "100", {}, required_fields_only=False
+    )
     mock_client.update_card.assert_not_called()
 
 
@@ -572,14 +556,19 @@ def test_card_fill_typo_reports_skipped_field_ids(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):
     oauth_env("fill-card-typo")
+    payload = {
+        "success": True,
+        "message": (
+            "No field values were collected, so nothing was updated. "
+            "Phase 'Review' has 1 editable field(s); pass 'fields' keyed by the "
+            "IDs from get_phase_fields(phase_id)."
+        ),
+        "phase_id": "100",
+        "phase_name": "Review",
+        "skipped_field_ids": ["stauts"],
+    }
     mock_client = MagicMock()
-    mock_client.get_phase_fields = AsyncMock(
-        return_value={
-            "phase_id": "100",
-            "fields": [{"id": "status", "editable": True}],
-        }
-    )
-    mock_client.update_card = AsyncMock()
+    mock_client.fill_card_phase_fields = AsyncMock(return_value=payload)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -598,11 +587,13 @@ def test_card_fill_typo_reports_skipped_field_ids(
             ],
         )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
-    assert json.loads(result.stdout) == {
-        "success": True,
-        "message": "No fields to update.",
-        "skipped_field_ids": ["stauts"],
-    }
+    assert json.loads(result.stdout) == payload
+    mock_client.fill_card_phase_fields.assert_awaited_once_with(
+        "99",
+        "100",
+        {"stauts": "done"},
+        required_fields_only=False,
+    )
     mock_client.update_card.assert_not_called()
 
 
@@ -610,14 +601,15 @@ def test_card_fill_no_fields_when_only_non_editable(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):
     oauth_env("fill-card-non-editable")
+    payload = {
+        "success": True,
+        "message": "Phase 'Review' has no editable fields; nothing was updated.",
+        "phase_id": "100",
+        "phase_name": "Review",
+        "skipped_field_ids": ["readonly"],
+    }
     mock_client = MagicMock()
-    mock_client.get_phase_fields = AsyncMock(
-        return_value={
-            "phase_id": "100",
-            "fields": [{"id": "readonly", "editable": False}],
-        }
-    )
-    mock_client.update_card = AsyncMock()
+    mock_client.fill_card_phase_fields = AsyncMock(return_value=payload)
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
         return_value=mock_client,
@@ -636,11 +628,13 @@ def test_card_fill_no_fields_when_only_non_editable(
             ],
         )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
-    assert json.loads(result.stdout) == {
-        "success": True,
-        "message": "No fields to update.",
-        "skipped_field_ids": ["readonly"],
-    }
+    assert json.loads(result.stdout) == payload
+    mock_client.fill_card_phase_fields.assert_awaited_once_with(
+        "99",
+        "100",
+        {"readonly": "nope"},
+        required_fields_only=False,
+    )
     mock_client.update_card.assert_not_called()
 
 

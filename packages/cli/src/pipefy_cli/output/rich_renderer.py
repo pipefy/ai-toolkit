@@ -7,8 +7,10 @@ from typing import Any
 
 from pydantic import BaseModel
 from rich.console import Console
+from rich.markup import escape
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.text import Text
 
 
 def _console_default(console: Console | None) -> Console:
@@ -36,7 +38,7 @@ def _render_list(console: Console, data: list[Any]) -> None:
     if all(not isinstance(item, (dict, list, BaseModel)) for item in data):
         table = Table("value", show_header=True)
         for item in data:
-            table.add_row(str(item))
+            table.add_row(Text(str(item)))
         console.print(table)
         return
     _render_json_syntax(console, data)
@@ -47,13 +49,21 @@ def _column_keys(rows: list[dict[str, Any]]) -> list[str]:
 
 
 def _render_list_of_dicts(console: Console, rows: list[dict[str, Any]]) -> None:
+    """Render uniform dict rows as a table, printing every value literally.
+
+    Cells are wrapped in ``Text`` because Rich parses a bare string as console
+    markup. A resource named ``[on hold] escalate`` would print as ``escalate``
+    and one named ``Notify [/marketing] team`` would raise ``MarkupError``.
+    Header strings take the same care via ``rich.markup.escape``: ``Table``
+    rejects a ``Text`` header, so the keys are escaped instead of wrapped.
+    """
     keys = _column_keys(rows)
     if not keys:
         _render_json_syntax(console, rows)
         return
-    table = Table(*keys, show_header=True)
+    table = Table(*(escape(key) for key in keys), show_header=True)
     for row in rows:
-        table.add_row(*(str(row.get(k, "")) for k in keys))
+        table.add_row(*(Text(str(row.get(k, ""))) for k in keys))
     console.print(table)
 
 

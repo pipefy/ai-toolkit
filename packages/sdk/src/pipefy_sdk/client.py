@@ -10,16 +10,29 @@ from httpx import Auth
 
 from pipefy_sdk import __version__
 from pipefy_sdk.ai_pipe_validation import resolve_and_populate_field_refs
+from pipefy_sdk.ai_preflight import (
+    filter_ai_automation_summaries,
+    validate_ai_agent_behaviors_sdk,
+    validate_ai_automation_prompt_sdk,
+)
 from pipefy_sdk.automation_input import normalize_automation_input_keys
 from pipefy_sdk.automation_preflight import (
     validate_automation_field_map_field_ids,
     validate_traditional_automation_move_transition,
+)
+from pipefy_sdk.exceptions import AiAgentConfigureError
+from pipefy_sdk.field_filters import (
+    filter_editable_field_definitions,
+    filter_fields_by_definitions,
+    phase_fill_no_write_result,
+    skipped_field_ids,
 )
 from pipefy_sdk.graphql_executor import (
     AuthenticatedExecutor,
     GraphQLEndpoint,
     GraphQLExecutor,
 )
+from pipefy_sdk.member_removal import MemberRemovalResult, verify_member_removal
 from pipefy_sdk.models.ai_agent import (
     BehaviorInput,
     CreateAiAgentInput,
@@ -37,6 +50,7 @@ from pipefy_sdk.models.attachment import (
     PresignedUploadTarget,
 )
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
+from pipefy_sdk.models.portal import PortalPageLayoutRow
 from pipefy_sdk.services.advanced_automations_service import AdvancedAutomationsService
 from pipefy_sdk.services.ai_agent_service import AiAgentService
 from pipefy_sdk.services.attachment_service import AttachmentService
@@ -44,8 +58,8 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
     AutomationEventAttributeRow,
     AutomationEventRow,
+    AutomationListPage,
     AutomationRuleRecord,
-    AutomationRuleSummary,
     CreateAutomationMutationResult,
     DeleteAutomationServiceResult,
     SimulateAutomationServiceResult,
@@ -759,6 +773,19 @@ class PipefyClient:
         """
         return await self._member_service.remove_members_from_pipe(pipe_id, user_ids)
 
+    async def remove_member_from_pipe(
+        self, pipe_id: str, user_ids: list[str]
+    ) -> MemberRemovalResult:
+        """Remove users from a pipe, then read members back to detect a no-op.
+
+        Runs the same mutation as :meth:`remove_members_from_pipe` (the raw
+        mutation with no read-back), then verifies whether any requested user
+        remains. Org-level permissions can override pipe-level removal.
+        """
+        raw = await self.remove_members_from_pipe(pipe_id, user_ids)
+        warning = await verify_member_removal(self, pipe_id, user_ids)
+        return {"data": raw, "warning": warning}
+
     async def set_role(
         self, pipe_id: str, member_id: str, role_name: str
     ) -> dict[str, Any]:
@@ -902,16 +929,60 @@ class PipefyClient:
         """Get a traditional automation rule by ID (trigger, actions, status)."""
         return await self._automation_service.get_automation(automation_id)
 
+    async def get_pipe_organization_id(self, pipe_id: str) -> str | None:
+        """Resolve the organization that owns ``pipe_id``, or None when the API omits it.
+
+        Paging the same pipe's automations resolves this once and passes it on every
+        page, rather than letting ``get_automations`` look it up per call.
+        """
+        return await self._automation_service.get_pipe_organization_id(pipe_id)
+
     async def get_automations(
         self,
         organization_id: str | None = None,
         pipe_id: str | None = None,
-    ) -> list[AutomationRuleSummary]:
-        """List traditional automation rules for an organization and/or pipe."""
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> AutomationListPage:
+        """List one page of traditional automation rules for an organization and/or pipe.
+
+        The API caps a page at 50 rules; read ``pageInfo.hasNextPage`` and ``totalCount``
+        before treating the page as the complete set.
+        """
         return await self._automation_service.get_automations(
             organization_id=organization_id,
             pipe_id=pipe_id,
+            first=first,
+            after=after,
         )
+
+    async def get_ai_automation(
+        self, automation_id: str
+    ) -> AutomationRuleRecord | None:
+        """Return an automation rule by id, or None when the id is missing."""
+        return await self.get_automation(automation_id)
+
+    async def get_ai_automations(
+        self,
+        pipe_id: str,
+        organization_id: str | None = None,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> AutomationListPage:
+        """List one page of AI (``generate_with_ai``) automation rules for a pipe.
+
+        The row filter runs after the page, so ``totalCount`` and ``pageInfo``
+        describe the mixed connection.
+        """
+        page = await self.get_automations(
+            organization_id=organization_id,
+            pipe_id=pipe_id,
+            first=first,
+            after=after,
+        )
+        return {**page, "nodes": filter_ai_automation_summaries(page["nodes"])}
 
     async def get_automation_actions(self, pipe_id: str) -> list[AutomationActionRow]:
         """List available automation action types for a pipe (for building create/update payloads)."""
@@ -1072,6 +1143,12 @@ class PipefyClient:
     ) -> DeleteAutomationServiceResult:
         """Delete a traditional automation rule by ID (permanent)."""
         return await self._automation_service.delete_automation(automation_id)
+
+    async def delete_ai_automation(
+        self, automation_id: str
+    ) -> DeleteAutomationServiceResult:
+        """Delete an automation rule by id."""
+        return await self.delete_automation(automation_id)
 
     async def get_ai_agent(self, agent_uuid: str) -> AiAgentGraphPayload:
         """Get an AI Agent by UUID (name, instruction, behaviors)."""
@@ -1372,13 +1449,43 @@ class PipefyClient:
     async def create_ai_agent(
         self, agent_input: CreateAiAgentInput
     ) -> AgentServiceResult:
-        """Create an AI Agent (empty, no behaviors).
+        """Create an AI Agent and write its instruction and behaviors.
 
-        Callers are still responsible for pre-Pydantic prep (``normalize_pipefy_ai_instruction_tokens``
-        / ``expand_behaviors_placeholders``) where applicable because those run before
-        :class:`CreateAiAgentInput` validation at the tool/CLI boundary.
+        Runs ``createAiAgent`` and then :meth:`update_ai_agent`. The API stamps
+        ``disabledAt`` on a new agent, and only an update with an active behavior
+        clears it, so the update omits ``disabledAt`` unless ``agent_input.disabled_at``
+        is set. Placeholder and token prep happen when :class:`CreateAiAgentInput`
+        validates.
+
+        Raises:
+            AiAgentConfigureError: The agent was created but the update failed. It
+                carries ``agent_uuid`` for recovery; the update's error is ``__cause__``.
         """
-        return await self._ai_agent_service.create_agent(agent_input)
+        created = await self._ai_agent_service.create_agent(agent_input)
+        agent_uuid = created["agent_uuid"]
+        try:
+            updated = await self.update_ai_agent(
+                UpdateAiAgentInput(
+                    uuid=agent_uuid,
+                    name=agent_input.name,
+                    repo_uuid=agent_input.repo_uuid,
+                    instruction=agent_input.instruction,
+                    behaviors=agent_input.behaviors,
+                    data_source_ids=agent_input.data_source_ids,
+                    disabled_at=agent_input.disabled_at,
+                    preserve_disabled_at=False,
+                )
+            )
+        except Exception as exc:
+            raise AiAgentConfigureError(
+                agent_uuid=agent_uuid,
+                disabled_at=created["disabled_at"],
+                reason=str(exc),
+            ) from exc
+        return {
+            **updated,
+            "message": f"AI Agent created and configured successfully. UUID: {agent_uuid}",
+        }
 
     async def update_ai_agent(
         self, agent_input: UpdateAiAgentInput
@@ -1387,10 +1494,8 @@ class PipefyClient:
 
         Resolves field-slug references inside behaviors to numeric IDs and
         populates ``referencedFieldIds`` before calling the service, so
-        callers do not need to remember the prep step. Callers are still
-        responsible for pre-Pydantic prep (``normalize_pipefy_ai_instruction_tokens``
-        / ``expand_behaviors_placeholders``) because those run before
-        :class:`UpdateAiAgentInput` validation.
+        callers do not need to remember the prep step. Placeholder and token
+        prep happen when :class:`UpdateAiAgentInput` validates.
         """
         raw_behaviors = [b.model_dump(by_alias=True) for b in agent_input.behaviors]
         resolved_dicts = await resolve_and_populate_field_refs(self, raw_behaviors)
@@ -1421,6 +1526,46 @@ class PipefyClient:
     ) -> AutomationServiceResult:
         """Update an existing AI Automation via the public ``updateAutomation``."""
         return await self._automation_service.update_ai_automation(automation_input)
+
+    async def validate_ai_agent_behaviors(
+        self,
+        pipe_id: str,
+        behaviors: list[dict[str, Any]],
+        *,
+        strict_unknown_action_types: bool = True,
+        data_source_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Dry-run AI Agent behaviors against a pipe's fields, phases, and relations (read-only).
+
+        Call before :meth:`create_ai_agent` / :meth:`update_ai_agent`. Delegates to
+        :func:`pipefy_sdk.ai_preflight.validate_ai_agent_behaviors_sdk`; see it for the
+        checks and the ``{success, valid, problems, warnings, message}`` result.
+        """
+        return await validate_ai_agent_behaviors_sdk(
+            self,
+            pipe_id,
+            behaviors,
+            strict_unknown_action_types=strict_unknown_action_types,
+            data_source_ids=data_source_ids,
+        )
+
+    async def validate_ai_automation_prompt(
+        self,
+        pipe_id: str,
+        prompt: str,
+        field_ids: list[str],
+        event_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Pre-flight an AI Automation prompt, output fields, and trigger (read-only).
+
+        Call before :meth:`create_ai_automation`. Delegates to
+        :func:`pipefy_sdk.ai_preflight.validate_ai_automation_prompt_sdk`; see it for the
+        checks and the ``{success, valid, problems, warnings, field_map}`` result. A failed
+        pipe read returns only ``{success, valid, error}``, with ``success`` false.
+        """
+        return await validate_ai_automation_prompt_sdk(
+            self, pipe_id, prompt, field_ids, event_id
+        )
 
     async def get_pipe_members(self, pipe_id: str | int) -> dict:
         """Get the members of a pipe."""
@@ -1543,6 +1688,50 @@ class PipefyClient:
             due_date=due_date,
             field_updates=field_updates,
         )
+
+    async def fill_card_phase_fields(
+        self,
+        card_id: str | int,
+        phase_id: str | int,
+        fields: dict[str, Any] | None,
+        *,
+        required_fields_only: bool = False,
+    ) -> dict[str, Any]:
+        """Fill a card's phase fields using only IDs the phase exposes as editable.
+
+        Reads :meth:`get_phase_fields` once, then writes via :meth:`update_card`
+        only when at least one value survives the editable-id filter. Dropped
+        keys are returned in ``skipped_field_ids``; a write that drops nothing
+        omits that key. When nothing survives, no
+        write is issued; the result reports ``success``, ``message``,
+        ``phase_id``, ``phase_name``, and ``skipped_field_ids``. Pass
+        ``required_fields_only=True`` to filter phase definitions to required
+        fields only (forwarded as ``required_only`` on :meth:`get_phase_fields`).
+        """
+        phase_fields_result = await self.get_phase_fields(
+            phase_id, required_only=required_fields_only
+        )
+        expected_fields = filter_editable_field_definitions(
+            phase_fields_result.get("fields", [])
+        )
+        given_fields = fields or {}
+        field_data = filter_fields_by_definitions(given_fields, expected_fields)
+        if not field_data:
+            return phase_fill_no_write_result(
+                phase_fields_result,
+                fields,
+                phase_id=phase_id,
+                required_fields_only=required_fields_only,
+            )
+        dropped = skipped_field_ids(given_fields, field_data)
+        field_updates = [
+            {"field_id": field_id, "value": value}
+            for field_id, value in field_data.items()
+        ]
+        api_response = await self.update_card(card_id, field_updates=field_updates)
+        if dropped:
+            return {**api_response, "skipped_field_ids": dropped}
+        return api_response
 
     async def delete_card(self, card_id: str | int) -> dict:
         """Delete a card by its ID."""
@@ -1964,13 +2153,16 @@ class PipefyClient:
         return await self._portal_service.sort_portal_pages(interface_uuid, page_ids)
 
     async def update_portal_page_layout(
-        self, page_id: str, layout: dict[str, Any]
+        self, page_id: str, layout: list[PortalPageLayoutRow | dict[str, Any]]
     ) -> dict[str, Any]:
         """Update a portal page grid layout.
 
         Args:
             page_id: Page UUID.
-            layout: Layout JSON for ``updatePageLayout``.
+            layout: Full row array from ``get_portal`` -> ``pages[].layout``, as
+                dicts or parsed rows. Each row needs a non-empty id, type
+                ``"row"``, and children as non-empty strings. ``[]`` is an empty
+                page.
         """
         return await self._portal_service.update_portal_page_layout(page_id, layout)
 
@@ -1983,7 +2175,7 @@ class PipefyClient:
         data_sources: list[dict[str, Any]] | None = None,
         element_id: str | None = None,
         editable: bool | None = None,
-        layout: dict[str, Any] | None = None,
+        layout: list[PortalPageLayoutRow | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create a portal page element.
 
@@ -1994,7 +2186,11 @@ class PipefyClient:
             data_sources: Optional data source bindings.
             element_id: Optional client-provided element UUID.
             editable: Optional editable flag.
-            layout: Optional layout JSON.
+            layout: Optional full page layout row array (``get_portal`` ->
+                ``pages[].layout``) with a row whose children list ``element_id``,
+                to create and place in one call. Each row needs a non-empty id,
+                type ``"row"``, and children as non-empty strings. Omit to leave
+                the grid untouched.
         """
         return await self._portal_service.create_portal_element(
             page_id,
@@ -2040,15 +2236,24 @@ class PipefyClient:
         )
 
     async def delete_portal_element(
-        self, element_id: str, page_id: str
+        self,
+        element_id: str,
+        page_id: str,
+        *,
+        layout: list[PortalPageLayoutRow | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Delete a portal page element (irreversible).
 
         Args:
             element_id: Element UUID.
             page_id: Parent page UUID.
+            layout: Optional full page layout row array (``get_portal`` ->
+                ``pages[].layout``) with ``element_id`` removed from every row,
+                written in the same call. Omit to leave the grid untouched.
         """
-        return await self._portal_service.delete_portal_element(element_id, page_id)
+        return await self._portal_service.delete_portal_element(
+            element_id, page_id, layout=layout
+        )
 
     async def duplicate_portal_element(
         self,
@@ -2348,7 +2553,7 @@ class PipefyClient:
             search_term: Free-text search.
         """
         rules = await self.get_automations(pipe_id=str(repo_id))
-        if not rules:
+        if not rules["nodes"]:
             return {
                 "automationLogsByRepo": {
                     "nodes": [],

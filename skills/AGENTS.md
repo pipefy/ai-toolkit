@@ -6,7 +6,7 @@ This document defines how to author, name, and maintain skills in the `ai-toolki
 
 ## What is a skill?
 
-A skill is a single Markdown file (`SKILL.md`) with YAML frontmatter and a structured body describing a Pipefy workflow. Any LLM agent (Claude Code, Cursor, Codex, custom) can read the file and execute the described steps using the MCP server or CLI.
+A skill is a directory with a `SKILL.md` entrypoint describing a Pipefy workflow. Its body contains domain rules, payload shapes, steps, and failure modes shared by MCP, CLI, and SDK consumers. Surface-specific instructions live in sibling reference files, loaded only by clients using that surface.
 
 ---
 
@@ -17,6 +17,9 @@ skills/
   <domain>/
     <skill-name>/
       SKILL.md          ← the skill file
+      references/       ← when the workflow has surface-specific instructions
+        mcp.md          ← MCP controls, profiles, response envelopes
+        cli.md          ← shipped commands and flags
       COMPLIANCE.md     ← required for regulated-domain / blueprint skills
   AGENTS.md             ← this file
   README.md             ← catalog index
@@ -46,7 +49,12 @@ tags: [pipefy, <domain>, ...]
 
 # Title
 
-Short intro (1-2 sentences). State the tool count when relevant.
+Short intro (1-2 sentences).
+
+[When the workflow has surface-specific guidance, add the relevant links:
+MCP clients: read [references/mcp.md](references/mcp.md).
+CLI users: read [references/cli.md](references/cli.md).
+Omit the links for a router without reference files.]
 
 ---
 
@@ -60,22 +68,17 @@ What must be true before the agent can execute (IDs, access, config).
 
 ## Tools needed
 
-| Tool (MCP) | CLI equivalent | Read-only |
-|------------|----------------|-----------|
-| `tool_name` | `pipefy domain action` | Yes/No |
+| Operation | Read-only | Purpose |
+|-----------|-----------|---------|
+| `tool_name` | Yes/No | Domain outcome |
 
 ## Steps
 
 1. **Step name** — description.
 
-   MCP:
+   Operation arguments (adapt to the active surface):
    ```
    tool_name arg1=value1 arg2=value2
-   ```
-
-   CLI:
-   ```bash
-   pipefy domain action --flag value
    ```
 
 2. **Next step** — ...
@@ -108,15 +111,28 @@ All fields are **required** unless noted:
 | `name` | Yes | Must match the directory name exactly. |
 | `description` | Yes | One-line summary; used by agents to select this skill. |
 | `tags` | No | Optional list of relevant keywords. |
+| `metadata.surfaces` | No | Space-separated string of supported surfaces: `sdk`, `mcp`, `cli`. Omission means all three. |
 
-CI (`skills-lint.yml`) validates these on every PR.
+Declare only the surfaces on which the skill's workflow applies. `sdk` means SDK consumers that build agent tools from `PipefyClient`, `mcp` means MCP clients, and `cli` means the `pipefy` command. This describes applicability, not identical call signatures or availability under every deployment profile; document prerequisites separately.
+
+For a skill limited to MCP and CLI:
+
+```yaml
+metadata:
+  surfaces: "mcp cli"
+```
+
+Use `"mcp"` for MCP-only skills such as iPaaS. Do not use a YAML list, an empty value, duplicate tokens, or other surface names. Unrelated metadata does not change the default. Existing readers may ignore this optional metadata. Duplicate YAML keys are rejected, including repeated `metadata` or `surfaces` keys.
+
+CI (`skills-lint.yml`) validates these fields with `uv run python .github/workflows/scripts/lint_skill_frontmatter.py`.
 
 ---
 
 ## Body style
 
 - **Action-first headlines.** "Create a pipe" not "Pipe creation."
-- **Code blocks for every invocation.** Show both MCP and CLI variants when both exist.
+- **Surface-neutral body.** Name operations by their shared tool names. Keep domain argument examples in the body; put MCP confirmation tokens, elicitation, profiles, MCP-only parameters and envelopes in `references/mcp.md`, and CLI commands/flags in `references/cli.md`. Link each existing reference from the body. Routers without surface-specific behavior need no reference files.
+- **Code blocks for invocations.** Show concrete MCP and CLI variants in their respective references when both exist; state missing/deferred equivalents rather than inventing commands.
 - **Prefer explicit IDs over names** in examples — Pipefy IDs are stable; names change.
 - **Under 500 lines.** Keep skills focused; use "See also" links to related skills rather than duplicating content.
 - **Progressive disclosure.** Put the common happy path first; edge cases and failure modes last.
@@ -140,13 +156,15 @@ Skills and tools live in the same monorepo. When a CLI command or MCP tool is re
 
 1. Update the skill reference in the same PR (or a paired PR opened in the same review window).
 2. The `skills-lint.yml` CI job validates frontmatter on every `skills/**/SKILL.md`
-   and lints MCP tool names + `pipefy` CLI references in each file. A rename that
-   doesn't update the skill fails the build.
+   and lints operation names against each entrypoint's declared SDK/MCP surfaces.
+   MCP references must name MCP tools; CLI references are checked for known
+   operation names and `pipefy` root commands. A rename that doesn't update the
+   skill fails the build.
 
 ---
 
 ## Best practices
 
 - **Keep skills short.** If a skill exceeds 500 lines, split it by sub-domain.
-- **Link, don't duplicate.** Reference related skills with `See also: skills/...`.
+- **Refer by name.** Use `See also: the pipefy-automations skill`, optionally naming a section, rather than paths between skills. Consumers may flatten the catalog to `<skill-name>/SKILL.md`. Within a skill, relative links to `references/` remain portable; use repository URLs for external docs.
 - **Test before shipping.** Run the skill end-to-end against a real Pipefy org before opening a PR.

@@ -1,6 +1,7 @@
 """Lifecycle tests for AI agent active/disabled create and update."""
 
 from datetime import datetime, timedelta
+from types import MethodType
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ from _mcp_compat import (
     create_connected_server_and_client_session as create_client_session,
 )
 from _shared.ai_agent_test_payloads import minimal_behavior_dict
+from pipefy_sdk import PipefyClient
 from pipefy_sdk.models.ai_agent import CreateAiAgentInput, UpdateAiAgentInput
 
 from pipefy_mcp.tools.ai_agent_tools import AiAgentTools
@@ -17,7 +19,8 @@ from tools.conftest import build_tool_test_server
 @pytest.fixture
 def mock_pipefy_client():
     client = MagicMock()
-    client.create_ai_agent = AsyncMock()
+    client.create_ai_agent = MethodType(PipefyClient.create_ai_agent, client)
+    client._ai_agent_service.create_agent = AsyncMock()
     client.update_ai_agent = AsyncMock()
     client.toggle_ai_agent_status = AsyncMock()
     client.get_ai_agent = AsyncMock()
@@ -57,7 +60,7 @@ class TestCreateAiAgentLifecycle:
         envelope_flag,
     ):
         """Default/active create omits preserve so configure update can clear API default."""
-        mock_pipefy_client.create_ai_agent.return_value = {
+        mock_pipefy_client._ai_agent_service.create_agent.return_value = {
             "agent_uuid": "active-uuid",
             "message": "created",
             "disabled_at": "2026-08-04T12:00:00+00:00",
@@ -80,7 +83,7 @@ class TestCreateAiAgentLifecycle:
                 },
             )
         assert result.is_error is False
-        create_arg = mock_pipefy_client.create_ai_agent.call_args[0][0]
+        create_arg = mock_pipefy_client._ai_agent_service.create_agent.call_args[0][0]
         assert isinstance(create_arg, CreateAiAgentInput)
         assert create_arg.disabled_at is None
         update_arg = mock_pipefy_client.update_ai_agent.call_args[0][0]
@@ -106,7 +109,7 @@ class TestCreateAiAgentLifecycle:
         envelope_flag,
     ):
         stub_disabled_at = "2026-08-04T13:00:00+00:00"
-        mock_pipefy_client.create_ai_agent.return_value = {
+        mock_pipefy_client._ai_agent_service.create_agent.return_value = {
             "agent_uuid": "inactive-uuid",
             "message": "created",
             "disabled_at": stub_disabled_at,
@@ -130,7 +133,7 @@ class TestCreateAiAgentLifecycle:
                 },
             )
         assert result.is_error is False
-        create_arg = mock_pipefy_client.create_ai_agent.call_args[0][0]
+        create_arg = mock_pipefy_client._ai_agent_service.create_agent.call_args[0][0]
         assert isinstance(create_arg, CreateAiAgentInput)
         assert create_arg.disabled_at is not None
         datetime.fromisoformat(create_arg.disabled_at)
@@ -184,6 +187,7 @@ class TestUpdateAiAgentLifecycle:
         assert isinstance(update_arg, UpdateAiAgentInput)
         assert update_arg.disabled_at is None
         assert update_arg.preserve_disabled_at is True
+        assert update_arg.data_source_ids is None
         payload = extract_payload(result)
         assert payload["success"] is True
         if envelope_flag:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import ValidationError
 
@@ -20,8 +20,10 @@ from pipefy_sdk.ai_pipe_validation import (
     validate_behaviors_against_pipe,
 )
 from pipefy_sdk.behavior_placeholders import expand_behaviors_placeholders
-from pipefy_sdk.client import PipefyClient
 from pipefy_sdk.models import BehaviorInput
+
+if TYPE_CHECKING:
+    from pipefy_sdk.client import PipefyClient
 
 logger = logging.getLogger(__name__)
 

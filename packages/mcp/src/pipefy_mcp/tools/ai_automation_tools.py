@@ -5,13 +5,10 @@ from __future__ import annotations
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
 from pipefy_sdk import (
+    AUTOMATIONS_LIST_MAX_PAGE_SIZE,
     CreateAiAutomationInput,
     PipefyId,
     UpdateAiAutomationInput,
-)
-from pipefy_sdk.ai_preflight import (
-    filter_ai_automation_summaries,
-    validate_ai_automation_prompt_sdk,
 )
 from pydantic import ValidationError
 
@@ -28,6 +25,10 @@ from pipefy_mcp.tools.automation_tool_helpers import (
     handle_automation_tool_graphql_error,
 )
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
+from pipefy_mcp.tools.pagination_helpers import (
+    build_pagination_info,
+    validate_page_size,
+)
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
 from pipefy_mcp.tools.validation_helpers import (
@@ -111,8 +112,7 @@ class AiAutomationTools:
                     }
                 eid = eid_validated or None
 
-            result = await validate_ai_automation_prompt_sdk(
-                client,
+            result = await client.validate_ai_automation_prompt(
                 pid,
                 prompt,
                 [str(f) for f in field_ids],
@@ -157,7 +157,7 @@ class AiAutomationTools:
             if err is not None:
                 return build_automation_error_payload(message=tool_error_message(err))
             try:
-                raw = await client.get_automation(aid)
+                raw = await client.get_ai_automation(aid)
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
                     exc,
@@ -181,12 +181,19 @@ class AiAutomationTools:
             ctx: Context,
             pipe_id: PipefyId,
             organization_id: PipefyId | None = None,
+            first: int | None = None,
+            after: str | None = None,
             debug: bool = False,
         ) -> dict:
             """List AI automations (``action_id`` = ``generate_with_ai``) for a pipe.
 
-            Delegates to ``get_automations`` with this ``pipe_id`` and optional
-            ``organization_id``. Results are filtered to AI prompt automations only.
+            Delegates to ``get_ai_automations`` with this ``pipe_id`` and optional
+            ``organization_id``. Results are already filtered to AI prompt automations.
+
+            The API returns at most 50 rules per call, mixed action types. Filtering
+            happens after that page, so ``pagination`` describes the mixed connection,
+            not the AI subset. While ``pagination.has_more`` is true, call again with
+            ``after=pagination.end_cursor`` before concluding an AI rule does not exist.
 
             When ``organization_id`` is omitted, the server resolves the organization from the
             pipe first, then lists automations (**two** sequential API calls). When
@@ -195,12 +202,14 @@ class AiAutomationTools:
             Args:
                 pipe_id: Pipe ID to list automations for (required).
                 organization_id: Organization ID override; omit to resolve org from ``pipe_id``.
+                first: Page size of the mixed listing, 1 to 50. Defaults to 50.
+                after: ``pagination.end_cursor`` from the previous page.
                 debug: When True, append GraphQL error codes and correlation id on failures.
 
             Returns:
-                On success, ``success``, ``message``, and ``data`` with the filtered list of
-                automation summaries. On validation or GraphQL errors, ``success: False`` with
-                ``error``.
+                On success, ``success``, ``message``, ``data`` with the filtered list of
+                automation summaries, and ``pagination``. On validation or GraphQL errors,
+                ``success: False`` with ``error``.
             """
             client = get_pipefy_client(ctx)
             await ctx.debug(
@@ -218,10 +227,18 @@ class AiAutomationTools:
                 return build_automation_error_payload(
                     message=tool_error_message(pid_err)
                 )
+            page_size, size_err = validate_page_size(
+                first, max_size=AUTOMATIONS_LIST_MAX_PAGE_SIZE
+            )
+            if size_err is not None:
+                return size_err
+            cursor = after.strip() if isinstance(after, str) and after.strip() else None
             try:
-                rows = await client.get_automations(
+                page = await client.get_ai_automations(
+                    pid,
                     organization_id=org,
-                    pipe_id=pid,
+                    first=page_size,
+                    after=cursor,
                 )
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
@@ -231,10 +248,14 @@ class AiAutomationTools:
                     resource_kind="pipe",
                     resource_id=pid,
                 )
-            filtered = filter_ai_automation_summaries(rows)
+            pagination = build_pagination_info(
+                page_info=page["pageInfo"], page_size=page_size
+            )
+            pagination["total_count"] = page["totalCount"]
             return build_automation_read_success_payload(
-                filtered,
+                page["nodes"],
                 "AI automations listed.",
+                pagination=pagination,
             )
 
         @mcp.tool(
@@ -285,7 +306,7 @@ class AiAutomationTools:
                 return guard
 
             try:
-                raw = await client.delete_automation(rid)
+                raw = await client.delete_ai_automation(rid)
             except Exception as exc:  # noqa: BLE001
                 return await handle_automation_tool_graphql_error(
                     exc,

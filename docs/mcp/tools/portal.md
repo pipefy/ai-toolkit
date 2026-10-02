@@ -112,9 +112,9 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `delete_portal_page` | No | Irreversible; MCP two-step with `confirmation_token`; CLI `--yes`. |
 | `sort_portal_pages` | No | `page_ids` ordered list. |
 | `update_portal_page_layout` | No | `page_id` + `layout` JSON only (no portal UUID on wire). |
-| `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`. |
+| `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`, `element_id`, `layout` (full row array with a row listing `element_id`: creates and places in one call). |
 | `update_portal_element` | No | Full `metadata` replace. |
-| `delete_portal_element` | No | Irreversible. |
+| `delete_portal_element` | No | Irreversible. Optional `layout` (full row array with `element_id` removed from every row) prunes the grid in the same call; a row still listing `element_id` is rejected. MCP: send the same `layout` on the preview and the confirm call, since the token covers those rows. |
 | `duplicate_portal_element` | No | Same page; `element_id`, `portal_uuid`, `page_id`. |
 | `create_sub_portal` | No | Interfaces `createSubPortal`; `main_portal_uuid`, optional `name`. |
 | `update_sub_portal_element` | No | Attach (internal_api `updateSubPortalElement`). |
@@ -123,7 +123,9 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `delete_sub_portal_element` | No | Detach wiring (`deleteSubPortalElement`). |
 | `delete_sub_portal` | No | Delete interface (`deleteSubPortalInterface`). |
 
-**Layout caveat:** `createElement` does not update the page grid; `duplicateElement` appends layout rows; `deleteElement` does not prune layout unless you pass updated `layout`. Orphan layout references can break the portal viewer (HTTP 500). Prefer disposable pages in smoke tests.
+**Read before editing layout:** `get_portal` returns the full `pages[].layout` row array. Each row needs a non-empty `id`, `type: "row"`, and `children` as non-empty strings; array order defines placement. Pass the complete array to `update_portal_page_layout` (CLI `--layout '[...]'`), preserving unaffected rows, IDs, and children. Do not wrap it in `{ "rows": [...] }` and do not send an incomplete row: the API does not validate this field and stores that JSON verbatim, replacing the grid. The toolkit rejects a non-array and any incomplete row before the call. An empty array is a valid empty page. To add an element at a known position, pass `element_id` and `layout` (existing rows plus a row listing the new id) to `create_portal_element` instead of creating first and rewriting the grid afterwards. Element `metadata.gridMap` holds dimensions (`height`, `columns`, `minColumns`), not row order or grouping; retain it when replacing element metadata. Re-read the page and compare layout and element metadata after writing. If the layout cannot be read, stop the positional edit instead of reconstructing it from dimensions.
+
+**Layout caveat:** `createElement` leaves the page grid untouched unless you pass `layout`; `duplicateElement` appends layout rows; `deleteElement` leaves any row reference to the deleted element unless you pass `layout`. Orphan layout references can break the portal viewer (HTTP 500), so pass `delete_portal_element` the read layout with `element_id` removed from every row's `children` instead of deleting first and rewriting the grid afterwards. Prefer disposable pages in smoke tests.
 
 ---
 
@@ -199,10 +201,10 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `update_portal_page` | `pipefy portal page update <portal-uuid> <page-uuid> [--title …]` |
 | `delete_portal_page` | `pipefy portal page delete <portal-uuid> <page-uuid> --yes` |
 | `sort_portal_pages` | `pipefy portal page sort --portal-uuid <uuid> --page-ids id1,id2` |
-| `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '{…}'` |
-| `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}'` |
+| `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '[…]'` |
+| `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}' [--element-id <uuid> --layout '[…]']` |
 | `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type link --metadata '{…}'` |
-| `delete_portal_element` | `pipefy portal element delete <element-uuid> <page-uuid> --yes` |
+| `delete_portal_element` | `pipefy portal element delete <element-uuid> <page-uuid> [--layout '[…]'] --yes` |
 | `duplicate_portal_element` | `pipefy portal element duplicate --element-id <uuid> --portal-uuid <uuid> --page-id <uuid>` |
 | `create_sub_portal` | `pipefy portal sub-portal create --main-portal-uuid <uuid> [--name …]` |
 | `update_sub_portal_element` | `pipefy portal sub-portal attach <portal-uuid> <element-id> <sub-portal-uuid>` |

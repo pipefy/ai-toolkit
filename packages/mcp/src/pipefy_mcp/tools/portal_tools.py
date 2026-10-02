@@ -9,9 +9,11 @@ from mcp.types import ToolAnnotations
 from pipefy_sdk import PipefyId
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
+    DeletePortalElementInput,
     PortalElementType,
     PortalVisibility,
     UpdatePortalElementInput,
+    parse_portal_page_layout,
 )
 from pydantic import ValidationError
 
@@ -24,6 +26,7 @@ from pipefy_mcp.tools.introspection_tool_helpers import (
 from pipefy_mcp.tools.portal_tool_helpers import (
     finalize_internal_api_mutation,
     map_portal_error_to_message,
+    plan_portal_element_delete_confirmation,
     portal_element_validation_error,
     run_sub_portal_internal_api_tool,
     validate_portal_optional_string,
@@ -507,7 +510,7 @@ class PortalTools:
         async def update_portal_page_layout(
             ctx: Context,
             page_id: str,
-            layout: dict[str, Any],
+            layout: list[dict[str, Any]],
         ) -> dict[str, Any]:
             """Update a portal page grid layout.
 
@@ -516,15 +519,25 @@ class PortalTools:
 
             Args:
                 page_id: Page UUID.
-                layout: Layout JSON (full layout object for the page).
+                layout: Full array from get_portal -> pages[].layout. Each row
+                    needs a non-empty id, type "row", and children as non-empty
+                    strings. [] is an empty page. Preserve row IDs and children,
+                    changing only intended positions. Do not wrap it in an object
+                    or infer positions from metadata.gridMap (element dimensions).
+                    An incomplete row is rejected because the API stores this JSON
+                    verbatim. Re-read to verify.
             """
             client = get_pipefy_client(ctx)
             page_id, err = validate_tool_id(page_id, "page_id")
             if err is not None:
                 return err
+            try:
+                rows = parse_portal_page_layout(layout)
+            except ValueError as exc:
+                return tool_error(str(exc), code="INVALID_ARGUMENTS")
             await ctx.debug(f"update_portal_page_layout: page_id={page_id}")
             try:
-                result = await client.update_portal_page_layout(page_id, layout)
+                result = await client.update_portal_page_layout(page_id, rows)
             except Exception as exc:  # noqa: BLE001
                 return build_error_payload(map_portal_error_to_message(exc))
             if result.get("updatePageLayout", {}).get("success"):
@@ -546,7 +559,7 @@ class PortalTools:
             data_sources: list[dict[str, Any]] | None = None,
             element_id: str | None = None,
             editable: bool | None = None,
-            layout: dict[str, Any] | None = None,
+            layout: list[dict[str, Any]] | None = None,
         ) -> dict[str, Any]:
             """Create a portal page element (portal "tool" / widget in the Pipefy UI).
 
@@ -554,14 +567,24 @@ class PortalTools:
             For ``forms`` elements, include ``metadata.name`` and optional
             ``data_sources`` (``repoId`` + ``fieldKeys`` per Interfaces schema).
 
+            To create and place in one call, read ``get_portal`` -> ``pages[].layout``,
+            generate ``element_id``, and pass ``layout`` as the existing rows plus a
+            row whose ``children`` list ``element_id``. Without ``layout`` the element
+            exists but is not on the page grid. Re-read with ``get_portal`` after.
+
             Args:
                 page_id: Parent page UUID.
                 type: ``InterfacePageElementType`` value (e.g. ``forms``, ``link``).
                 metadata: Element metadata JSON (shape depends on ``type``).
                 data_sources: Optional data source bindings for ``forms`` elements.
-                element_id: Optional client-provided element UUID.
+                element_id: Optional client-provided element UUID. Required with
+                    ``layout`` so a row can reference the new element.
                 editable: Optional editable flag.
-                layout: Optional layout JSON.
+                layout: Optional full page layout row array (``id``, ``type: "row"``,
+                    ``children``). Each row needs a non-empty id, type "row", and
+                    children as non-empty strings. Preserve every existing row;
+                    never send an object wrapper. The API stores this JSON verbatim,
+                    so an incomplete row replaces the page grid and is rejected.
             """
             client = get_pipefy_client(ctx)
             page_id, err = validate_tool_id(page_id, "page_id")
@@ -690,6 +713,7 @@ class PortalTools:
             ctx: Context,
             element_id: str,
             page_id: str,
+            layout: list[dict[str, Any]] | None = None,
             confirm: bool = False,
             confirmation_token: str | None = None,
         ) -> dict[str, Any]:
@@ -698,9 +722,19 @@ class PortalTools:
             Two-step operation: preview with ``confirm=False`` (default), then echo
             ``confirmation_token`` from the preview on step 2.
 
+            Without ``layout`` the page grid keeps any row reference to the deleted
+            element, and an orphan reference can break the portal viewer (HTTP
+            500). Read ``get_portal`` -> ``pages[].layout``, remove ``element_id``
+            from every row's ``children``, and pass the complete array as
+            ``layout`` to prune the grid in the same call. Re-read after.
+
             Args:
                 element_id: Element UUID to delete.
                 page_id: Parent page UUID.
+                layout: Optional full page layout row array with ``element_id``
+                    removed. Each row needs a non-empty id, type "row", and
+                    children as non-empty strings; a row still listing
+                    ``element_id`` is rejected. Send the same rows on both steps.
                 confirm: Set to True with the preview token to execute the deletion (step 2).
                 confirmation_token: Token from the preview response.
             """
@@ -711,24 +745,34 @@ class PortalTools:
             page_id, err = validate_tool_id(page_id, "page_id")
             if err is not None:
                 return err
+            try:
+                validated = DeletePortalElementInput.model_validate(
+                    {"element_id": element_id, "page_id": page_id, "layout": layout}
+                )
+            except ValidationError as exc:
+                return portal_element_validation_error(exc)
             await ctx.debug(
                 f"delete_portal_element: element_id={element_id}, page_id={page_id}"
             )
+            confirmation = plan_portal_element_delete_confirmation(validated)
             guard = await check_destructive_confirmation(
                 ctx,
                 confirm=confirm,
-                resource_descriptor=(
-                    f"portal element (UUID: {element_id}) on page (UUID: {page_id})"
-                ),
-                resource_identity={"element_id": element_id, "page_id": page_id},
+                resource_descriptor=confirmation.resource_descriptor,
+                resource_identity=confirmation.resource_identity,
                 tool_name="delete_portal_element",
                 confirmation_token=confirmation_token,
             )
             if guard is not None:
                 return guard
 
+            delete_kwargs: dict[str, Any] = {}
+            if validated.layout is not None:
+                delete_kwargs["layout"] = validated.layout
             try:
-                result = await client.delete_portal_element(element_id, page_id)
+                result = await client.delete_portal_element(
+                    validated.element_id, validated.page_id, **delete_kwargs
+                )
             except Exception as exc:  # noqa: BLE001
                 return build_error_payload(map_portal_error_to_message(exc))
 

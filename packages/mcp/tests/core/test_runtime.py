@@ -78,7 +78,7 @@ class TestMcpRuntime:
 
         Tools reach the runtime off the request context, so exposing the whole
         settings tree would let tool code read any process-global value at call
-        time (#405). Only the narrow deployment flags are surfaced.
+        time. Only the narrow deployment flags are surfaced.
         """
         runtime = McpRuntime(_settings(), RequestScopedIdentity())
 
@@ -98,7 +98,7 @@ class TestMcpRuntime:
 
         A hosted remote-profile server and a user's local stdio install both run the
         ``mcp`` surface, so without this the two emit byte-identical client headers
-        (#550). The deployment is derived here from the already-validated profile —
+        without it. The deployment is derived here from the already-validated profile —
         never read from env or TOML — and both sides are labelled, so a bare
         ``(mcp)`` means a client older than this axis rather than ``local``.
         """
@@ -122,8 +122,8 @@ class TestMcpRuntime:
     def test_no_env_var_can_forge_the_deployment(self, monkeypatch: pytest.MonkeyPatch):
         """The deployment is derived from the profile, never configured.
 
-        #336 established that the surface is never read from env or TOML; the
-        deployment keeps that property, so no ``PIPEFY_*_DEPLOYMENT`` knob exists.
+        The surface is never read from env or TOML, and the deployment keeps that
+        property, so no ``PIPEFY_*_DEPLOYMENT`` knob exists.
         A default-profile server stamps ``local`` whatever these env vars say — this
         fails if such a setting is ever added.
         """

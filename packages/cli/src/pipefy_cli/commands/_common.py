@@ -75,13 +75,23 @@ _CARDS_PAGE_SIZE_MIN = 1
 _CARDS_PAGE_SIZE_MAX = 500
 
 
-def validate_cards_page_size(first: int | None) -> int | None:
+def validate_cards_page_size(
+    first: int | None,
+    *,
+    max_size: int = _CARDS_PAGE_SIZE_MAX,
+) -> int | None:
+    """Reject ``--first`` outside 1..``max_size``.
+
+    Args:
+        first: Requested page size, or None to leave the API default.
+        max_size: Inclusive upper bound. Defaults to the cards connection cap (500).
+    """
     if first is None:
         return None
-    if first < _CARDS_PAGE_SIZE_MIN or first > _CARDS_PAGE_SIZE_MAX:
+    if first < _CARDS_PAGE_SIZE_MIN or first > max_size:
         raise typer.BadParameter(
             f"--first must be between {_CARDS_PAGE_SIZE_MIN} and "
-            f"{_CARDS_PAGE_SIZE_MAX} (inclusive)."
+            f"{max_size} (inclusive)."
         )
     return first
 

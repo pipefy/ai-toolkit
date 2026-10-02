@@ -11,7 +11,7 @@ from _shared.ai_agent_test_payloads import (
     mock_agent_with_behaviors,
 )
 from _shared.mock_clients import mock_executor
-from graphql import print_ast
+from graphql import FieldNode, Visitor, print_ast, visit
 
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.models.ai_agent import CreateAiAgentInput, UpdateAiAgentInput
@@ -72,6 +72,33 @@ def test_get_ai_agent_query_includes_email_template_metadata_fields():
     printed = print_ast(GET_AI_AGENT_QUERY.document)
     assert "emailTemplateId" in printed
     assert "allowTemplateModifications" in printed
+
+
+def _selected_under(document, field_name: str) -> set[str]:
+    """Names of the fields selected directly under every ``field_name`` in ``document``."""
+    names: set[str] = set()
+
+    class _Collect(Visitor):
+        def enter_field(self, node: FieldNode, *_args):
+            if node.name.value == field_name and node.selection_set:
+                names.update(s.name.value for s in node.selection_set.selections)
+
+    visit(document, _Collect())
+    return names
+
+
+@pytest.mark.unit
+def test_get_ai_agent_query_selects_human_validation_and_mcp_tool_metadata():
+    """A read-merge-update needs every metadata field the write accepts, or the save fails."""
+    assert {"emails", "title", "mcpServerId", "toolName", "toolInputs"} <= (
+        _selected_under(GET_AI_AGENT_QUERY.document, "metadata")
+    )
+    assert _selected_under(GET_AI_AGENT_QUERY.document, "toolInputs") == {
+        "fieldId",
+        "name",
+        "source",
+        "value",
+    }
 
 
 @pytest.mark.unit
@@ -276,7 +303,7 @@ def test_inject_reference_ids_no_ai_behavior_params_returns_behavior_unchanged()
 
 @pytest.mark.unit
 def test_inject_reference_ids_instruction_with_existing_placeholders():
-    """Instruction with existing %{action:old-uuid} still gets new placeholders for current actions."""
+    """An action token inside text stays in place; current actions still get new placeholder lines."""
     action = _make_action_dict()
     behavior = _make_behavior_dict(
         instruction="Old %{action:00000000-0000-4000-8000-000000000001}",
@@ -290,7 +317,168 @@ def test_inject_reference_ids_instruction_with_existing_placeholders():
         "referenceId"
     ]
     assert ref_id != "00000000-0000-4000-8000-000000000001"
-    assert f"%{{action:{ref_id}}}" in instruction
+    assert instruction == (
+        f"Old %{{action:00000000-0000-4000-8000-000000000001}}\n%{{action:{ref_id}}}"
+    )
+
+
+@pytest.mark.unit
+def test_inject_reference_ids_replaces_placeholder_lines_from_a_previous_update():
+    """Placeholder-only lines read back from an earlier update are replaced, not kept beside the new ones."""
+    behavior = _make_behavior_dict(
+        instruction=(
+            "Review the card.\n"
+            "%{action:00000000-0000-4000-8000-000000000001}\n"
+            "%{action:00000000-0000-4000-8000-000000000002}"
+        ),
+        actions=[
+            _make_action_dict(),
+            _make_action_dict(name="Review", action_type="human_validation"),
+        ],
+    )
+
+    params = inject_reference_ids([behavior])[0]["actionParams"]["aiBehaviorParams"]
+
+    ref_ids = [a["referenceId"] for a in params["actionsAttributes"]]
+    assert params["instruction"] == "Review the card.\n" + "\n".join(
+        f"%{{action:{r}}}" for r in ref_ids
+    )
+
+
+@pytest.mark.unit
+def test_inject_reference_ids_drops_the_persisted_action_id():
+    """A read action ``id`` is dropped: under a new behavior it fails the save (RECORD_NOT_SAVED)."""
+    action = {**_make_action_dict(), "id": "eb30b574-9d45-4da0-bd11-219d5546bdb8"}
+    behavior = _make_behavior_dict(instruction="Move it.", actions=[action])
+
+    result = inject_reference_ids([behavior])
+
+    out_action = result[0]["actionParams"]["aiBehaviorParams"]["actionsAttributes"][0]
+    assert "id" not in out_action
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "instruction", ["Review the card.", "", "Review the card.\n"], ids=repr
+)
+def test_inject_reference_ids_round_trip_keeps_one_placeholder_per_action(instruction):
+    """Feeding the output back in (read, merge, update) does not grow the instruction."""
+    behavior = _make_behavior_dict(
+        instruction=instruction, actions=[_make_action_dict()]
+    )
+
+    first = inject_reference_ids([behavior])
+    second = inject_reference_ids(first)
+
+    first_text = first[0]["actionParams"]["aiBehaviorParams"]["instruction"]
+    params = second[0]["actionParams"]["aiBehaviorParams"]
+    ref_id = params["actionsAttributes"][0]["referenceId"]
+    assert UUID_PATTERN.findall(params["instruction"]) == [ref_id]
+    assert UUID_PATTERN.sub("", params["instruction"]) == UUID_PATTERN.sub(
+        "", first_text
+    )
+
+
+_NULL_METADATA = {
+    "destinationPhaseId": None,
+    "pipeId": None,
+    "tableId": None,
+    "emailTemplateId": None,
+    "allowTemplateModifications": None,
+    "fieldsAttributes": None,
+    "emails": None,
+    "title": None,
+    "mcpServerId": None,
+    "toolName": None,
+    "toolInputs": None,
+}
+
+_HUMAN_VALIDATION_METADATA = {
+    "emails": ["reviewer@example.com"],
+    "title": "Review this card",
+}
+
+_MCP_TOOL_METADATA = {
+    "mcpServerId": "srv-1",
+    "toolName": "lookup_customer",
+    "toolInputs": [
+        {"fieldId": None, "name": "query", "source": "fixed_value", "value": "acme"},
+        {
+            "fieldId": "customer_email",
+            "name": "email",
+            "source": "card_field",
+            "value": None,
+        },
+    ],
+}
+
+
+def _agent_behavior_as_read() -> dict:
+    """A behavior shaped like a ``get_ai_agent`` read, after one earlier update."""
+    return {
+        "id": "308221777",
+        "name": "Review then look up",
+        "active": True,
+        "eventId": "card_created",
+        "actionId": "ai_behavior",
+        "actionParams": {
+            "aiBehaviorParams": {
+                "instruction": (
+                    "Ask for a review, then look the customer up.\n"
+                    "%{action:00000000-0000-4000-8000-000000000001}\n"
+                    "%{action:00000000-0000-4000-8000-000000000002}"
+                ),
+                "actionsAttributes": [
+                    {
+                        "id": "action-1",
+                        "name": "Human review",
+                        "actionType": "human_validation",
+                        "referenceId": "00000000-0000-4000-8000-000000000001",
+                        "metadata": {**_NULL_METADATA, **_HUMAN_VALIDATION_METADATA},
+                    },
+                    {
+                        "id": "action-2",
+                        "name": "Look up customer",
+                        "actionType": "mcp_tool",
+                        "referenceId": "00000000-0000-4000-8000-000000000002",
+                        "metadata": {**_NULL_METADATA, **_MCP_TOOL_METADATA},
+                    },
+                ],
+            }
+        },
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_agent_sends_a_read_behavior_back_intact():
+    """A read behavior sent back keeps its metadata and loses its read ids."""
+    service, executor = _create_mock_service(
+        {"updateAiAgent": {"agent": {"uuid": "agent-uuid", "disabledAt": None}}}
+    )
+    inp = UpdateAiAgentInput(
+        uuid="agent-uuid",
+        name="Agent",
+        repo_uuid="repo-456",
+        instruction="Do things",
+        behaviors=[_agent_behavior_as_read()],
+        preserve_disabled_at=False,
+    )
+
+    await service.update_agent(inp)
+
+    sent = executor.execute_query.call_args[0][1]["agent"]["behaviors"][0]
+    params = sent["actionParams"]["aiBehaviorParams"]
+    review, lookup = params["actionsAttributes"]
+    assert "id" not in sent
+    assert "id" not in review
+    assert "id" not in lookup
+    assert review["metadata"] == _HUMAN_VALIDATION_METADATA
+    assert lookup["metadata"] == _MCP_TOOL_METADATA
+    assert params["instruction"] == (
+        "Ask for a review, then look the customer up.\n"
+        f"%{{action:{review['referenceId']}}}\n%{{action:{lookup['referenceId']}}}"
+    )
 
 
 @pytest.mark.unit
@@ -377,6 +565,55 @@ async def test_update_agent_calls_execute_query_with_correct_variables():
     assert result["disabled_at"] is None
     assert result["active"] is True
     assert "AI Agent updated successfully" in result["message"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_agent_omits_data_source_ids_when_not_passed():
+    """Without data_source_ids the update keeps the agent's knowledge bases."""
+    service, executor = _create_mock_service(
+        side_effect=[
+            {"aiAgent": {"uuid": "agent-uuid", "disabledAt": None}},
+            {"updateAiAgent": {"agent": {"uuid": "agent-uuid", "disabledAt": None}}},
+        ]
+    )
+    inp = UpdateAiAgentInput(
+        uuid="agent-uuid",
+        name="Updated Agent",
+        repo_uuid="repo-456",
+        instruction="Do things",
+        behaviors=[minimal_behavior_dict(name="B1")],
+    )
+
+    await service.update_agent(inp)
+
+    variables = executor.execute_query.call_args_list[1][0][1]
+    assert "dataSourceIds" not in variables["agent"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_agent_sends_empty_data_source_ids_when_passed_explicitly():
+    """An explicit empty list still detaches every agent-level knowledge base."""
+    service, executor = _create_mock_service(
+        side_effect=[
+            {"aiAgent": {"uuid": "agent-uuid", "disabledAt": None}},
+            {"updateAiAgent": {"agent": {"uuid": "agent-uuid", "disabledAt": None}}},
+        ]
+    )
+    inp = UpdateAiAgentInput(
+        uuid="agent-uuid",
+        name="Updated Agent",
+        repo_uuid="repo-456",
+        instruction="Do things",
+        behaviors=[minimal_behavior_dict(name="B1")],
+        data_source_ids=[],
+    )
+
+    await service.update_agent(inp)
+
+    variables = executor.execute_query.call_args_list[1][0][1]
+    assert variables["agent"]["dataSourceIds"] == []
 
 
 @pytest.mark.unit

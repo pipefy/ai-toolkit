@@ -9,6 +9,7 @@ from pipefy_sdk.phase_inventory import (
     get_phase_not_found_message,
     is_get_phase_not_found_error,
 )
+from pipefy_sdk.transition_hints import TRANSITION_RULES_HINT
 
 from pipefy_mcp.core.tool_error_envelope import (
     is_unified_envelope_enabled,
@@ -389,8 +390,8 @@ class PipeConfigTools:
 
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
-            to avoid trial-and-error moves. New phases have no edges until configured
-            in the Pipefy UI.
+            to avoid trial-and-error moves. Transition rules are configured in the
+            Pipefy UI and are not editable via API.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -574,17 +575,25 @@ class PipeConfigTools:
         ) -> dict[str, Any]:
             """Create a phase in a pipe.
 
+            Phase Connections / ``allowed_phases`` (the move-transition rules)
+            are configured in the Pipefy UI and are not editable via API. Call
+            ``get_phase_allowed_move_targets`` on the source phase to read its
+            current move targets before a move. The success payload repeats this
+            as a ``connection_hint`` key.
+
             Args:
                 pipe_id: Pipe that will contain the phase.
                 name: Phase name.
                 done: When True, marks a final/done phase.
-                index: Optional 1-based insert position among workflow phases
-                    returned by ``get_pipe``. Omit to append after existing
-                    phases. Prefer ``1`` or higher for normal layout; ``0``
-                    creates a phase that does not appear in ``get_pipe``'s
-                    ``phases`` list. Index only sets order - it does not
-                    configure Phase Connections / ``allowed_phases`` (UI-only);
-                    call ``get_phase_allowed_move_targets`` before moves.
+                index: Float sort key. A value between two existing keys
+                    inserts between those phases. Equal keys have no fixed
+                    order; use a key no other phase has. A new pipe's Inbox,
+                    Doing and Done keys
+                    are 1, 2 and 3, and 0 omits the phase from ``get_pipe``
+                    phases. ``get_pipe`` does not return this key.
+                    Index only sets order - it does not configure Phase
+                    Connections / ``allowed_phases`` (UI-only); call
+                    ``get_phase_allowed_move_targets`` before moves.
                 description: Optional phase description.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
@@ -616,6 +625,7 @@ class PipeConfigTools:
             return build_pipe_mutation_success_payload(
                 label="Phase created.",
                 data=raw,
+                connection_hint=TRANSITION_RULES_HINT,
             )
 
         @mcp.tool(
@@ -638,9 +648,17 @@ class PipeConfigTools:
         ) -> dict[str, Any]:
             """Update a phase.
 
+            ``update_phase`` has no index field. To move a phase that has no
+            cards, delete it and create it again with the sort key.
+
             Pipefy requires the phase name on update. Omit `name` to keep the current
             name (resolved via get_phase_fields). Values identical to the current state
             are accepted but result in a no-op API call.
+
+            Updating a phase does not configure its Phase Connections /
+            ``allowed_phases`` (UI-only, not editable via API). Call
+            ``get_phase_allowed_move_targets`` on the source phase before a move.
+            The success payload repeats this as a ``connection_hint`` key.
 
             Args:
                 phase_id: Phase ID to update.
@@ -717,6 +735,7 @@ class PipeConfigTools:
             return build_pipe_mutation_success_payload(
                 label="Phase updated.",
                 data=raw,
+                connection_hint=TRANSITION_RULES_HINT,
             )
 
         @mcp.tool(

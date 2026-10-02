@@ -136,7 +136,9 @@ def _context_client(*, knowledge_bases) -> AsyncMock:
             }
         }
     )
-    client.get_pipe_relations = AsyncMock(return_value={"children": [], "parents": []})
+    client.get_pipe_relations = AsyncMock(
+        return_value={"pipe": {"childrenRelations": [], "parentsRelations": []}}
+    )
     client.get_phase_fields = AsyncMock(return_value={"fields": []})
     client.get_ai_knowledge_bases = AsyncMock(return_value=knowledge_bases)
     return client

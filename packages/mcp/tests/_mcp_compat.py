@@ -21,8 +21,7 @@ guard deliberately does not). Legacy also matches what this server negotiates in
 production today, so the suite exercises the protocol revision the deployment
 actually serves.
 
-Adopting 2026-07-28 is separate work from the SDK upgrade (#543 records why the two
-are separable). Flipping the ``setdefault`` below is one line, and it comes last:
+Adopting 2026-07-28 is separate work from the SDK upgrade: the two are separable. Flipping the ``setdefault`` below is one line, and it comes last:
 under that revision elicitation is unavailable, so the two eliciting tools have to
 move to ``InputRequiredResult`` to keep collecting field values interactively, and
 the ``ctx.debug`` / ``ctx.info`` calls across the tool modules stop reaching clients

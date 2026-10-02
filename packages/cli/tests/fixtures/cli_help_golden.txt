@@ -249,6 +249,9 @@ Usage: pipefy agent update [OPTIONS]
 │                                             [required]                       │
 │    --data-sources                     TEXT  Optional JSON array of           │
 │                                             knowledge-source id strings.     │
+│                                             Omit to keep the agent's current │
+│                                             knowledge bases; pass '[]' to    │
+│                                             detach them all.                 │
 │    --disabled-at                      TEXT  Optional ISO-8601 disabledAt     │
 │                                             from agent get. Pass through to  │
 │                                             skip the preserve re-read; omit  │
@@ -365,11 +368,19 @@ Usage: pipefy ai-automation list [OPTIONS]
  List AI automations for a pipe (``get_ai_automations`` / filtered
  ``get_automations``).
 
+ One page of the pipe's rules (cap 50) is fetched, then filtered to
+ ``generate_with_ai``. Pagination describes that mixed page, not the AI subset.
+
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ *  --pipe                        TEXT  Pipe id. [required]                   │
-│    --organization,--org          TEXT  Optional organization id.             │
+│ *  --pipe                        TEXT     Pipe id. [required]                │
+│    --organization,--org          TEXT     Optional organization id.          │
+│    --first                       INTEGER  Page size of the mixed listing, 1  │
+│                                           to 50 (the API cap). Defaults to   │
+│                                           the cap.                           │
+│    --after                       TEXT     pageInfo.endCursor from the        │
+│                                           previous page.                     │
 │    --json                -j                                                  │
-│    --help                              Show this message and exit.           │
+│    --help                                 Show this message and exit.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP ai-automation/update
@@ -865,7 +876,7 @@ Usage: pipefy automation [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ list               List automation rules (``get_automations``).              │
+│ list               List one page of automation rules (``get_automations``).  │
 │ get                Load one automation (``get_automation``).                 │
 │ create             Create an automation rule (``create_automation``).        │
 │ update             Update an automation (``update_automation``).             │
@@ -951,6 +962,13 @@ Usage: pipefy automation create [OPTIONS]
 │                                                      string_contains,        │
 │                                                      number_greater_than,    │
 │                                                      date_is_after.          │
+│                                                      expressions_structure   │
+│                                                      lists structure_id      │
+│                                                      values: AND inside an   │
+│                                                      inner array, OR across  │
+│                                                      inner arrays, so [[0,   │
+│                                                      1], [2]] is (0 AND 1)   │
+│                                                      OR 2.                   │
 │    --extra                                     TEXT  Optional JSON object:   │
 │                                                      extra                   │
 │                                                      CreateAutomationInput   │
@@ -1085,13 +1103,23 @@ Usage: pipefy automation get [OPTIONS] AUTOMATION_ID
 ### HELP automation/list
 Usage: pipefy automation list [OPTIONS]
 
- List automation rules (``get_automations``).
+ List one page of automation rules (``get_automations``).
+
+ The API caps a page at 50 rules. ``--json`` prints the whole page (``nodes``,
+ ``totalCount``, and ``pageInfo``). Without ``--json``, the scalar columns of
+ each row print as a table with ``totalCount`` and ``hasNextPage`` beside it;
+ ``event_params`` and ``condition`` are nested and read from ``--json``.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --organization,--org          TEXT  Optional organization id filter.         │
-│ --pipe                        TEXT  Optional pipe id filter.                 │
-│ --json                -j            Print machine-readable JSON to stdout.   │
-│ --help                              Show this message and exit.              │
+│ --organization,--org          TEXT     Optional organization id filter.      │
+│ --pipe                        TEXT     Optional pipe id filter.              │
+│ --first                       INTEGER  Page size, 1 to 50 (the API cap).     │
+│                                        Defaults to the cap.                  │
+│ --after                       TEXT     pageInfo.endCursor from the previous  │
+│                                        page.                                 │
+│ --json                -j               Print machine-readable JSON to        │
+│                                        stdout.                               │
+│ --help                                 Show this message and exit.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP automation/logs
@@ -1185,7 +1213,10 @@ Usage: pipefy automation update [OPTIONS] AUTOMATION_ID
 │                            a field internal_id (not a slug); operations      │
 │                            include equals, not_equals, present, blank,       │
 │                            string_contains, number_greater_than,             │
-│                            date_is_after.                                    │
+│                            date_is_after. expressions_structure lists        │
+│                            structure_id values: AND inside an inner array,   │
+│                            OR across inner arrays, so [[0, 1], [2]] is (0    │
+│                            AND 1) OR 2.                                      │
 │ --extra              TEXT  JSON object: UpdateAutomationInput fields to      │
 │                            patch. Top-level keys are snake_case (e.g.        │
 │                            action_params, event_params); camelCase is also   │
@@ -1333,9 +1364,8 @@ Usage: pipefy card fill [OPTIONS] CARD_ID
 
  Fill phase fields on a card (non-interactive).
 
- Filters ``--fields`` to editable phase field IDs before ``update_card``.
- Stricter than MCP ``fill_card_phase_fields`` when the phase reports no
- editable fields (CLI no-ops; MCP may pass values through unfiltered).
+ Filters ``--fields`` to editable phase field IDs. Dropped keys come back in
+ ``skipped_field_ids``. When nothing survives, no write is issued.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    card_id      TEXT  Card id. [required]                                  │
@@ -2429,6 +2459,11 @@ Usage: pipefy member remove [OPTIONS]
 
  Remove users from a pipe.
 
+ Reads members back after the mutation. Output includes ``data`` (mutation
+ result) and ``warning`` (null when every requested user is gone). A warning
+ string means a requested user is still present; org-level permissions can
+ override pipe-level removal.
+
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe              TEXT  Pipe id. [required]                             │
 │ *  --user-ids          TEXT  Comma-separated Pipefy user ids or UUIDs to     │
@@ -2558,9 +2593,13 @@ Usage: pipefy phase create [OPTIONS]
 │                                  [required]                                  │
 │ *  --name         -n      TEXT   Phase display name. [required]              │
 │    --done                        Mark as a final/done phase.                 │
-│    --index                FLOAT  1-based insert among workflow phases; omit  │
-│                                  to append. Does not set Connections         │
-│                                  (UI-only).                                  │
+│    --index                FLOAT  Float sort key: a value between two         │
+│                                  existing keys inserts between those phases. │
+│                                  Equal keys have no fixed order; use a key   │
+│                                  no other phase has. A new pipe's Inbox,     │
+│                                  Doing and Done keys are 1, 2 and 3, and 0   │
+│                                  omits the phase from get_pipe phases.       │
+│                                  get_pipe does not return this key.          │
 │    --description  -d      TEXT                                               │
 │    --json         -j                                                         │
 │    --help                        Show this message and exit.                 │
@@ -2613,6 +2652,9 @@ Usage: pipefy phase update [OPTIONS] PHASE_ID
 
  Update a phase (Pipefy ``UpdatePhaseInput``). Resolves current name when
  omitted.
+
+ update_phase has no index field. To move a phase that has no cards, delete it
+ and create it again with the sort key.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    phase_id      TEXT  Phase id. [required]                                │
@@ -2817,9 +2859,11 @@ Usage: pipefy portal element [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ create      Create a portal page element.                                    │
+│ create      Create a portal page element, optionally placed via --element-id │
+│             and --layout.                                                    │
 │ update      Update a portal page element (send the full metadata blob).      │
-│ delete      Delete a portal page element permanently.                        │
+│ delete      Delete a portal page element permanently; --layout prunes the    │
+│             page grid too.                                                   │
 │ duplicate   Duplicate a portal page element on the same page (source portal  │
 │             + page UUIDs).                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2827,7 +2871,7 @@ Usage: pipefy portal element [OPTIONS] COMMAND [ARGS]...
 ### HELP portal/element/create
 Usage: pipefy portal element create [OPTIONS]
 
- Create a portal page element.
+ Create a portal page element, optionally placed via --element-id and --layout.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --page-id               TEXT  Parent page UUID. [required]                │
@@ -2838,6 +2882,15 @@ Usage: pipefy portal element create [OPTIONS]
 │                                  depends on --type).                         │
 │    --data-sources          TEXT  Optional JSON array of data source bindings │
 │                                  (forms elements).                           │
+│    --element-id            TEXT  Client-provided element UUID; required with │
+│                                  --layout so a layout row can reference the  │
+│                                  new element.                                │
+│    --layout                TEXT  Full page layout row array (get_portal      │
+│                                  pages[].layout) with a row listing          │
+│                                  --element-id, to create and place in one    │
+│                                  call. Each row needs a non-empty id, type   │
+│                                  row, and string children. Omit to leave the │
+│                                  grid untouched.                             │
 │    --json          -j            Print machine-readable JSON to stdout.      │
 │    --help                        Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2845,16 +2898,20 @@ Usage: pipefy portal element create [OPTIONS]
 ### HELP portal/element/delete
 Usage: pipefy portal element delete [OPTIONS] ELEMENT_ID PAGE_ID
 
- Delete a portal page element permanently.
+ Delete a portal page element permanently; --layout prunes the page grid too.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    element_id      TEXT  Element UUID. [required]                          │
 │ *    page_id         TEXT  Parent page UUID. [required]                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --yes   -y        Skip interactive confirmation.                             │
-│ --json  -j        Print machine-readable JSON to stdout.                     │
-│ --help            Show this message and exit.                                │
+│ --layout          TEXT  Full page layout row array (get_portal               │
+│                         pages[].layout) with the element removed from every  │
+│                         row, to prune the grid in the same call. Each row    │
+│                         needs a non-empty id, type row, and string children. │
+│ --yes     -y            Skip interactive confirmation.                       │
+│ --json    -j            Print machine-readable JSON to stdout.               │
+│ --help                  Show this message and exit.                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/element/duplicate
@@ -2989,7 +3046,10 @@ Usage: pipefy portal page layout update [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --page-id          TEXT  Page UUID. [required]                            │
-│ *  --layout           TEXT  Layout JSON for updatePageLayout. [required]     │
+│ *  --layout           TEXT  Page layout row array. Each row needs a          │
+│                             non-empty id, type row, and string children. []  │
+│                             is an empty page.                                │
+│                             [required]                                       │
 │    --json     -j            Print machine-readable JSON to stdout.           │
 │    --help                   Show this message and exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯

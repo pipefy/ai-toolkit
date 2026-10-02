@@ -8,11 +8,15 @@ confirms ``get_portal`` -> ``subPortals[].published`` flips to false. CLI
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Any
 
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.models.portal import DeletePortalElementInput
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error
@@ -230,7 +234,7 @@ def portal_element_validation_error(exc: ValidationError) -> dict[str, object]:
     """Map SDK portal element model validation to an MCP ``INVALID_ARGUMENTS`` envelope.
 
     Args:
-        exc: Raised by ``CreatePortalElementInput`` or ``UpdatePortalElementInput``.
+        exc: Raised by a portal element input model (create, update, or delete).
 
     Returns:
         Tool failure payload with an actionable ``error.message`` (no Pydantic URLs).
@@ -260,9 +264,45 @@ def portal_element_validation_error(exc: ValidationError) -> dict[str, object]:
     return tool_error(message, code="INVALID_ARGUMENTS")
 
 
+@dataclass(frozen=True)
+class PortalElementDeleteConfirmation:
+    """Preview descriptor and token identity for ``delete_portal_element``."""
+
+    resource_descriptor: str
+    resource_identity: dict[str, str]
+
+
+def plan_portal_element_delete_confirmation(
+    validated: DeletePortalElementInput,
+) -> PortalElementDeleteConfirmation:
+    """Name a layout rewrite in the preview and bind its exact rows into the token.
+
+    Without ``layout`` the identity is element + page only. With it, a token minted
+    for no layout or for other rows does not verify.
+    """
+    descriptor = (
+        f"portal element (UUID: {validated.element_id}) "
+        f"on page (UUID: {validated.page_id})"
+    )
+    identity = {"element_id": validated.element_id, "page_id": validated.page_id}
+    if validated.layout is None:
+        return PortalElementDeleteConfirmation(descriptor, identity)
+    rows = [row.model_dump() for row in validated.layout]
+    identity["layout"] = hashlib.sha256(
+        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    noun = "row" if len(rows) == 1 else "rows"
+    return PortalElementDeleteConfirmation(
+        f"{descriptor}, replacing that page's layout ({len(rows)} {noun} sent)",
+        identity,
+    )
+
+
 __all__ = [
+    "PortalElementDeleteConfirmation",
     "finalize_internal_api_mutation",
     "map_portal_error_to_message",
+    "plan_portal_element_delete_confirmation",
     "portal_element_validation_error",
     "run_sub_portal_internal_api_tool",
     "validate_portal_optional_string",

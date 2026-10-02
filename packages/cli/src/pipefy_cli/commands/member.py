@@ -116,7 +116,13 @@ def member_remove(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
     json_out: bool = typer.Option(False, "--json", "-j"),
 ) -> None:
-    """Remove users from a pipe."""
+    """Remove users from a pipe.
+
+    Reads members back after the mutation. Output includes ``data`` (mutation
+    result) and ``warning`` (null when every requested user is gone). A warning
+    string means a requested user is still present; org-level permissions can
+    override pipe-level removal.
+    """
 
     ids = _parse_user_ids(user_ids)
 
@@ -125,7 +131,7 @@ def member_remove(
     )
 
     async def factory(client: PipefyClient):
-        return await client.remove_members_from_pipe(pipe_id, ids)
+        return await client.remove_member_from_pipe(pipe_id, ids)
 
     run_cli_command(ctx, json_out, factory)
 

@@ -6,6 +6,7 @@ __version__ = "0.5.2-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
 from pipefy_sdk.exceptions import (
+    AiAgentConfigureError,
     PartialCardUpdateError,
     PipefyAPIError,
     PipefyError,
@@ -13,6 +14,7 @@ from pipefy_sdk.exceptions import (
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
+    phase_fill_no_write_result,
     skipped_field_ids,
 )
 from pipefy_sdk.graphql_executor import PipefyGraphQLError
@@ -22,6 +24,7 @@ from pipefy_sdk.graphql_problem import (
     classify_exception,
     classify_graphql_error_dicts,
 )
+from pipefy_sdk.member_removal import MemberRemovalResult
 from pipefy_sdk.models import (
     CONDITION_OPERATIONS,
     Attachment,
@@ -65,9 +68,11 @@ from pipefy_sdk.queries.observability_queries import (
 from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
     AutomationEventRow,
+    AutomationListPage,
     AutomationRuleRecord,
     AutomationRuleSummary,
 )
+from pipefy_sdk.services.automation_service import AUTOMATIONS_LIST_MAX_PAGE_SIZE
 from pipefy_sdk.services.observability_export_csv import download_bytes, stream_bytes
 from pipefy_sdk.services.observability_service import (
     AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE,
@@ -100,9 +105,11 @@ from pipefy_sdk.settings import PipefySettings
 
 __all__ = [
     "__version__",
+    "AiAgentConfigureError",
     "AiAgentGraphPayload",
     "AUTOMATION_EVENT_IDS",
     "AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE",
+    "AUTOMATIONS_LIST_MAX_PAGE_SIZE",
     "AUTOMATION_EXECUTION_METRICS_PERIODS",
     "AUTOMATION_SORT_BY",
     "AUTOMATION_SORT_ORDER",
@@ -118,6 +125,7 @@ __all__ = [
     "AutomationConditionInput",
     "AutomationEventParamsInput",
     "AutomationEventRow",
+    "AutomationListPage",
     "AutomationRuleRecord",
     "AutomationRuleSummary",
     "BehaviorInput",
@@ -154,8 +162,10 @@ __all__ = [
     "download_bytes",
     "filter_editable_field_definitions",
     "filter_fields_by_definitions",
+    "phase_fill_no_write_result",
     "MePayload",
     "MemberInvite",
+    "MemberRemovalResult",
     "NonBlankStr",
     "PartialCardUpdateError",
     "PipefyAPIError",

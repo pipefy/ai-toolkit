@@ -14,9 +14,12 @@ from pipefy_sdk.graphql_problem import GraphQLProblemKind, classify_exception
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
     CreatePortalInput,
+    DeletePortalElementInput,
     PortalElementType,
+    PortalPageLayoutRow,
     UpdatePortalElementInput,
     UpdatePortalInput,
+    parse_portal_page_layout,
 )
 from pipefy_sdk.queries.portal_internal_queries import (
     DELETE_SUB_PORTAL_ELEMENT_MUTATION,
@@ -81,6 +84,11 @@ def _map_portal_permission_error(
 def _serialize_interfaces_json(value: dict[str, Any] | list[Any]) -> str:
     """Encode Json scalars for the Interfaces GraphQL endpoint (gql expects strings)."""
     return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+
+
+def _serialize_layout_rows(rows: list[PortalPageLayoutRow]) -> str:
+    """Encode parsed page rows, extra keys included, as an Interfaces Json scalar."""
+    return _serialize_interfaces_json([row.model_dump() for row in rows])
 
 
 def _normalize_portal_data_sources(
@@ -155,7 +163,7 @@ def _graphql_create_element_input(
     if validated.editable is not None:
         payload["editable"] = validated.editable
     if validated.layout is not None:
-        payload["layout"] = _serialize_interfaces_json(validated.layout)
+        payload["layout"] = _serialize_layout_rows(validated.layout)
     return payload
 
 
@@ -489,21 +497,27 @@ class PortalService:
         )
 
     async def update_portal_page_layout(
-        self, page_id: str, layout: dict[str, Any]
+        self, page_id: str, layout: list[PortalPageLayoutRow | dict[str, Any]]
     ) -> dict[str, Any]:
         """Update a portal page grid layout (full layout blob).
 
         Args:
             page_id: Page UUID (no parent ``interface_uuid`` on this mutation).
-            layout: Layout JSON as required by ``updatePageLayout``.
+            layout: Full row array from ``get_portal`` -> ``pages[].layout``, as
+                dicts or parsed rows. ``[]`` is an empty page.
+
+        Raises:
+            ValueError: A row lacks a non-empty id, type ``"row"``, or children as
+                non-empty strings.
         """
+        rows = parse_portal_page_layout(layout)
         return await _execute_query_with_portal_errors(
             self.execute_interfaces_query,
             UPDATE_PAGE_LAYOUT_MUTATION,
             {
                 "input": {
                     "page_id": page_id,
-                    "layout": _serialize_interfaces_json(layout),
+                    "layout": _serialize_layout_rows(rows),
                 }
             },
         )
@@ -517,7 +531,7 @@ class PortalService:
         data_sources: list[dict[str, Any]] | None = None,
         element_id: str | None = None,
         editable: bool | None = None,
-        layout: dict[str, Any] | None = None,
+        layout: list[PortalPageLayoutRow | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create a portal page element on the Interfaces schema.
 
@@ -528,7 +542,9 @@ class PortalService:
             data_sources: Optional data source bindings (e.g. for ``forms``).
             element_id: Optional client-provided element UUID (GraphQL ``id``).
             editable: Optional editable flag.
-            layout: Optional layout JSON.
+            layout: Optional full page layout row array (``get_portal`` ->
+                ``pages[].layout``) with a row whose children list ``element_id``,
+                to create and place in one call. Omit to leave the grid untouched.
         """
         validated = CreatePortalElementInput.model_validate(
             {
@@ -607,18 +623,34 @@ class PortalService:
         )
 
     async def delete_portal_element(
-        self, element_id: str, page_id: str
+        self,
+        element_id: str,
+        page_id: str,
+        *,
+        layout: list[PortalPageLayoutRow | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Delete a portal page element (irreversible).
 
         Args:
             element_id: Element UUID.
             page_id: Parent page UUID.
+            layout: Optional full page layout row array with ``element_id`` removed
+                from every row, written in the same call so no row is left
+                pointing at the deleted element. Omit to leave the grid untouched.
         """
+        validated = DeletePortalElementInput.model_validate(
+            {"element_id": element_id, "page_id": page_id, "layout": layout}
+        )
+        variables: dict[str, Any] = {
+            "element_id": validated.element_id,
+            "page_id": validated.page_id,
+        }
+        if validated.layout is not None:
+            variables["layout"] = _serialize_layout_rows(validated.layout)
         return await _execute_query_with_portal_errors(
             self.execute_interfaces_query,
             DELETE_ELEMENT_MUTATION,
-            {"input": {"element_id": element_id, "page_id": page_id}},
+            {"input": variables},
         )
 
     async def duplicate_portal_element(
