@@ -94,7 +94,7 @@ def webhook_update(
     headers_json: str | None = typer.Option(
         None,
         "--headers",
-        help="JSON object of custom HTTP headers.",
+        help="JSON object of custom HTTP headers; replaces the whole set, so include every header to keep.",
     ),
     json_out: bool = typer.Option(False, "--json", "-j"),
 ) -> None:

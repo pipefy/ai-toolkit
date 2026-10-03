@@ -408,6 +408,7 @@ class WebhookTools:
                 url: Optional new HTTPS callback URL.
                 actions: Optional new list of event action strings (non-empty when provided).
                 headers: Optional JSON object of custom HTTP headers for the webhook request.
+                    Replaces the whole set: a key left out is deleted, so send every header to keep.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
