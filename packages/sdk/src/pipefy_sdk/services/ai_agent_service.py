@@ -123,7 +123,7 @@ class AiAgentService:
         )
 
         agent = response.get("createAiAgent", {}).get("agent")
-        if not agent or "uuid" not in agent:
+        if not agent or not agent.get("uuid"):
             raise ValueError(
                 "Unexpected API payload: agent.uuid missing from createAiAgent response"
             )
@@ -183,7 +183,7 @@ class AiAgentService:
         )
 
         agent = response.get("updateAiAgent", {}).get("agent")
-        if not agent or "uuid" not in agent:
+        if not agent or not agent.get("uuid"):
             raise ValueError(
                 "Unexpected API payload: agent.uuid missing from updateAiAgent response"
             )

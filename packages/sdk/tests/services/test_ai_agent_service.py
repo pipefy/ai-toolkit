@@ -853,6 +853,43 @@ async def test_update_agent_missing_uuid_returns_clear_error():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_create_agent_null_uuid_returns_clear_error():
+    """create_agent rejects a null agent.uuid instead of returning "None"."""
+    service, _ = _create_mock_service({"createAiAgent": {"agent": {"uuid": None}}})
+    inp = CreateAiAgentInput(
+        name="Test",
+        repo_uuid="repo-1",
+        instruction="Purpose",
+        behaviors=[minimal_behavior_dict(name="B")],
+    )
+
+    with pytest.raises(ValueError, match="agent.*uuid|unexpected.*payload"):
+        await service.create_agent(inp)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_agent_null_uuid_returns_clear_error():
+    """update_agent rejects a null agent.uuid instead of returning "None"."""
+    service, _ = _create_mock_service(
+        side_effect=[
+            {"aiAgent": {"uuid": "agent-uuid", "disabledAt": None}},
+            {"updateAiAgent": {"agent": {"uuid": None}}},
+        ]
+    )
+    inp = UpdateAiAgentInput(
+        uuid="agent-uuid",
+        name="Agent",
+        repo_uuid="repo-1",
+        behaviors=[minimal_behavior_dict(name="B1")],
+    )
+
+    with pytest.raises(ValueError, match="agent.*uuid|unexpected.*payload"):
+        await service.update_agent(inp)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_toggle_agent_status_enable_calls_execute_query():
     """toggle_agent_status(active=True) calls execute_query with correct variables and returns activation message."""
     service, executor = _create_mock_service({"updateAiAgentStatus": {"success": True}})
