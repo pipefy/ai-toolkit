@@ -15,6 +15,7 @@ Pipefy is fully invested in the AI ecosystem, and its own AI agents already exec
 - `FR-3` Validation without execution. Before a change is applied, the toolkit validates it against the API rules, and applies nothing that fails.
 - `FR-4` Schema discovery. The toolkit returns the part of the schema a call asks for, by keyword or by type name, and never the whole schema.
 - `FR-5` iPaaS reach. The toolkit reaches the flows of a pipe's iPaaS workspace with no second credential for the engine behind them.
+- `FR-6` Guided workflow. When an agent takes on a multi-step Pipefy workflow, the toolkit gives it the procedure as an installed playbook, and the agent runs each step through the MCP server or the CLI.
 
 **Pipefy capabilities.** The list below is the toolkit's reach into the product. Each entry names a sub-domain of Pipefy's domain model, and gives only the operations the toolkit covers, not the whole sub-domain. Pipefy keeps that model internal, so an outside contributor cannot check a name against it, and must not invent one. The Domain expert row in [Stakeholders](#stakeholders) is the way to the model's owners.
 
