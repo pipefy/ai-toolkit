@@ -409,6 +409,8 @@ class WebhookTools:
                 actions: Optional new list of event action strings (non-empty when provided).
                 headers: Optional JSON object of custom HTTP headers for the webhook request.
                     Replaces the whole set: a key left out is deleted, so send every header to keep.
+                    Leaving ``headers`` out also deletes every header: the API stores an empty set,
+                    so an update that changes only ``url`` or ``name`` must resend the headers.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)

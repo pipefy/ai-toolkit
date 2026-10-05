@@ -4126,6 +4126,7 @@ Usage: pipefy webhook update [OPTIONS] WEBHOOK_ID
 │                          provided).                                          │
 │ --headers          TEXT  JSON object of custom HTTP headers; replaces the    │
 │                          whole set, so include every header to keep.         │
+│                          Omitting --headers deletes every header.            │
 │ --json     -j                                                                │
 │ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
