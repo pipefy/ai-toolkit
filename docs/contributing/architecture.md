@@ -560,7 +560,7 @@ The stack has four layers, top to bottom, which is the path a call travels:
 - Service. The domain rules and the domain types. It owns the ports that it needs from the outside, and it imports no framework and no third-party SDK.
 - Gateway. The outbound effect, which is the network, the keychain, the file system, and the log stream. Framework and third-party SDK imports live here too.
 
-Two positions are not layers. A facade is the published face of a layer. A composition root sits off the stack, and [Composition root](#composition-root) describes it. An application holds all four layers, whereas a library holds the bottom two, so the SDK and `packages/auth` hold no application layer.
+Two positions are not layers. A facade is the published face of a layer. A composition root sits off the stack, and [Composition root](#composition-root) describes it. An application holds all four layers, because it turns a caller's intent into operations. A library holds the bottom two, because it executes a named operation, so the SDK and `packages/auth` hold no application layer.
 
 The stack above is not the import direction on every edge. Between packages an import points inward, and an outer package imports an inner one, never the reverse. Inside a package three edges agree with the stack, and the edge between the service layer and a gateway inverts where that edge carries a port.
 
