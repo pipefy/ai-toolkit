@@ -157,7 +157,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 | Authenticity | The toolkit delegates identity to Pipefy and scopes each credential to one caller | [Identity lifetime](#identity-lifetime) |
 | Resource utilization | Tools express outcomes, not endpoints, and a deployment lists only what it selected | [Tool surface](#tool-surface) |
 | Diagnosability | A failure reports its likely cause and the next step in the reply itself | [Response shape](#response-shape) |
-| Stability | Most of the code is presentation or gateway around a small service layer, so a vendor change stops at the part that wraps it | [Dependency rule](#dependency-rule), [Ports and dependency inversion](#ports-and-dependency-inversion) |
+| Stability | The SDK answers in types of its own, so a change to the GraphQL schema stops inside the SDK | [SDK](#sdk), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | Each public surface keeps a deprecated path working for a stated period | [`DEPRECATION.md`](../DEPRECATION.md) |
 | One way in per component: an import, a command, a tool call, and a playbook that carries the procedure for two of them | The MCP server declares a schema for each tool, the CLI takes a command that composes with other commands, and a skill carries the procedure for either. Both applications sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
