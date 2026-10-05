@@ -222,8 +222,6 @@ The cost of an install divided the shared code into Identity and Commons. Becaus
 | Identity | `FR-1` | Owns every credential operation: a browser login, storage, and the validation of an inbound bearer | The package root | `packages/auth` |
 | Commons | none | Holds what carries no Pipefy concept and what more than one package needs, which today is coercion, configuration discovery, local file reads, URL checks, and telemetry headers | The package root | `packages/infra` |
 
-Because the CLI declares no edge to `pipefy-infra`, the diagram draws none, and that package arrives as a transitive of the SDK and of `pipefy-auth`. One CLI module imports it directly, which [Risks and technical debt](#risks-and-technical-debt) carries.
-
 [Architecture constraints](#architecture-constraints) names which constraints each package works inside, while each package's `pyproject.toml` declares the third-party packages it needs, under the rules in [Declared dependencies](#declared-dependencies).
 
 ### Inside each package
