@@ -169,6 +169,8 @@ The table below holds the decisions that the rest of this map rests on. Every go
 
 ### Package decomposition
 
+Each way that a caller can use the toolkit is a separate component. A program imports the SDK. A person or an agent runs a CLI command in a shell. An agent calls an MCP tool through its MCP client. A skill is a playbook installed into the agent, and it teaches the agent which tools and commands to call. Each component serves a different need, which [Stakeholders](#stakeholders) states per component, so each one changes for its own reason. Beneath the components sit libraries that hold what more than one of them needs.
+
 ```mermaid
 flowchart LR
     subgraph toolkit["AI Toolkit"]
@@ -206,13 +208,11 @@ The legend:
 - An arrow between two packages points from the package that declares the dependency to the package it depends on, and [Dependency rule](#dependency-rule) holds those arrows pointing one way.
 - A dashed arrow is a naming dependency rather than a declared one. A skill names only a registered tool or a registered command, and a build check holds that. The check carries its own list of the commands, which [Risks and technical debt](#risks-and-technical-debt) records.
 
-Stakeholder needs differ by how a stakeholder reaches Pipefy, which [Stakeholders](#stakeholders) states per component. So each way in became a component, and each component changes for its own reason. The needs that more than one component shares became the libraries beneath them, and the cost of an install divided that shared code into Identity and Commons. `QR-23` then forbids a tool description that carries a procedure. A model still needs the procedure, so the procedure ships as a playbook beside the code, and the playbook names the tools of the MCP server and the commands of the CLI.
+The cost of an install divided the shared code into Identity and Commons. Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares `pydantic` and `pydantic-settings` and nothing else, so every package takes them cheaply. A single shared package would put the login machinery in every SDK install.
 
-The separation then lets each application ship on its own, and no other component runs as a shared process.
+`QR-23` forbids a tool description that carries a procedure. A model still needs the procedure, so the procedure ships as a playbook beside the code, and the playbook names the tools of the MCP server and the commands of the CLI.
 
 The interface a component offers decides who sizes the answer. A tool call gives the server that job, because one listing carries every tool with its schema and its description. The server must therefore assume that all of it reaches the model, whether or not a caller ever reaches a tool. A command and an import give the caller that job. Only the tool listing needs a bound, and [Tool surface](#tool-surface) holds it.
-
-Because `packages/sdk/pyproject.toml` declares `pipefy-infra` and not `pipefy-auth`, a program that imports the SDK installs no keychain and no crypto stack. `packages/infra/pyproject.toml` declares `pydantic` and `pydantic-settings` and nothing else, so every package takes them cheaply. One shared package instead of two puts the login machinery in every SDK install.
 
 What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. That is why an application holds all four layers of [Dependency rule](#dependency-rule), while a library holds the bottom two. Resolution sits above the SDK. The SDK offers a search as its own operation, over a paginated result, and takes an argument that already identifies a resource. The CLI and the MCP server compose the two, because picking one match out of many is a decision.
 
