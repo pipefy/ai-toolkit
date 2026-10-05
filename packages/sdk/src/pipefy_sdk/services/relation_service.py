@@ -1,7 +1,8 @@
 """GraphQL operations for Pipefy pipe, table, and card relations.
 
-``CreatePipeRelationInput`` / ``UpdatePipeRelationInput`` require all boolean flags; defaults live
-in ``_PIPE_RELATION_CONSTRAINT_DEFAULTS``. ``CreateCardRelationInput.sourceType`` is
+``CreatePipeRelationInput`` / ``UpdatePipeRelationInput`` require all boolean flags. Create fills
+the ones the caller leaves out from ``_PIPE_RELATION_CONSTRAINT_DEFAULTS``; update fills them from
+the relation's current values. ``CreateCardRelationInput.sourceType`` is
 ``PipeRelation`` | ``Field`` (default constant: PipeRelation).
 
 Merged ``**attrs`` / ``extra_input``: ``None`` values are omitted from GraphQL input (leave
@@ -18,6 +19,7 @@ from pipefy_sdk.queries.relation_queries import (
     CREATE_CARD_RELATION_MUTATION,
     CREATE_PIPE_RELATION_MUTATION,
     DELETE_PIPE_RELATION_MUTATION,
+    GET_PIPE_RELATION_CONSTRAINTS_QUERY,
     GET_PIPE_RELATIONS_QUERY,
     GET_TABLE_RELATIONS_QUERY,
     INTERNAL_DELETE_CARD_RELATION_MUTATION,
@@ -111,15 +113,23 @@ class RelationService:
     ) -> dict[str, Any]:
         """Update a pipe relation (`UpdatePipeRelationInput`).
 
+        The API requires every constraint flag on update, so the flags the caller
+        leaves out are read from the relation and sent back unchanged. ``ownFieldMaps``
+        is optional on the API, which keeps the current maps when it is omitted.
+
         Args:
             relation_id: Pipe relation ID.
             name: Relation name (required by the API).
-            **attrs: Extra `UpdatePipeRelationInput` fields (camelCase keys), overriding defaults.
+            **attrs: Extra `UpdatePipeRelationInput` fields (camelCase keys), overriding
+                the relation's current flags.
+
+        Raises:
+            ValueError: No pipe relation has ``relation_id``.
         """
         input_obj: dict[str, Any] = {
             "id": str(relation_id),
             "name": name,
-            **_PIPE_RELATION_CONSTRAINT_DEFAULTS,
+            **await self._current_constraint_flags(relation_id),
         }
         for key, value in attrs.items():
             if value is not None:
@@ -128,6 +138,19 @@ class RelationService:
             UPDATE_PIPE_RELATION_MUTATION,
             {"input": input_obj},
         )
+
+    async def _current_constraint_flags(self, relation_id: str | int) -> dict[str, Any]:
+        """Read the relation's constraint flags, keyed like ``UpdatePipeRelationInput``."""
+        data = await self._executor.execute_query(
+            GET_PIPE_RELATION_CONSTRAINTS_QUERY,
+            {"ids": [str(relation_id)]},
+        )
+        relations = data.get("pipe_relations") or []
+        if not relations:
+            msg = f"Pipe relation '{relation_id}' was not found."
+            raise ValueError(msg)
+        current = relations[0]
+        return {flag: current[flag] for flag in _PIPE_RELATION_CONSTRAINT_DEFAULTS}
 
     async def delete_pipe_relation(self, relation_id: str | int) -> dict[str, Any]:
         """Delete a pipe relation by ID (permanent).
