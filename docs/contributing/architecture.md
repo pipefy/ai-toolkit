@@ -165,7 +165,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 
 ## Building block view
 
-Level 1 draws the four components and the two libraries beneath them, and [Inside each package](#inside-each-package) holds level 2.
+[Package decomposition](#package-decomposition) holds level 1, which is the components and the shared libraries beneath them, and [Inside each package](#inside-each-package) holds level 2.
 
 ### Package decomposition
 
