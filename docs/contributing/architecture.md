@@ -159,7 +159,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 | Diagnosability | A failure reports its likely cause and the next step in the reply itself | [Response shape](#response-shape) |
 | Stability | The SDK answers in types of its own, so a change to the GraphQL schema stops inside the SDK | [SDK](#sdk), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | From v1.0, the published packages follow semantic versioning, so a documented contract breaks only in a major release | [`DEPRECATION.md`](../DEPRECATION.md) |
-| Stakeholders whose needs differ by how they reach Pipefy | The toolkit offers one component per way in, over libraries they share, so a caller installs only the one it uses | [Package decomposition](#package-decomposition) |
+| Callers whose needs differ by how they use the toolkit | The toolkit offers a separate component for each way a caller uses it, over libraries they share, so a caller installs only the one it uses | [Package decomposition](#package-decomposition) |
 | A change to shared behavior that lands as one reviewed change (`QR-26`) | Every package lives in one repository and ships on one version | [`RELEASE.md`](../../RELEASE.md) |
 | A public repository | The repository holds no credential, so a deployment reads its credentials from its own environment | [Architecture constraints](#architecture-constraints), [`docs/config.md`](../config.md) |
 
