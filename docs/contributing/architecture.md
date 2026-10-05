@@ -203,8 +203,7 @@ flowchart LR
 
 The legend:
 
-- An arrow between two packages is a dependency that the package declares in its own `pyproject.toml`, and [Dependency rule](#dependency-rule) holds those arrows pointing one way.
-- An arrow that leaves the box says which package performs that crossing. It carries no label, because [Context and scope](#context-and-scope) says what crosses each one, and which install reaches it.
+- An arrow between two packages points from the package that declares the dependency to the package it depends on, and [Dependency rule](#dependency-rule) holds those arrows pointing one way.
 - A dashed arrow is a naming dependency rather than a declared one. A skill names only a registered tool or a registered command, and a build check holds that. The check carries its own list of the commands, which [Risks and technical debt](#risks-and-technical-debt) records.
 
 Four decisions produced this split. The first is the interface each component offers, which produced the four components: an import, a command, a tool call, and a playbook. Each one owes something different, which [Stakeholders](#stakeholders) states per component, so each one changes for a different reason. The second is shared need, which produced the libraries beneath. The third is the cost of an install, which divided them in two. The fourth is `QR-23`, which forbids a tool description that carries a procedure. A model still needs the procedure, so it ships as a playbook beside the code, which is the one home both front ends reach.
