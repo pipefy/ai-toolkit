@@ -5,6 +5,7 @@ from typing import Any, Literal, cast
 
 from pipefy_sdk import (
     CardSearch,
+    PartialCardUpdateError,
     PipefyClient,
 )
 from pipefy_sdk import (
@@ -23,6 +24,8 @@ from pipefy_mcp.core.tool_error_envelope import (
 )
 from pipefy_mcp.tools.destructive_tool_guard import DestructivePreviewPayload
 from pipefy_mcp.tools.graphql_error_helpers import extract_error_strings
+
+CARD_PARTIAL_UPDATE_CODE = "CARD_UPDATE_PARTIALLY_APPLIED"
 
 
 class UserCancelledError(Exception):
@@ -463,8 +466,43 @@ def map_delete_card_error_to_message(
     )
 
 
+class CardPartialUpdateFailurePayload(TypedDict):
+    """``update_card`` field mode wrote part of the batch and rejected the rest."""
+
+    success: Literal[False]
+    error: ToolErrorDetail
+    card_id: str
+    applied_field_ids: list[str]
+    rejected_fields: list[dict[str, str]]
+    verified: bool
+
+
+def build_card_partial_update_failure(
+    exc: PartialCardUpdateError,
+) -> CardPartialUpdateFailurePayload:
+    """Lift :class:`PartialCardUpdateError` into the tool envelope.
+
+    The split matters to the caller because the obvious recovery is wrong:
+    resending the whole batch re-applies the fields that already landed, and on
+    ``operation: "ADD"`` that appends duplicates. Mirrors
+    ``build_create_agent_partial_failure``, the other write in this server
+    that half succeeds.
+
+    Args:
+        exc: Raised by the SDK card path, carrying the re-read outcome.
+    """
+    body: dict[str, Any] = tool_error(str(exc), code=CARD_PARTIAL_UPDATE_CODE)
+    body["card_id"] = exc.card_id
+    body["applied_field_ids"] = exc.applied_field_ids
+    body["rejected_fields"] = exc.rejected
+    body["verified"] = exc.verified
+    return cast(CardPartialUpdateFailurePayload, body)
+
+
 __all__ = [
     "AddCardCommentErrorPayload",
+    "CARD_PARTIAL_UPDATE_CODE",
+    "CardPartialUpdateFailurePayload",
     "AddCardCommentPayload",
     "DeleteCardErrorPayload",
     "DeleteCardPayload",
@@ -480,6 +518,7 @@ __all__ = [
     "UpdateCommentPayload",
     "UserCancelledError",
     "build_add_card_comment_error_payload",
+    "build_card_partial_update_failure",
     "build_add_card_comment_success_payload",
     "build_delete_card_error_payload",
     "build_delete_card_success_payload",

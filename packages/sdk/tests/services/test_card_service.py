@@ -6,6 +6,7 @@ Tests validate the card-related operations without requiring real API credential
 import pytest
 from _shared.mock_clients import mock_executor
 
+from pipefy_sdk.exceptions import PartialCardUpdateError
 from pipefy_sdk.queries.card_queries import (
     CREATE_CARD_MUTATION,
     FIND_CARDS_QUERY,
@@ -552,3 +553,241 @@ async def test_get_card_relations_uses_query_and_cardId_variable():
     assert query_used is GET_CARD_RELATIONS_QUERY
     assert variables == {"cardId": "999"}
     assert result == expected
+
+
+def _partial_payload(user_errors: list[dict]) -> dict:
+    return {
+        "updateFieldsValues": {
+            "success": False,
+            "userErrors": user_errors,
+            "updatedNode": {"id": "1", "title": "Card"},
+        }
+    }
+
+
+def _readback(field_ids: list[str]) -> dict:
+    return {
+        "card": {
+            "id": "1",
+            "fields": [
+                {
+                    "value": "v",
+                    "updated_at": "2026-09-16T12:00:00-03:00",
+                    "field": {"id": fid},
+                }
+                for fid in field_ids
+            ],
+        }
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_empty_user_errors_returns_payload_unchanged():
+    """The success path stays pass-through: no re-read, raw payload returned."""
+    payload = {
+        "updateFieldsValues": {
+            "success": True,
+            "userErrors": [],
+            "updatedNode": {"id": "1"},
+        }
+    }
+    service, executor = _make_service(payload)
+
+    result = await service.update_card(
+        1, field_updates=[{"field_id": "a", "value": "x"}]
+    )
+
+    assert result == payload
+    assert executor.execute_query.call_count == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_partial_failure_names_applied_and_rejected():
+    """One bad entry: the good one is reported applied, confirmed by the re-read."""
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        _partial_payload(
+            [{"field": ["values", "fieldId", "bad"], "message": "Field not found"}]
+        ),
+        _readback(["good"]),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(
+            1,
+            field_updates=[
+                {"field_id": "good", "value": "x"},
+                {"field_id": "bad", "value": "y"},
+            ],
+        )
+
+    exc = excinfo.value
+    assert exc.card_id == "1"
+    assert exc.applied_field_ids == ["good"]
+    assert exc.rejected == [{"field_id": "bad", "message": "Field not found"}]
+    assert exc.verified is True
+    assert "good" in str(exc)
+    assert "Field not found" in str(exc)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_decodes_json_encoded_user_error_message():
+    """``message`` arrives JSON-encoded on validation errors; it is flattened once."""
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        _partial_payload(
+            [
+                {
+                    "field": ["values", "fieldId", "contact_email"],
+                    "message": '["Value \\"not-an-email\\" is not in a valid format"]',
+                }
+            ]
+        ),
+        _readback([]),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(
+            1, field_updates=[{"field_id": "contact_email", "value": "not-an-email"}]
+        )
+
+    assert excinfo.value.rejected == [
+        {
+            "field_id": "contact_email",
+            "message": 'Value "not-an-email" is not in a valid format',
+        }
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_applied_set_ignores_updated_node():
+    """``updatedNode`` can omit a field that persisted, so the re-read decides."""
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        {
+            "updateFieldsValues": {
+                "success": False,
+                "userErrors": [
+                    {"field": ["values", "fieldId", "bad"], "message": "nope"}
+                ],
+                "updatedNode": {"id": "1", "fields": []},
+            }
+        },
+        _readback(["good"]),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(
+            1,
+            field_updates=[
+                {"field_id": "good", "value": "x"},
+                {"field_id": "bad", "value": "y"},
+            ],
+        )
+
+    assert excinfo.value.applied_field_ids == ["good"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_marks_unverified_when_readback_fails():
+    """A failed re-read reports nothing applied and says so, rather than guessing."""
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        _partial_payload([{"field": ["values", "fieldId", "bad"], "message": "nope"}]),
+        RuntimeError("read failed"),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(
+            1,
+            field_updates=[
+                {"field_id": "good", "value": "x"},
+                {"field_id": "bad", "value": "y"},
+            ],
+        )
+
+    exc = excinfo.value
+    assert exc.verified is False
+    assert exc.applied_field_ids == []
+    assert "Could not re-read" in str(exc)
+    assert "Retry only" in str(exc)
+    assert "read it" not in str(exc)
+
+
+@pytest.mark.unit
+def test_partial_card_update_error_unverified_names_retry_only():
+    """Unverified copy names retry-only-rejected; it does not tell the caller to re-fetch."""
+    exc = PartialCardUpdateError(
+        card_id="1",
+        applied_field_ids=[],
+        rejected=[{"field_id": "a", "message": "nope"}],
+        verified=False,
+    )
+    assert "Retry only" in str(exc)
+    assert "read it" not in str(exc)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field_path", [None, []])
+async def test_update_fields_values_unattributed_user_error_does_not_mark_applied(
+    field_path,
+):
+    """A missing or empty ``field`` path cannot subtract from the requested set.
+
+    A pre-filled id on the card is therefore not reported as written by this batch.
+    """
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        _partial_payload([{"field": field_path, "message": "something broke"}]),
+        _readback(["a"]),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(1, field_updates=[{"field_id": "a", "value": "x"}])
+
+    exc = excinfo.value
+    assert exc.applied_field_ids == []
+    assert "something broke" in str(exc)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_fields_values_user_error_without_path_keeps_message():
+    """An empty ``field`` path still carries the API's message to the caller."""
+    executor = mock_executor()
+    executor.execute_query.side_effect = [
+        _partial_payload([{"field": [], "message": "something broke"}]),
+        _readback([]),
+    ]
+    service = CardService(executor=executor)
+
+    with pytest.raises(PartialCardUpdateError) as excinfo:
+        await service.update_card(1, field_updates=[{"field_id": "a", "value": "x"}])
+
+    assert excinfo.value.rejected == [{"field_id": "", "message": "something broke"}]
+    assert "something broke" in str(excinfo.value)
+    assert "no per-field detail returned" not in str(excinfo.value)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_attribute_mode_update_card_does_not_inspect_user_errors():
+    """``updateCard`` has no ``userErrors`` channel; that path is untouched."""
+    payload = {"updateCard": {"card": {"id": "1", "title": "New"}}}
+    service, executor = _make_service(payload)
+
+    result = await service.update_card(1, title="New")
+
+    assert result == payload
+    assert executor.execute_query.call_count == 1

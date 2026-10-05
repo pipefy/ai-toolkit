@@ -11,6 +11,7 @@ from pipefy_sdk import (
     CardSearch,
     CommentInput,
     DeleteCommentInput,
+    PartialCardUpdateError,
     PipefyId,
     UpdateCommentInput,
     copy_card_search,
@@ -61,6 +62,7 @@ from pipefy_mcp.tools.pipe_tool_helpers import (
     _merge_phase_and_start_form_field_values,
     build_add_card_comment_error_payload,
     build_add_card_comment_success_payload,
+    build_card_partial_update_failure,
     build_delete_card_error_payload,
     build_delete_card_success_payload,
     build_delete_comment_error_payload,
@@ -1046,6 +1048,7 @@ class PipeTools:
             label_ids: list[PipefyId] | None = None,
             due_date: str | None = None,
             field_updates: list[dict] | None = None,
+            debug: bool = False,
         ) -> dict:
             """Update a card's fields and attributes with intelligent mutation selection.
 
@@ -1074,10 +1077,23 @@ class PipeTools:
                         - field_id (str): The field ID to update
                         - value (any): The value(s) to set
                         - operation (str, optional): "ADD", "REMOVE", or "REPLACE" (default)
+                debug: When True, append GraphQL codes and correlation_id on errors.
 
             Returns:
                 dict: GraphQL response with updated card information including
                       phase, assignees, labels, fields, and timestamps
+
+            **Field Mode is per-field, not all-or-nothing.** ``updateFieldsValues``
+            validates each entry in ``field_updates`` on its own, so one bad entry
+            can leave the rest written. When that happens the tool returns
+            ``success: false`` with code ``CARD_UPDATE_PARTIALLY_APPLIED``,
+            ``applied_field_ids`` (confirmed by a re-read of the card, not by the
+            mutation's own ``updatedNode``, which has been seen omitting a field
+            that did persist) and ``rejected_fields`` carrying the API's message per
+            field. Retry only the rejected entries: resending an applied one with
+            ``operation: "ADD"`` appends a duplicate. When ``verified`` is false the
+            re-read did not run, so retry only the rejected fields; do not resend
+            an ADD operation for any other requested id.
 
             Examples:
                 update_card(card_id=123, title="New Title")
@@ -1090,14 +1106,24 @@ class PipeTools:
                 ])
             """
             client = get_pipefy_client(ctx)
-            return await client.update_card(
-                card_id=card_id,
-                title=title,
-                assignee_ids=assignee_ids,
-                label_ids=label_ids,
-                due_date=due_date,
-                field_updates=field_updates,
-            )
+            try:
+                return await client.update_card(
+                    card_id=card_id,
+                    title=title,
+                    assignee_ids=assignee_ids,
+                    label_ids=label_ids,
+                    due_date=due_date,
+                    field_updates=field_updates,
+                )
+            except PartialCardUpdateError as exc:
+                return build_card_partial_update_failure(exc)
+            except Exception as exc:  # noqa: BLE001
+                return handle_tool_graphql_error(
+                    exc,
+                    "Update card failed.",
+                    debug=debug,
+                    resource_kind="phase_field",
+                )
 
         @mcp.tool(
             annotations=ToolAnnotations(
@@ -1220,8 +1246,12 @@ class PipeTools:
                     ``fields`` directly to the API. Recommended for AI agent workflows.
 
             Returns:
-                A write returns the ``update_card`` response. A no-write envelope
-                carries ``success``, ``message``, ``phase_id``, and ``phase_name``.
+                A write returns the ``update_card`` response. A partial
+                ``updateFieldsValues`` rejection returns the same
+                ``CARD_UPDATE_PARTIALLY_APPLIED`` envelope as ``update_card``
+                field mode (``applied_field_ids``, ``rejected_fields``,
+                ``verified``). A no-write envelope carries ``success``,
+                ``message``, ``phase_id``, and ``phase_name``.
                 ``skipped_field_ids`` is present on every no-write envelope when
                 no form was shown (the list may be empty); on a write result only
                 when at least one key was dropped; absent after an accepted form.
@@ -1246,6 +1276,8 @@ class PipeTools:
                     )
                 except MalformedFieldDefinitionError as exc:
                     return tool_error(str(exc))
+                except PartialCardUpdateError as exc:
+                    return build_card_partial_update_failure(exc)
 
             try:
                 phase_fields_result = await client.get_phase_fields(
@@ -1304,10 +1336,13 @@ class PipeTools:
                 for field_id, value in field_data.items()
             ]
 
-            api_response = await client.update_card(
-                card_id=card_id,
-                field_updates=field_updates,
-            )
+            try:
+                api_response = await client.update_card(
+                    card_id=card_id,
+                    field_updates=field_updates,
+                )
+            except PartialCardUpdateError as exc:
+                return build_card_partial_update_failure(exc)
             if dropped:
                 return {**api_response, "skipped_field_ids": dropped}
             return api_response
