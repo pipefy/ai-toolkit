@@ -158,7 +158,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 | Resource utilization | Tools express outcomes, not endpoints, and a deployment lists only what it selected | [Tool surface](#tool-surface) |
 | Diagnosability | A failure reports its likely cause and the next step in the reply itself | [Response shape](#response-shape) |
 | Stability | The SDK answers in types of its own, so a change to the GraphQL schema stops inside the SDK | [SDK](#sdk), [Ports and dependency inversion](#ports-and-dependency-inversion) |
-| Backward compatibility | Each public surface keeps a deprecated path working for a stated period | [`DEPRECATION.md`](../DEPRECATION.md) |
+| Backward compatibility | From v1.0, the published packages follow semantic versioning, so a documented contract breaks only in a major release | [`DEPRECATION.md`](../DEPRECATION.md) |
 | One way in per component: an import, a command, a tool call, and a playbook that carries the procedure for two of them | The MCP server declares a schema for each tool, the CLI takes a command that composes with other commands, and a skill carries the procedure for either. Both applications sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
 | A layer order that holds without human code review (`QR-14`) | Each package declares what it must not import, and CI fails a merge that breaks the order | [Dependency rule](#dependency-rule) |
 | A change to shared behavior that lands in one pull request (`QR-26`) | Every package lives in one repository and ships on one version. One test run covers all of them | [`RELEASE.md`](../../RELEASE.md) |
