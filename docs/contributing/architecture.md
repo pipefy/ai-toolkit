@@ -156,7 +156,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 |---|---|---|
 | Authenticity | The toolkit delegates identity to Pipefy and scopes each credential to one caller | [Identity lifetime](#identity-lifetime) |
 | Resource utilization | Tools express outcomes, not endpoints, and a deployment lists only what it selected | [Tool surface](#tool-surface) |
-| Diagnosability | An application turns input into typed values at its edge, so nothing unchecked reaches the code behind it. Every reply has one shape, and a failure says what probably went wrong and what to do next | [Response shape](#response-shape), [Composition root](#composition-root) |
+| Diagnosability | A failure reports its likely cause and the next step in the reply itself | [Response shape](#response-shape) |
 | Stability | Most of the code is presentation or gateway around a small service layer, so a vendor change stops at the part that wraps it | [Dependency rule](#dependency-rule), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | Each public surface keeps a deprecated path working for a stated period | [`DEPRECATION.md`](../DEPRECATION.md) |
 | One way in per component: an import, a command, a tool call, and a playbook that carries the procedure for two of them | The MCP server declares a schema for each tool, the CLI takes a command that composes with other commands, and a skill carries the procedure for either. Both applications sit over the same libraries, and dependencies point one way, so no application imports another | [Package decomposition](#package-decomposition) |
