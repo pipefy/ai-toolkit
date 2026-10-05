@@ -639,6 +639,8 @@ No global choice sets the identifier form, because each component picks its own.
 
 `QR-28` demands that an inexact name still finds its resource. A pipe search and a table search take a substring first, and then a similarity score above a threshold.
 
+Resolution sits above the SDK, because picking one match out of many is a decision. Today the caller makes it: the SDK, the CLI and the MCP server each offer a search that returns the matches. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) moves the pick into the MCP tool, which takes the name itself, and the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt) carries the gap.
+
 `ARG-1` in [`conventions.md`](conventions.md) holds each argument to one form, while [`docs/mcp/tools/identifiers.md`](../mcp/tools/identifiers.md) names which form each MCP tool and argument takes. These identifier rules come from the decision record [ADR-0002](adr/0002-typed-single-form-contract.md).
 
 **By component.**
