@@ -212,8 +212,6 @@ The cost of an install divided the shared code into Identity and Commons. Becaus
 
 `QR-23` forbids a tool description that carries a procedure. A model still needs the procedure, so the procedure ships as a playbook beside the code, and the playbook names the tools of the MCP server and the commands of the CLI.
 
-What a call carries then decides where a behavior lives. An import names an operation, so the SDK executes it. A command and a tool call state an intent, so the CLI and the MCP server own intent, orchestration, and outcomes. That is why an application holds all four layers of [Dependency rule](#dependency-rule), while a library holds the bottom two. Resolution sits above the SDK. The SDK offers a search as its own operation, over a paginated result, and takes an argument that already identifies a resource. The CLI and the MCP server compose the two, because picking one match out of many is a decision.
-
 | Name | Functions | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Skills | none | Teaches an LLM agent a Pipefy workflow over the MCP server and the CLI, and carries the procedure that a tool description must not | A `SKILL.md` installed into an agent harness | `skills/` |
