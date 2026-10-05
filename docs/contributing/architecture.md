@@ -215,12 +215,12 @@ The cost of an install divided the shared code into Identity and Commons. Becaus
 
 | Name | Functions | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
-| Skills | none | Teaches an LLM agent a Pipefy workflow over the MCP server and the CLI, and carries the procedure that a tool description must not | A `SKILL.md` installed into an agent harness | `skills/` |
-| MCP server | `FR-1`, `FR-2`, `FR-3`, `FR-4`, `FR-5` | Serves the domain to a call that states an intent, and keeps identifiers internal to the tool | A tool call, over stdio or HTTP | `packages/mcp` |
-| CLI | `FR-1`, `FR-2`, `FR-3`, `FR-4` | Serves the domain to a call that composes with the next one, thin over the SDK, with discovery as a separate command | A command in a shell | `packages/cli` |
-| SDK | `FR-3` | Executes a named operation deterministically and returns a domain value | The package root, held closed by a check | `packages/sdk` |
-| Identity | `FR-1` | Owns every credential operation: a browser login, storage, and the validation of an inbound bearer | The package root, with nothing holding it closed | `packages/auth` |
-| Commons | none | Holds what carries no Pipefy concept and what more than one package needs, which today is coercion, configuration discovery, local file reads, URL checks, and telemetry headers | The package root, with nothing holding it closed | `packages/infra` |
+| SDK | `FR-3` | Executes a named operation deterministically and returns a domain value | The package root | `packages/sdk` |
+| CLI | `FR-1`, `FR-2`, `FR-3`, `FR-4` | Serves the domain to a command whose output the next command can parse | A command in a shell | `packages/cli` |
+| MCP server | `FR-1`, `FR-2`, `FR-3`, `FR-4`, `FR-5` | Serves the domain to a call that states an intent | A tool call, over stdio or HTTP | `packages/mcp` |
+| Skills | `FR-6` | Teaches an LLM agent a Pipefy workflow over the MCP server and the CLI, and carries the procedure that a tool description must not | A `SKILL.md` installed into an agent harness | `skills/` |
+| Identity | `FR-1` | Owns every credential operation: a browser login, storage, and the validation of an inbound bearer | The package root | `packages/auth` |
+| Commons | none | Holds what carries no Pipefy concept and what more than one package needs, which today is coercion, configuration discovery, local file reads, URL checks, and telemetry headers | The package root | `packages/infra` |
 
 Because the CLI declares no edge to `pipefy-infra`, the diagram draws none, and that package arrives as a transitive of the SDK and of `pipefy-auth`. One CLI module imports it directly, which [Risks and technical debt](#risks-and-technical-debt) carries.
 
