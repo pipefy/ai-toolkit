@@ -161,7 +161,6 @@ The table below holds the decisions that the rest of this map rests on. Every go
 | Backward compatibility | From v1.0, the published packages follow semantic versioning, so a documented contract breaks only in a major release | [`DEPRECATION.md`](../DEPRECATION.md) |
 | Stakeholders whose needs differ by how they reach Pipefy | The toolkit offers one component per way in, over libraries they share, so a caller installs only the one it uses | [Package decomposition](#package-decomposition) |
 | A change to shared behavior that lands as one reviewed change (`QR-26`) | Every package lives in one repository and ships on one version | [`RELEASE.md`](../../RELEASE.md) |
-| A smaller learning curve for a contributor | The toolkit is written in Python, which was the default language for work on artificial intelligence when this project began | [Architecture constraints](#architecture-constraints) |
 | A commitment to ship in the open | A deployment reads its configuration and its credentials from its own environment | [Architecture constraints](#architecture-constraints), [`CONTRIBUTING.md`](../../CONTRIBUTING.md) |
 
 ## Building block view
