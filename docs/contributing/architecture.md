@@ -526,8 +526,6 @@ The MCP server under the remote profile resolves a credential once per request. 
 
 The MCP client signs its user in and holds the credential that comes back. The server is a resource server: it accepts a bearer, checks it, and acts on it, and it issues none. So the first scenario's login has no counterpart here.
 
-The scenario starts mid-flight. The process is already running and already serving other callers, and it holds no caller credential from its startup.
-
 ```mermaid
 sequenceDiagram
     autonumber
