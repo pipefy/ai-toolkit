@@ -53,7 +53,7 @@ Full env-var reference and `config.toml` precedence: [`docs/config.md`](config.m
 claude mcp add --transport http --scope user --client-id pipefy-mcp pipefy https://mcp.pipefy.com/mcp
 ```
 
-Complete the browser login when prompted (`claude mcp login pipefy` if the client reports *Needs authentication*). If a local or plugin Pipefy MCP server is already registered, remove it first — under whatever name it carries, since a second registration shadows this one and a plugin-provided server ranks below user scope. `./uninstall.sh --scan` names them; the switch is in [`docs/uninstall.md`](uninstall.md#to-hosted). Need the CLI and slash commands too? Use the [Claude Code plugin](#2-claude-code-plugin) instead. Hand-wired local stdio: [`packages/mcp/README.md`](../packages/mcp/README.md).
+Complete the browser login when prompted (`claude mcp login pipefy` if the client reports *Needs authentication*). If a local or plugin Pipefy MCP server is already registered, remove it first — under whatever name it carries, since a second registration shadows this one and a plugin-provided server ranks below user scope. `./uninstall.sh --scan` names them; the switch is in [`docs/uninstall.md`](uninstall.md#to-hosted). Need the CLI and slash commands too? Use the [Claude Code plugin](#2-claude-code-plugin) instead. Hand-wired local stdio: [Wire a local server by hand](#wire-a-local-server-by-hand).
 
 ## 2. Claude Code plugin
 
@@ -66,7 +66,7 @@ Complete the browser login when prompted (`claude mcp login pipefy` if the clien
 /pipefy:pipefy-login
 ```
 
-Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio: [`packages/mcp/README.md`](../packages/mcp/README.md). Keychain errors: [`docs/cli/auth.md`](cli/auth.md#troubleshooting). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
+Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio: [Wire a local server by hand](#wire-a-local-server-by-hand). Keychain errors: [`troubleshooting.md`](troubleshooting.md#sign-in-and-credentials). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ## 3. Quick-install script
 
@@ -93,7 +93,7 @@ pipefy --install-completion bash           # or zsh, fish
 pipefy auth login                          # browser OAuth, session in OS keychain
 ```
 
-CLI deep-dives (auth precedence, `--token` / `PIPEFY_TOKEN`, parity matrix): [`packages/cli/README.md`](../packages/cli/README.md) and [`docs/cli/`](cli/README.md).
+CLI guides (auth precedence, `--token` / `PIPEFY_TOKEN`, the parity matrix): [`docs/cli/`](cli/README.md).
 
 ## 5. Skills only
 
@@ -113,6 +113,23 @@ Catalog and authoring guide: [`skills/README.md`](../skills/README.md).
 Install **Pipefy** from the Cursor Marketplace (the listing tracks `main`). Complete the browser sign-in when Cursor prompts, then fully restart Cursor before the first tool call. No `uv`, no CLI, no token paste. This path has no `/install` or `/pipefy-login` commands (those files belong to the [Claude Code plugin](#2-claude-code-plugin), where they surface namespaced as `/pipefy:install` and `/pipefy:pipefy-login`). Skills may appear in the slash palette as `/pipefy-*`.
 
 This path and any user-config Pipefy MCP entry (including one written by `install.sh --client cursor`) both occupy Cursor's MCP list. They are mutually exclusive — the same rule as mixing hosted HTTP with local stdio. The registration key is free text: delete the matching key from `~/.cursor/mcp.json` (Windows: `%USERPROFILE%\.cursor\mcp.json`) and keep the Marketplace plugin. `./uninstall.sh --scan` prints the name it found; the switch is in [`docs/uninstall.md`](uninstall.md#to-the-cursor-marketplace-plugin).
+
+## Wire a local server by hand
+
+Use this path when you want the full local tool surface in Claude Code without the Quick-install script. Register exactly one Pipefy MCP server: if the [Claude Code plugin](#2-claude-code-plugin) is installed, uninstall it or disable its server first, because its `.mcp.json` points at the hosted URL.
+
+1. Register the server for your user. The `-e` flags pass the service account credentials, and `--scope user` keeps them out of any project's `.mcp.json`:
+
+   ```bash
+   claude mcp add --scope user pipefy \
+     -e PIPEFY_SERVICE_ACCOUNT_CLIENT_ID=<YOUR_CLIENT_ID> \
+     -e PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET=<YOUR_CLIENT_SECRET> \
+     -- uvx pipefy-mcp-server
+   ```
+
+2. Run `claude mcp get pipefy`, and confirm that the server connects.
+
+To act as your own user instead of a service account, leave out both `-e` flags, install the [CLI](#4-cli-only), and run `pipefy auth login` once. The server reads the session that the CLI stores. [`config.md`](config.md) lists every variable that the server reads.
 
 ## Uninstalling, and switching between paths
 

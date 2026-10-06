@@ -11,4 +11,4 @@ client = PipefyClient(...)
 card = await client.get_card(card_id="12345")
 ```
 
-[`docs/sdk/README.md`](../../docs/sdk/README.md) explains how to use the library, and [`docs/config.md`](../../docs/config.md) lists the `PIPEFY_*` variables that its settings read.
+[`docs/sdk/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/sdk/README.md) explains how to use the library, and [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md) lists the `PIPEFY_*` variables that its settings read.

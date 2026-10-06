@@ -17,7 +17,7 @@ Choose a connection path below, then read the [MCP reference](references/mcp.md)
 
 **Canonical install snippets** live only in [`docs/install.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md) — there is no second copy of the commands. This skill is the agent **checklist** — print or run the install guide blocks verbatim; do not invent alternate commands.
 
-Edge cases: [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/packages/mcp/README.md). Auth: [`docs/cli/auth.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/cli/auth.md). Env: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
+Edge cases: [`docs/troubleshooting.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/troubleshooting.md). Auth: [`docs/cli/auth.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/cli/auth.md). Env: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
 
 ## When to use
 

@@ -12,6 +12,8 @@ Sort by audience first, then by kind.
 - Docs for the parties who use the toolkit live by application under `docs/mcp/`, `docs/cli/`, and `docs/sdk/`.
 - A durable, cross-cutting one of those lives at the `docs/` root. A fast-changing one is generated instead (see below).
 
+A package README is the page PyPI shows for that distribution, because each `pyproject.toml` names it as the `readme`. It says what the package is, gives one install line and at most one example, and links to the guides under `docs/`. Write those links as absolute GitHub URLs, because PyPI cannot resolve a relative link. Everything else about a surface lives under `docs/<surface>/`, so a reader never has to guess which of two READMEs holds a fact.
+
 Then keep a doc to one kind where practical. The Diataxis kinds are tutorial, how-to, reference, and explanation. A file that mixes several is a split candidate.
 
 ## Decision records

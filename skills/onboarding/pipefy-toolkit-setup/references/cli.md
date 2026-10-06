@@ -20,7 +20,7 @@ For local/plugin/CLI installs, run `pipefy auth login` or the Claude Code `/pipe
 | `list_organizations` | `pipefy org list` | Yes |
 | `get_organization` | `pipefy org get` | Yes |
 
-If `pipefy: command not found`, use `/pipefy:install` or [CLI](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#4-cli-only); check `$HOME/.local/bin`. On macOS, `errSecInvalidOwnerEdit` is a keychain write error; see [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/packages/mcp/README.md).
+If `pipefy: command not found`, use `/pipefy:install` or [CLI](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#4-cli-only); check `$HOME/.local/bin`. On macOS, `errSecInvalidOwnerEdit` is a keychain write error; see [`docs/troubleshooting.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/troubleshooting.md#sign-in-and-credentials).
 
 The Cursor Marketplace plugin installs no CLI. Do not use `pipefy auth login` or `pipefy --version` for that path. The Quick install fallback uses `--client cursor` and installs the local CLI and server; explain that change before offering it.
 
