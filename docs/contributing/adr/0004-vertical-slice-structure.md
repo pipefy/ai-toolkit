@@ -49,4 +49,4 @@ Each of the three packages divides into these vertical slices:
 
 Two capabilities stay cross-cutting, not slices: Communication (email) and the Identity facet (`packages/auth`).
 
-Two groupings exist today, and neither one is this target. `DOMAINS` in `packages/mcp/src/pipefy_mcp/tools/toolsets.py` partitions the tool surface by feature area, and it drives the `--toolsets` flag and the `PIPEFY_MCP_TOOLSETS` variable. The CLI groups its commands per resource. Whether either grouping moves to the slice names is a question that [`architecture.md`](../architecture.md) carries under `Known gaps`, because a rename there breaks a published vocabulary.
+Two groupings exist today, and neither one is this target. `DOMAINS` in `packages/mcp/src/pipefy_mcp/tools/toolsets.py` partitions the tool surface by feature area, and it drives the `--toolsets` flag and the `PIPEFY_MCP_TOOLSETS` variable. The CLI groups its commands per resource. Whether either grouping moves to the slice names is a question that [`architecture.md`](../architecture.md) carries under `Risks and technical debt`, because a rename there breaks a published vocabulary.

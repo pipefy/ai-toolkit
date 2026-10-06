@@ -15,7 +15,7 @@ Tool contracts follow four standards. Arguments are flat and explicit: typed pri
 
 A destructive description states that the effect is permanent, and the annotations state the kind of change. The client owns the prompt and the API owns authorization, so neither one belongs in a tool body. Where the effect reaches past the arguments the caller passed, the tool offers a dry run that reports the reach and changes nothing.
 
-A value the caller cannot supply arrives as a resolved parameter. The tool declares the parameter with its resolver, and the resolver decides between a question to the client and a plain value. The resolver owns the fallback, so a client that answers nothing still receives a value. No tool body reads the negotiated protocol revision or the shape of its channel, and no tool returns the batched-input result itself.
+A value the caller cannot supply arrives as a resolved parameter. The tool declares the parameter with its resolver, and the resolver decides between a question to the client and a plain value. The resolver owns the fallback. Where the client answers nothing and only one value fits, the tool receives that value, and where more than one fits, the call fails and names the input it lacked. No tool body reads the negotiated protocol revision or the shape of its channel, and no tool returns the batched-input result itself.
 
 ## Consequences
 

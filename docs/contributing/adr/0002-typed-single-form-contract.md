@@ -11,7 +11,7 @@ The SDK was a thin GraphQL passthrough. Most facade methods returned a bare `dic
 
 The SDK public contract is explicit, single-form, and typed in both directions.
 
-An argument names exactly one form and never branches on a runtime value to guess intent. A second form is a separate named field, a `_by_*` sibling, or a caller-constructed sum type (`PipeRef = ById | ByUuid`) matched exhaustively. Identifier form is a per-application choice: the SDK is numeric-first, the CLI takes deterministic ids with name resolution behind an opt-in flag, and the MCP server takes the human intent with an id fast-path field.
+An argument names exactly one form and never branches on a runtime value to guess intent. A second form is a separate named field, a `_by_*` sibling, or a caller-constructed sum type (`PipeRef = ById | ByUuid`) matched exhaustively. Identifier form is a choice per component: the SDK is numeric-first, the CLI takes deterministic ids with name resolution behind an opt-in flag, and the MCP server takes the human intent with an id fast-path field.
 
 Methods return domain models named in Pipefy vocabulary, not wire dicts. Wire concerns terminate at the SDK: casing settles to one Python-idiomatic form, `edges`/`node` is dropped, and an id is carried as the `str` the GraphQL `ID` scalar promises. The wire-to-domain mapping is a `from_wire` classmethod invoked at the facade, the same boundary that runs deterministic resolution. A thin per-domain wire mirror stays a pure passthrough and doubles as the uuid fast-path, added only where a caller earns it.
 
