@@ -12,9 +12,8 @@ Material here describes **`pipefy-cli`** (Typer): terminal workflows, flags, and
 ## Quick conventions
 
 - **Output:** commands default to Rich tables/text; add **`--json`** for machine-readable stdout.
-- **Destructive actions:** commands that delete or mutate critical data require **`--yes`** when not using `--json`-driven automation (see each command’s `--help`).
+- **Destructive actions:** a command that deletes asks for confirmation, and **`--yes`** skips the prompt.
 - **Configuration:** same **`PIPEFY_*`** keys as the MCP server; see **[`../config.md`](../config.md)**.
-- **`pipefy org get`:** pass the numeric organization id as the argument, or set optional **`PIPEFY_ORG_ID`** and omit the argument (same value you would read from `pipefy pipe list --json`).
-- **`pipefy graphql exec`:** pass GraphQL variables as a JSON object via **`--vars`** (not `--variables`). Example: `--vars '{"id":"301"}'`.
+- **Flags:** `pipefy <command> --help` documents each command's arguments and flags.
 
 Implementation entrypoint: `packages/cli/src/pipefy_cli/main.py`. Parity with MCP tools: **[`../parity.md`](../parity.md)**.
