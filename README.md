@@ -211,7 +211,7 @@ Deprecation and semver (post-1.0): [`docs/DEPRECATION.md`](docs/DEPRECATION.md).
 
 The local server registers the full catalog. Canonical names: `PIPEFY_TOOL_NAMES` in [`packages/mcp/src/pipefy_mcp/tools/registry.py`](packages/mcp/src/pipefy_mcp/tools/registry.py). The hosted URL (Marketplace plugin and Hosted MCP) serves the remote-safe floor instead: it withholds the tools whose input is a file on your machine.
 
-Tool descriptions and `Args:` blocks come from Python docstrings (what MCP clients show to models). Per-area reference docs cover parameters, edge cases, and cross-cutting behavior.
+Tool descriptions and `Args:` blocks come from Python docstrings (what MCP clients show to models), and the read-only and destructive hints come from the tool annotations. Per-area reference docs cover the concepts, edge cases, and cross-cutting behavior that the docstrings do not state.
 
 **Shared conventions** (pagination, IDs, permissions, error shape): [`docs/mcp/tools/cross-cutting.md`](docs/mcp/tools/cross-cutting.md).
 
