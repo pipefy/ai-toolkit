@@ -56,39 +56,6 @@ Empty lists (`totalCount: 0`) are valid: the pipe or automation may have no rece
 
 ---
 
-## AI Agent log tools
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_ai_agent_logs` | Yes | Lists AI agent execution logs for a pipe (`repo_uuid`). Filter by `status` (`processing`, `failed`, `success`) and `search_term`. Paginated with `first` / `after`. |
-| `get_ai_agent_log_details` | Yes | Detailed log by UUID: execution time, finish timestamp, and `tracingNodes` — step-by-step trace with per-node status (`success`, `failed`, `skipped`, `conditions_not_met`). |
-
-## Automation log tools
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_automation_logs` | Yes | Lists execution logs for a specific automation (`automation_id`). Filter by `status` and `search_term`; paginated. |
-| `get_automation_logs_by_repo` | Yes | Lists automation logs for all automations in a pipe (`repo_id`). Same filters and pagination. |
-
-## Usage & credits tools
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_agents_usage` | Yes | AI agent usage stats for an org within a date range. `filter_date_from` / `filter_date_to` (ISO8601). Optional `filters`, `search`, `sort`. Returns total **AI credits** consumed and per-agent breakdown. Takes org **UUID or numeric** (see Identifiers). |
-| `get_automations_usage` | Yes | Automation usage stats for an org. Same date-range and filter inputs as `get_agents_usage`. Returns total **execution count** and per-automation breakdown (not the same unit as AI credits). Takes org **UUID or numeric**. |
-| `get_ai_credit_usage` | Yes | AI credit dashboard for an org: credit limit, total consumption, per-resource breakdown (AI Agents vs Assistants), addon status. `organization_uuid` may be the org UUID or the **numeric organization id** (string). `period`: `current_month`, `last_month`, or `last_3_months`. |
-| `get_automation_execution_metrics` | Yes | Per-automation rolling-window metrics (`totalRuns`, `successRate`, `failureRate`, `averageDuration`, `lastRun`). Uses numeric `organization_id`; optional `automation_ids` / filters / sort; paginated (`first` ≤ 50, `after`). Partial success returns `partial_errors` for denied ids. |
-
-## Automation export tools
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `export_automation_jobs` | No | Triggers async export of automation job history for an org. `period`: `current_month`, `last_month`, or `last_3_months`. Uses `organization_id` (numeric id). Also delivers the file to the requesting user in the Pipefy UI when processing completes. |
-| `get_automation_jobs_export` | Yes | Poll by `export_id` (from `export_automation_jobs`). Returns `status` and `fileUrl` when the API exposes a signed download link. Does not download the spreadsheet body. |
-| `get_automation_jobs_export_csv` | Yes | When status is `finished`, downloads the xlsx from the API’s signed URL (Pipefy https hosts only), converts the **first sheet** to CSV, returns `csv` plus metadata. Limits: `max_output_chars` (256–2_000_000), `max_download_bytes` (4 KiB–80 MiB). |
-
----
-
 ## See also
 
 - [Automations & AI](automations-and-ai.md) — `get_automations` / `get_pipe` when resolving ids before calling observability tools.
