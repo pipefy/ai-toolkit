@@ -4,22 +4,6 @@ Discovery and management of the LLM providers an organization can use: custom (B
 
 These are the counterpart to the `providerId` / `systemProviderId` fields on AI agent behaviors (see [Automations & AI](automations-and-ai.md)): use `get_llm_providers` to find the IDs a behavior accepts, and the write tools to manage the custom providers behind them.
 
----
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_llm_providers` | Yes | Lists custom and system providers in one union, paginated (`first` default 50, `after`) with `only_active` (filters custom providers only). Each node carries `type` (`byom` = custom, `system` = Pipefy-managed) plus `configuration` (secrets redacted). |
-| `get_available_ai_models` | Yes | Lists the model names a provider vendor exposes. `provider_name` is one of `openai`, `azure_openai`, `amazon_bedrock`, `custom`, `google_vertex_ai`, `oracle_oci`, `anthropic` (the API validates membership). |
-| `get_default_llm_provider` | Yes | Resolves the default provider for an owner: `owner_type` is `organization` (default), `assistant`, or `behavior`. The returned `type` says whether the default is custom or system. |
-| `get_llm_provider_dependencies` | Yes | Lists the owners (`ownerId` / `ownerType`) that depend on a provider — the blockers to check before deactivating or removing one. Paginated, with `total_count`. |
-| `validate_llm_provider_access` | Yes | Probes whether the current credential can read the organization's providers, classifying failures into structured problems (permission denied / not found / invalid arguments) instead of opaque errors. |
-| `create_llm_provider` | No | Creates a custom (BYOM) provider. Configuration comes from a local JSON file (`configuration_file_path`), never inline; the created provider is returned without its configuration. |
-| `update_llm_provider` | No | Updates a custom provider with a full replacement configuration (from a local JSON file). Redaction placeholders preserve stored secrets — see [The update flow](#the-update-flow). |
-| `delete_llm_provider` | No | Deletes a custom provider permanently. [Two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. Check dependencies first. |
-| `set_llm_provider_active_status` | No | Activates or deactivates a custom provider (`active`). No organization argument — the org is resolved from the session. |
-| `set_default_llm_provider` | No | Sets the organization's default provider. Exactly one of `provider_id` (custom) / `system_provider_id` (system). |
-| `reset_default_llm_provider` | No | Clears the organization's default provider assignment. Reversible via `set_default_llm_provider`. |
-
 ## Permissions
 
 - The **write** tools (create, update, delete, active-status, default set/reset) require the `manage_ai_providers` **organization** permission and an **eligible (billable) plan**. This is a stronger, distinct entitlement from `manage_ai_agents` (which governs pipe-scoped AI agents and knowledge bases).
