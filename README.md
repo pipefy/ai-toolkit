@@ -103,7 +103,7 @@ Complete the browser login when prompted (`claude mcp login pipefy` if the clien
 /pipefy:pipefy-login
 ```
 
-Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio, the macOS `errSecInvalidOwnerEdit` keychain note, and the contributor local-clone alternative: [`packages/mcp/README.md`](packages/mcp/README.md). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](docs/contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
+Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio: [`packages/mcp/README.md`](packages/mcp/README.md). Keychain errors: [`docs/cli/auth.md`](docs/cli/auth.md#troubleshooting). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](docs/contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ### 3. Quick-install script
 

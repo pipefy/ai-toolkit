@@ -15,7 +15,7 @@ The `ruff` revision in `.pre-commit-config.yaml` must move together with `uv.loc
 
 ## Run the applications
 
-- `uv run pipefy-mcp-server` starts the MCP server.
+- `uv run pipefy-mcp-server` starts the MCP server. To point an MCP client at your clone, set its server command to `uv run --directory /absolute/path/to/ai-toolkit pipefy-mcp-server`.
 - `uv run pipefy --help` runs the CLI.
 
 To smoke-test a tool change by hand, use Cursor's MCP integration. To debug the protocol itself, use MCP Inspector:

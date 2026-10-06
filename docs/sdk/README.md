@@ -8,7 +8,7 @@ This tree summarizes how to work with **`pipefy`**: the vendor GraphQL client, s
 - GraphQL operations are static `gql()` constants under `packages/sdk/src/pipefy_sdk/queries/` — do not build query strings dynamically.
 - Pydantic input models live in `packages/sdk/src/pipefy_sdk/models/`.
 
-For a short in-repo overview and dev commands, see **[`../../packages/sdk/README.md`](../../packages/sdk/README.md)**.
+To work on the SDK itself, see [`docs/contributing/development.md`](../contributing/development.md).
 
 ## Skills in the package
 

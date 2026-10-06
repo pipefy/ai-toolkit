@@ -9,7 +9,7 @@ Shared OAuth + keychain helpers for Pipefy CLI and MCP server.
 - **`refresh`** — refresh-token grant + eager pre-use freshness check (`ensure_fresh_session`).
 - **`discovery`** — OIDC `.well-known/openid-configuration` fetch + validation.
 - **`revoke`** — IdP-side token invalidation (RFC 7009).
-- **`identity`** — `OidcClient` dataclass + the `DEFAULT_AUTH_CLIENT_ID` constant (the registered Keycloak public client_id).
+- **`identity`** — `OidcClient` dataclass + the `DEFAULT_AUTH_CLIENT_ID` constant (the registered public OAuth client ID).
 
 ## Consumers
 

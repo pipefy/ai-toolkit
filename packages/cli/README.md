@@ -1,6 +1,6 @@
 # pipefy-cli
 
-Typer-based CLI for Pipefy. Exposes all MCP tool capabilities as terminal commands and scripts. Depends on [`pipefy`](../sdk/README.md) for GraphQL calls.
+Typer-based CLI for Pipefy. Exposes the MCP tool capabilities as terminal commands for people and scripts. Depends on [`pipefy`](../sdk/README.md) for GraphQL calls.
 
 ## Install
 
@@ -32,27 +32,9 @@ Agent skills are installed separately via [`skills.sh`](https://github.com/verce
 
 ## Configuration
 
-Same `PIPEFY_*` environment variables as `pipefy-mcp-server` (`.env` in CWD is loaded automatically):
+The CLI reads the same `PIPEFY_*` environment variables as `pipefy-mcp-server`, and it loads a `.env` file from the working directory. To sign in from a terminal, run `pipefy auth login`. For unattended use, set `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` and `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`, or `PIPEFY_TOKEN`.
 
-```env
-PIPEFY_SERVICE_ACCOUNT_CLIENT_ID=your_client_id
-PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET=your_client_secret
-# Non-prod environments only:
-# PIPEFY_BASE_URL=https://<your-api-host>
-# PIPEFY_AUTH_URL=https://<your-signin-host>/realms/<realm>
-```
-
-`PIPEFY_BASE_URL` defaults to `https://app.pipefy.com` (drives the four API endpoints) and `PIPEFY_AUTH_URL` defaults to `https://signin.pipefy.com/realms/pipefy` (the OIDC issuer). Set them only for non-prod environments.
-
-### Authentication paths
-
-Three credential sources, in CLI precedence order:
-
-1. **Interactive (`pipefy auth login`)** — browser OAuth flow, session stored in the OS keychain. Best for human developers. Status and revocation via `pipefy auth status` and `pipefy auth logout`.
-2. **Static bearer (`PIPEFY_TOKEN` or `--token`)** — direct bearer token, no OAuth. Intended for CI and scripted use. Overrides everything else.
-3. **Service-account OAuth (`PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` + `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`)** — unattended OAuth client-credentials grant. Used by the MCP server.
-
-Full env-var reference, validation rules, and `config.toml` precedence: [`docs/config.md`](../../docs/config.md). Auth deep-dive (precedence rules, troubleshooting, keychain backends): [`docs/cli/auth.md`](../../docs/cli/auth.md).
+[`docs/cli/auth.md`](../../docs/cli/auth.md) explains the credential precedence and the troubleshooting steps. [`docs/config.md`](../../docs/config.md) is the reference for every variable.
 
 ## Output modes
 
@@ -71,15 +53,3 @@ Every MCP tool has a CLI counterpart (or a tracked deferral). See [`docs/parity.
 ```bash
 pipefy --install-completion bash    # or zsh, fish, etc.
 ```
-
-## Development
-
-From the **repository root**:
-
-```bash
-uv sync
-uv run pytest packages/cli/tests     # CLI tests
-uv run ruff check packages/cli/src   # lint
-```
-
-See [`docs/contributing/development.md`](../../docs/contributing/development.md) for contributor guidance.
