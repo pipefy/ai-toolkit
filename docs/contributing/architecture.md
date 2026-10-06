@@ -604,8 +604,6 @@ The legend:
 - A solid arrow points from a layer to what that layer imports.
 - The dotted arrow is construction. The composition root builds every layer, so it imports across the stack and sits off it.
 
-An application is entered through its presentation layer, for example an MCP tool call or a CLI command. The service layer reaches the outside through a gateway, for example Pipefy data access. A library is not entered this way, because a caller imports it and calls it directly.
-
 ### Declared dependencies
 
 **What a package declares.** A package lists every dependency that its own code imports. This holds even when another dependency already installs that package. The other dependency installs it by its own choice, and that choice can change. The package can be dropped, copied into the dependent, or made conditional on the platform. Nothing in this repository detects such a change. A dependency declared in `packages/mcp/pyproject.toml` for this reason carries a comment that says so. [Risks and technical debt](#risks-and-technical-debt) carries the one place where the rule is broken.
