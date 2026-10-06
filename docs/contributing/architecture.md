@@ -734,9 +734,7 @@ Each architectural decision has a record in [`adr/`](adr/README.md). [Solution s
 
 ## Quality requirements
 
-The architecture on this map exists to serve the demands below, so a section above can name what its decision satisfies, and a review can cite one ID instead of reopening the argument.
-
-Each section names the requirement that it satisfies, in whole or in part. Where another document owns the answer instead, the row names that document. If neither holds, [Risks and technical debt](#risks-and-technical-debt) names the row.
+Each requirement below has an ID, so a review can cite the ID instead of reopening the argument. A section cites the requirements that its decisions satisfy, and it says when it satisfies one only in part. A requirement that no section satisfies has an entry in [Risks and technical debt](#risks-and-technical-debt).
 
 ### Quality requirements overview
 
