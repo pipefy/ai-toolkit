@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.3-beta.1] - 2026-10-06
+
 ### Added
 
 - **SDK `PipefyClient.send_inbox_email_draft`**: sends an `InboxEmailDraft` (from `draft_email_from_template` or built by hand) as-is. The MCP send tools and `pipefy email inbox send` call it after the preview, so the approved draft is the value that reaches the mutation.
