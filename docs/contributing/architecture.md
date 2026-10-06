@@ -754,8 +754,6 @@ Each requirement belongs to one or more categories of the Q42 quality model at [
 
 ### Quality scenarios
 
-A row states its demand. [Quality goals](#quality-goals) ranks `QR-2`, `QR-4`, `QR-5`, `QR-8`, and `QR-11` above the rest.
-
 **Usage.** A demand that a caller holds while the system runs, including when a call cannot complete or a component it needs fails.
 
 | ID | Demand | Acceptance criterion |
