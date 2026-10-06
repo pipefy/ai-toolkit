@@ -560,7 +560,7 @@ sequenceDiagram
 
 A caller who arrives with no bearer gets a refusal that names this resource and the issuer that guards it, so the client finds where to authenticate without being configured for it. The MCP SDK writes that refusal and serves the metadata behind it, and the composition root supplies both names.
 
-The check has two halves. The bearer is verified against the issuer's signing keys, and it is verified as a token issued for this resource rather than for another one. That second half is `QR-16`, and [Risks and technical debt](#risks-and-technical-debt) records that it is off by default today.
+Bearer validation also checks that the bearer was issued for this resource and not for another one. That check is `QR-16`, and [Risks and technical debt](#risks-and-technical-debt) records that it is off by default today.
 
 This is `QR-4`, which [Quality goals](#quality-goals) ranks first. Two callers on one process each act as themselves, and neither reads what the other can reach. [Identity lifetime](#identity-lifetime) states the rule that follows for code, which is that nothing caches what a request brought and no process-global value answers a question about the caller.
 
