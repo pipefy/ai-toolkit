@@ -342,7 +342,7 @@ The SDK is a library, so it owns no composition root: the caller wires it, and t
 
 #### CLI
 
-The CLI folders name a file kind rather than a block, and a directory listing already gives that split. So the table names the block, and `Code` says which modules hold it.
+The diagram and the table below divide the CLI into blocks by responsibility. The folders group files by kind instead, so a block cuts across them, and the `Code` column lists the files of each block.
 
 ```mermaid
 flowchart TB
