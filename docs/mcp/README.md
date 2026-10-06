@@ -2,11 +2,7 @@
 
 Material in this tree describes **`pipefy-mcp-server`**: the MCP process, tool behavior, and client wiring.
 
-## Tool design
-
-An MCP tool expresses one user outcome, not one API endpoint. It orchestrates the underlying steps in code, so the model does not chain calls in its context.
-
-`TOOL-1` and `TOOL-2` in [`conventions.md`](../contributing/conventions.md) are the rules a tool follows, and the reasoning is in the decision record [ADR-0003](../contributing/adr/0003-mcp-tools-express-outcomes.md).
+Each tool expresses one outcome for the user, not one API endpoint, so an agent reaches a result in one call where the API would need several. [ADR-0003](../contributing/adr/0003-mcp-tools-express-outcomes.md) records why.
 
 ## Contents
 

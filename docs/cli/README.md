@@ -16,4 +16,4 @@ Material here describes **`pipefy-cli`** (Typer): terminal workflows, flags, and
 - **Configuration:** same **`PIPEFY_*`** keys as the MCP server; see **[`../config.md`](../config.md)**.
 - **Flags:** `pipefy <command> --help` documents each command's arguments and flags.
 
-Implementation entrypoint: `packages/cli/src/pipefy_cli/main.py`. Parity with MCP tools: **[`../parity.md`](../parity.md)**.
+Parity with MCP tools: **[`../parity.md`](../parity.md)**.

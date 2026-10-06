@@ -36,7 +36,7 @@ Write the tests first for each layer: red, then green, then refactor. Tests live
 | `uv run pytest -m integration` | Tests marked `@pytest.mark.integration`, which need `PIPEFY_*` credentials |
 | `uv run pytest --cov=packages/sdk/src/pipefy_sdk --cov-report=term-missing` | SDK coverage |
 
-A unit test needs no marker.
+A unit test needs no marker. It uses the fictional IDs in [`packages/sdk/tests/_shared/fixture_ids.py`](../../packages/sdk/tests/_shared/fixture_ids.py), never the ID of a real organization. An integration test reads the same `PIPEFY_*` keys from your local `.env`, such as `PIPEFY_PORTAL_ORG_UUID` for the portal tests.
 
 ## Code style
 
