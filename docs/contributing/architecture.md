@@ -665,9 +665,9 @@ Today a destructive MCP tool also gates itself behind a second call that sets `c
 **By component.**
 
 - SDK: asks nobody, and a missing input is an exception that the program handles.
-- CLI: states and asks. A person at the terminal answers, and `--yes` answers in advance for a caller with nobody present.
-- MCP: states what a tool changes, and the client decides whether a human sees that statement.
-- Skills: carry the confirmation procedure, which a tool description must not teach.
+- CLI: asks a person at the terminal for permission before a destructive command, and `--yes` gives it in advance. It never asks for data, so a missing input is a usage error.
+- MCP: asks for data through the client, and leaves permission to the client.
+- Skills: teach the `confirm` second call that a destructive MCP tool requires today.
 
 ### Tool surface
 
