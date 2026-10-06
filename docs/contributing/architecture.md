@@ -761,7 +761,7 @@ These requirements hold while the system runs.
 | ID | Demand | Acceptance criterion |
 |---|---|---|
 | `QR-1` | The response to an invalid request names each field and the rule it broke | A caller can locate every input that failed from the response alone |
-| `QR-3` | When no human is present, a run never waits for an answer, and it either goes ahead with what it has or fails | No run blocks on input where no terminal is attached |
+| `QR-3` | When nobody is present, a run never waits for an answer: it goes ahead where only one answer fits, and fails otherwise | No run blocks on input where no terminal is attached or the client cannot take a question |
 | `QR-4` | Each request acts as the person who sent it, and no caller can act as another or read another's data | A request's effect is limited to what its own caller may do |
 | `QR-5` | One tool call answers one unit of user work, and no second call is needed to get there | One tool call completes one unit of user work |
 | `QR-6` | What a destructive operation will destroy can be learned without running it | The reach a caller learns before the call equals what the call destroys |
