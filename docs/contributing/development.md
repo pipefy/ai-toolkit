@@ -44,6 +44,19 @@ A unit test needs no marker.
 - Use built-in generics such as `list[str]` and `dict[str, Any]`, and union syntax such as `str | None`.
 - Run `uv run ruff check .` and `uv run ruff format .` before you commit. `ruff` enforces formatting and import order.
 
+## Test the Claude Code plugin from a local checkout
+
+The [Claude Code plugin install](../../README.md#2-claude-code-plugin) adds the marketplace from the `pipefy/ai-toolkit` GitHub repo, which tracks `main`. To run **your local branch** (e.g. `dev`) as the plugin instead, point the marketplace at your clone:
+
+```text
+/plugin marketplace add /absolute/path/to/ai-toolkit
+/plugin install pipefy@pipefy
+```
+
+Whatever is checked out in that clone — any branch — is what loads. Use the `plugin@marketplace` form (`pipefy@pipefy`) since the marketplace and the plugin share the name `pipefy`. After editing plugin files (skills, commands), run `/reload-plugins` to pick up changes without restarting.
+
+> **Already installed the GitHub version?** A marketplace named `pipefy` can be registered only once, and a marketplace declared in `~/.claude/settings.json` under `extraKnownMarketplaces` is locked — `/plugin marketplace add` becomes a no-op (`already on disk — declared in user settings`) and keeps pointing at GitHub. Run `/plugin marketplace remove pipefy` first (or delete that `extraKnownMarketplaces` entry), **then** add the local path. Why removing a marketplace does not always stick: [`docs/uninstall.md`](../uninstall.md#two-things-that-come-back).
+
 ## Add a capability
 
 A capability is an SDK method, an MCP tool, and a CLI command that do the same thing. Add all three in one change:

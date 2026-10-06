@@ -22,7 +22,6 @@
   <a href="#command-line-interface">CLI</a> •
   <a href="#agent-skills">Agent skills</a> •
   <a href="#documentation">Documentation</a> •
-  <a href="#development">Development</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#legal">Legal</a>
 </p>
@@ -104,7 +103,7 @@ Complete the browser login when prompted (`claude mcp login pipefy` if the clien
 /pipefy:pipefy-login
 ```
 
-Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio, the macOS `errSecInvalidOwnerEdit` keychain note, and the contributor local-clone alternative: [`packages/mcp/README.md`](packages/mcp/README.md). To run a local branch as the plugin, see [Test the plugin from a local checkout](#test-the-claude-code-plugin-from-a-local-checkout).
+Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio, the macOS `errSecInvalidOwnerEdit` keychain note, and the contributor local-clone alternative: [`packages/mcp/README.md`](packages/mcp/README.md). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](docs/contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ### 3. Quick-install script
 
@@ -283,25 +282,6 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 | [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users. |
 | [`docs/contributing/development.md`](docs/contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules. |
 | [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
-
----
-
-## Development
-
-[`docs/contributing/development.md`](docs/contributing/development.md) is the development guide: setup, tests, checks, and the steps to [add a capability](docs/contributing/development.md#add-a-capability).
-
-### Test the Claude Code plugin from a local checkout
-
-The [Claude Code plugin install](#2-claude-code-plugin) adds the marketplace from the `pipefy/ai-toolkit` GitHub repo, which tracks `main`. To run **your local branch** (e.g. `dev`) as the plugin instead, point the marketplace at your clone:
-
-```text
-/plugin marketplace add /absolute/path/to/ai-toolkit
-/plugin install pipefy@pipefy
-```
-
-Whatever is checked out in that clone — any branch — is what loads. Use the `plugin@marketplace` form (`pipefy@pipefy`) since the marketplace and the plugin share the name `pipefy`. After editing plugin files (skills, commands), run `/reload-plugins` to pick up changes without restarting.
-
-> **Already installed the GitHub version?** A marketplace named `pipefy` can be registered only once, and a marketplace declared in `~/.claude/settings.json` under `extraKnownMarketplaces` is locked — `/plugin marketplace add` becomes a no-op (`already on disk — declared in user settings`) and keeps pointing at GitHub. Run `/plugin marketplace remove pipefy` first (or delete that `extraKnownMarketplaces` entry), **then** add the local path. Why removing a marketplace does not always stick: [`docs/uninstall.md`](docs/uninstall.md#two-things-that-come-back).
 
 ---
 

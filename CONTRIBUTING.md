@@ -30,7 +30,7 @@ A skill is Markdown only, so you write no Python code and no tests. You need [`u
 
 6. Open a PR.
 
-> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live — see [Test the Claude Code plugin from a local checkout](README.md#test-the-claude-code-plugin-from-a-local-checkout).
+> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live — see [Test the Claude Code plugin from a local checkout](docs/contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ### Rules for a skill
 
