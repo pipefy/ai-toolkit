@@ -288,23 +288,7 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 
 ## Development
 
-Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it, then from the repository root:
-
-```bash
-uv sync
-[[ -f .env ]] || cp .env.example .env   # first-time setup; then fill in PIPEFY_SERVICE_ACCOUNT_*
-uv run pytest -m "not integration"    # unit tests (no live API)
-uv run pytest -m integration -v     # live API (requires PIPEFY_*)
-uv run ruff check . && uv run ruff format .
-```
-
-**MCP Inspector** (protocol debugging):
-
-```bash
-npx @modelcontextprotocol/inspector uv --directory . run pipefy-mcp-server
-```
-
-**Adding an MCP tool:** follow [Add a capability](docs/contributing/development.md#add-a-capability). It lists every file a new tool touches, including the domain in `tools/toolsets.py` that a build check requires. [`docs/contributing/development.md`](docs/contributing/development.md) is the full development guide.
+[`docs/contributing/development.md`](docs/contributing/development.md) is the development guide: setup, tests, checks, and the steps to [add a capability](docs/contributing/development.md#add-a-capability).
 
 ### Test the Claude Code plugin from a local checkout
 

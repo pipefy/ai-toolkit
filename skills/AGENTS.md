@@ -10,5 +10,5 @@ Scoped to `skills/`. [`docs/contributing/skills.md`](../docs/contributing/skills
 - Refer to another skill by its name, never by a path.
 - Keep a skill under 500 lines.
 - When you add or remove a published skill, edit the `skills` array in both `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json`.
-- Before you push, stage the skill and run `uv run python .github/workflows/scripts/lint_skill_refs.py` and `python3 .github/workflows/scripts/lint_plugin_packaging.py`.
+- Before you push, stage the skill and run `uvx pre-commit run`.
 - A skill in a regulated domain needs a `COMPLIANCE.md` and a review by Pipefy's Privacy, Legal and Compliance team.

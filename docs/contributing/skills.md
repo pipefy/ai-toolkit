@@ -26,7 +26,7 @@ A skill in a regulated domain (`legal`, `human-resources`, `finance`, `complianc
 
 ## Start from the template
 
-Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-template/pipefy-skill-template/), as [`.github/skill-template/README.md`](../../.github/skill-template/README.md) describes. The skeleton below matches that file.
+Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-template/pipefy-skill-template/), as [Contributing a skill](../../CONTRIBUTING.md#contributing-a-skill) describes. The skeleton below matches that file.
 
 ```markdown
 ---

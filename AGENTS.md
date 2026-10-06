@@ -42,7 +42,7 @@ skills/         → agent skills catalog (Markdown, no Python package)
 
 - Write the test before the code, for each layer.
 - Start every Python module with `from __future__ import annotations`, and use built-in generics and `X | None`.
-- Before you commit, run `uv run ruff check .`, `uv run ruff format .`, and `uv run pytest -m "not integration"`.
+- Before you commit, run `uvx pre-commit run --all-files` and `uv run pytest -m "not integration"`.
 - Follow the [code conventions](docs/contributing/conventions.md), and cite a rule by its ID, such as `PARSE-3`, rather than quoting it.
 - Keep imports in the direction that [`docs/contributing/architecture.md`](docs/contributing/architecture.md#dependency-rule) states. Import-linter holds it inside `packages/mcp`, and ruff `TID251` holds it between packages.
 - Add a capability as an SDK method, an MCP tool, and a CLI command in one change, through every step of [Add a capability](docs/contributing/development.md#add-a-capability).

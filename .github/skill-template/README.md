@@ -2,20 +2,6 @@
 
 Starter layout for a new Pipefy skill in the Anthropic Skills format. Use it in this repo (contribution) or in your own repository (private / org playbooks).
 
-## Quick start
-
-1. Copy this folder:
-
-   ```bash
-   cp -R .github/skill-template/pipefy-skill-template \
-     skills/<domain>/pipefy-<name>
-   ```
-
-2. Rename placeholders in `SKILL.md` (`name`, title, tags, tools, steps).
-3. Ensure frontmatter `name:` matches the **directory** name exactly.
-4. Read the authoring rules: [`../../docs/contributing/skills.md`](../../docs/contributing/skills.md).
-5. Before opening a PR here: add the skill to the `skills` array in both `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json`, run `uv run python .github/workflows/scripts/lint_skill_refs.py` and `python3 .github/workflows/scripts/lint_plugin_packaging.py`, and use `git commit -s` ([DCO](../../CONTRIBUTING.md)).
-
-Regulated domains (`legal`, `human-resources`, `finance`, `compliance`, or decisions about natural persons) also need a filled [`COMPLIANCE.md`](../../docs/compliance/COMPLIANCE.template.md) and Legal review — see [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+To contribute a skill here, follow [Contributing a skill](../../CONTRIBUTING.md#contributing-a-skill). The rules for a skill are in [`docs/contributing/skills.md`](../../docs/contributing/skills.md).
 
 This starter lives outside `skills/`, so it is not part of the published catalog.

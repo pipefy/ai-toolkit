@@ -6,9 +6,10 @@ This guide covers a change to the SDK, the CLI, or the MCP server. [`CONTRIBUTIN
 
 1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
 2. From the repository root, run `uv sync`. It installs every workspace package.
-3. If you want the checks to run before each commit, run `uvx pre-commit install` once per clone.
+3. Run `uvx pre-commit install` once per clone.
+4. If you run the applications or the integration tests, copy `.env.example` to `.env` and fill in `PIPEFY_SERVICE_ACCOUNT_*`.
 
-The pre-commit hook runs `ruff` lint and format on Python files. On `install.sh` and `uninstall.sh` it runs `shellcheck --shell=sh` from `shellcheck-py`, `sh -n`, and a check that every `rm` and `rmdir` in `uninstall.sh` goes through its `remove_path` guard. CI runs the same checks, plus `dash -n`. To run the hook on the whole tree, use `uvx pre-commit run --all-files`. To skip it for a work-in-progress commit, use `git commit --no-verify`.
+The pre-commit hook runs the static checks that CI runs, and each check runs only when a staged file matches it. [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) lists them. CI adds `dash -n` on the shell scripts. To run the hook on the whole tree, use `uvx pre-commit run --all-files`. To skip it for a work-in-progress commit, use `git commit --no-verify`.
 
 The `ruff` revision in `.pre-commit-config.yaml` must move together with `uv.lock`, so that the hook and CI run the same `ruff`. CI also pins the same `shellcheck-py` release that the hook uses.
 
