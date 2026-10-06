@@ -799,7 +799,7 @@ These requirements hold when the system, or something it depends on, changes.
 
 ## Risks and technical debt
 
-The map above holds today, with the exceptions below. Each entry ends with its target, and the entry disappears once that target exists. Where the target is not yet chosen, the entry says so.
+Each entry below is a place where the code does not yet do what this document states, or a requirement that no section satisfies. An entry names its target, or says that the target is not yet chosen, and it disappears once the target exists.
 
 - An undeclared CLI dependency. `packages/cli/src/pipefy_cli/commands/_auth_keychain_hints.py` imports `pipefy_infra.config`, and `packages/cli/pyproject.toml` declares no `pipefy-infra`. The import resolves today because the SDK and `pipefy-auth` both bring that package in. No check catches it, because a `TID251` list bans an import and cannot demand a declaration. That is `QR-14`. The target is the declared dependency, and the arrow in the diagram follows it.
 - Third-party dependencies with no maximum version. Most third-party dependencies state only a minimum, for example `httpx>=0.27.0` in `packages/sdk/pyproject.toml` and `typer>=0.12` in `packages/cli/pyproject.toml`, so a fresh install can resolve a major release that no test has run against. [Declared dependencies](#declared-dependencies) states the rule. The target is a maximum before the next major release on every third-party dependency.
