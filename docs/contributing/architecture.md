@@ -651,7 +651,7 @@ The choice between the matches sits above the SDK, because it is a decision, and
 
 Before it acts, a tool can lack data, which is what to act on, or permission, which is whether to act at all. A tool asks the caller for data. Permission belongs to the party that faces the person: the client for an MCP tool, and the CLI itself at a terminal.
 
-Where a tool lacks an input it needs, it asks the caller for that input, which is what `QR-22` demands. A question the model must answer costs a round trip, whereas a question that goes to the client costs `QR-5` nothing, so `QR-22` is the cheap way to satisfy `QR-5` and not a rival to it. Because not every client can take a question, [Risks and technical debt](#risks-and-technical-debt) states which callers a tool can ask, and what a tool does with the rest.
+An MCP tool asks for data through the client, which is `QR-22`. The client puts the question to the person and returns the answer without a second call from the model, whereas a question that the tool returns to the model costs another call, so `QR-22` also serves `QR-5`. Not every client can take a question, and [Risks and technical debt](#risks-and-technical-debt) states which clients a tool can ask and what a tool does with the rest.
 
 When the MCP deployer sets up the client, they settle permission for good, so `QR-25` leaves that decision where they made it. `QR-3` rules out any wait for an answer when nobody is present, and a question about permission survives that, because the deployer settled it before the run began. A question about data does not survive, because nobody can settle a value in advance, so there `QR-22` conflicts with `QR-3`.
 
