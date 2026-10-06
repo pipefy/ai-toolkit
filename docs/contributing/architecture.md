@@ -285,7 +285,7 @@ The tool surface spans presentation and application, because the tool body that 
 
 #### SDK
 
-Each SDK folder holds one block, so a folder is one block here. The package root is where the layers mix, because a facade, a service, a port, and a domain type all sit in it. So the table names the block, and `Code` says which modules hold it.
+The diagram and the table below divide the SDK into blocks by responsibility. A folder mostly holds one block, but the package root holds a facade, a service, a port, and domain types side by side, so the `Code` column lists the modules of each block.
 
 ```mermaid
 flowchart TB
