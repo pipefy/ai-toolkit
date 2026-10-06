@@ -1,35 +1,8 @@
 # Repository Guidelines
 
-## Documentation map
-- **`README.md`**. Project pitch, one-page install front door (`README.md#installation`: hosted MCP, Quick install, Claude Code plugin, CLI, skills), repo layout, MCP tools table, contributing.
-- **`CONTRIBUTING.md`**. Skills contribution guide (frontmatter, CI, style). The entry point for GitHub contributors.
-- **`docs/README.md`**. Index of docs by application (MCP, CLI, SDK) and shared guides.
-- **`docs/config.md`**. `PIPEFY_*` environment variables, `config.toml` schema, precedence chain.
-- **`docs/parity.md`**. MCP tool ↔ CLI command parity matrix. Source of truth for coverage and deferrals.
-- **`docs/MIGRATION.md`**. What existing MCP users need to know about v0.1.
-- **`docs/uninstall.md`**. `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. The two root scripts are colocated so `install.sh` and `uninstall.sh` stay reviewable side by side. A test asserts every file the installer writes is one the teardown accounts for.
-- **`docs/contributing/architecture.md`**. The map of the architecture: where a change goes, what it may import, and where the code falls short of the map.
-- **`docs/contributing/conventions.md`**. The code conventions, as rules with permanent IDs. A rule belongs there when a reviewer applies it by judgment to one unit of code.
-- **`docs/contributing/development.md`**. Setup, test commands, the steps to add a capability, and the rules for commits and pull requests.
-- **`docs/contributing/authoring.md`**. How the docs tree is organized, the audience and Diataxis cuts, where a new doc goes, and the form of a convention and of a section of `architecture.md`.
-- **`docs/mcp/tools/`**. Per-area MCP tool reference (parameters, edge cases, cross-cutting behavior). Includes `identifiers.md`, the canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id.
-- **`docs/cli/`**. CLI-specific guides, for example introspect-then-execute.
-- **`docs/sdk/README.md`**. Using `pipefy` as a library.
-- **`docs/contributing/skills.md`**. Skill-authoring guide (frontmatter, naming, style). Read it before adding a skill, and follow the rules in `skills/AGENTS.md`.
-- **`skills/onboarding/pipefy-toolkit-setup/`**. First-time setup checklist for agents. It links to README snippets and owns no commands.
+## Where things are
 
-## Project structure
-
-```
-packages/sdk/   → pipefy            (Vendor API SDK: GraphQL, models, services. Dist named `pipefy`, import module `pipefy_sdk`)
-packages/mcp/   → pipefy-mcp-server (MCP tools, server lifecycle. Depends on pipefy)
-packages/cli/   → pipefy-cli        (Typer CLI. Depends on pipefy)
-packages/auth/  → pipefy-auth       (Shared OAuth and keychain helpers for CLI and MCP. Depends on pipefy-infra)
-packages/infra/ → pipefy-infra      (Shared TOML config loader, path discovery, SSRF defenses, string helpers. Leaf package)
-skills/         → agent skills catalog (Markdown, no Python package)
-```
-
-**Vendor API SDK** means the GraphQL-facing library (`pipefy`) used by both MCP and CLI, distinct from app glue or generic shared helpers.
+[`docs/README.md`](docs/README.md) indexes every doc. Each workspace package sits under `packages/` with its own `pyproject.toml`, and `Package decomposition` in [`architecture.md`](docs/contributing/architecture.md#package-decomposition) says what each one owns. A scoped `AGENTS.md` in `packages/mcp/` and `skills/` adds the rules for that tree.
 
 ## SDK import name
 
