@@ -30,7 +30,7 @@ Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-templ
 
 ```markdown
 ---
-name: pipefy-<domain>-<action>   # kebab-case, unique
+name: pipefy-<name>   # kebab-case, unique
 description: >
   One-line summary used by agents to choose this skill.
   Be specific about when to use vs not use.

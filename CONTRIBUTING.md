@@ -16,7 +16,7 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
 
    ```bash
    cp -R .github/skill-template/pipefy-skill-template \
-     skills/<domain>/pipefy-<domain>-<action>
+     skills/<domain>/pipefy-<name>
    ```
 
    Fill in [`SKILL.md`](.github/skill-template/pipefy-skill-template/SKILL.md) using the rules in [`docs/contributing/skills.md`](docs/contributing/skills.md) (and [`.github/skill-template/README.md`](.github/skill-template/README.md)).
@@ -24,7 +24,7 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
    skill files first (`git add`); `lint_plugin_packaging.py` reads tracked files via `git ls-files`, so an unstaged skill makes the packaging lint print `passed` while CI will fail after you push.
 
    ```bash
-   git add skills/<domain>/pipefy-<domain>-<action>
+   git add skills/<domain>/pipefy-<name>
    uv run python .github/workflows/scripts/lint_skill_refs.py
    python3 .github/workflows/scripts/lint_plugin_packaging.py
    ```

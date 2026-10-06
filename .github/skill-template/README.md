@@ -8,7 +8,7 @@ Starter layout for a new Pipefy skill in the Anthropic Skills format. Use it in 
 
    ```bash
    cp -R .github/skill-template/pipefy-skill-template \
-     skills/<domain>/pipefy-<domain>-<action>
+     skills/<domain>/pipefy-<name>
    ```
 
 2. Rename placeholders in `SKILL.md` (`name`, title, tags, tools, steps).

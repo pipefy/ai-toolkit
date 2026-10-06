@@ -3,7 +3,7 @@
 Scoped to `skills/`. [`docs/contributing/skills.md`](../docs/contributing/skills.md) is the authoring guide, and it holds the template, the frontmatter fields, and what CI checks.
 
 - Start a new skill from [`.github/skill-template/pipefy-skill-template/`](../.github/skill-template/pipefy-skill-template/).
-- Name the skill `pipefy-<domain>-<action>`, and make the frontmatter `name` match the directory name exactly.
+- Give the skill a kebab-case name that starts with `pipefy-`, and make the frontmatter `name` match the directory name exactly.
 - Use the word that the Pipefy product uses. Do not coin a term.
 - Keep the body neutral to the component. Put MCP-only detail in `references/mcp.md` and CLI commands and flags in `references/cli.md`.
 - Name only a tool or a command that has shipped. Check a CLI equivalent against [`docs/parity.md`](../docs/parity.md).
