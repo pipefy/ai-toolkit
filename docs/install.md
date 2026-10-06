@@ -1,6 +1,6 @@
 # Install the toolkit
 
-This guide installs the MCP server, the CLI, or the skills, and wires the MCP server into your client.
+This guide installs the MCP server, the CLI, or the skills, and wires the MCP server into your client. For a guided first run on the recommended path, follow [`quickstart.md`](quickstart.md) instead.
 
 ## Choose a path
 

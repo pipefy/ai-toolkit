@@ -61,7 +61,7 @@ pipefy card list --pipe 67890
 
 ## Installation
 
-[`docs/install.md`](docs/install.md) covers every path in full:
+New here? [`docs/quickstart.md`](docs/quickstart.md) connects Claude Code to your Pipefy account and asks a first question, in about five minutes. [`docs/install.md`](docs/install.md) covers every path in full:
 
 | You are in | You want | Path |
 |---|---|---|
