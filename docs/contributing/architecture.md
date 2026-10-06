@@ -643,7 +643,7 @@ An identifier names a resource, and it takes one of several forms: a numeric ID,
 
 The SDK finds the matches for a name, and it tolerates a name that is incomplete or misspelled, which is `QR-28`. [Risks and technical debt](#risks-and-technical-debt) states which searches reach that tolerance today.
 
-Resolution sits above the SDK, because picking one match out of many is a decision, and `QR-7` leaves that decision with the caller. Today the caller makes it: the SDK, the CLI and the MCP server each offer a search that returns the matches. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) moves the pick into the MCP tool, which takes the name itself, and the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt) carries the gap.
+The choice between the matches sits above the SDK, because it is a decision, and `QR-7` leaves that decision with the caller. Today the caller searches first and then calls a tool with the ID it chose, so one piece of work costs an extra call. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) lets an MCP tool take the name itself and ask the client to choose when the name fits more than one resource. The `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt) carries that extra call until then.
 
 `ARG-1` in [`conventions.md`](conventions.md) holds each argument to one form, while [`docs/mcp/tools/identifiers.md`](../mcp/tools/identifiers.md) names which form each MCP tool and argument takes. These identifier rules come from the decision record [ADR-0002](adr/0002-typed-single-form-contract.md).
 
