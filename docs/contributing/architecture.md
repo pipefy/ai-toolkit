@@ -494,7 +494,7 @@ sequenceDiagram
     Store-->>Chain: the session, where one is stored
     Chain-->>Entry: an authentication the client takes
     Entry->>Attach: build the client around it
-    loop every call this process makes
+    loop every call, for a stored session
         Attach->>Refresh: the token for this call
         Refresh->>Store: read the stored session again
         opt the access token is near expiry
@@ -508,12 +508,7 @@ sequenceDiagram
     end
 ```
 
-Four facts sit beside the diagrams.
-
-- Only the CLI runs the login. The MCP server under the local profile reads the session that login wrote, and it opens no browser of its own.
-- The loop runs for a stored session alone. A static token and a service account resolve on the spot, in either application, and reach `Bearer attachment` directly.
-- The lock exists because two processes can hold the same stored session, and a renewal invalidates the token the other one is about to use.
-- A renewal that fails stops the invocation. No other source answers in its place, because the caller already chose this one, and a silent swap would act as somebody else.
+When a refresh fails, the call fails. No other source answers in its place, because the caller already chose this one, and a silent swap would act as somebody else, which `QR-4` forbids.
 
 [`docs/cli/auth.md`](../cli/auth.md) owns the steps for each source, and what a failed step reports.
 
