@@ -385,7 +385,7 @@ The command surface spans presentation and application, because the command body
 
 #### Identity
 
-This package holds one subject, and it splits along the direction a credential travels. One half obtains a credential and attaches it to an outbound call, while the other half validates a credential that arrives from outside. The files are flat here, so the table names the block, and `Code` says which modules hold it.
+The diagram and the table below divide Identity into blocks by responsibility, along the direction that a credential travels. Most blocks obtain a credential and attach it to an outbound call, and Bearer validation checks a credential that arrives from outside.
 
 ```mermaid
 flowchart TB
