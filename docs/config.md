@@ -17,7 +17,7 @@ The file is **not** auto-created. Missing file = no error; settings use environm
 
 ## Schema
 
-Top-level keys match pydantic field names on `pipefy_auth.AuthSettings`, `pipefy_sdk.PipefySettings`, and `pipefy_mcp.McpSettings`. Each settings class reads the same file, picks the keys it knows about, and ignores the rest. Shared keys (`base_url`, `allow_insecure_urls`) populate both auth and SDK from one entry; the MCP keys (`unified_envelope`, `remote_mode`, `host`, `port`) feed the MCP server only.
+Top-level keys match pydantic field names on `pipefy_auth.AuthSettings`, `pipefy_sdk.PipefySettings`, and `pipefy_mcp.McpSettings`. Each settings class reads the same file, picks the keys it knows about, and ignores the rest. Shared keys (`base_url`, `allow_insecure_urls`) populate both auth and SDK from one entry; the MCP keys (`unified_envelope`, `profile`, `host`, `port`, ...) feed the MCP server only.
 
 ```toml
 # Shared (both AuthSettings and PipefySettings)
@@ -39,7 +39,7 @@ gql_reuse_fetched_graphql_schema = false
 
 # MCP server (pipefy_mcp.McpSettings)
 unified_envelope = true
-remote_mode = false
+profile = "local"
 host = "127.0.0.1"
 port = 8000
 log_level = "INFO"
@@ -81,11 +81,14 @@ Credential variables reject leading and trailing whitespace; `PIPEFY_ORG_ID` (be
 | `PIPEFY_DISABLE_STORED_SESSION` | `0` | Set to `1` (or `disable_stored_session = true` in TOML) to skip the keychain-backed stored-session tier entirely. `pipefy auth login` / `auth logout` refuse with exit code 2 when set. |
 | `PIPEFY_KEYCHAIN_BACKEND` | `auto` | Set to `file` (or `keychain_backend = "file"` in TOML) to use a file-backed plaintext keyring under `~/.config/pipefy/keyring.cfg` (`%APPDATA%\pipefy\keyring.cfg` on Windows). Unblocks headless Linux and CI runners. Plaintext on disk; opt-in only. |
 | `PIPEFY_ALLOW_INSECURE_URLS` | `false` | Disables the SSRF host check on URL variables. Local development only. |
+| `PIPEFY_PERMISSION_DENIED_ENRICHMENT_TIMEOUT_SECONDS` | `5.0` | Longest wait, from 0.1 to 120 seconds, for the membership lookups that explain a `PERMISSION_DENIED` error. |
+| `PIPEFY_GQL_REUSE_FETCHED_GRAPHQL_SCHEMA` | `false` | When true, the first request to each GraphQL endpoint fetches its schema, and later requests reuse it. |
+| `PIPEFY_DEFAULT_WEBHOOK_NAME` | `Pipefy Webhook` | Name that `create_webhook` gives a webhook when the caller sets none. |
 | `PIPEFY_CONFIG_FILE` | unset | Overrides the default `config.toml` path. See [File path](#file-path) above. |
 
 ### Legacy aliases
 
-`PIPEFY_OAUTH_CLIENT` and `PIPEFY_OAUTH_SECRET` resolve to `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` and `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` via an alias shim, with a one-shot stderr deprecation warning per legacy key. The aliases will be removed in a later `0.2.0-beta.x` release.
+`PIPEFY_OAUTH_CLIENT` and `PIPEFY_OAUTH_SECRET` resolve to `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` and `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` via an alias shim, with a one-shot stderr deprecation warning per legacy key. A later release removes them.
 
 `PIPEFY_OAUTH_URL` is dropped without a replacement. The OAuth token endpoint now derives from `PIPEFY_BASE_URL`.
 
@@ -119,7 +122,7 @@ Storing OAuth credentials in `config.toml` puts them on disk in plain text. The 
 └── refresh.lock     # cross-process refresh lock (auto-managed)
 ```
 
-A future file-backed keyring backend will write its credential store as `~/.config/pipefy/keyring.cfg` next to these — a separate file with its own format.
+With `PIPEFY_KEYCHAIN_BACKEND=file`, the session store is `~/.config/pipefy/keyring.cfg`, next to these files.
 
 ## MCP server (`pipefy-mcp-server`)
 
