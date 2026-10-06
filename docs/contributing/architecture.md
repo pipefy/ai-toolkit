@@ -738,9 +738,9 @@ Each requirement below has an ID, so a review can cite the ID instead of reopeni
 
 ### Quality requirements overview
 
-Each row belongs to one or more categories, and [`quality.arc42.org`](https://quality.arc42.org/) owns the set. A category is a label over a catalog of qualities, so the categories overlap by design and none holds a row alone. Arc42 10.1 offers ISO 25010 or Q42, and this table is Q42.
+Each requirement belongs to one or more categories of the Q42 quality model at [`quality.arc42.org`](https://quality.arc42.org/). The categories overlap, so one requirement can sit under several.
 
-| Category | Rows |
+| Category | Requirements |
 |---|---|
 | `#efficient` | `QR-5`, `QR-10`, `QR-18`, `QR-23` |
 | `#flexible` | `QR-21`, `QR-25`, `QR-26` |
