@@ -1,6 +1,6 @@
 # Pipes & Cards
 
-Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
+Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. For the ids that the card relation tools take, see [Identifiers](identifiers.md#organization-portal-relations-reports).
 
 ## Cross-cutting patterns
 

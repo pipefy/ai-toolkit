@@ -4,7 +4,7 @@ Conventions shared across many MCP tools. Per-area details (parameters, edge cas
 
 ## Pagination
 
-List-style tools accept `first` and `after`. Continue with `pageInfo.endCursor` while `pageInfo.hasNextPage` is true.
+List-style tools accept `first` and `after`. A response carries a top-level `pagination` block. While `pagination.has_more` is true, call again with `after=pagination.end_cursor`. Each tool's docstring states its default page size and its cap.
 
 ## IDs
 
@@ -19,6 +19,10 @@ On failures, error text may include GraphQL codes and a `correlation_id` for sup
 ## `extra_input`
 
 Optional map of extra mutation fields (camelCase keys). Keys that duplicate the tool's primary parameters are ignored.
+
+## Email templates are UI-only
+
+The GraphQL schema has no mutation that creates, edits, or deletes an email template, so no tool does either. A flow that needs a new or edited template carries a manual step in the Pipefy UI, and that step belongs in the plan handed to the user before any build starts.
 
 ## Destructive operations
 

@@ -95,4 +95,6 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 - `list_organizations`: no id. `get_organization(organization_id)`: numeric id.
 - Portal: `organization_uuid` (UUID or numeric); `portal_uuid` (interface UUID).
 - Relations: `get_pipe_relations(pipe_id)` (numeric pipe id); `get_table_relations(relation_ids)` (table-**relation** ids, not table ids); `create_card_relation(source_id)` = a pipe-relation id from `get_pipe_relations`.
+  - The two relation reads are not symmetric. `get_pipe_relations` takes a pipe id, but `get_table_relations` never takes a table id, so the id from `search_tables` or `get_table` is the wrong kind.
+  - A card relation runs through an existing pipe relation, so `source_id` is never a table-relation id, a table id, or a pipe or card id. When the API needs a field-based link, pass `extra_input={"sourceType": "Field"}`; `introspect_type` on `CreateCardRelationInput` shows the options.
 - Reports: filter `field` values come from `get_pipe_report_filterable_fields`.

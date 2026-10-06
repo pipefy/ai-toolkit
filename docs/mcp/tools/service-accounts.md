@@ -1,6 +1,6 @@
 # Service accounts
 
-Create and delete organization **service accounts** — OAuth2 machine identities used for unattended integrations (CI, iPaaS / Advanced Automations flows). To grant a service account access to a pipe, use `add_service_account_to_pipe` (see [members-email-webhooks.md](members-email-webhooks.md)).
+Create and delete organization **service accounts** — OAuth2 machine identities used for unattended integrations (CI, iPaaS / Advanced Automations flows). To grant a service account access to a pipe, use `add_service_account_to_pipe`, which sends the same `inviteMembers` mutation as `invite_members`.
 
 ---
 
