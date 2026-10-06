@@ -135,8 +135,44 @@ These variables load into `pipefy_mcp.McpSettings` (`settings.mcp`). TOML keys u
 | `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` | `false` | Escape hatch: lets the unauthenticated `local` profile serve HTTP on a non-loopback host, exposing the full tool surface with no inbound bearer. The `remote` profile never needs it. |
 | `PIPEFY_MCP_ALLOWED_HOSTS` | unset | JSON array of extra `Host` header values the HTTP transport accepts for DNS-rebinding protection, on top of loopback and the `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` host. Unset derives the allowlist from the resource-server URL, so a proxied deployment usually needs none; set it only when a proxy forwards a public `Host` that differs. An entry matches an exact `Host` or, as `host:*`, any port. These are extra entries, so an empty array behaves like unset (the resource-server host is still derived). |
 | `PIPEFY_MCP_ALLOWED_ORIGINS` | unset | JSON array overriding the derived `scheme://host` `Origin` allowlist. Unset derives `http`/`https` origins from the allowed hosts; a non-empty array replaces them with a custom set (e.g. `https`-only); an empty array is the strictest override, rejecting any request that sends an `Origin` header (a request with no `Origin` still passes). |
+| `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` | unset | Public URL of this server as an OAuth protected resource, including the `/mcp` path, such as `https://mcp.pipefy.com/mcp`. Setting it under the `remote` profile turns on inbound bearer validation, and no other flag does. Behind a proxy it is the public origin, not the bind host. |
+| `PIPEFY_MCP_RS_REQUIRED_SCOPES` | unset | JSON array of scopes that an inbound token must carry. The MCP SDK answers `403` when one is missing. |
+| `PIPEFY_JWT_ISSUER_URL` | unset | Issuer that signs inbound tokens. Unset, the server uses the issuer it logs into itself. Set it only where the two differ. With `PIPEFY_DISABLE_STORED_SESSION` set and this unset, startup fails, because no issuer remains to validate against. |
+| `PIPEFY_JWT_JWKS_URI` | unset | Key set for inbound validation. Unset, the server reads it from the issuer's discovery document. |
+| `PIPEFY_JWT_AUDIENCE` | unset | Audience that an inbound token must carry. Required when `PIPEFY_JWT_VERIFY_AUDIENCE` is true. |
+| `PIPEFY_JWT_VERIFY_AUDIENCE` | `false` | When true, refuses a token whose audience does not include `PIPEFY_JWT_AUDIENCE`. It defaults to false until the issuer puts an audience in its tokens. |
 | `PIPEFY_MCP_UNIFIED_ENVELOPE` | `true` | When true, migrated tools return `{success, data, ...}`. |
 | `PIPEFY_MCP_LOG_LEVEL` | `INFO` | Governs the root logger the MCP SDK configures (RichHandler text on **stderr**) only; it is passed to `MCPServer(log_level=...)` and to uvicorn on the HTTP path. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (case-insensitive). Hosted structured JSON request/tool lines use a dedicated logger pinned at `INFO` on stderr, so raising this knob to quiet text logs does **not** drop those debugging events. Structured lines stay on stderr so they never share the stdio JSON-RPC stdout channel. |
+
+The MCP SDK caps a Streamable HTTP request body at 4 MiB and answers `413` above it. No variable changes that cap: a deployment that needs more raises it where it calls `streamable_http_app()`.
+
+### Toolset names
+
+`PIPEFY_MCP_TOOLSETS` and `--toolsets` take the names below. `DOMAINS` and `PROFILES` in `packages/mcp/src/pipefy_mcp/tools/toolsets.py` hold the tool list behind each name.
+
+A domain is the one subject a tool is about, and every tool belongs to exactly one domain.
+
+| Domain | Subject |
+|---|---|
+| `workflow` | Running a process: pipes, phases, fields, labels, field conditions, cards, comments, card attachments, inbox email, and pipe and card relations |
+| `database` | Pipefy database tables: tables, table fields, table relations, records, and record attachments |
+| `interfaces` | No-code page building: portals, pages, elements, and sub-portals |
+| `automation` | Rule automations and AI automations, with their execution logs, metrics, usage, and job exports |
+| `intelligence` | AI agents, LLM providers, knowledge bases, available models, and AI usage and credits |
+| `analytics` | Pipe and organization reports, and their exports |
+| `governance` | Organization administration: the organization, members, roles, service accounts, and audit-log export |
+| `integration` | Webhooks, iPaaS, and the raw GraphQL tools for introspection and execution |
+
+A tool profile is a set of tools for one kind of work, so one tool can sit in several profiles. Each profile follows the scope of a Pipefy role.
+
+| Tool profile | Role scope | Tools |
+|---|---|---|
+| `requester` | An external guest | Submit a request and track your own cards |
+| `operator` | A pipe member | Run existing cards day to day: reads and the card lifecycle, and no pipe configuration |
+| `manager` | A pipe admin who oversees work | Everything in `operator`, plus reports, execution logs, and audit-log export |
+| `builder` | A pipe admin who configures | Pipes, phases, fields, conditions, automations, AI agents, and relations |
+| `admin` | An organization super admin | Members, roles, service accounts, LLM providers, webhooks, and organization reports |
+| `auditor` | A read-only reviewer | Every read tool, plus audit-log export |
 
 ### iPaaS (Advanced Automations)
 

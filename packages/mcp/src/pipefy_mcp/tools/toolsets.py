@@ -4,11 +4,11 @@
 belongs to exactly one domain, keyed by the subject the tool is *about*. The
 partition backs the tool-catalog map and the build-time drift-guard in
 ``tests/tools/test_toolsets.py`` (a newly registered tool with no domain fails
-the build). The "Subject-domain taxonomy" section in ``packages/mcp/AGENTS.md``
-covers the Domain vs Profile distinction, what each domain owns, and why subject
-domains are chosen over the doc-area grouping.
+the build). "Tool surface" in ``docs/contributing/architecture.md`` explains
+domains and tool profiles, and "Toolset names" in ``docs/config.md`` states what
+each domain and each tool profile covers.
 
-Persona *profiles* (``PROFILES``) are the second, overlapping axis: curated
+Tool profiles (``PROFILES``) are the second, overlapping axis: curated
 journey-sized selections that cut across domains, each grounded in a canonical
 Pipefy role scope. A tool may appear in many profiles; they are not a partition.
 """

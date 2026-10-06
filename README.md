@@ -245,7 +245,7 @@ Not every client wants every tool. Three independent controls decide what `tools
 
 The toolset names are a **different grouping from the table above**: that table is organized by documentation area (the reference docs you read), while subject domains partition tools by the job they serve — card relations land in `workflow`, table relations in `database`. Passing an unrecognized name is a startup error that prints the full list of valid ones. `--toolsets` / `PIPEFY_MCP_TOOLSETS` is a process-level switch: it applies to the local stdio server only, not to the hosted URL.
 
-Per-name definitions and precedence: [`docs/config.md`](docs/config.md). Taxonomy rationale (why subject domains, why personas overlap): [`packages/mcp/AGENTS.md`](packages/mcp/AGENTS.md).
+Per-name definitions and precedence: [`docs/config.md`](docs/config.md). Why the tools split into domains and tool profiles: [Tool surface](docs/contributing/architecture.md#tool-surface).
 
 ---
 
