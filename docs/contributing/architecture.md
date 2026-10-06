@@ -713,9 +713,7 @@ An answer spends the model's context window, so a tool keeps its answer short an
 
 A credential is resolved once per process or once per request, and the choice follows from how many callers the process serves. A process that serves one caller resolves once, as the CLI and the MCP server under the local profile do. A process that serves many callers at the same time resolves once per request, as the MCP server under the remote profile does.
 
-Resolved once per process. The process belongs to one caller, and the block at the end of this section says how each component obtains that credential.
-
-Resolved once per request. The MCP remote profile holds no caller credential at startup, and it snapshots the bearer off each request. The `pipefy-auth` package then validates that bearer as the resource server. The startup identity and the request-scoped identity are the two shapes in code, and both delegate to `pipefy-auth`.
+Under either profile, the MCP server resolves no credential itself and delegates to Identity. Under the remote profile it holds no caller credential at startup, and each request's session acts as the bearer that Identity checked.
 
 A credential also ends. `pipefy auth logout` revokes the refresh token at the provider and deletes the stored entry, so nothing can renew that credential. No process keeps a copy of a stored credential either, because every request reads it again. A token already issued keeps working until it expires, because the provider keeps no record that can recall one. The alternative asks the provider on every call whether the session still exists, and every call then pays that round trip, so a short token lifetime bounds the window instead and the provider's realm sets that lifetime. `QR-27` states that bound, and [`docs/cli/auth.md`](../cli/auth.md) owns what the command reports when a step of that logout fails.
 
