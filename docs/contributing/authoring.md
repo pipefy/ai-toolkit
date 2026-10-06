@@ -68,8 +68,8 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 **Components.**
 
-- A component is a unit of the toolkit with exactly one way in, and `Glossary` fixes the word. The vocabulary is `SDK`, `CLI`, `MCP`, and `Skills`, in that order, in every cell and every list that names the axis. A claim about the axis states the way in, and it names no party.
-- A section whose subject plays out differently per component ends with a `**By component.**` block: four bullets, one per component, in that order. A bullet states the difference in one or two sentences at level-1 altitude, or it reads `no difference`, or it reads `not reached`. A section whose subject is the same everywhere carries no block, and the absence is the statement.
+- A component is a unit of the toolkit that a caller uses through one interface, and [Glossary](architecture.md#glossary) settles the word. The vocabulary is `SDK`, `CLI`, `MCP`, and `Skills`, in that order, in every cell and every list that names the axis. A claim about the axis states the interface, and it names no party.
+- A section whose subject plays out differently per component ends with a `**By component.**` block: one bullet per component, in that order. A bullet states the difference in one or two sentences at level-1 altitude, or it reads `no difference`, or it reads `not reached`. A section whose subject is the same everywhere carries no block, and the absence is the statement.
 - A table that carries the axis as a column names that column by the verb that runs between the row and the component, such as `Applies to` or `Reached by`, and places it second, beside the row name. A cell lists the components it concerns, and no aggregate word stands for the list. `The repository` is the one wider referent, because it reaches `docs/` and the support packages too. A table whose rows are the components carries no axis column.
 - A stakeholder expectation that differs by component names each component, in the fixed order, inside its cell.
 
