@@ -228,7 +228,7 @@ Commons and Skills have no section here. Commons holds helpers that are not rela
 
 #### MCP server
 
-The folders name a file kind rather than a block. `tools/` holds a tool body, the helper beside it, and a pure planner, while `core/` holds a gateway next to the envelope that every tool returns. So the table names the block, and `Code` says where that block lives.
+The diagram and the table below divide the MCP server into blocks by responsibility. The folders group files by kind instead, so a block cuts across them, and the `Code` column lists the files of each block.
 
 ```mermaid
 flowchart TB
