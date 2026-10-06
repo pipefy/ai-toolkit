@@ -2,13 +2,6 @@
 
 Discover the organizations you can access, or fetch one by ID.
 
----
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `list_organizations` | Yes | Lists organizations the caller can access — no id required. Each entry has `id`, `uuid`, `name`, `planName`, `role`, `membersCount`, `pipesCount`, `createdAt`. |
-| `get_organization` | Yes | Fetches one org's details by ID: `id`, `uuid`, `name`, `planName`, `role`, `membersCount`, `pipesCount`, `createdAt`. |
-
 **`organization_id`** (for `get_organization`) matches GraphQL: use a **string** (e.g. `"123456789"` — numeric segment from `https://app.pipefy.com/organizations/<org_id>/...` or from `list_organizations` / `search_pipes`). Unquoted JSON integers are coerced to the same string form. See [Pipefy IDs in pipes & cards](pipes-and-cards.md#pipefy-ids-type-safety).
 
 ## Discovering organizations
