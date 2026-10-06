@@ -474,7 +474,7 @@ sequenceDiagram
     Resolution->>Store: keep them for later invocations
 ```
 
-Every later invocation resolves a credential without asking the person anything.
+After the login, a credential resolves without asking the person anything.
 
 ```mermaid
 sequenceDiagram
@@ -482,9 +482,9 @@ sequenceDiagram
     participant Entry as The composition root
     participant Chain as Credential chain
     participant Store as Session store
+    participant Attach as Bearer attachment
     participant Refresh as Refresh grant
     participant Idp as Pipefy identity provider
-    participant Attach as Bearer attachment
     participant Api as Pipefy GraphQL API
 
     Note over Entry: Credential resolution in the CLI,<br/>or Startup and wiring in the MCP server
@@ -492,21 +492,26 @@ sequenceDiagram
     Chain->>Chain: walk the sources, most explicit first
     Chain->>Store: read the stored session
     Store-->>Chain: the session, where one is stored
-    Chain->>Refresh: make sure the token outlives this call
-    Refresh->>Refresh: take the lock that guards a renewal
-    Refresh->>Idp: trade the renewal token for a fresh one
-    Idp-->>Refresh: a fresh access token
-    Refresh->>Store: keep what came back
-    Refresh-->>Chain: the token to use
     Chain-->>Entry: an authentication the client takes
     Entry->>Attach: build the client around it
-    Attach->>Api: every call this process makes
+    loop every call this process makes
+        Attach->>Refresh: the token for this call
+        Refresh->>Store: read the stored session again
+        opt the access token is near expiry
+            Refresh->>Refresh: take the lock that guards a refresh
+            Refresh->>Idp: trade the refresh token for a fresh one
+            Idp-->>Refresh: a fresh access token
+            Refresh->>Store: keep what came back
+        end
+        Refresh-->>Attach: the token to use
+        Attach->>Api: the call, with that token
+    end
 ```
 
 Four facts sit beside the diagrams.
 
 - Only the CLI runs the login. The MCP server under the local profile reads the session that login wrote, and it opens no browser of its own.
-- The lower half of the second diagram runs for a stored session alone. A static token and a service account resolve on the spot, in either application, and reach `Bearer attachment` directly.
+- The loop runs for a stored session alone. A static token and a service account resolve on the spot, in either application, and reach `Bearer attachment` directly.
 - The lock exists because two processes can hold the same stored session, and a renewal invalidates the token the other one is about to use.
 - A renewal that fails stops the invocation. No other source answers in its place, because the caller already chose this one, and a silent swap would act as somebody else.
 
