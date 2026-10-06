@@ -612,7 +612,7 @@ The legend:
 
 A dependency can instead be pinned to one minor series, but only where this code uses parts of it that its version numbers do not protect, as `mcp` is in `packages/mcp/pyproject.toml`.
 
-The five packages of this workspace are different. Each one takes a single exact version, which [`RELEASE.md`](../../RELEASE.md) rules and `QR-26` demands.
+A package depends on another package of this workspace at one exact version, as [`RELEASE.md`](../../RELEASE.md) rules and `QR-26` demands.
 
 ### Ports and dependency inversion
 
