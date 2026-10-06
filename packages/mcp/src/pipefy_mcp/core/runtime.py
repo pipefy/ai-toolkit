@@ -64,7 +64,7 @@ class McpRuntime:
         # Narrow per-deployment facts resolved at startup. The runtime deliberately
         # holds no Settings tree: tools reach it off the request context, so
         # exposing the tree would let tool code read any process-global value at
-        # call time (see the "Process-global configuration" section of AGENTS.md).
+        # call time (see "Identity lifetime" in docs/contributing/architecture.md).
         self.is_remote = settings.mcp.profile == "remote"
         self.unified_envelope = settings.mcp.unified_envelope
         # The client telemetry deployment is derived from the resolved profile, not

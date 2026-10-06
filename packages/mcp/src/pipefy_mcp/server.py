@@ -49,7 +49,7 @@ def _make_lifespan(
     and captured here. Under 2.0 Streamable HTTP enters this context manager once, at
     session-manager startup, rather than per session; either way every entry yields
     the same already-wired runtime, so all sessions share one engine and each opens
-    its own cheap per-request session. See AGENTS.md for the fuller rationale.
+    its own cheap per-request session.
 
     Tools are registered once, up front, by :func:`_register_pipefy_tools`, never
     here, so registration cannot race the tool table regardless of how often the

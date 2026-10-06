@@ -240,7 +240,7 @@ REMOTE_SEED = frozenset(
         # allow_insecure_urls in the SDK, but both are per-deployment settings (a
         # cosmetic fallback name and the deployment's HTTPS-enforcement posture), not
         # per-user decisions — safe under the single-backend assumption (see
-        # the AGENTS.md audit). delete_webhook carries the two-step confirm UX guard.
+        # "Identity lifetime" in docs/contributing/architecture.md). delete_webhook carries the two-step confirm UX guard.
         "create_webhook",
         "update_webhook",
         "delete_webhook",

@@ -254,9 +254,10 @@ DOMAIN_DESCRIPTIONS: dict[str, str] = {
     "integration": "Connecting to the outside: webhooks, iPaaS, and the raw GraphQL API (introspection and arbitrary execution).",
 }
 
-# Persona profiles: overlapping, journey-sized selections that cut across
+# Tool profiles: overlapping, journey-sized selections that cut across
 # domains. Unlike ``DOMAINS`` these are NOT a partition — a tool may appear in
-# many. Each is grounded in a canonical Pipefy role scope (see AGENTS.md).
+# many. Each is grounded in a canonical Pipefy role scope (see "Toolset
+# names" in docs/config.md).
 # The subset drift-guard keeps every name a registered tool.
 PROFILES: dict[str, frozenset[str]] = {
     # External requester (org external_guest): submit a request and track your own cards.
