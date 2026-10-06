@@ -26,61 +26,7 @@ A skill in a regulated domain (`legal`, `human-resources`, `finance`, `complianc
 
 ## Start from the template
 
-Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-template/pipefy-skill-template/), as [Contributing a skill](../../CONTRIBUTING.md#contributing-a-skill) describes. The skeleton below matches that file.
-
-```markdown
----
-name: pipefy-<name>   # kebab-case, unique
-description: >
-  One-line summary used by agents to choose this skill.
-  Be specific about when to use vs not use.
-tags: [pipefy, <domain>, ...]
----
-
-# Title
-
-Short intro (1-2 sentences).
-
-[When the workflow has surface-specific guidance, add the relevant links:
-MCP clients: read [references/mcp.md](references/mcp.md).
-CLI users: read [references/cli.md](references/cli.md).
-Omit the links for a router without reference files.]
-
----
-
-## When to use
-
-The user intent that triggers this skill (examples). State when NOT to use this skill.
-
-## Prerequisites
-
-What must be true before the agent can execute (IDs, access, config).
-
-## Tools needed
-
-| Operation | Read-only | Purpose |
-|-----------|-----------|---------|
-| `tool_name` | Yes/No | Domain outcome |
-
-## Steps
-
-1. **Step name** — description.
-
-   Operation arguments (adapt to the active surface):
-   ```
-   tool_name arg1=value1 arg2=value2
-   ```
-
-2. **Next step** — ...
-
-## Success criteria
-
-How the agent / human knows the workflow completed correctly.
-
-## Failure modes
-
-Common errors and how to recover.
-```
+Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-template/pipefy-skill-template/), as [Contributing a skill](../../CONTRIBUTING.md#contributing-a-skill) describes. The template's `SKILL.md` shows every section a skill has.
 
 ## Names
 
