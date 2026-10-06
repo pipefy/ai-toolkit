@@ -681,7 +681,7 @@ The `power` keyword replaces the listing instead of narrowing it. It hides the c
 
 An MCP tool expresses one outcome that a user wants, rather than one API operation, which is `QR-5`. A model pays a round trip for every call in a chain, so a tool that finishes the work in one call saves the model every round trip after the first. `SURF-1` in [`conventions.md`](conventions.md) admits a new tool, method, or flag, and `TOOL-1` there states the shape a tool takes. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) holds the reasoning.
 
-The machinery is this large because the catalog is. The tool names copy the API operations today, which is the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt), so this section narrows a surface that a smaller one would not need. Closing that gap shrinks what this section has to do. The taxonomy itself is not settled either, and [Risks and technical debt](#risks-and-technical-debt) carries that. The domain and tool profile boundaries, and the reasoning behind them, are in [`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md).
+Domains, tool profiles and the `power` keyword exist because the catalog is large. The tool names copy the API operations today, which is the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt), and a catalog of outcome tools would leave less to select from. Where the boundaries between domains and between tool profiles fall is not settled either, and [Risks and technical debt](#risks-and-technical-debt) carries that.
 
 **By component.**
 
