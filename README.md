@@ -72,7 +72,7 @@ Feedback and issues: [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues
 >
 > That reports every registration and how each one is reached. It removes nothing, edits nothing, and exits `0` when it finds nothing, `1` when findings remain, `2` when a source could not be inspected. A registration is matched on what it **runs** — the `pipefy-mcp-server` command, a known runner invoking it, or the host `mcp.pipefy.com` — so one registered under any other name is still found. First-time setup checklist to hand your agent: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](skills/onboarding/pipefy-toolkit-setup/SKILL.md). Removing a path, or moving between them: [Uninstalling](#uninstalling-and-switching-between-paths) and [`docs/uninstall.md`](docs/uninstall.md).
 
-> **Too many tools for your client?** The local paths can expose a subset instead of the whole catalog — by subject domain, by persona profile, or as four catalog meta-tools the agent searches on demand. See [Choosing a tool surface](#choosing-a-tool-surface). That selection (`PIPEFY_MCP_TOOLSETS`) applies to the local stdio path only. Any client on the hosted URL always receives the remote-safe floor.
+> **Too many tools for your client?** The local paths can expose a subset instead of the whole catalog — by subject domain, by tool profile, or as four catalog meta-tools the agent searches on demand. See [Choosing a tool surface](#choosing-a-tool-surface). That selection (`PIPEFY_MCP_TOOLSETS`) applies to the local stdio path only. Any client on the hosted URL always receives the remote-safe floor.
 
 **Authentication** (for the local paths; the hosted server uses its own in-client OAuth):
 
@@ -240,7 +240,7 @@ Not every client wants every tool. Three independent controls decide what `tools
 | Control | Set with | Effect |
 |---|---|---|
 | **Launch profile** | `--profile local` / `remote` | The security floor. `local` registers every tool; `remote` serves only the remote-safe surface and validates an inbound bearer per request. |
-| **Toolset selection** | `--toolsets` / `PIPEFY_MCP_TOOLSETS` | Narrows within that floor — by **subject domain** (`workflow`, `database`, `interfaces`, `automation`, `intelligence`, `analytics`, `governance`, `integration`) or by **persona profile** (`requester`, `operator`, `manager`, `builder`, `admin`, `auditor`), unioned. Selection never widens past the floor. |
+| **Toolset selection** | `--toolsets` / `PIPEFY_MCP_TOOLSETS` | Narrows within that floor — by **subject domain** (`workflow`, `database`, `interfaces`, `automation`, `intelligence`, `analytics`, `governance`, `integration`) or by **tool profile** (`requester`, `operator`, `manager`, `builder`, `admin`, `auditor`), unioned. Selection never widens past the floor. |
 | **Power discovery** | `--toolsets power` | Replaces the curated tools with four catalog meta-tools (`get_tool_categories`, `search_tools`, `describe_tool`, `execute_tool`) plus the raw-GraphQL tools, so the working set stays small no matter how large the catalog grows. |
 
 The toolset names are a **different grouping from the table above**: that table is organized by documentation area (the reference docs you read), while subject domains partition tools by the job they serve — card relations land in `workflow`, table relations in `database`. Passing an unrecognized name is a startup error that prints the full list of valid ones. `--toolsets` / `PIPEFY_MCP_TOOLSETS` is a process-level switch: it applies to the local stdio server only, not to the hosted URL.
