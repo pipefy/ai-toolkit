@@ -302,7 +302,7 @@ async def test_validate_ai_automation_prompt_overlap_prompt_and_output(mock_clie
 async def test_validate_ignores_output_only_phase_key(mock_client):
     """``action_params.phase`` is output-only and rejected on write, so it is not a destination.
 
-    Core exposes ``phase`` only on the read type (derived from ``to_phase_id``); the
+    The API exposes ``phase`` only on the read type (derived from ``to_phase_id``); the
     write input declares only ``to_phase_id``. A payload carrying ``phase`` but no
     ``to_phase_id`` resolves no destination, so preflight is a no-op — the API returns
     its own unknown-argument error at create time.
