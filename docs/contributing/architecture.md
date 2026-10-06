@@ -776,7 +776,7 @@ These requirements hold while the system runs.
 | `QR-18` | A call that cannot finish gives up within a time the toolkit states | The call fails with a timeout rather than hanging, and one module declares the value |
 | `QR-19` | Each CLI command prints both for a person to read and for a program to parse | A program can parse the command's output against a shape this repository declares |
 | `QR-20` | An invalid change is refused before it reaches the API | No request leaves for a change the toolkit can reject |
-| `QR-22` | A tool that is missing something it needs asks for it, rather than failing | The tool asks the client for the input, and it says in its answer when it could not ask |
+| `QR-22` | A tool that lacks an input asks the client for it | The tool asks where the client can take a question, and otherwise its answer names the input it lacked |
 | `QR-23` | A tool's description states briefly what the tool does, and it never teaches how to use it | A description states what the tool does and no steps for using it |
 | `QR-24` | A credential the toolkit stores is usable only by whoever it was issued to | A file the toolkit creates for a credential is readable by its owner alone |
 | `QR-25` | A call is stopped for approval only where the deployer chose | A call is stopped where the client's settings say, and nowhere else |
