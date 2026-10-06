@@ -10,19 +10,6 @@ Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe v
 
 **Tip:** For **send-a-task** rules (`send_a_task` action), use `create_send_task_automation` (pipe, trigger, task title, recipients) instead of hand-building `action_params.taskParams` on `create_automation`. For other actions, call `get_automation_events` (global event catalog) and `get_automation_actions` with the target pipe (`repoId`) before `create_automation` to pick valid `trigger_id` / `action_id` values. Writes accept optional `extra_input` (top-level keys are snake_case, e.g. `action_params`, `event_params`; mirror `get_automation` output) and `debug=true` on errors.
 
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_automation` | Yes | Loads one rule by ID (trigger, actions, `active`). |
-| `get_automations` | Yes | Lists one page of rules (the API caps a page at 50) with `event_id`, `event_params`, `condition`, `actionEnabled`, and `disabledReason`; optional `organization_id` and/or `pipe_id`, `first` (1 to 50), `after`. `pagination.total_count` and `pagination.has_more` say whether the page is the whole set; continue with `after=pagination.end_cursor`. Use `get_automation` for full action parameters. |
-| `get_automation_actions` | Yes | Catalog of action types for a pipe (IDs and field metadata). |
-| `get_automation_events` | Yes | Catalog of trigger event definitions (global list; tool still takes `pipe_id` for context). |
-| `get_automation_event_attributes` | Yes | **Event-scoped only** (today: one token). Full `field_map.value` list: see [Common value tokens](#common-value-tokens-copy_from) below. |
-| `simulate_automation` | Yes | Runs a dry-run simulation for an automation with a payload (see tool docstring). |
-| `create_automation` | No | Creates a rule: `pipe_id`, `name`, `trigger_id`, `action_id`; `active` defaults to true. Set `active: false` to create disabled. Optional first-class typed `condition` (see [Condition contract](#condition-contract-condition)); other fields via `extra_input`. |
-| `create_send_task_automation` | No | Creates a send-a-task automation (`pipe_id`, trigger, task title, recipients). Created active; disable via `update_automation`. |
-| `update_automation` | No | Patches a rule: first-class typed `condition` (see [Condition contract](#condition-contract-condition)) and/or `extra_input` (`UpdateAutomationInput` fields). Requires at least one. |
-| `delete_automation` | No | Permanently deletes a rule (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
-
 **Catalog limit: no action applies a label.** The action catalog has no label action, so an if/then rule that labels a card cannot be created through the API or MCP. `get_automation_actions(pipe_id)` is the dynamic source of truth for what a pipe offers; read it instead of assuming. The durable path for that intent is a rule configured in Pipefy itself, where it lives in the process and keeps running unattended. Record that manual step in the plan given to the user, and confirm in the product what is available for that trigger. `update_card(label_ids=[...])` **replaces** the whole label list on a single card as a one-off correction: include every id that should remain, not only the new one. Something has to run the call each time and nothing persists as process behavior, so it does not stand in for the missing action. `create_label` / `update_label` / `delete_label` manage label definitions on the pipe, not label assignment on cards.
 
 **Event and action compatibility.** A pair is invalid when the `event_id` appears in that action's `eventsBlacklist` (`get_automation_actions`), equivalently when the `action_id` appears in that event's `actionsBlacklist` (`get_automation_events`); the two lists agree throughout the catalog. `triggerEvents` is not that list. It reflects which pairings the builder offers first, and the denylist allows pairs outside it, so a membership test on `triggerEvents` refuses valid rules: `field_updated` + `move_single_card` sits outside `triggerEvents` and moves the card. `create_automation` rejects a blacklisted pair with an untranslated error whose readable part is the key `event_action_blacklist`, and writes nothing. `update_automation` does not enforce the denylist: patching a stored rule's `event_id` onto its action's `eventsBlacklist` succeeds and persists, so a caller that updates a rule checks the pair itself.
@@ -144,15 +131,6 @@ Shape:
 
 AI automations are separate from traditional rules above. They are prompt-driven (`generate_with_ai`) and go through the same public `createAutomation` / `updateAutomation` mutations as traditional rules, using the session's normal auth. No service-account credentials are required.
 
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `create_ai_automation` | No | Prompt-driven automation writing to one or more card fields (AI must be enabled on the pipe). |
-| `update_ai_automation` | No | Change name, `active`, prompt, `field_ids`, or `condition`. |
-| `get_ai_automation` | Yes | Loads one AI automation by id (same GraphQL read path as `get_automation`). |
-| `get_ai_automations` | Yes | Lists **only** `generate_with_ai` automations from one page of the pipe's rules (optional org resolution, `first` 1 to 50, `after`). `pagination` describes the mixed connection, not the AI subset; continue while `has_more` is true before concluding an AI rule does not exist. |
-| `delete_ai_automation` | No | Permanently deletes an AI automation (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
-| `validate_ai_automation_prompt` | Yes | Pre-flight validation: field refs in the prompt, `field_ids`, optional `event_id`, and `pipe.preferences.aiAgentsEnabled`. |
-
 ### `create_ai_automation`: `condition` (contract)
 
 The `condition` shape (expressions, `field_address` = internal_id, `operation` values, and the `expressions_structure` OR-of-ANDs grouping) is the shared [Condition contract](#condition-contract-condition) documented above.
@@ -160,12 +138,6 @@ The `condition` shape (expressions, `field_address` = internal_id, `operation` v
 On **create**, if the caller omits `condition`, the MCP layer supplies `DEFAULT_CONDITION` (see `CreateAiAutomationInput` in `pipefy_sdk.models.ai_automation`) so Pipefy always receives an explicit condition object. Pass a `condition` dict to override. On **`update_ai_automation`**, omit `condition` to leave the existing rule unchanged; pass a dict to replace it. Traditional `create_automation` / `update_automation` do **not** inject a default — omit `condition` to leave the rule unconditional.
 
 ## AI agents
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `create_ai_agent` | No | Creates and configures an AI agent with `instruction` (= Pipefy UI "Description") and 1–5 `behaviors` in one call. `repo_uuid` is the pipe UUID from `get_pipe`. Optional: `data_source_ids`; optional `active` (default `true`; `false` = inactive-on-create via `disabled_at`). Success payload includes `disabled_at` / `active`. |
-| `update_ai_agent` | No | Replaces full agent config; send the complete `behaviors` list (1-5). Preserves disabled status (optional `disabled_at` pass-through from `get_ai_agent` skips the re-read). Use `toggle_ai_agent_status` to activate or deactivate. Success payload includes `disabled_at` / `active`. |
-| `toggle_ai_agent_status` | No | Enable/disable without resending configuration. |
 
 **Tip:** Pipefy UI **Description** maps to the API/tool field `instruction` (agent-level purpose). The per-behavior prompt in the UI maps to `actionParams.aiBehaviorParams.instruction` on each behavior (behavior-level).
 
@@ -227,13 +199,6 @@ Optional inside `actionParams.aiBehaviorParams`:
 ### AI Agent read & delete
 
 Use `get_ai_agents` with the pipe's `uuid` (same as `repo_uuid`) before `create_ai_agent` to avoid duplicates.
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `get_ai_agent` | Yes | Loads one agent by UUID: name, instruction, behaviors. |
-| `get_ai_agents` | Yes | Lists agents for a pipe (`repo_uuid` = pipe UUID). |
-| `validate_ai_agent_behaviors` | Yes | Dry-runs behaviors against a pipe (fields, phases, relations); use before create/update. |
-| `delete_ai_agent` | No | Permanently deletes an agent (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
 
 ---
 
