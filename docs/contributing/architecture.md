@@ -702,8 +702,6 @@ A read fails as a denial when the caller named a resource that it may not see, a
 
 An answer spends the model's context window, so a tool keeps its answer short and a caller who needs more asks for more, which is `QR-10`. What a read returns by default is therefore part of its shape. Nobody has chosen those defaults yet, and [Risks and technical debt](#risks-and-technical-debt) carries that gap.
 
-One exception on reach. The shape arrives by wrapping rather than as a tool's own return type. A flag switches it, it covers migrated tools only, and it reaches an internal of the MCP SDK. The requirement is right and the mechanism is not settled, so [Risks and technical debt](#risks-and-technical-debt) carries it.
-
 **By component.**
 
 - SDK: returns a value or raises an exception, and carries no envelope.
