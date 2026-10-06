@@ -18,7 +18,7 @@ Implications for tool design:
   profile. There is no path-traversal threat surface beyond what the user can
   already access, and a local `file_path` needs no SSRF guard, redirect cap, or
   download size limit. The `remote` profile rejects a `file_path` input (see
-  "Exposure vs input restriction").
+  "Marking a tool remote-safe").
 - A **server-side URL fetch is different**: when the server (not the user) makes
   the request, those defenses apply under every profile. The `file_url`
   attachment source carries them in the SDK (`HttpxUrlDownloader`: HTTPS +
