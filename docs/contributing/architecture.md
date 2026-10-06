@@ -224,7 +224,7 @@ The cost of an install divided the shared code into Identity and Commons. Becaus
 
 ### Inside each package
 
-Arc42 asks for a whitebox where a block is important, surprising, risky, complex, or volatile, rather than for one per block. Each section below is the whitebox of one package. The three packages that have a way in earn one, and `pipefy-auth` earns one because every credential operation lives in it. `pipefy-infra` gets none, because it holds no subject to refine. Skills gets none either, because [`skills/README.md`](../../skills/README.md) owns the catalog and each `SKILL.md` owns its steps. A module that only re-exports, such as a package `__init__.py`, belongs to no block.
+Commons and Skills have no section here. Commons holds helpers that are not related to each other, and [`skills/README.md`](../../skills/README.md) owns the skills catalog while each `SKILL.md` owns its steps.
 
 #### MCP server
 
