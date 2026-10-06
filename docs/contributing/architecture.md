@@ -704,9 +704,9 @@ An answer spends the model's context window, so a tool keeps its answer short an
 
 **By component.**
 
-- SDK: returns a value or raises an exception, and carries no envelope.
-- CLI: prints the underlying payload instead, and [`docs/parity.md`](../parity.md) records where the two differ.
-- MCP: returns the envelope.
+- SDK: returns a value on success and raises an exception on failure, with no envelope.
+- CLI: prints the SDK payload on success, and on failure writes the message to standard error and exits with a nonzero code. [`docs/parity.md`](../parity.md) records where that output differs from the MCP envelope.
+- MCP: returns the envelope from the tools moved onto it.
 - Skills: not reached.
 
 ### Identity lifetime
