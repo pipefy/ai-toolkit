@@ -2,32 +2,13 @@
 
 Scoped to `packages/mcp/`. Repo-wide rules are in [`../../AGENTS.md`](../../AGENTS.md), and the code rules are in [`conventions.md`](../../docs/contributing/conventions.md). [`architecture.md`](../../docs/contributing/architecture.md) explains this package: its blocks under `MCP server`, the profiles under `Identity lifetime`, the tool listing under `Tool surface`, and the log under `What reaches a log`. [`docs/config.md`](../../docs/config.md) is the reference for every startup flag and variable.
 
-Run `uv run lint-imports` after you change an import. Import-linter holds this package's layer order.
+Import-linter holds this package's layer order, and the pre-commit hook runs it. To run it alone, use `uv run lint-imports` from this directory.
 
-## Distribution model
+## Inputs and profiles
 
-Under the `local` profile, the server runs in the user's environment as a
-subprocess of the agent runtime (Claude Code, Claude Desktop, etc.), with the
-filesystem and network access that the user already has. For that profile, the
-trust boundary is the user. Under the `remote` profile, the server runs as a
-multi-user HTTP service, and the trust boundary is each caller's bearer.
-
-Implications for tool design:
-
-- Local filesystem inputs (`file_path`) are first-class under the `local`
-  profile. There is no path-traversal threat surface beyond what the user can
-  already access, and a local `file_path` needs no SSRF guard, redirect cap, or
-  download size limit. The `remote` profile rejects a `file_path` input (see
-  "Marking a tool remote-safe").
-- A **server-side URL fetch is different**: when the server (not the user) makes
-  the request, those defenses apply under every profile. The `file_url`
-  attachment source carries them in the SDK (`HttpxUrlDownloader`: HTTPS +
-  public-IP gate, 80/443 ports, connect-time re-validation, redirect cap, size
-  cap), and any future URL ingestion should do the same.
-
-Tool exposure under the `remote` profile is **default-deny**: only tools
-explicitly marked remote-safe are registered, and everything else is withheld.
-The marker is described below.
+- Accept a local `file_path` without an SSRF guard, a redirect cap, or a size limit. Under the `local` profile, the server reads only what the user can already read, and the `remote` profile rejects `file_path`.
+- Fetch a URL on the server only through the defenses of `HttpxUrlDownloader` in the SDK, under every profile.
+- Under the `remote` profile, the server lists only the tools marked remote-safe, as the next section describes. `Identity lifetime` in [`architecture.md`](../../docs/contributing/architecture.md#identity-lifetime) explains the two profiles.
 
 ## Adding a tool
 
@@ -57,7 +38,7 @@ A write must also meet three more criteria:
 
 - **Authorization is the API's, and only the API's.** A remote-safe write carries no client-side permission check; it relies entirely on the backend rejecting a caller who lacks the permission (org-admin to create or delete a service account, pipe-admin to add a member). Mark a write remote-safe only once its permission is enforced downstream for the request-scoped bearer — never infer authorization from the tool merely being reachable.
 - **A returned secret must never reach a log.** A returned secret is safe only because no log line holds an argument value or a response body, as `What reaches a log` in [`architecture.md`](../../docs/contributing/architecture.md#what-reaches-a-log) states. A write that would need its secret logged, echoed in an error, or stored on the server is not remote-safe.
-- **The confirmation gate is not an authorization boundary.** A new tool adds no gate. It declares its effect instead, which is `TOOL-2` in [`docs/contributing/conventions.md`](../../docs/contributing/conventions.md). Nearly every existing destructive tool still gates through `check_destructive_confirmation`: the first call returns a preview and a `confirmation_token`, and only a second call with `confirm=True` and that token mutates. The token binds one tool, one resource identity, and one caller. A hosted deployment verifies it statelessly with an HMAC derived from the bearer, so a token can be replayed within 300 seconds. A client that auto-approves tool calls can send both calls with no person involved, so the gate proves only that the preview reached the transcript. The gate is debt, and the `QR-25` entry in [Risks and technical debt](../../docs/contributing/architecture.md#risks-and-technical-debt) carries it. A destructive write is remote-safe when the API authorizes it and its effect is stated plainly to the caller.
+- **The confirmation gate is not an authorization boundary.** A new tool adds no gate. It declares its effect instead, which is `TOOL-2` in [`conventions.md`](../../docs/contributing/conventions.md). A destructive write is remote-safe when the API authorizes it and its effect is stated plainly to the caller. [Destructive operations](../../docs/mcp/tools/cross-cutting.md#destructive-operations) describes the existing gate, and the `QR-25` entry in [Risks and technical debt](../../docs/contributing/architecture.md#risks-and-technical-debt) explains why it is debt.
 
 Marking a tool shifts the `REMOTE_SEED` drift guard in `tests/tools/test_remote_profile.py`, so the change always gets a review.
 
