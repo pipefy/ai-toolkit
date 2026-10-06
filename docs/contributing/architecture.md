@@ -626,9 +626,7 @@ The iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technic
 
 ### Composition root
 
-At startup, the composition root parses the environment, the config file, and the startup flags into decisions. It also performs every startup effect, such as a keychain read or a network call, and builds the clients that the rest of the code uses. Downstream code then receives a decision it can rely on, and never a raw value it must read again. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
-
-There is one composition root per application, not one for the repo. Each one parses its startup input at its entry point.
+Each application has its own composition root. At startup, it parses the environment, the config file, and the startup flags into decisions. It also performs every startup effect, such as a keychain read or a network call, and builds the clients that the rest of the code uses. Downstream code then receives a decision it can rely on, and never a raw value it must read again. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
 
 A tool module does not construct a concrete client. It receives what it needs from the composition root. A shared package exports parsed types and resolvers, not application wiring or effects. An application can wire eagerly and fail fast at boot, or it can keep effectful members lazy. That choice, like the place the wiring lives, is the application's.
 
