@@ -1,6 +1,6 @@
 # Contributing to ai-toolkit
 
-Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`AGENTS.md`](AGENTS.md) and the [Development](README.md#development) section in the root README (TDD, parity with [`docs/parity.md`](docs/parity.md), `ruff`, `pytest`).
+Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`docs/contributing/development.md`](docs/contributing/development.md).
 
 ---
 

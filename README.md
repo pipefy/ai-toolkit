@@ -281,7 +281,7 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`skills/AGENTS
 | [`docs/config.md`](docs/config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain. |
 | [`docs/parity.md`](docs/parity.md) | MCP tool ↔ CLI command matrix. |
 | [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users. |
-| [`AGENTS.md`](AGENTS.md) | Repository guidelines for contributors and agents. |
+| [`docs/contributing/development.md`](docs/contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules. |
 | [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
 
 ---
@@ -304,7 +304,7 @@ uv run ruff check . && uv run ruff format .
 npx @modelcontextprotocol/inspector uv --directory . run pipefy-mcp-server
 ```
 
-**Adding an MCP tool:** follow [Adding a New Capability](AGENTS.md#adding-a-new-capability) in `AGENTS.md`. It lists every file a new tool touches, including the domain in `tools/toolsets.py` that a build check requires.
+**Adding an MCP tool:** follow [Add a capability](docs/contributing/development.md#add-a-capability). It lists every file a new tool touches, including the domain in `tools/toolsets.py` that a build check requires. [`docs/contributing/development.md`](docs/contributing/development.md) is the full development guide.
 
 ### Test the Claude Code plugin from a local checkout
 
@@ -328,7 +328,7 @@ Contributions are welcome via issues and pull requests. Commits must include a [
 | Area | How to contribute |
 |------|-------------------|
 | **Skills** | Markdown only — see [`CONTRIBUTING.md`](CONTRIBUTING.md). |
-| **MCP / CLI / SDK** | Follow [`AGENTS.md`](AGENTS.md) and [`docs/parity.md`](docs/parity.md). |
+| **MCP / CLI / SDK** | Follow [`docs/contributing/development.md`](docs/contributing/development.md) and [`docs/parity.md`](docs/parity.md). |
 | **Field mapping gaps** | Open an issue with the field type and expected behavior. |
 | **Existing MCP setups** | [`docs/MIGRATION.md`](docs/MIGRATION.md) — configuration remains compatible. |
 

@@ -21,6 +21,7 @@ Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-t
 | [`MIGRATION.md`](MIGRATION.md) | Notes for existing MCP users across packaging changes |
 | [`contributing/architecture.md`](contributing/architecture.md) | Map of the architecture: the functions it delivers, the goals that rank them, the roles that hold them, the quality requirements and constraints that shape it, the boundary with its diagram, the decomposition into applications, packages, and layers, the two scenarios a credential runs, the rules that cross every package, the known debt, and the glossary |
 | [`contributing/conventions.md`](contributing/conventions.md) | Code conventions, as rules with permanent IDs. A rule belongs there when a reviewer applies it by judgment to one unit of code |
+| [`contributing/development.md`](contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules |
 | [`contributing/authoring.md`](contributing/authoring.md) | How the docs tree is organized, where a new doc goes, and what form an entry takes |
 | [`ipaas.md`](ipaas.md) | iPaaS (Advanced Automations) tools: meta-tool pattern, flow overview, vocabulary |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing skills (Markdown playbooks) |

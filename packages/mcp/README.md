@@ -109,4 +109,4 @@ uv run pytest packages/mcp/tests     # MCP tests in isolation
 uv run ruff check packages/mcp/src   # lint
 ```
 
-See the root [`README.md`](../../README.md) and [`AGENTS.md`](../../AGENTS.md) for contributor guidance.
+See [`docs/contributing/development.md`](../../docs/contributing/development.md) for contributor guidance.
