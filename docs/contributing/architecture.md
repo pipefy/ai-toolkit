@@ -438,8 +438,6 @@ The login flow starts the loopback callback and stops it again, so a service own
 | Identity types | Service, as a domain type | Holds the OIDC client identity, the parsed token response, and the PKCE pair, with no I/O | Types that every block above takes | `identity.py`, `responses.py`, `pkce.py` |
 | Configuration | Service, as a domain type | Holds the parsed authentication settings, and the settings that the inbound check reads | `AuthSettings` and `JwtValidationSettings` | `settings.py` |
 
-This package declares no order inside itself, so no check holds the chain above. `packages/auth/pyproject.toml` carries the ruff `TID251` list that holds the direction between packages, and it carries nothing that holds the direction within this one. [Risks and technical debt](#risks-and-technical-debt) states what this package leaves open.
-
 ## Runtime view
 
 [Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request, and its `By component` block says which component takes which shape. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold.
