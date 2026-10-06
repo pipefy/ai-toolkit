@@ -360,8 +360,11 @@ flowchart TB
     registration --> credentials
     registration --> config
     surface --> harness
+    surface --> credentials
+    surface --> renderers
     harness --> credentials
     harness --> renderers
+    credentials --> renderers
     credentials --> config
 ```
 
