@@ -58,7 +58,7 @@ The table below says who the toolkit serves, and what each role expects. The con
 | Release manager | The maintainers who cut a release, at `dev@pipefy.com` | What counts as a breaking change, and what is owed before one ships: [`DEPRECATION.md`](../DEPRECATION.md) and [`release.md`](release.md) |
 | Domain expert | The owners of Pipefy's internal domain model, reached through `dev@pipefy.com` | Names that match the Pipefy product: [Requirements overview](#requirements-overview) and [Glossary](#glossary) |
 | Pipefy platform | The team that owns the GraphQL API, at [`community.pipefy.com/api-76`](https://community.pipefy.com/api-76) | A stated outbound policy: a caller that identifies itself, that does not chain calls it could make in one, that gives up rather than hold a connection open, and that honors a refusal to serve |
-| Operator of the remote deployment | Whoever runs the remote profile. The hosted wrapper is built outside this repository, and no team is named here | For MCP alone, because no other component runs as a shared process. The deployment story: which tools a deployment exposes, where the credential comes from, who can use it, the deploy shape, what reaches a log, and what one caller costs another: [Identity lifetime](#identity-lifetime) and [What reaches a log](#what-reaches-a-log) |
+| Operator of the remote deployment | Whoever runs the remote profile. The hosted wrapper is built outside this repository, and no team is named here | For MCP alone, because no other component runs as a shared process. The deployment story: which tools a deployment exposes, where the credential comes from, who can use it, the deploy shape, what reaches a log, and what one caller costs another: [Deployment view](#deployment-view), [Identity lifetime](#identity-lifetime), and [What reaches a log](#what-reaches-a-log) |
 
 Each Pipefy party confirmed its own row. The programmer, the terminal user, the MCP deployer, and the LLM agent rows are our reading of what each one needs, because this project cannot ask them. [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) is where one of them corrects a row.
 
@@ -564,6 +564,43 @@ Bearer validation also checks that the bearer was issued for this resource and n
 
 This scenario serves `QR-4`, which [Quality goals](#quality-goals) ranks first, so two callers on one process each act as themselves. [Identity lifetime](#identity-lifetime) states the rule that follows for code.
 
+## Deployment view
+
+The MCP server is the only component that runs as a process of its own. The SDK runs inside the program that imports it, the CLI runs once per command on the caller's machine, and an agent client loads the skills as files. So this view places the MCP server alone.
+
+The MCP server runs under one of two deployment profiles. The `local` profile serves one caller on that caller's machine. The `remote` profile serves many callers from a hosted deployment. That deployment puts a proxy in front of the server and is built outside this repository, so the diagram draws it as one node.
+
+```mermaid
+flowchart LR
+    subgraph machine["Caller's machine"]
+        client["MCP client"]
+        local["pipefy-mcp-server<br/>local profile"]
+        cred["Stored session or<br/>service account"]
+    end
+    subgraph hosted["Hosted deployment, built outside this repository"]
+        proxy["Proxy"]
+        remote["pipefy-mcp-server<br/>remote profile"]
+    end
+    client -- "stdio" --> local
+    local --> cred
+    client -- "HTTPS, carrying a bearer" --> proxy
+    proxy -- "HTTP" --> remote
+    remote -- "bearer validation" --> idp["Pipefy identity provider"]
+    local --> api["Pipefy GraphQL API"]
+    remote --> api
+```
+
+The profile decides the rest of the deployment. `McpSettings` in `packages/mcp/src/pipefy_mcp/settings.py` derives the transport from the profile and refuses each combination that the table leaves out.
+
+| Profile | Transport | Credential | Tools listed | Bind host |
+|---|---|---|---|---|
+| `local` | `stdio` by default, `http` on request | One startup credential, which Identity resolves | Every tool | Loopback only, unless `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` is set |
+| `remote` | `http` only, because stdio carries no bearer | The bearer of each request, checked against the resource that `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` names | Only the tools marked remote-safe | Any host, because every caller is checked |
+
+The `remote` profile fails at startup without `PIPEFY_MCP_RS_RESOURCE_SERVER_URL`. Behind the proxy, that URL is the public origin and not the bind host. The server derives its `Host` allowlist from that URL, so a deployment sets `PIPEFY_MCP_ALLOWED_HOSTS` only when the proxy forwards a different `Host`. The MCP SDK caps a request body at 4 MiB and answers `413` above it, and no variable changes that cap, so a deployment that needs more raises it where it calls `streamable_http_app()`.
+
+Each install channel reaches one profile. The Claude Code plugin and the Cursor Marketplace plugin read the root `.mcp.json`, which points at the hosted deployment on `https://mcp.pipefy.com/mcp`, and the hosted MCP channel registers the same URL by hand. `install.sh`, `uv tool install`, and `uvx` run `pipefy-mcp-server` on the caller's machine under the `local` profile. The hosted deployment pins the alpha track, and `install.sh` resolves the beta track, as [`release.md`](release.md) states.
+
 ## Cross-cutting concepts
 
 The concepts below cross the building blocks, so none of them sits under one. Where a concept differs between components, its `By component` block says how.
@@ -727,7 +764,7 @@ A credential also ends. `pipefy auth logout` revokes the refresh token at the is
 
 - SDK: takes its credential from the program that embeds it, and resolves none.
 - CLI: resolves one user's credential per invocation, with the precedence in [`docs/cli/auth.md`](../cli/auth.md).
-- MCP: reads one startup credential under the local profile, and takes the bearer off each request under the remote profile. The local profile checks no inbound caller, so every session acts as the startup credential, and the server refuses an HTTP bind beyond the loopback. `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` lifts that refusal, and anyone who reaches the port then acts as that credential.
+- MCP: reads one startup credential under the local profile, and takes the bearer off each request under the remote profile. The local profile checks no inbound caller, so every session acts as the startup credential, and anyone who reaches an HTTP port acts as it too. [Deployment view](#deployment-view) states the bind that the local profile refuses for that reason.
 - Skills: not reached.
 
 ### What reaches a log
@@ -857,7 +894,6 @@ Each entry below is a place where the code does not yet do what this document st
 - No credential file gets a mode from the toolkit. The file keyring is one path, which `PIPEFY_KEYCHAIN_BACKEND=file` turns on. It writes the credential in plaintext, and `keyrings.alt` picks the mode. The code is `configure_keychain_backend` in `packages/auth/src/pipefy_auth/storage.py`. `config.toml` is the other. The toolkit reads a credential from that file and never checks its mode, and [`docs/config.md`](../config.md) tells the reader to run `chmod 600` instead. That is `QR-24`. The target is a mode on the file the toolkit creates, and a stated position on the file it only reads.
 - A hosted deployment installs a credential store it never opens. `packages/mcp/pyproject.toml` declares Identity, which declares `keyring` and `keyrings.alt` on every install. Under the remote profile the server holds no credential of its own, because `RequestScopedIdentity` in `packages/mcp/src/pipefy_mcp/auth/session_identity.py` resolves each caller from the inbound bearer. Only `StartupIdentity` reaches the store, and the local profile alone builds it. So a hosted image carries a plaintext credential backend with nothing that can write to it or read from it. The target is a split of Identity by deployment, so that bearer validation installs without the credential store.
 - A tool description teaches rather than states. The server must assume that every tool it lists reaches the model, with its docstring beside its schema, so a description is paid for whether or not a caller ever reaches that tool. The longest run to thousands of characters, and `create_ai_agent` is the extreme. `create_card` spends most of its description on elicitation behavior, transport bounds, and a discovery order, which is a procedure rather than a description. `skills/` already holds the playbooks that teach a procedure, and a build check keeps them matched to the tool names and the command names. That is `QR-23`. The target is a description that states what a tool does, with the procedure moved to the skill that owns it.
-- No deployment view. Arc42 7 maps the code onto what runs it, and this document has no such section, which [`authoring.md`](authoring.md) leaves absent until something owns it. The MCP server runs under a deployment profile and a transport, and a hosted deployment sits behind a proxy and a wrapper that this repository does not build. [`docs/config.md`](../config.md) states each flag and variable, and no section states how they combine into a deployment, although the operator row in [Stakeholders](#stakeholders) expects the deploy shape. The target is a `Deployment view` section.
 - Nothing bounds what one caller costs another. The remote profile runs one process for many callers. `packages/mcp/src/pipefy_mcp/core/tool_middleware.py` names a per-user quota and a rate limit as what the hosted profile needs, and it builds the seam that would carry them. The chain seeds one middleware, structured tool-call logging, so no inbound concurrency or rate control ships. The timeouts in `packages/mcp/src/pipefy_mcp/core/ipaas_gateway.py` bound one call, not one caller. The target is not yet chosen.
 - Stakeholder expectations rest on nothing. [Stakeholders](#stakeholders) promises the platform team a caller that identifies itself, and one that honors a refusal to serve. It promises Privacy, Legal and Compliance a compliance card on every published blueprint. No section describes the platform team's expectations, and [Architecture constraints](#architecture-constraints) states the card for a regulated blueprint alone. The target is a `QR` row for each platform expectation, and a decision on whether every published blueprint carries a card.
 - This document has no named owner. This repository has no `CODEOWNERS` file, and the items of the [review rubric](skills.md#review-rubric) are all about a skill. Only a contribution for a regulated industry has a named reviewer, at Pipefy's Privacy, Legal and Compliance team. So nothing states who has to agree before the priority order in [Quality goals](#quality-goals) changes, and a decision here does not outlive the person who made it, although the maintainer row in [Stakeholders](#stakeholders) expects it to. The target is not yet chosen.

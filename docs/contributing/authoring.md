@@ -49,7 +49,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 **Shape.**
 
 - The map takes arc42's sections, their names, and their breakdown, and a level that arc42 leaves to the author is ours to fill. Where a section merges or splits arc42's sublevels, renames one, or stops above one, its block below says so.
-- A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target. Arc42 7 stays absent today.
+- A section that nothing owns yet stays absent, and `Risks and technical debt` names it as the target.
 - A part of the system goes under arc42 5. A rule that holds whichever part you are in goes under arc42 8, and arc42 8 says that a concept can concern a few elements rather than all, so a rule that one component alone obeys still belongs there. A settled choice goes in `Solution strategy` where it serves a goal or where every contributor holds it whatever they change, and in [`adr/`](adr/README.md) otherwise. Sort a rule from a choice by whether a contributor follows it while writing code.
 
 **Ownership.**
@@ -124,6 +124,12 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 - A scenario names blocks that `Building block view` already names, coins no participant, and stays at level-1 altitude, because arc42 recommends a schematic scenario over a detailed one.
 - The section splits on the axis that the concept owning the subject already chose. A difference by deployment profile goes in prose, or in a scenario of its own where that difference is the subject, and never in a second copy of the same flow.
 - A scenario that one component alone runs names that component. A scenario that starts in the middle of a longer flow says what ran before it, which arc42 calls a partial scenario.
+
+**`Deployment view`, arc42 7.** One infrastructure level: a diagram of where the MCP server runs under each deployment profile, a table of what each profile decides, and the install channels that reach each profile.
+
+- A node is a process that the toolkit runs on its own. The SDK, the CLI and the skills run inside a host that the caller owns, so the section names them in one sentence and draws no node for them.
+- The view stops at the boundary of this repository. A deployment built outside it is one node, and the section states what that deployment must supply, never how it is built.
+- [`docs/config.md`](../config.md) owns each variable's default and effect, and this section owns how the variables combine into a deployment.
 
 **`Quality requirements`, arc42 10.** Two subsections, as arc42 10.1 and 10.2 divide it.
 

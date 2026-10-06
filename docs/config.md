@@ -133,10 +133,10 @@ These variables load into `pipefy_mcp.McpSettings` (`settings.mcp`). TOML keys u
 | `PIPEFY_MCP_TRANSPORT` | derived from profile | `stdio` or `http`. Unset: `local` → `stdio`, `remote` → `http`. |
 | `PIPEFY_MCP_HOST` | `127.0.0.1` | HTTP bind host. The unauthenticated `local` profile refuses a non-loopback bind unless `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` is set; the authenticated `remote` profile binds any host. |
 | `PIPEFY_MCP_PORT` | `8000` | HTTP bind port. |
-| `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` | `false` | Escape hatch: lets the unauthenticated `local` profile serve HTTP on a non-loopback host, exposing the full tool surface with no inbound bearer. The `remote` profile never needs it. |
-| `PIPEFY_MCP_ALLOWED_HOSTS` | unset | JSON array of extra `Host` header values the HTTP transport accepts for DNS-rebinding protection, on top of loopback and the `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` host. Unset derives the allowlist from the resource-server URL, so a proxied deployment usually needs none; set it only when a proxy forwards a public `Host` that differs. An entry matches an exact `Host` or, as `host:*`, any port. These are extra entries, so an empty array behaves like unset (the resource-server host is still derived). |
+| `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` | `false` | Lets the `local` profile serve HTTP on a non-loopback host. |
+| `PIPEFY_MCP_ALLOWED_HOSTS` | unset | JSON array of extra `Host` header values that the HTTP transport accepts for DNS-rebinding protection, on top of loopback and the `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` host. An entry matches an exact `Host` or, as `host:*`, any port. An empty array behaves like unset. |
 | `PIPEFY_MCP_ALLOWED_ORIGINS` | unset | JSON array overriding the derived `scheme://host` `Origin` allowlist. Unset derives `http`/`https` origins from the allowed hosts; a non-empty array replaces them with a custom set (e.g. `https`-only); an empty array is the strictest override, rejecting any request that sends an `Origin` header (a request with no `Origin` still passes). |
-| `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` | unset | Public URL of this server as an OAuth protected resource, including the `/mcp` path, such as `https://mcp.pipefy.com/mcp`. The `remote` profile requires it and fails at startup without it, because the server validates each inbound bearer against this resource. Behind a proxy it is the public origin, not the bind host. |
+| `PIPEFY_MCP_RS_RESOURCE_SERVER_URL` | unset | Public URL of this server as an OAuth protected resource, including the `/mcp` path, such as `https://mcp.pipefy.com/mcp`. The `remote` profile validates each inbound bearer against it and fails at startup without it. |
 | `PIPEFY_MCP_RS_REQUIRED_SCOPES` | unset | JSON array of scopes that an inbound token must carry. The MCP SDK answers `403` when one is missing. |
 | `PIPEFY_JWT_ISSUER_URL` | unset | Issuer that signs inbound tokens. Unset, the server uses the issuer it logs into itself. Set it only where the two differ. With `PIPEFY_DISABLE_STORED_SESSION` set and this unset, startup fails, because no issuer remains to validate against. |
 | `PIPEFY_JWT_JWKS_URI` | unset | Key set for inbound validation. Unset, the server reads it from the issuer's discovery document. |
@@ -145,7 +145,7 @@ These variables load into `pipefy_mcp.McpSettings` (`settings.mcp`). TOML keys u
 | `PIPEFY_MCP_UNIFIED_ENVELOPE` | `true` | When true, migrated tools return `{success, data, ...}`. |
 | `PIPEFY_MCP_LOG_LEVEL` | `INFO` | Governs the root logger the MCP SDK configures (RichHandler text on **stderr**) only; it is passed to `MCPServer(log_level=...)` and to uvicorn on the HTTP path. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (case-insensitive). Hosted structured JSON request/tool lines use a dedicated logger pinned at `INFO` on stderr, so raising this knob to quiet text logs does **not** drop those debugging events. Structured lines stay on stderr so they never share the stdio JSON-RPC stdout channel. |
 
-The MCP SDK caps a Streamable HTTP request body at 4 MiB and answers `413` above it. No variable changes that cap: a deployment that needs more raises it where it calls `streamable_http_app()`.
+[Deployment view](contributing/architecture.md#deployment-view) states how these variables combine under each profile, behind a proxy, and the request body limit that no variable changes.
 
 ### Toolset names
 
