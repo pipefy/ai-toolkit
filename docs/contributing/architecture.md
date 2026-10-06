@@ -660,7 +660,7 @@ Around an MCP tool, each party does what only it can do:
 - The MCP server states what a tool changes, both in the tool's description and in its annotations.
 - The client then decides whether a human sees that statement, under settings that the human chose.
 - Pipefy's API authorizes the call, so it alone can refuse one.
-Today the server does more than this, because a destructive tool returns a preview and acts only on a second call that sets `confirm`. Since the model makes that second call, the preview reaches the model, and no person agrees to anything. [Risks and technical debt](#risks-and-technical-debt) carries the correction.
+Today a destructive MCP tool also gates itself behind a second call that sets `confirm`, and [Risks and technical debt](#risks-and-technical-debt) carries that gap.
 
 **By component.**
 
