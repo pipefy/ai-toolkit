@@ -723,7 +723,7 @@ A credential also ends. `pipefy auth logout` revokes the refresh token at the is
 
 **By component.**
 
-- SDK: takes its credential from settings or from the embedding program, and resolves none.
+- SDK: takes its credential from the program that embeds it, and resolves none.
 - CLI: resolves one user's credential per invocation, with the precedence in [`docs/cli/auth.md`](../cli/auth.md).
 - MCP: reads one startup credential under the local profile, and takes the bearer off each request under the remote profile. The local profile checks no inbound caller, so every session acts as the startup credential, and the server refuses an HTTP bind beyond the loopback. `PIPEFY_MCP_ALLOW_INSECURE_HTTP_BIND` lifts that refusal, and anyone who reaches the port then acts as that credential.
 - Skills: not reached.
