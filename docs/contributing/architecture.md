@@ -259,6 +259,9 @@ flowchart TB
     surface --> curation
     surface --> envelope
     surface --> gateway
+    surface --> startup
+    curation --> envelope
+    caller --> config
     envelope --> config
 ```
 
