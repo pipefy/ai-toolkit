@@ -606,7 +606,7 @@ The legend:
 
 ### Declared dependencies
 
-**What a package declares.** A package lists every dependency that its own code imports. This holds even when another dependency already installs that package. The other dependency installs it by its own choice, and that choice can change. The package can be dropped, copied into the dependent, or made conditional on the platform. Nothing in this repository detects such a change. A dependency declared in `packages/mcp/pyproject.toml` for this reason carries a comment that says so. [Risks and technical debt](#risks-and-technical-debt) carries the one place where the rule is broken.
+**What a package declares.** A package declares every dependency that its own code imports, even one that another dependency already installs. That other dependency can stop installing it in any release, and nothing in this repository detects the change. [Risks and technical debt](#risks-and-technical-debt) carries where the rule is broken today.
 
 **How a version is bounded.** Every third-party dependency states a minimum version and a maximum version. The maximum stops before the next major release, as in `>=2.13.4,<3`. A major release can change behavior that this code depends on, and no other check catches that change.
 
