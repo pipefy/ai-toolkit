@@ -530,24 +530,30 @@ The MCP client signs its user in with the issuer and holds the bearer that the i
 sequenceDiagram
     autonumber
     participant Client as MCP client
-    participant Middleware as Inbound middleware
     participant Caller as Caller identity
     participant Verify as Bearer validation
     participant Idp as Pipefy identity provider
+    participant Middleware as Inbound middleware
     participant Tool as Tool surface
+    participant Startup as Startup and wiring
     participant Api as Pipefy GraphQL API
 
-    Client->>Middleware: a tool call, carrying no bearer
-    Middleware-->>Client: a refusal that says where to authenticate
+    Client->>Caller: a tool call, carrying no bearer
+    Caller-->>Client: a refusal that says where to authenticate
     Note over Client,Idp: the client signs its user in against that issuer,<br/>and this system takes no part in it
-    Client->>Middleware: the same call, carrying the bearer it obtained
-    Middleware->>Caller: who sent this
+    Client->>Caller: the same call, carrying the bearer it obtained
     Caller->>Verify: check the bearer
-    Verify->>Idp: the keys this issuer signs with
-    Idp-->>Verify: the keys
+    opt the issuer's keys are not cached yet
+        Verify->>Idp: the keys this issuer signs with
+        Idp-->>Verify: the keys
+    end
     Verify-->>Caller: the caller, or a refusal
-    Caller-->>Middleware: an identity that lives for this request
+    Caller->>Middleware: the call, with the caller it carries
     Middleware->>Tool: run the tool as that caller
+    Tool->>Startup: a client for this request
+    Startup->>Caller: the bearer of this request
+    Caller-->>Startup: that bearer, for this request alone
+    Startup-->>Tool: a client bound to that bearer
     Tool->>Api: the calls the tool makes, carrying the same bearer
     Note over Tool,Api: the request ends and nothing keeps a copy
 ```
