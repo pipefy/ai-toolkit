@@ -522,7 +522,7 @@ When a refresh fails, the call fails. No other source answers in its place, beca
 
 ### A credential resolved once per request
 
-The MCP server under the remote profile runs this scenario, and nothing else here has a second shape. One process serves many callers at the same time, so no credential can belong to the process.
+The MCP server under the remote profile resolves a credential once per request. One process serves many callers at the same time, so no credential can belong to the process.
 
 The roles divide. The MCP client is the party that signs its user in, and it holds the credential that comes back. The server is a resource server: it accepts a bearer, checks it, and acts on it, and it mints none. So the first scenario's login has no counterpart here, and the browser flow that obtains the bearer runs outside this system.
 
