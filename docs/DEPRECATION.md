@@ -42,4 +42,3 @@ Non-breaking examples: clearer error strings, help text fixes, purely additive J
 - Root [`README.md#installation`](../README.md#installation) — install
 - [`docs/config.md`](config.md) — environment variables and `config.toml`
 - [`docs/parity.md`](parity.md) — MCP tool ↔ CLI matrix
-- [`docs/MIGRATION.md`](MIGRATION.md) — packaging and config moves between eras

@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **MCP / CLI email sends (breaking)**: `send_inbox_email` and `send_email_with_template` no longer send on the first call. The first call returns the resolved message under `email` with a `confirmation_token`, and the email goes out only when the call repeats with `confirm=true` and that token. A caller that sent in one call now gets `success: false` with `requires_confirmation: true`. `pipefy email inbox send` and `pipefy email template send` print the message and exit 2 unless `--yes` is set, so a script that sends mail needs `--yes`.
+
 - **SDK AI agent create**: `PipefyClient.create_ai_agent` now writes the agent's instruction and behaviors. It creates the agent and chains `update_ai_agent`, as the MCP tool and CLI command did on their own; before, it dropped the required `instruction` and `behaviors` and returned an empty, disabled agent. When the update fails, it raises the new `AiAgentConfigureError`, which carries the created `agent_uuid`. `CreateAiAgentInput` and `UpdateAiAgentInput` now expand `template_params` / `instruction_template` and normalize instruction token aliases while they validate, so SDK callers get the same prep as the MCP tools. As a result, a raw behavior dict with a literal `{{name}}` and no `template_params` now fails `CreateAiAgentInput` / `UpdateAiAgentInput` validation, as it already failed in the MCP tools. Callers that expanded behaviors themselves can drop that step: a second expansion fails when a substituted value contains `{{name}}`. The MCP tools and CLI commands call these methods. A CLI `agent create` whose update fails now prints the created agent's UUID. The unused `pipefy_mcp.tools.behavior_placeholder_interpolation` re-export is removed; import the helpers from `pipefy_sdk.behavior_placeholders`. (#695)
 
 - **MCP `fill_card_phase_fields`**: no longer writes when the phase has no editable fields, on every path including a shown form; dropped keys return in `skipped_field_ids`. CLI `pipefy card fill --fields {}` on a phase with editable fields now returns the collected-nothing envelope instead of short-circuiting with "No fields to update."
@@ -290,7 +292,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Deprecated
 
-- **SDK**: legacy `PIPEFY_OAUTH_*` env vars still resolve to the new `service_account_*` fields via an alias shim, with a one-shot stderr deprecation warning per legacy key. The aliases will be removed in a later `0.2.0-beta.x` release (carrying an explicit breaking-change callout). See [`docs/MIGRATION.md`](docs/MIGRATION.md#service-account-env-var-rename).
+- **SDK**: legacy `PIPEFY_OAUTH_*` env vars still resolve to the new `service_account_*` fields via an alias shim, with a one-shot stderr deprecation warning per legacy key. The aliases will be removed in a later `0.2.0-beta.x` release (carrying an explicit breaking-change callout).
 
 ### Fixed
 

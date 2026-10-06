@@ -262,7 +262,6 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 | [`docs/README.md`](docs/README.md) | Index by surface (MCP, CLI, SDK). |
 | [`docs/config.md`](docs/config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain. |
 | [`docs/parity.md`](docs/parity.md) | MCP tool ↔ CLI command matrix. |
-| [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users. |
 | [`docs/contributing/development.md`](docs/contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules. |
 | [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
 
@@ -277,7 +276,6 @@ Contributions are welcome via issues and pull requests. Commits must include a [
 | **Skills** | Markdown only — see [`docs/contributing/skills.md`](docs/contributing/skills.md). |
 | **MCP / CLI / SDK** | Follow [`docs/contributing/development.md`](docs/contributing/development.md) and [`docs/parity.md`](docs/parity.md). |
 | **Field mapping gaps** | Open an issue with the field type and expected behavior. |
-| **Existing MCP setups** | [`docs/MIGRATION.md`](docs/MIGRATION.md) — configuration remains compatible. |
 
 ---
 

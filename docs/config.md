@@ -92,8 +92,6 @@ Credential variables reject leading and trailing whitespace; `PIPEFY_ORG_ID` (be
 
 `PIPEFY_OAUTH_URL` is dropped without a replacement. The OAuth token endpoint now derives from `PIPEFY_BASE_URL`.
 
-Full migration notes: [`MIGRATION.md#service-account-env-var-rename`](MIGRATION.md#service-account-env-var-rename).
-
 ## Precedence
 
 ```
