@@ -1,7 +1,11 @@
 # ADR-0002: Typed, single-form contract
 
-Status: proposed. The arguments and identifiers parts are ready. The typed-output rollout is a later step.
-Date: 2026-07-23
+Status: Proposed
+Target release: none
+
+## Status notes
+
+The arguments and identifiers parts are ready. The typed-output rollout is a later step.
 
 ## Context
 

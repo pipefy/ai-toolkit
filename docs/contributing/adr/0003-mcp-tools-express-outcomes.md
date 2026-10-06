@@ -1,7 +1,11 @@
 # ADR-0003: MCP tools express outcomes
 
-Status: proposed. The contract standards are ready. The outcome-tool consolidation, the resolver migration, and the destructive-gate reshaping are deferred.
-Date: 2026-07-20
+Status: Proposed
+Target release: none
+
+## Status notes
+
+The contract standards are ready. The outcome-tool consolidation, the resolver migration, and the destructive-gate reshaping are deferred.
 
 ## Context
 

@@ -1,8 +1,8 @@
 # Documentation authoring
 
-This guide describes the target structure for the `docs/` tree and where a new doc goes. Its siblings are [`architecture.md`](architecture.md) and [`conventions.md`](conventions.md).
+This guide describes the structure of the `docs/` tree and where a new doc goes. Its siblings are [`architecture.md`](architecture.md) and [`conventions.md`](conventions.md).
 
-The tree is mid-migration to this target. Where a file still sits in the wrong place, an open issue tracks the move.
+A file that does not follow this structure yet has an open issue that tracks its move.
 
 ## Where a doc goes
 
@@ -18,7 +18,7 @@ Then keep a doc to one kind where practical. The Diataxis kinds are tutorial, ho
 
 ## Decision records
 
-A decision record is contributor explanation of a distinct kind: one architectural decision, immutable once adopted. The set lives under `docs/contributing/adr/`, one file per decision. To change a decision, add a record that supersedes the old one. Do not edit an adopted record. The rule a record produces graduates to `architecture.md` or `conventions.md`, where a contributor reads the current rule. The record keeps the reasoning. In its `Consequences` section, each consequence names what it changes, which is a `QR` row, a convention rule, or a constraint, and grades that change as satisfied, partly satisfied, or violated. A consequence that changes no row, no rule, and no constraint says so.
+A decision record is contributor explanation of a distinct kind: one architectural decision, immutable once adopted. A proposed record is the only doc that describes planned work. Every other doc describes the code on the default branch. [`adr/README.md`](adr/README.md) defines the `Status` and `Target release` header lines. The set lives under `docs/contributing/adr/`, one file per decision. To change a decision, add a record that supersedes the old one. Do not edit an adopted record. The rule a record produces graduates to `architecture.md` or `conventions.md`, where a contributor reads the current rule. The record keeps the reasoning. In its `Consequences` section, each consequence names what it changes, which is a `QR` row, a convention rule, or a constraint, and grades that change as satisfied, partly satisfied, or violated. A consequence that changes no row, no rule, and no constraint says so.
 
 ## Citing by ID
 

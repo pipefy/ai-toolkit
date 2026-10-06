@@ -1,7 +1,7 @@
 # ADR-0005: One package per way in, over shared libraries
 
-Status: proposed
-Date: 2026-10-06
+Status: Proposed
+Target release: none
 
 ## Context
 

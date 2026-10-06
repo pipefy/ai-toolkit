@@ -1,7 +1,11 @@
 # ADR-0004: Vertical-slice structure and naming
 
-Status: proposed, slice folders and the `Pipefy` rename deferred
-Date: 2026-07-20
+Status: Proposed
+Target release: none
+
+## Status notes
+
+The slice folders and the `Pipefy` rename are deferred.
 
 ## Context
 

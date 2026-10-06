@@ -1,7 +1,11 @@
 # ADR-0006: The envelope states the outcome, and a partial write says so
 
-Status: proposed
-Date: 2026-10-06
+Status: Proposed
+Target release: none
+
+## Status notes
+
+The envelope migration is deferred.
 
 ## Context
 

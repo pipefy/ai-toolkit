@@ -1,7 +1,7 @@
 # ADR-0001: Layered responsibility
 
-Status: proposed
-Date: 2026-07-20
+Status: Proposed
+Target release: none
 
 ## Context
 
