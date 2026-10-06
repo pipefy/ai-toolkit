@@ -1,6 +1,6 @@
 """Live MCP calls for introspection tools (real PipefyClient + GraphQL).
 
-Exercises the same path Pipeclaw uses: MCPServer tool handlers → PipefyClient →
+Exercises the same path an MCP client uses: MCPServer tool handlers → PipefyClient →
 SchemaIntrospectionService. Skips when PIPEFY_* credentials are missing.
 
 Run:

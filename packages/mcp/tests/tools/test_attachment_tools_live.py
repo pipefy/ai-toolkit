@@ -192,9 +192,7 @@ async def test_live_upload_attachment_to_table_record_end_to_end(
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_live_pipeclaw_mcp_upload_attachment_to_card(
-    extract_payload, tmp_path: Path
-):
+async def test_live_mcp_upload_attachment_to_card(extract_payload, tmp_path: Path):
     """Registers AttachmentTools via the production app (ToolRegistry wiring)."""
     require_live_creds()
     env = _card_upload_env()

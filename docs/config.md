@@ -97,7 +97,7 @@ Full migration notes: [`MIGRATION.md#service-account-env-var-rename`](MIGRATION.
 init kwargs > environment variables > .env > config.toml > field defaults
 ```
 
-Setting `PIPEFY_BASE_URL=https://staging.pipefy.com` in the shell wins over a `base_url = "..."` line in the file. The reverse — file wins over env — is *not* supported: environment is meant for one-off overrides on top of declarative defaults.
+Setting `PIPEFY_BASE_URL=https://pipefy.example.com` in the shell wins over a `base_url = "..."` line in the file. The reverse (file wins over env) is *not* supported: environment is meant for one-off overrides on top of declarative defaults.
 
 ## Credentials
 

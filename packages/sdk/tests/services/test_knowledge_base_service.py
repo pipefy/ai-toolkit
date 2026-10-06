@@ -57,7 +57,7 @@ def _create_flow_executor():
     """Executor whose three ``execute_query`` calls drive a full create flow."""
     return mock_executor(
         side_effect=[
-            {"pipe": {"organization": {"id": "300514213", "uuid": "org-uuid"}}},
+            {"pipe": {"organization": {"id": "900100", "uuid": "org-uuid"}}},
             {"createPresignedUrl": {"url": _UPLOAD_URL, "downloadUrl": _DOWNLOAD_URL}},
             {"createAiKnowledgeBaseDocument": {"knowledgeBaseDocument": DOCUMENT_FULL}},
         ]
@@ -483,7 +483,7 @@ class TestCreateDocument:
         assert calls[0].args[1] == {"id": "pipe-uuid-1"}
         # 2) presign with the resolved org id, file name, pdf type, and byte length
         assert calls[1].args[1] == {
-            "organizationId": "300514213",
+            "organizationId": "900100",
             "fileName": "handbook.pdf",
             "contentType": "application/pdf",
             "contentLength": len(_PDF_BYTES),
@@ -602,7 +602,7 @@ class TestCreateDocument:
     async def test_missing_upload_url_tagged_presigned_url(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "900100"}}},
                 {"createPresignedUrl": {"url": None, "downloadUrl": _DOWNLOAD_URL}},
             ]
         )
@@ -622,7 +622,7 @@ class TestCreateDocument:
     async def test_s3_failure_tagged_and_carries_snippet(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "900100"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -652,7 +652,7 @@ class TestCreateDocument:
         """A raising PUT (transport error, allowlist rejection) carries the step tag."""
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "900100"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -687,7 +687,7 @@ class TestCreateDocument:
         """
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "900100"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -731,7 +731,7 @@ class TestCreateDocument:
     async def test_create_mutation_failure_tagged_kb_create(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "900100"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
