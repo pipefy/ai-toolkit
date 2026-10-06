@@ -692,8 +692,6 @@ Domains, tool profiles and the `power` keyword exist because the catalog is larg
 
 ### Response shape
 
-This section is `PARSE-5` in [`conventions.md`](conventions.md) applied to what a tool returns.
-
 One shape carries both outcomes, so a caller reads success and failure the same way. A migrated MCP tool returns `success` and `data`, with `message` and `pagination` when they apply.
 
 An invalid argument does not reach a tool body. The argument error is reshaped into that same envelope, so a caller receives the field and the rule rather than a stack trace. That is `QR-1` at the tool boundary, and [Composition root](#composition-root) is the same requirement applied to configuration.
