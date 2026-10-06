@@ -632,9 +632,9 @@ Inside an application, code outside the composition root does not construct a cl
 
 **By component.**
 
-- SDK: owns no composition root, because the caller wires it, so the facade constructs the gateways it delegates to.
-- CLI: wires at its entry point, without a single runtime module.
-- MCP: centralizes the wiring in `core/runtime.py`.
+- SDK: owns no composition root, because it is a library. A caller passes it settings and a credential, and the facade builds the gateways behind it from those.
+- CLI: parses its startup input at its entry point and builds the client when a command first needs it.
+- MCP: parses its startup input at its entry point and builds its runtime at startup in `core/runtime.py`. The runtime opens a session for each request.
 - Skills: not reached.
 
 ### Identifier resolution
