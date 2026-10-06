@@ -11,6 +11,7 @@ Every record is proposed today, and none is adopted yet. The rule each decision 
 | [0003](0003-mcp-tools-express-outcomes.md) | MCP tools express outcomes | proposed, consolidation, resolver migration, and gate reshaping deferred | [`conventions.md`](../conventions.md) |
 | [0004](0004-vertical-slice-structure.md) | Vertical-slice structure and naming | proposed, slice folders and the `Pipefy` rename deferred | [`architecture.md`](../architecture.md), [`conventions.md`](../conventions.md) |
 | [0005](0005-package-split.md) | One package per way in, over shared libraries | proposed | [`architecture.md`](../architecture.md#package-decomposition) |
+| [0006](0006-envelope-outcome.md) | The envelope states the outcome | proposed, the envelope migration deferred | [`architecture.md`](../architecture.md#response-shape) |
 
 The governance rule that says when to refactor lives in [`conventions.md`](../conventions.md), not as a separate record.
 
@@ -24,5 +25,6 @@ The deferred work of these decisions is tracked in epics outside the records:
 - Vertical-slice refactor and the `Pipefy` root rename (0004).
 - An import contract per package, so a check holds the role direction outside `packages/mcp` (0004).
 - Typed-output rollout, resource by resource with Card first (0002).
+- The envelope migration from `success` to `status`, with `isError` set from the outcome (0006).
 
 The step-by-step exploration behind these decisions is in the repository history.
