@@ -12,7 +12,6 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`sdk/`](sdk/README.md) | Using `pipefy` as a library |
 | [`config.md`](config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain |
 | [`parity.md`](parity.md) | Which CLI command matches each MCP tool, and where the two differ |
-| [`ipaas.md`](ipaas.md) | iPaaS (Advanced Automations) tools: meta-tool pattern, flow overview, vocabulary |
 | [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
 | [`MIGRATION.md`](MIGRATION.md) | Notes for existing MCP users across packaging changes |
 | [`DEPRECATION.md`](DEPRECATION.md) | Versioning and deprecation policy after v1.0 |

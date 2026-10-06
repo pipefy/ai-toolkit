@@ -85,7 +85,7 @@ We work inside a constraint rather than around it. When a limit blocks us, we ne
 | No assumed operating system | The repository | We chose to support an installation on macOS, Linux and Windows |
 | No keychain in some environments | CLI, MCP | A container and a continuous-integration runner have no OS keychain |
 
-[`docs/ipaas.md`](../ipaas.md) owns the tool catalog, and each `pyproject.toml` owns the Python floor.
+[`docs/mcp/tools/ipaas.md`](../mcp/tools/ipaas.md) describes the tool catalog, and each `pyproject.toml` owns the Python floor.
 
 **Organizational.**
 
@@ -109,7 +109,7 @@ Every rule we set for ourselves lives in a file of its own, so this block has no
 
 In domain terms, the toolkit acts on the Pipefy organizations that a caller can access, and each call runs under the caller's membership in one of them. Inside an organization, a pipe holds the definition of a process and a card is one run of that process. A database table holds records of the business entities a process uses. Unlike a card, a record has no lifecycle of its own, because it moves through no phases.
 
-[Requirements overview](#requirements-overview) names every capability the toolkit reaches on pipes, cards, tables and records, and the GraphQL schema owns the shape of each. A flow of the iPaaS is the exception, because it runs on a separate engine, so the `Vocabulary` section of [`docs/ipaas.md`](../ipaas.md) defines it.
+[Requirements overview](#requirements-overview) names every capability the toolkit reaches on pipes, cards, tables and records, and the GraphQL schema owns the shape of each. A flow of the iPaaS is the exception, because it runs on a separate engine, so the `Vocabulary` section of [`docs/mcp/tools/ipaas.md`](../mcp/tools/ipaas.md#vocabulary) defines it.
 
 The diagram draws the toolkit as one box, with every party it exchanges data with. The box holds the components of the toolkit, which are the SDK, the CLI, the MCP server and the skills.
 

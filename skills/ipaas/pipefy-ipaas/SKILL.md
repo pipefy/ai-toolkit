@@ -124,4 +124,4 @@ For a single task ("send one Slack message", "check my inbox"), the catalog has 
 
 - `pipefy-automations` — native if/then rules and AI automations (not iPaaS).
 - `pipefy-members-email-webhooks` — `create_webhook` for HTTP callbacks on card events; `add_service_account_to_pipe` to grant a flow's service account pipe membership.
-- [docs/mcp/tools/ipaas.md](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/ipaas.md) and [docs/ipaas.md](https://github.com/pipefy/ai-toolkit/blob/main/docs/ipaas.md) — meta-tool semantics and flow vocabulary.
+- [docs/mcp/tools/ipaas.md](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/ipaas.md) — meta-tool semantics and flow vocabulary.
