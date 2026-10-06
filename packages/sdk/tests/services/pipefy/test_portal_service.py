@@ -654,6 +654,24 @@ async def test_create_portal_permission_denied_surfaces_actionable_message() -> 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_portal_permission_denied_points_org_admins_to_join_as_admin() -> None:
+    """An org admin with manage_portals is still denied until they join the portal."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateInterface": {"interface": _CREATE_PORTAL_GRAPHQL_INTERFACE}},
+    )
+    interfaces_executor.execute_query = AsyncMock(side_effect=_PERMISSION_DENIED_ERROR)
+
+    with pytest.raises(PortalPermissionError) as excinfo:
+        await service.update_portal("portal-created-uuid", name="Renamed")
+
+    message = str(excinfo.value)
+    assert "manage_portals" in message
+    assert "joinAsAdmin" in message
+    assert "does not expose" in message
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_update_portal_permission_denied_surfaces_actionable_message() -> None:
     """PERMISSION_DENIED on update maps to portal permission guidance."""
     service, _public, interfaces_executor = _make_interfaces_service(
