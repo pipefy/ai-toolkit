@@ -450,7 +450,7 @@ The CLI resolves its credential once per command, and the MCP server under the l
 sequenceDiagram
     autonumber
     participant Person as Terminal user
-    participant Surface as Command surface
+    participant Resolution as Credential resolution
     participant Flow as Login flow
     participant Loopback as Loopback callback
     participant Issuer as Issuer client
@@ -458,20 +458,20 @@ sequenceDiagram
     participant Idp as Pipefy identity provider
     participant Store as Session store
 
-    Person->>Surface: pipefy auth login
-    Surface->>Flow: run the login
+    Person->>Resolution: pipefy auth login
+    Resolution->>Flow: run the login
     Flow->>Issuer: ask where the provider's endpoints are
     Issuer-->>Flow: the authorization and token endpoints
     Flow->>Loopback: listen on a loopback port
     Note over Flow,Loopback: the port is held before the browser opens,<br/>so nothing else can take it mid-flight
     Flow->>Browser: open the authorization URL
     Browser->>Idp: the person signs in
-    Idp-->>Loopback: the authorization code, with the value sent out
-    Loopback-->>Flow: both, and the flow refuses a value it did not send
+    Idp-->>Loopback: the authorization code, with the state value the flow sent
+    Loopback-->>Flow: both, and the flow refuses a state value it did not send
     Flow->>Issuer: trade the code for tokens
-    Issuer-->>Flow: an access token and a renewal token
-    Flow-->>Surface: the tokens, which the flow stores nowhere
-    Surface->>Store: keep them for later invocations
+    Issuer-->>Flow: an access token and a refresh token
+    Flow-->>Resolution: the tokens, which the flow stores nowhere
+    Resolution->>Store: keep them for later invocations
 ```
 
 Every later invocation resolves a credential without asking the person anything.
