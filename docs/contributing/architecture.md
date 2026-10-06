@@ -524,7 +524,7 @@ When a refresh fails, the call fails. No other source answers in its place, beca
 
 The MCP server under the remote profile resolves a credential once per request. One process serves many callers at the same time, so no credential can belong to the process.
 
-The roles divide. The MCP client is the party that signs its user in, and it holds the credential that comes back. The server is a resource server: it accepts a bearer, checks it, and acts on it, and it mints none. So the first scenario's login has no counterpart here, and the browser flow that obtains the bearer runs outside this system.
+The MCP client signs its user in and holds the credential that comes back. The server is a resource server: it accepts a bearer, checks it, and acts on it, and it issues none. So the first scenario's login has no counterpart here.
 
 The scenario starts mid-flight. The process is already running and already serving other callers, and it holds no caller credential from its startup.
 
