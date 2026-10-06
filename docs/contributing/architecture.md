@@ -340,8 +340,6 @@ The SDK is a library, so it owns no composition root: the caller wires it, and t
 | Pure helpers | Service, as a domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a gateway or the package surface calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
 | Configuration and telemetry | Service, as a domain type | Holds the parsed configuration, and builds the outbound headers that name the caller | A settings object, and the `User-Agent` that every request carries | `settings.py`, `telemetry.py` |
 
-Preflight validation is a service, because one answer is correct for every caller, and the SDK holds no layer above its service layer. A narrower defect survives, because each function takes a `PipefyClient` and therefore imports the facade that publishes it. [Risks and technical debt](#risks-and-technical-debt) carries that, and the grouping inside the few operation gateways that fan out.
-
 The `utils/` folder splits between two blocks, because `organization_identifiers.py` reaches a query document while the rest are pure. [Risks and technical debt](#risks-and-technical-debt) carries that grouping too.
 
 The SDK declares no order inside itself, so no check holds the chain above. `packages/sdk/pyproject.toml` carries the ruff `TID251` list that holds the direction between packages, and it carries nothing that holds the direction within this one.
