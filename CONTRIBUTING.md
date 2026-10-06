@@ -7,6 +7,7 @@ Follow the guide for your change:
 | A skill (Markdown only) | [`docs/contributing/skills.md`](docs/contributing/skills.md#add-a-skill) |
 | The SDK, the MCP server, or the CLI | [`docs/contributing/development.md`](docs/contributing/development.md) |
 | Documentation | [`docs/contributing/authoring.md`](docs/contributing/authoring.md) |
+| A design decision that outlives one change | [`docs/contributing/adr/`](docs/contributing/adr/README.md) |
 
 ## Developer Certificate of Origin (DCO)
 
