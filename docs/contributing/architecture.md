@@ -274,7 +274,7 @@ The SDK is a library, so it owns no composition root: the caller wires it, and t
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Facade | Service, as the published facade | Constructs each gateway, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
-| Preflight validation | Service | Validates a change against the API rules before the change runs, which is `FR-3` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py` |
+| Preflight validation | Service | Validates a change against the API rules before the change runs, which is `FR-3` and `QR-20` | Public functions, run ahead of the change | `ai_preflight.py`, `ai_pipe_validation.py`, `ai_phase_transition_validation.py`, `automation_preflight.py`, `report_filter_preflight.py` |
 | Operation gateways | Gateway, with a service inside the few that fan out | Runs a named operation against the Pipefy API, where a few of them fan out over several calls | One method per named operation, which the facade delegates to | `services/`, and `utils/organization_identifiers.py` |
 | Wire documents | Gateway | Holds the GraphQL document that each gateway sends | A document that a gateway imports | `queries/` |
 | GraphQL port and executor | Service port, with a gateway behind it | Declares the `GraphQLExecutor` port, and ships the authenticated implementation behind it | The port that a gateway takes, and the transport that fulfills it | `graphql_executor.py` |
