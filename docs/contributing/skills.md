@@ -20,7 +20,7 @@ skills/
   README.md             ← catalog index
 ```
 
-Each domain folder matches an area of the MCP tool surface: `pipes-and-cards`, `database-tables`, `relations`, `reports`, `automations`, `ipaas`, `ai-agents`, `observability`, `members-email-webhooks`, `portal-setup`, `attachments`, `introspection`, `building`, `process-design`, `process-impact`, `process-intelligence`, `api-troubleshoot`, and `onboarding`. Open an issue before you add a domain.
+Each folder directly under `skills/` is a domain, named for an area of the MCP tool surface. Open an issue before you add a domain.
 
 A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`docs/compliance/COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
 

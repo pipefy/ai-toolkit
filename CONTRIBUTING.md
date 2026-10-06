@@ -11,7 +11,7 @@ A skill is Markdown only, so you write no Python code and no tests. You need [`u
 ### Quick start
 
 1. Fork and clone the repo.
-2. Choose or create a domain folder under `skills/`.
+2. Choose a domain folder under `skills/`. To add a domain, open an issue first.
 3. Copy the starter skill and rename it:
 
    ```bash
@@ -38,13 +38,12 @@ A skill is Markdown only, so you write no Python code and no tests. You need [`u
 
 ### Review rubric
 
-PRs are reviewed for:
+CI checks the frontmatter and every tool and command a skill names. A reviewer checks the rest:
 
-1. Frontmatter valid and `name` matches directory.
-2. Content is accurate against the current MCP/CLI surface.
-3. Examples are runnable (checked manually by reviewer against a real Pipefy org for high-impact skills).
-4. Style matches [`docs/contributing/skills.md`](docs/contributing/skills.md).
-5. No persona-specific content (skills are generic, not tailored to a specific agent identity).
+1. Content is accurate against the current MCP/CLI surface.
+2. Examples are runnable (checked manually by reviewer against a real Pipefy org for high-impact skills).
+3. Style matches [`docs/contributing/skills.md`](docs/contributing/skills.md).
+4. No persona-specific content (skills are generic, not tailored to a specific agent identity).
 
 ---
 
