@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / ".github/workflows/scripts/lint_skill_frontmatter.py"
+SCRIPT = ROOT / "scripts/lint_skill_frontmatter.py"
 spec = importlib.util.spec_from_file_location("lint_skill_frontmatter", SCRIPT)
 assert spec and spec.loader
 lint = importlib.util.module_from_spec(spec)

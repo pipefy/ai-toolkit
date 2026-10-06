@@ -27,7 +27,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DEFINITION = re.compile(r"^([a-z_][a-z0-9_]*)\(\) \{")
 # A pipeline that starts with a bare call: at the start of a line, or opening a

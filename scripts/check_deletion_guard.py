@@ -17,7 +17,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # The trap runs on a signal, when the script may be part-way through anything.
 # `remove_path` reports through `err`, which exits, and honours --dry-run,

@@ -7,13 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 
-_SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / ".github"
-    / "workflows"
-    / "scripts"
-    / "lint_plugin_packaging.py"
-)
+_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "lint_plugin_packaging.py"
 _spec = importlib.util.spec_from_file_location("lint_plugin_packaging", _SCRIPT)
 assert _spec and _spec.loader
 _lint = importlib.util.module_from_spec(_spec)

@@ -14,7 +14,7 @@ from pipefy_sdk.skills import parse_skill_surfaces
 if TYPE_CHECKING:
     import click
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # A command group maps subcommand names to subtrees; a command maps to its long options.
 CliTree = dict[str, "CliTree | frozenset[str]"]

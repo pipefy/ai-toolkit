@@ -38,25 +38,25 @@ repos:
         types: [shell]
       - id: deletion-guard
         name: deletions route through remove_path
-        entry: python3 .github/workflows/scripts/check_deletion_guard.py
+        entry: python3 scripts/check_deletion_guard.py
         language: system
         files: ^uninstall\.sh$
         pass_filenames: false
       - id: pipe-drain
         name: consumers of a streaming producer read to the end
-        entry: python3 .github/workflows/scripts/check_pipe_drain.py
+        entry: python3 scripts/check_pipe_drain.py
         language: system
         files: ^uninstall\.sh$
         pass_filenames: false
       - id: skill-frontmatter
         name: SKILL.md frontmatter
-        entry: uv run python .github/workflows/scripts/lint_skill_frontmatter.py
+        entry: uv run python scripts/lint_skill_frontmatter.py
         language: system
         files: ^skills/
         pass_filenames: false
       - id: skill-refs
         name: skills name only shipped tools and commands
-        entry: uv run python .github/workflows/scripts/lint_skill_refs.py
+        entry: uv run python scripts/lint_skill_refs.py
         language: system
         files: ^(skills/|packages/(mcp|cli|sdk)/src/)
         pass_filenames: false
@@ -64,7 +64,7 @@ repos:
       # new skill counts once it is staged.
       - id: plugin-packaging
         name: plugin manifests list every published skill
-        entry: python3 .github/workflows/scripts/lint_plugin_packaging.py
+        entry: python3 scripts/lint_plugin_packaging.py
         language: system
         files: ^(skills/|\.cursor-plugin/|\.claude-plugin/)
         pass_filenames: false

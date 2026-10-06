@@ -35,11 +35,7 @@ from test_install_receipt import (
 )
 
 _GUARD_SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / ".github"
-    / "workflows"
-    / "scripts"
-    / "check_deletion_guard.py"
+    Path(__file__).resolve().parents[1] / "scripts" / "check_deletion_guard.py"
 )
 _spec = importlib.util.spec_from_file_location("check_deletion_guard", _GUARD_SCRIPT)
 assert _spec is not None and _spec.loader is not None

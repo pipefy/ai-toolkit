@@ -14,7 +14,8 @@ on:
       - "packages/cli/src/pipefy_cli/**"
       - "packages/sdk/src/pipefy_sdk/client.py"
       - ".github/workflows/skills-lint.yml"
-      - ".github/workflows/scripts/**"
+      - "scripts/lint_skill_frontmatter.py"
+      - "scripts/lint_skill_refs.py"
   pull_request:
     paths:
       - "skills/**"
@@ -50,13 +51,13 @@ jobs:
         run: uv sync --locked --quiet
 
       - name: Validate SKILL.md frontmatter
-        run: uv run python .github/workflows/scripts/lint_skill_frontmatter.py
+        run: uv run python scripts/lint_skill_frontmatter.py
 
       - name: Test frontmatter validation
         run: uv run pytest tests/test_lint_skill_frontmatter.py
 
       - name: Validate SDK, MCP, and CLI references in skills
-        run: uv run python .github/workflows/scripts/lint_skill_refs.py
+        run: uv run python scripts/lint_skill_refs.py
 
       - name: Test operation reference validation
         run: uv run pytest tests/test_lint_skill_refs.py
