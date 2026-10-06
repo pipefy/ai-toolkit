@@ -19,7 +19,7 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
      skills/<domain>/pipefy-<domain>-<action>
    ```
 
-   Fill in [`SKILL.md`](.github/skill-template/pipefy-skill-template/SKILL.md) using the rules in [`skills/AGENTS.md`](skills/AGENTS.md) (and [`.github/skill-template/README.md`](.github/skill-template/README.md)).
+   Fill in [`SKILL.md`](.github/skill-template/pipefy-skill-template/SKILL.md) using the rules in [`docs/contributing/skills.md`](docs/contributing/skills.md) (and [`.github/skill-template/README.md`](.github/skill-template/README.md)).
 4. Run the reference linters locally (optional; CI runs the same checks). Stage new
    skill files first (`git add`); `lint_plugin_packaging.py` reads tracked files via `git ls-files`, so an unstaged skill makes the packaging lint print `passed` while CI will fail after you push.
 
@@ -35,52 +35,9 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
 
 > **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live — see [Test the Claude Code plugin from a local checkout](README.md#test-the-claude-code-plugin-from-a-local-checkout).
 
-### Frontmatter requirements
+### Rules for a skill
 
-Every `SKILL.md` must have valid YAML frontmatter with:
-
-```yaml
----
-name: pipefy-<domain>-<action>   # must match the directory name
-description: >
-  One sentence that agents use to choose this skill.
-tags: [pipefy, ...]
----
-```
-
-Missing or mismatched `name` fails CI.
-
-### Naming rules
-
-- **Skill folder names:** kebab-case, prefixed with `pipefy-` (e.g., `pipefy-process-design`).
-- **Domain folders:** match the existing domains in `skills/`. Open an issue before creating a new domain.
-- **Stable IDs:** once merged, renames need a CHANGELOG note and skill-lint allowlist update.
-- **Product words only:** use the name the Pipefy product uses, never a new one. The domain model that settles a name is internal to Pipefy, so open an issue and ask rather than coin a term.
-
-### Style guide
-
-- Action-first headlines: "Create a card" not "Card creation process".
-- Keep `SKILL.md` surface-neutral: domain rules, payload shapes, steps and operation names. Move MCP controls to `references/mcp.md` and commands/flags to `references/cli.md`, linking each from the body. Only document **shipped** CLI equivalents from [`docs/parity.md`](docs/parity.md); mark missing ones deferred.
-- Prefer explicit IDs over names (Pipefy IDs are stable; labels change).
-- Keep the skill under 500 lines. Split by sub-domain if it grows larger.
-- Refer to related skills by name with `See also:` rather than paths or copied content, so flattened installations work.
-
-### Tool references
-
-Operation names in tables and top-level `pipefy` CLI tokens in `SKILL.md` and
-its `references/**/*.md` files are checked in CI (`skills-lint.yml` runs
-`.github/workflows/scripts/lint_skill_refs.py`):
-
-- MCP tool names in the first column of tool tables must exist in `PIPEFY_TOOL_NAMES`.
-- Invocations of the form `pipefy <subcommand>` must use a subcommand registered on the
-  root CLI (see `packages/cli/src/pipefy_cli/main.py`).
-
-If you reference a tool or CLI surface that does not exist yet, CI will fail. Either wait
-for the capability to ship, or open the PR as a draft and link the implementation PR.
-
-### Intra-repo coupling rule
-
-If a PR renames a CLI command or MCP tool and your skill references that command, update the skill in the **same PR**. The coupling rule is enforced by CI.
+[`docs/contributing/skills.md`](docs/contributing/skills.md) holds every rule for a skill: the frontmatter, the names, the body style, and what CI checks.
 
 ### Review rubric
 
@@ -89,7 +46,7 @@ PRs are reviewed for:
 1. Frontmatter valid and `name` matches directory.
 2. Content is accurate against the current MCP/CLI surface.
 3. Examples are runnable (checked manually by reviewer against a real Pipefy org for high-impact skills).
-4. Style matches guide above.
+4. Style matches [`docs/contributing/skills.md`](docs/contributing/skills.md).
 5. No persona-specific content (skills are generic, not tailored to a specific agent identity).
 
 ---

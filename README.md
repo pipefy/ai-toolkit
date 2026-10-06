@@ -267,7 +267,7 @@ CLI-specific guides: **[`docs/cli/`](docs/cli/README.md)** (including [introspec
 
 The [`skills/`](skills/) directory holds workflow playbooks: prerequisites, tool tables (MCP + CLI), steps, and success criteria. Compatible with any agent that reads Markdown (Cursor, Claude Code, Codex, and others). Distribution is via [`skills.sh`](https://github.com/vercel-labs/skills) (55+ agent targets); install commands are under [Installation](#installation) above.
 
-Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`skills/AGENTS.md`](skills/AGENTS.md). Contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contributing/skills.md`](docs/contributing/skills.md). Contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 **Card & phase agent ergonomics:** use [`skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md`](skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md) (workflow *Seed pipe across phases*; prefer dedicated tools over `execute_graphql`).
 
