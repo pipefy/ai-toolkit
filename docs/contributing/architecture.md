@@ -610,7 +610,7 @@ The legend:
 
 **How a version is bounded.** A third-party dependency states a minimum version and a maximum version, and the maximum stops before the next major release, as in `>=2.13.4,<3`. A major release can change behavior that this code depends on, and no other check catches that change. [Risks and technical debt](#risks-and-technical-debt) carries the dependencies that state no maximum today.
 
-A dependency can instead be locked to one minor series. That is correct only where this code uses parts of the dependency that its version numbers do not protect. A comment beside the dependency then states which parts those are. One dependency in `packages/mcp/pyproject.toml` is locked this way today.
+A dependency can instead be pinned to one minor series, but only where this code uses parts of it that its version numbers do not protect, as `mcp` is in `packages/mcp/pyproject.toml`.
 
 The five packages of this workspace are different. Each one takes a single exact version, which [`RELEASE.md`](../../RELEASE.md) rules and `QR-26` demands.
 
