@@ -700,7 +700,7 @@ A denial states the likely cause and the next step, so a caller can decide from 
 
 A read fails as a denial when the caller named a resource that it may not see, and the failure names those resources, which is `QR-12`. A read over a set returns only the resources that the caller may see, and it reports no denial. Today some reads return `success: true` with a list of the denied resources, and [Risks and technical debt](#risks-and-technical-debt) carries that gap.
 
-An answer costs the caller context once per call, which is `QR-10`. What a read returns by default is therefore part of its shape, and [Risks and technical debt](#risks-and-technical-debt) holds the review of those defaults.
+An answer spends the model's context window, so a tool keeps its answer short and a caller who needs more asks for more, which is `QR-10`. What a read returns by default is therefore part of its shape. Nobody has chosen those defaults yet, and [Risks and technical debt](#risks-and-technical-debt) carries that gap.
 
 One exception on reach. The shape arrives by wrapping rather than as a tool's own return type. A flag switches it, it covers migrated tools only, and it reaches an internal of the MCP SDK. The requirement is right and the mechanism is not settled, so [Risks and technical debt](#risks-and-technical-debt) carries it.
 
