@@ -711,9 +711,7 @@ An answer spends the model's context window, so a tool keeps its answer short an
 
 ### Identity lifetime
 
-The local profile runs one process per user. The remote profile runs one process that serves many callers at the same time. That fact about the infrastructure decides the rest of this section. The static view above cannot express it, because the modules and the imports are identical under both profiles.
-
-A credential is resolved once per process, or once per request.
+A credential is resolved once per process or once per request, and the choice follows from how many callers the process serves. A process that serves one caller resolves once, as the CLI and the MCP server under the local profile do. A process that serves many callers at the same time resolves once per request, as the MCP server under the remote profile does.
 
 Resolved once per process. The process belongs to one caller, and the block at the end of this section says how each component obtains that credential.
 
