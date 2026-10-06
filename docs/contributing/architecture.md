@@ -641,11 +641,11 @@ Inside an application, code outside the composition root does not construct a cl
 
 An identifier names a resource, and it takes one of several forms: a numeric ID, a UUID, a slug, or the resource's name. Each component picks the forms that its arguments take.
 
+`ARG-1` in [`conventions.md`](conventions.md) holds each argument to one form, and [`docs/mcp/tools/identifiers.md`](../mcp/tools/identifiers.md) names the form that each MCP tool argument takes. [ADR-0002](adr/0002-typed-single-form-contract.md) holds the reasoning.
+
 The SDK finds the matches for a name, and it tolerates a name that is incomplete or misspelled, which is `QR-28`. [Risks and technical debt](#risks-and-technical-debt) states which searches reach that tolerance today.
 
 The choice between the matches sits above the SDK, because it is a decision, and `QR-7` leaves that decision with the caller. Today the caller searches first and then calls a tool with the ID it chose, so one piece of work costs an extra call. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) lets an MCP tool take the name itself and ask the client to choose when the name fits more than one resource. The `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt) carries that extra call until then.
-
-`ARG-1` in [`conventions.md`](conventions.md) holds each argument to one form, while [`docs/mcp/tools/identifiers.md`](../mcp/tools/identifiers.md) names which form each MCP tool and argument takes. These identifier rules come from the decision record [ADR-0002](adr/0002-typed-single-form-contract.md).
 
 **By component.**
 
