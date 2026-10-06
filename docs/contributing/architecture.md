@@ -616,7 +616,13 @@ A package depends on another package of this workspace at one exact version, as 
 
 ### Ports and dependency inversion
 
-The repository owns these ports today: `GraphQLExecutor` in the SDK is a port over the GraphQL client. The attachment service owns `S3Uploader` and `UrlDownloader`. A test injects a fake against each, which is `QR-13`. Each one serves `QR-2` too, because a change behind a port stops at that port. The outbound HTTP chain of the iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
+The repository owns these ports today, and a test injects a fake against each, which is `QR-13`:
+
+- `GraphQLExecutor`, which the SDK services take in place of the GraphQL client.
+- `S3Uploader`, which the attachment service takes to upload bytes to a presigned URL.
+- `UrlDownloader`, which the attachment service takes to fetch bytes from a URL that the caller supplies.
+
+The iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
 
 ### Composition root
 
