@@ -45,7 +45,7 @@ Reads on the wrong org can succeed while Interfaces writes fail. Before page/ele
 2. Ensure the token is meant for that org (service account email vs human user on a different org is a common mismatch).
 3. Prefer an org where the account has **`manage_portals`** and portal admin in Pipefy (not only `canManagePortals` on a read query from another org).
 
-If **`update_portal`** or **`delete_portal`** returns `PERMISSION_DENIED` but the user insists the org role is correct: Pipefy may require **`joinAsAdmin`** on that portal interface for service accounts (Interfaces mutation, not shipped as MCP/CLI). The user must join as portal admin once in the UI (or via GraphQL) per portal UUID before SA writes succeed.
+If a portal write (`update_portal`, `delete_portal`, page or element changes) returns `PERMISSION_DENIED` but the org role is correct: the caller must also be that portal's admin. Pipefy requires **`joinAsAdmin`** on that portal interface once per portal UUID, for users and service accounts alike, even an org admin who created the portal. It is an Interfaces mutation, not shipped as MCP/CLI, and `execute_graphql` cannot reach it. Ask the user to join as portal admin before retrying.
 
 ---
 
