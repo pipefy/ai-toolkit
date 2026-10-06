@@ -48,9 +48,14 @@ RALPH_TASK.md
 .mcp.json
 !/.mcp.json
 
-# Tracked release tooling only (ignore ad-hoc local scripts and smoke artifacts)
+# Tracked tooling only (ignore ad-hoc local scripts and smoke artifacts)
 scripts/*
 !scripts/bump_version.py
+!scripts/check_deletion_guard.py
+!scripts/check_pipe_drain.py
+!scripts/lint_plugin_packaging.py
+!scripts/lint_skill_frontmatter.py
+!scripts/lint_skill_refs.py
 !scripts/release.py
 !scripts/smoke_entry_points.py
 
