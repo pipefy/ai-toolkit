@@ -754,7 +754,9 @@ Each requirement belongs to one or more categories of the Q42 quality model at [
 
 ### Quality scenarios
 
-**Usage.** A demand that a caller holds while the system runs, including when a call cannot complete or a component it needs fails.
+#### Usage
+
+These requirements hold while the system runs.
 
 | ID | Demand | Acceptance criterion |
 |---|---|---|
@@ -782,7 +784,9 @@ Each requirement belongs to one or more categories of the Q42 quality model at [
 | `QR-28` | A name that is incomplete or misspelled still finds the resource | An inexact name returns the resource, or the matches that `QR-7` demands |
 | `QR-29` | An operation that no tool wraps is still reachable | An agent needs an operation with no tool of its own. One call runs it against the API, under the same credential |
 
-**Change.** A demand that a holder has when the system, or something it depends on, changes.
+#### Change
+
+These requirements hold when the system, or something it depends on, changes.
 
 | ID | Demand | Acceptance criterion |
 |---|---|---|
