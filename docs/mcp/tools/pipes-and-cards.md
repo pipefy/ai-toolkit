@@ -103,7 +103,7 @@ Empty `allowed_phases` means no outbound transitions are configured in the UI.
 
 ## Field condition tools
 
-Five tools read and configure conditional visibility on phase fields.
+These tools read and configure conditional visibility on phase fields.
 
 - `create_field_condition` maps to `createFieldConditionInput`: `phase_id`, `condition`, `actions`.
 - Action entries use `phaseFieldId` with the target field's `internal_id` from `get_phase_fields` (not the slug `id`).

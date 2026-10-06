@@ -13,9 +13,9 @@ Pipefy exposes several identifier forms, and different tools expect different on
 
 Discover ids with `list_organizations` (org id + uuid, no input needed), `search_pipes` / `get_pipe` (pipe id + uuid), and `get_start_form_fields` / `get_phase_fields` (a field's `id` = slug **and** `internal_id`).
 
-## The pipe has five argument names
+## The pipe has several argument names
 
-The single biggest source of wrong-id errors: the same pipe is addressed by five different argument names across tools, in two different forms. Read the form from this table, not the name.
+The single biggest source of wrong-id errors: the same pipe is addressed by different argument names across tools, in two different forms. Read the form from this table, not the name.
 
 | Argument | Form | Where |
 | --- | --- | --- |

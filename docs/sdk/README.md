@@ -83,7 +83,7 @@ Both return a dict. `valid` is true only when `problems` is empty, and `warnings
 
 ## Methods named after the MCP tools
 
-Five `PipefyClient` methods share names and parameters with MCP tools so an agent that builds its tools from the client can call the same operations. MCP and CLI call these methods; MCP `fill_card_phase_fields` still owns elicitation when a form can be shown and the caller did not skip it.
+These `PipefyClient` methods share names and parameters with MCP tools so an agent that builds its tools from the client can call the same operations. MCP and CLI call these methods; MCP `fill_card_phase_fields` still owns elicitation when a form can be shown and the caller did not skip it.
 
 - **`get_ai_automation(automation_id)`** delegates to `get_automation`. Returns the rule record, or `None` when the id is missing.
 - **`get_ai_automations(pipe_id, organization_id=None, *, first=None, after=None)`** calls `get_automations`, then keeps only `generate_with_ai` rows in `nodes` (`pipefy_sdk.ai_preflight.filter_ai_automation_summaries`). `totalCount` and `pageInfo` still describe the mixed page.
