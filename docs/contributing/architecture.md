@@ -698,7 +698,7 @@ An invalid argument never reaches a tool body. The server returns it as a failur
 
 A denial states the likely cause and the next step, so a caller can decide from the response whether to change the input or stop, which is `QR-8`. No response says whether a retry can succeed, and [Risks and technical debt](#risks-and-technical-debt) carries that gap. A tool that takes a `debug` argument also adds the vendor error codes and the correlation ID, for the person who reports a failure.
 
-A partial result is not a failure. A read that spans several resources returns the ones the caller may see, plus a list that names the ones it may not, which is `QR-12`. `success` stays true on that response, so a caller that reads `success` alone misses the denials.
+A read fails as a denial when the caller named a resource that it may not see, and the failure names those resources, which is `QR-12`. A read over a set returns only the resources that the caller may see, and it reports no denial. Today some reads return `success: true` with a list of the denied resources, and [Risks and technical debt](#risks-and-technical-debt) carries that gap.
 
 An answer costs the caller context once per call, which is `QR-10`. What a read returns by default is therefore part of its shape, and [Risks and technical debt](#risks-and-technical-debt) holds the review of those defaults.
 
