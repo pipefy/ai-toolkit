@@ -579,8 +579,6 @@ The stack serves `QR-2`, because a vendor change stops at the layer that wraps t
 
 An application holds all four layers, because it turns a caller's intent into operations. A library holds the bottom two, because it executes a named operation, so the SDK and Identity hold no application layer.
 
-The stack above is not the import direction on every edge. Between packages an import points inward, and an outer package imports an inner one, never the reverse. Inside a package three edges agree with the stack, and the edge between the service layer and a gateway inverts where that edge carries a port.
-
 Between packages, ruff `TID251` bans the inward-breaking imports, where two rules produce every entry:
 
 - An import never runs against the direction of the level-1 diagram.
