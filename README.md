@@ -213,24 +213,7 @@ The local server registers the full catalog. Canonical names: `PIPEFY_TOOL_NAMES
 
 Tool descriptions and `Args:` blocks come from Python docstrings (what MCP clients show to models), and the read-only and destructive hints come from the tool annotations. Per-area reference docs cover the concepts, edge cases, and cross-cutting behavior that the docstrings do not state.
 
-**Shared conventions** (pagination, IDs, permissions, error shape): [`docs/mcp/tools/cross-cutting.md`](docs/mcp/tools/cross-cutting.md).
-
-| Domain | Summary | Reference |
-|--------|---------|-----------|
-| **Pipes & cards** | Pipes, phases, fields, labels, cards, field conditions, attachments. Phase inventory (`get_phase_cards`, `get_phase_cards_count`), move discovery (`get_phase_allowed_move_targets`), and `create_card(phase_id=…)` reduce raw GraphQL for agent seeding. | [docs](docs/mcp/tools/pipes-and-cards.md) |
-| **Database tables** | Tables, records, schema, table-record attachments. | [docs](docs/mcp/tools/database-tables.md) |
-| **Relations** | Pipe and card relations. | [docs](docs/mcp/tools/relations.md) |
-| **Reports** | Pipe and organization reports, async exports. | [docs](docs/mcp/tools/reports.md) |
-| **Automations & AI** | Automations, AI automations, AI agents, validators. | [docs](docs/mcp/tools/automations-and-ai.md) |
-| **LLM providers** | Discovery reads (custom + Pipefy-managed providers, vendor model lists, owner defaults, dependencies, read-access probe) plus custom-provider writes: create/update/delete, active-status toggle, and organization default set/reset. | [docs](docs/mcp/tools/llm-providers.md) |
-| **Knowledge bases** | Pipe-scoped AI knowledge bases: list all items, plain text / document (one-shot PDF upload) / data lookup CRUD, and a read-access probe. Attach sources to agents/behaviors via `dataSourceIds`. | [docs](docs/mcp/tools/knowledge-bases.md) |
-| **iPaaS** | Lazy discovery, invocation, and app-connection setup for a pipe's iPaaS (Advanced Automations) workspace (`get_ipaas_tools`, `call_ipaas_tool`, plus the connection meta-tools). | [docs](docs/mcp/tools/ipaas.md) |
-| **Observability** | Logs, usage, credits, execution metrics, job exports. | [docs](docs/mcp/tools/observability.md) |
-| **Members, email & webhooks** | Membership, inbox email, webhooks. | [docs](docs/mcp/tools/members-email-webhooks.md) |
-| **Service accounts** | Create and delete organization service accounts (OAuth2 machine identities); attach them to pipes with `add_service_account_to_pipe`. | [docs](docs/mcp/tools/service-accounts.md) |
-| **Organization** | Organization metadata and discovery. | [docs](docs/mcp/tools/organization.md) |
-| **Portals** | Portal read/CRUD, pages, elements, sub-portals (publish/unpublish). | [docs](docs/mcp/tools/portal.md) |
-| **Introspection** | Schema discovery and raw GraphQL. | [docs](docs/mcp/tools/introspection.md) |
+[`docs/mcp/README.md`](docs/mcp/README.md) lists the reference for each area. Start with [`cross-cutting.md`](docs/mcp/tools/cross-cutting.md) for pagination, IDs, permissions, and the error shape.
 
 ### Choosing a tool surface
 
@@ -242,7 +225,7 @@ Not every client wants every tool. Three independent controls decide what `tools
 | **Toolset selection** | `--toolsets` / `PIPEFY_MCP_TOOLSETS` | Narrows within that floor — by **subject domain** (`workflow`, `database`, `interfaces`, `automation`, `intelligence`, `analytics`, `governance`, `integration`) or by **tool profile** (`requester`, `operator`, `manager`, `builder`, `admin`, `auditor`), unioned. Selection never widens past the floor. |
 | **Power discovery** | `--toolsets power` | Replaces the curated tools with four catalog meta-tools (`get_tool_categories`, `search_tools`, `describe_tool`, `execute_tool`) plus the raw-GraphQL tools, so the working set stays small no matter how large the catalog grows. |
 
-The toolset names are a **different grouping from the table above**: that table is organized by documentation area (the reference docs you read), while subject domains partition tools by the job they serve — card relations land in `workflow`, table relations in `database`. Passing an unrecognized name is a startup error that prints the full list of valid ones. `--toolsets` / `PIPEFY_MCP_TOOLSETS` is a process-level switch: it applies to the local stdio server only, not to the hosted URL.
+The toolset names are a **different grouping from the reference areas**: those follow the documentation, while subject domains partition tools by the job they serve — card relations land in `workflow`, table relations in `database`. Passing an unrecognized name is a startup error that prints the full list of valid ones. `--toolsets` / `PIPEFY_MCP_TOOLSETS` is a process-level switch: it applies to the local stdio server only, not to the hosted URL.
 
 Per-name definitions and precedence: [`docs/config.md`](docs/config.md). Why the tools split into domains and tool profiles: [Tool surface](docs/contributing/architecture.md#tool-surface).
 
