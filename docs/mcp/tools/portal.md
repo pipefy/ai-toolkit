@@ -98,30 +98,7 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 
 ---
 
-## Tools
-
-| Tool | Read-only | Role |
-|------|-----------|------|
-| `list_portals` | Yes | Flat list: `uuid`, `name`, `visibility`, `subType`. Optional `search_term`. |
-| `get_portal` | Yes | Full portal: `published`, `pages[]`, `elements[]`, `subPortals[]`. |
-| `create_portal` | No | Idempotent main portal (`findOrCreateInterfaceByTemplate`). |
-| `update_portal` | No | `name`, `visibility` (`internal` \| `private` \| `public`), `color`, `icon`, `display_pipefy_header`. |
-| `delete_portal` | No | Irreversible; MCP two-step with `confirmation_token`; CLI `--yes`. |
-| `create_portal_page` | No | `interface_uuid` + `title`; optional `description`, `index`, `elements`. |
-| `update_portal_page` | No | Page metadata; at least one field. |
-| `delete_portal_page` | No | Irreversible; MCP two-step with `confirmation_token`; CLI `--yes`. |
-| `sort_portal_pages` | No | `page_ids` ordered list. |
-| `update_portal_page_layout` | No | `page_id` + `layout` JSON only (no portal UUID on wire). |
-| `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`, `element_id`, `layout` (full row array with a row listing `element_id`: creates and places in one call). |
-| `update_portal_element` | No | Full `metadata` replace. |
-| `delete_portal_element` | No | Irreversible. Optional `layout` (full row array with `element_id` removed from every row) prunes the grid in the same call; a row still listing `element_id` is rejected. MCP: send the same `layout` on the preview and the confirm call, since the token covers those rows. |
-| `duplicate_portal_element` | No | Same page; `element_id`, `portal_uuid`, `page_id`. |
-| `create_sub_portal` | No | Interfaces `createSubPortal`; `main_portal_uuid`, optional `name`. |
-| `update_sub_portal_element` | No | Attach (internal_api `updateSubPortalElement`). |
-| `publish_sub_portal` | No | Same mutation with `subPortalUuid` on a **`forms`** element. |
-| `unpublish_sub_portal` | No | `updateSubPortalElement(subPortalUuid: null)`. |
-| `delete_sub_portal_element` | No | Detach wiring (`deleteSubPortalElement`). |
-| `delete_sub_portal` | No | Delete interface (`deleteSubPortalInterface`). |
+## Page layout
 
 **Read before editing layout:** `get_portal` returns the full `pages[].layout` row array. Each row needs a non-empty `id`, `type: "row"`, and `children` as non-empty strings; array order defines placement. Pass the complete array to `update_portal_page_layout` (CLI `--layout '[...]'`), preserving unaffected rows, IDs, and children. Do not wrap it in `{ "rows": [...] }` and do not send an incomplete row: the API does not validate this field and stores that JSON verbatim, replacing the grid. The toolkit rejects a non-array and any incomplete row before the call. An empty array is a valid empty page. To add an element at a known position, pass `element_id` and `layout` (existing rows plus a row listing the new id) to `create_portal_element` instead of creating first and rewriting the grid afterwards. Element `metadata.gridMap` holds dimensions (`height`, `columns`, `minColumns`), not row order or grouping; retain it when replacing element metadata. Re-read the page and compare layout and element metadata after writing. If the layout cannot be read, stop the positional edit instead of reconstructing it from dimensions.
 
@@ -172,6 +149,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `portal_uuid` on read/write portal tools | Non-empty string |
 | `name`, `color`, `icon` on `update_portal` | Non-empty when provided |
 | `update_portal` | At least one updatable field |
+| `update_portal_page` | At least one of `title`, `description`, `index` |
 | `page_id`, `page_ids[*]` | Non-empty string or positive integer |
 | `page_ids` on `sort_portal_pages` | Non-empty list; no duplicates |
 | `index` on page create/update | Non-negative integer when set |
