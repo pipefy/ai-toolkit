@@ -774,7 +774,7 @@ These requirements hold while the system runs.
 | `QR-16` | A token issued for another service is refused | The bearer's audience is checked against this resource |
 | `QR-17` | A name in the toolkit matches the name the Pipefy product uses | A name the toolkit exposes can be found in the Pipefy domain model |
 | `QR-18` | A call that cannot finish gives up within a time the toolkit states | The call fails with a timeout rather than hanging, and one module declares the value |
-| `QR-19` | One CLI command prints for a person to read and for a program to parse | A program can parse the command's output against a shape this repository declares |
+| `QR-19` | Each CLI command prints both for a person to read and for a program to parse | A program can parse the command's output against a shape this repository declares |
 | `QR-20` | An invalid change is refused before it reaches the API | No request leaves for a change the toolkit can reject |
 | `QR-22` | A tool that is missing something it needs asks for it, rather than failing | The tool asks the client for the input, and it says in its answer when it could not ask |
 | `QR-23` | A tool's description states briefly what the tool does, and it never teaches how to use it | A description states what the tool does and no steps for using it |
