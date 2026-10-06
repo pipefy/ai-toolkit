@@ -74,3 +74,9 @@ repos:
         language: system
         files: ^packages/mcp/
         pass_filenames: false
+      - id: sdk-import-layers
+        name: SDK import layers (lint-imports)
+        entry: sh -c 'cd packages/sdk && uv run lint-imports'
+        language: system
+        files: ^packages/sdk/
+        pass_filenames: false

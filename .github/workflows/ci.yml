@@ -185,6 +185,8 @@ jobs:
       run: cd packages/infra && uv run ruff check src
     - name: Lint mcp (intra-package layers)
       run: cd packages/mcp && uv run lint-imports
+    - name: Lint sdk (intra-package layers)
+      run: cd packages/sdk && uv run lint-imports
     - name: Build workspace wheels (packaging smoke)
       run: uv build --all-packages --wheel -o dist-packaging-smoke
     # Resolves dependencies from PyPI rather than uv.lock, which is the only way

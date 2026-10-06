@@ -59,3 +59,16 @@ lint.extend-select = ["TID251"]
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "pipefy_mcp".msg = "pipefy_sdk must not import the MCP package."
 "pipefy_cli".msg = "pipefy_sdk must not import the CLI package."
+
+# Intra-package layering, enforced by import-linter (run `uv run lint-imports`
+# from this directory). MODULE-2 in docs/contributing/conventions.md states the
+# rule; the root modules that still import the facade are listed under "Risks and
+# technical debt" in docs/contributing/architecture.md.
+[tool.importlinter]
+root_package = "pipefy_sdk"
+
+[[tool.importlinter.contracts]]
+name = "No service imports the facade that publishes it"
+type = "forbidden"
+source_modules = ["pipefy_sdk.services"]
+forbidden_modules = ["pipefy_sdk.client"]
