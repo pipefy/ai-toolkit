@@ -687,7 +687,7 @@ Domains, tool profiles and the `power` keyword exist because the catalog is larg
 
 - SDK: not reached.
 - CLI: not reached.
-- MCP: owns the catalog, its domains and tool profiles, and the floor of the remote profile.
+- MCP: owns the catalog, its domains and tool profiles, and the remote-safe mark.
 - Skills: not reached.
 
 ### Response shape
