@@ -579,12 +579,9 @@ The stack serves `QR-2`, because a vendor change stops at the layer that wraps t
 
 An application holds all four layers, because it turns a caller's intent into operations. A library holds the bottom two, because it executes a named operation, so the SDK and Identity hold no application layer.
 
-Between packages, ruff `TID251` bans the inward-breaking imports, where two rules produce every entry:
+Between packages, an import follows the direction of the level-1 diagram, and neither the MCP server nor the CLI imports the other or the private modules of the SDK. Ruff `TID251` holds that rule, from a list in each package's `pyproject.toml`.
 
-- An import never runs against the direction of the level-1 diagram.
-- Neither the MCP server nor the CLI imports the other, or the private modules of the SDK.
-
-Each package's own `pyproject.toml` holds its list, with one message per banned package. Within the MCP package, import-linter holds the folder order `server > tools > core > auth > settings`, which is `QR-14`. A second import-linter contract forbids a `pipefy_mcp.settings` import from the `tools` layer, and every exception in it is reviewed as a per-deployment read or as a startup type import. The enforced spine is the acyclic import chain that holds today, and this section restates neither list.
+Within the MCP package, import-linter holds the folder order `server > tools > core > auth > settings`, which is `QR-14`.
 
 Inside a package, the four layers above place every module. Presentation imports application, and application imports service, so both edges agree with the stack. On the edge beneath, the service layer declares the port and a gateway fulfills it, so that import runs from the gateway to the service layer. Where the edge carries no port, the service layer imports the gateway, and `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md) decide which edges earn one. A facade is the published face of a layer, and it takes that layer's position in the direction. The composition root sits off the stack, because it constructs every part and therefore imports across the direction. [ADR-0001](adr/0001-layered-responsibility.md) holds the stack and the reasoning behind it, while `MODULE-1` and `MODULE-2` in [`conventions.md`](conventions.md) place a module by the layer it takes. No package declares a check for this order, because the one contract that exists holds a folder order instead, and [Risks and technical debt](#risks-and-technical-debt) states what that leaves unheld.
 
