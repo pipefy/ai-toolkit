@@ -767,7 +767,7 @@ These requirements hold while the system runs.
 | `QR-6` | A caller can learn what a destructive operation will destroy before it runs | What the caller learns before the call equals what the call destroys |
 | `QR-7` | A name that fits more than one resource never quietly picks one, and the caller gets the matches instead | The caller chooses between the matches, and the toolkit chooses none |
 | `QR-8` | A denied call states the likely cause, whether a retry can succeed, and the next step | A caller can decide from the response alone whether to retry, change the input, or stop |
-| `QR-9` | A deployment exposes only the tools it selected, and the remote profile exposes only a tool that is marked remote-safe | A selection removes and never widens, so the listing holds no tool outside the deployer's selection. On the remote profile it also holds no tool that carries no remote-safe mark |
+| `QR-9` | A deployment lists only the tools it selected, and under the remote profile only tools marked remote-safe | The listing holds no tool outside the selection, and under the remote profile no tool without the remote-safe mark |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
 | `QR-12` | A partial result states what did not succeed | A caller can tell which parts succeeded and which did not from the response alone |
 | `QR-15` | The toolkit checks where a URL points before it fetches it, and it refuses a private address | A URL the toolkit fetches is refused where it points at a private address, as a literal and after it resolves |
