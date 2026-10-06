@@ -671,7 +671,7 @@ Today a destructive MCP tool also gates itself behind a second call that sets `c
 
 ### Tool surface
 
-A deployment decides how many tools it lists, and that decision is separate from how many the catalog holds. `QR-9` is the requirement. The catalog spends what [Architecture constraints](#architecture-constraints) bounds, because the MCP client alone decides how much of the listing reaches the model, so the server must assume that all of it does. It spends that in tool count and in words per tool, so `QR-23` bounds the words per tool.
+A deployment chooses which tools it lists, apart from what the catalog holds, which is `QR-9`. The choice matters because the listing spends the model's context window, which [Architecture constraints](#architecture-constraints) bounds. The client alone decides how much of the listing reaches the model, so the server assumes that all of it does. The listing spends the window on the number of tools and on the words in each. `QR-23` bounds the words, and [Risks and technical debt](#risks-and-technical-debt) carries the missing bound on the number.
 
 Two axes classify the catalog. A domain is the one subject a tool is about, and the domains partition it, so every registered tool has exactly one. A tool profile is a journey-sized selection that crosses domains, and profiles overlap. `--toolsets` and `PIPEFY_MCP_TOOLSETS` name either kind, or a reserved keyword, so a deployment chooses without a source change, which is `QR-21`. [`docs/config.md`](../config.md) is the reference for those names and their precedence.
 
