@@ -8,7 +8,7 @@
 - **`docs/parity.md`**. MCP tool ↔ CLI command parity matrix. Source of truth for coverage and deferrals.
 - **`docs/MIGRATION.md`**. What existing MCP users need to know about v0.1.
 - **`docs/uninstall.md`**. `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. The two root scripts are colocated so `install.sh` and `uninstall.sh` stay reviewable side by side. A test asserts every file the installer writes is one the teardown accounts for.
-- **`docs/contributing/architecture.md`**. The map of the architecture. The functions it delivers, the goals that rank them, the roles that hold them, and the quality requirements and constraints that shape it. Then the boundary with its diagram, the decomposition into applications, packages, and layers, the tool surface, the response shape, one runtime scenario, the rules that cross every package, the known debt, and the glossary.
+- **`docs/contributing/architecture.md`**. The map of the architecture: where a change goes, what it may import, and where the code falls short of the map.
 - **`docs/contributing/conventions.md`**. The code conventions, as rules with permanent IDs. A rule belongs there when a reviewer applies it by judgment to one unit of code.
 - **`docs/contributing/authoring.md`**. How the docs tree is organized, the audience and Diataxis cuts, where a new doc goes, and the form of a convention and of a section of `architecture.md`.
 - **`docs/mcp/tools/`**. Per-area MCP tool reference (parameters, edge cases, cross-cutting behavior). Includes `identifiers.md`, the canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id.
@@ -58,7 +58,7 @@ Use **Cursor's MCP integration** as the primary smoke test for tool changes. MCP
 
 The code conventions live in [`docs/contributing/conventions.md`](docs/contributing/conventions.md). A rule belongs there when a reviewer applies it by judgment to one unit of code, from validating at the edge to when we lift a constraint we imposed on ourselves. Each rule carries a permanent ID, so cite the ID (`PARSE-3`) rather than quoting the text.
 
-The map of the architecture lives in [`docs/contributing/architecture.md`](docs/contributing/architecture.md): the quality requirements it serves, the constraints it accepts, and the boundary it draws. It decomposes the code into applications, packages, and layers, states the rules that cross every package, and carries one runtime scenario. It also lists where the code does not match that map, and settles the names that carry a second meaning. Import-linter enforces the intra-package layering in `packages/mcp`, and ruff `TID251` enforces the inter-package direction.
+The map of the architecture lives in [`docs/contributing/architecture.md`](docs/contributing/architecture.md). Import-linter enforces the intra-package layering in `packages/mcp`, and ruff `TID251` enforces the inter-package direction.
 
 ## Testing
 - `pytest-asyncio`, `pytest-cov`, `pytest-mock`.
