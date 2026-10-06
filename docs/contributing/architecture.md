@@ -626,7 +626,7 @@ The iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technic
 
 ### Composition root
 
-The composition root does two jobs at startup: it parses raw input into decisions, and it builds effects once. Raw input means the environment, a config file, and the startup flags. Parsed types cost no I/O, so we construct them freely. At startup an effect happens only here: a keychain read, a network call, or the construction of a client. Downstream code then receives a decision it can rely on, and never a raw value it must re-read. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
+At startup, the composition root parses the environment, the config file, and the startup flags into decisions. It also performs every startup effect, such as a keychain read or a network call, and builds the clients that the rest of the code uses. Downstream code then receives a decision it can rely on, and never a raw value it must read again. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
 
 There is one composition root per application, not one for the repo. Each one parses its startup input at its entry point.
 
