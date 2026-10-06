@@ -22,6 +22,24 @@ Each tool expresses one outcome for the user, not one API endpoint, so an agent 
 | [`tools/ipaas.md`](tools/ipaas.md) | iPaaS (Advanced Automations) |
 | [`tools/introspection.md`](tools/introspection.md) | Schema discovery and raw GraphQL |
 
+## Choose a tool surface
+
+Not every client wants every tool. Three independent controls decide what `tools/list` returns:
+
+| Control | Set with | Effect |
+|---|---|---|
+| **Launch profile** | `--profile local` / `remote` | The security floor. `local` registers every tool. `remote` serves only the remote-safe tools and validates an inbound bearer on each request. |
+| **Toolset selection** | `--toolsets` / `PIPEFY_MCP_TOOLSETS` | Narrows the catalog within that floor, by subject domain or by tool profile. Selection never widens past the floor. |
+| **Power discovery** | `--toolsets power` | Replaces the curated tools with four catalog meta-tools plus the raw GraphQL tools, so the working set stays small however large the catalog grows. |
+
+The hosted URL always serves the remote-safe floor, so toolset selection applies to a local server only. The subject domains group tools by the job they serve, which differs from the reference areas above: card relations belong to `workflow`, and table relations belong to `database`. An unrecognized name is a startup error that prints every valid name.
+
+[Toolset names](../config.md#toolset-names) defines each domain and tool profile. [Tool surface](../contributing/architecture.md#tool-surface) explains why the tools split this way.
+
+## Where tool behavior is documented
+
+Each tool's description and `Args:` block come from its Python docstring, which is what an MCP client shows to the model. The read-only and destructive hints come from the tool annotations. The reference pages in this tree cover the concepts, edge cases, and shared behavior that the docstrings do not state. `PIPEFY_TOOL_NAMES` in [`registry.py`](../../packages/mcp/src/pipefy_mcp/tools/registry.py) holds the canonical tool names.
+
 Start with [`tools/cross-cutting.md`](tools/cross-cutting.md) for pagination, IDs, `debug`, permissions, and error shape — then open the domain guide you need.
 
 For install and per-client MCP wiring (hosted HTTP, Cursor, Claude Desktop, Claude Code, Codex), see [`docs/install.md`](../install.md). First-time agent checklist: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](../../skills/onboarding/pipefy-toolkit-setup/SKILL.md). For environment variables and `config.toml`, see [`../config.md`](../config.md). Local stdio wiring with `claude mcp add`: [Wire a local server by hand](../install.md#wire-a-local-server-by-hand).

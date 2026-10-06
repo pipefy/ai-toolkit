@@ -32,7 +32,7 @@ The Claude Code plugin is not installed. Follow [Claude Code plugin](install.md#
 
 ### A tool from the reference is missing from the client
 
-The tool list depends on the install path. The hosted server withholds the tools whose input is a file on your machine, and a local server started with `PIPEFY_MCP_TOOLSETS` serves only the selected toolsets. [Choosing a tool surface](../README.md#choosing-a-tool-surface) explains both.
+The tool list depends on the install path. The hosted server withholds the tools whose input is a file on your machine, and a local server started with `PIPEFY_MCP_TOOLSETS` serves only the selected toolsets. [Choosing a tool surface](mcp/README.md#choose-a-tool-surface) explains both.
 
 ## Sign-in and credentials
 

@@ -1,6 +1,6 @@
 # Cross-cutting tool behavior
 
-Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides linked from the [main README](../../../README.md#mcp-server).
+Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides listed in the [MCP docs index](../README.md).
 
 ## Pagination
 

@@ -18,7 +18,7 @@ Six paths install the toolkit. Pick one based on your client and whether you nee
 | **[Cursor Marketplace plugin](#6-cursor-marketplace-plugin)** | Pipefy cloud (HTTPS) | Remote-safe surface; local-file tools withheld | In-client OAuth | skills | Fastest start in Cursor; zero local Python |
 | **[Hosted MCP](#1-hosted-mcp-claude-code)** | Pipefy cloud (HTTPS) | Remote-safe surface: all but the few local-file tools | In-client OAuth | nothing else | Fastest start in Claude Code; zero local Python |
 | **[Claude Code plugin](#2-claude-code-plugin)** | Pipefy cloud (HTTPS) | Remote-safe surface; local-file tools withheld | In-client OAuth | slash commands + skills + CLI | Claude Code users who want slash commands, skills, and the CLI on the hosted MCP |
-| **[Quick-install script](#3-quick-install-script)** | Your machine (stdio) | Full [tool surface](../README.md#mcp-server) | `pipefy auth login` | CLI + skills, wired into your client config | Local-file tools, CLI, Claude Desktop / Codex, or one-command full setup |
+| **[Quick-install script](#3-quick-install-script)** | Your machine (stdio) | Full [tool surface](mcp/README.md#choose-a-tool-surface) | `pipefy auth login` | CLI + skills, wired into your client config | Local-file tools, CLI, Claude Desktop / Codex, or one-command full setup |
 | **[CLI only](#4-cli-only)** | — (no MCP) | CLI commands ([parity](parity.md)) | login or service account | — | Terminal use, scripting, CI |
 | **[Skills only](#5-skills-only)** | — | — | — | markdown playbooks | Adding playbooks to any agent |
 
@@ -34,7 +34,7 @@ Six paths install the toolkit. Pick one based on your client and whether you nee
 >
 > That reports every registration and how each one is reached. It removes nothing, edits nothing, and exits `0` when it finds nothing, `1` when findings remain, `2` when a source could not be inspected. A registration is matched on what it **runs** — the `pipefy-mcp-server` command, a known runner invoking it, or the host `mcp.pipefy.com` — so one registered under any other name is still found. First-time setup checklist to hand your agent: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](../skills/onboarding/pipefy-toolkit-setup/SKILL.md). Removing a path, or moving between them: [Uninstalling](#uninstalling-and-switching-between-paths) and [`docs/uninstall.md`](uninstall.md).
 
-> **Too many tools for your client?** The local paths can expose a subset instead of the whole catalog — by subject domain, by tool profile, or as four catalog meta-tools the agent searches on demand. See [Choosing a tool surface](../README.md#choosing-a-tool-surface). That selection (`PIPEFY_MCP_TOOLSETS`) applies to the local stdio path only. Any client on the hosted URL always receives the remote-safe floor.
+> **Too many tools for your client?** The local paths can expose a subset instead of the whole catalog — by subject domain, by tool profile, or as four catalog meta-tools the agent searches on demand. See [Choosing a tool surface](mcp/README.md#choose-a-tool-surface). That selection (`PIPEFY_MCP_TOOLSETS`) applies to the local stdio path only. Any client on the hosted URL always receives the remote-safe floor.
 
 **Authentication** (for the local paths; the hosted server uses its own in-client OAuth):
 

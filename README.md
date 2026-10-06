@@ -18,7 +18,6 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#installation">Installation</a> •
-  <a href="#repository-layout">Repository layout</a> •
   <a href="#mcp-server">MCP server</a> •
   <a href="#command-line-interface">CLI</a> •
   <a href="#agent-skills">Agent skills</a> •
@@ -76,42 +75,11 @@ New here? [`docs/quickstart.md`](docs/quickstart.md) connects Claude Code to you
 
 ---
 
-## Repository layout
-
-`uv` workspace of Python packages, plus a skills catalog. **`pipefy`** is the vendor GraphQL layer. MCP and CLI depend on it and do not import each other.
-
-| Path | Distribution | Role |
-|------|--------------|------|
-| [`packages/sdk/`](packages/sdk/) | `pipefy` | GraphQL transport, services, queries, Pydantic models. [Package README](packages/sdk/README.md) |
-| [`packages/mcp/`](packages/mcp/) | `pipefy-mcp-server` | MCP tool registration and server lifecycle. [Package README](packages/mcp/README.md) |
-| [`packages/cli/`](packages/cli/) | `pipefy-cli` | Typer CLI (`pipefy` command). [Package README](packages/cli/README.md) |
-| [`packages/auth/`](packages/auth/) | `pipefy-auth` | Shared OAuth and keychain helpers for MCP and CLI. [Package README](packages/auth/README.md) |
-| [`packages/infra/`](packages/infra/) | `pipefy-infra` | Shared config loading, path discovery, and URL safety. Leaf package. [Package README](packages/infra/README.md) |
-| [`skills/`](skills/) | — | Agent skill playbooks. [Catalog](skills/README.md) |
-
----
-
 ## MCP server
 
-The local server registers the full catalog. Canonical names: `PIPEFY_TOOL_NAMES` in [`packages/mcp/src/pipefy_mcp/tools/registry.py`](packages/mcp/src/pipefy_mcp/tools/registry.py). The hosted URL (Marketplace plugin and Hosted MCP) serves the remote-safe floor instead: it withholds the tools whose input is a file on your machine.
+The local server registers the full catalog. The hosted URL, which the Cursor Marketplace plugin and Hosted MCP use, serves the remote-safe floor instead: it withholds the tools whose input is a file on your machine. A local server can also narrow its catalog by subject domain or by tool profile.
 
-Tool descriptions and `Args:` blocks come from Python docstrings (what MCP clients show to models), and the read-only and destructive hints come from the tool annotations. Per-area reference docs cover the concepts, edge cases, and cross-cutting behavior that the docstrings do not state.
-
-[`docs/mcp/README.md`](docs/mcp/README.md) lists the reference for each area. Start with [`cross-cutting.md`](docs/mcp/tools/cross-cutting.md) for pagination, IDs, permissions, and the error shape.
-
-### Choosing a tool surface
-
-Not every client wants every tool. Three independent controls decide what `tools/list` returns:
-
-| Control | Set with | Effect |
-|---|---|---|
-| **Launch profile** | `--profile local` / `remote` | The security floor. `local` registers every tool; `remote` serves only the remote-safe surface and validates an inbound bearer per request. |
-| **Toolset selection** | `--toolsets` / `PIPEFY_MCP_TOOLSETS` | Narrows within that floor — by **subject domain** (`workflow`, `database`, `interfaces`, `automation`, `intelligence`, `analytics`, `governance`, `integration`) or by **tool profile** (`requester`, `operator`, `manager`, `builder`, `admin`, `auditor`), unioned. Selection never widens past the floor. |
-| **Power discovery** | `--toolsets power` | Replaces the curated tools with four catalog meta-tools (`get_tool_categories`, `search_tools`, `describe_tool`, `execute_tool`) plus the raw-GraphQL tools, so the working set stays small no matter how large the catalog grows. |
-
-The toolset names are a **different grouping from the reference areas**: those follow the documentation, while subject domains partition tools by the job they serve — card relations land in `workflow`, table relations in `database`. Passing an unrecognized name is a startup error that prints the full list of valid ones. `--toolsets` / `PIPEFY_MCP_TOOLSETS` is a process-level switch: it applies to the local stdio server only, not to the hosted URL.
-
-Per-name definitions and precedence: [`docs/config.md`](docs/config.md). Why the tools split into domains and tool profiles: [Tool surface](docs/contributing/architecture.md#tool-surface).
+[`docs/mcp/README.md`](docs/mcp/README.md) explains [how to choose a tool surface](docs/mcp/README.md#choose-a-tool-surface) and lists the tool reference for each area.
 
 ---
 
@@ -135,8 +103,6 @@ The [`skills/`](skills/) directory holds workflow playbooks: prerequisites, tool
 
 Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contributing/skills.md`](docs/contributing/skills.md). Contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-**Card & phase agent ergonomics:** use [`skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md`](skills/pipes-and-cards/pipefy-pipes-and-cards/SKILL.md) (workflow *Seed pipe across phases*; prefer dedicated tools over `execute_graphql`).
-
 ---
 
 ## Documentation
@@ -147,7 +113,7 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 
 ## Contributing
 
-Contributions are welcome via issues and pull requests. Commits must include a [DCO](https://developercertificate.org/) sign-off (`git commit -s`); see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Contributions are welcome via issues and pull requests. The repository is a `uv` workspace of Python packages plus the skills catalog, and [Package decomposition](docs/contributing/architecture.md#package-decomposition) says what each package owns. Commits must include a [DCO](https://developercertificate.org/) sign-off (`git commit -s`); see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 | Area | How to contribute |
 |------|-------------------|
