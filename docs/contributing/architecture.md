@@ -608,7 +608,7 @@ The legend:
 
 **What a package declares.** A package declares every dependency that its own code imports, even one that another dependency already installs. That other dependency can stop installing it in any release, and nothing in this repository detects the change. [Risks and technical debt](#risks-and-technical-debt) carries where the rule is broken today.
 
-**How a version is bounded.** Every third-party dependency states a minimum version and a maximum version. The maximum stops before the next major release, as in `>=2.13.4,<3`. A major release can change behavior that this code depends on, and no other check catches that change.
+**How a version is bounded.** A third-party dependency states a minimum version and a maximum version, and the maximum stops before the next major release, as in `>=2.13.4,<3`. A major release can change behavior that this code depends on, and no other check catches that change. [Risks and technical debt](#risks-and-technical-debt) carries the dependencies that state no maximum today.
 
 A dependency can instead be locked to one minor series. That is correct only where this code uses parts of the dependency that its version numbers do not protect. A comment beside the dependency then states which parts those are. One dependency in `packages/mcp/pyproject.toml` is locked this way today.
 
