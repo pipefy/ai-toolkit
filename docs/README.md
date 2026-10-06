@@ -12,7 +12,7 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`mcp/`](mcp/README.md) | MCP tool reference by area, and the behavior every tool shares |
 | [`cli/`](cli/README.md) | CLI usage patterns and discover-then-execute flows |
 | [`cli/auth.md`](cli/auth.md) | CLI credential precedence, `pipefy auth login`, troubleshooting |
-| [`sdk/`](sdk/README.md) | Using `pipefy` as a library |
+| [`sdk/`](sdk/README.md) | Using `pipefy` as a library: a first call, errors, and the [reference](sdk/reference.md) |
 | [`config.md`](config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain |
 | [`parity.md`](parity.md) | Which CLI command matches each MCP tool, and where the two differ |
 | [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
