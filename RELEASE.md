@@ -1,8 +1,8 @@
 # Release process
 
-The five workspace distributions (`pipefy`, `pipefy-mcp-server`, `pipefy-cli`, `pipefy-auth`, `pipefy-infra`) share one version. `scripts/bump_version.py` writes it to every version-bearing file, and CI fails when the files disagree.
+Every workspace distribution shares one version. The `members` list under `[tool.uv.workspace]` in the root `pyproject.toml` names the distributions. `scripts/bump_version.py` writes it to every version-bearing file, and CI fails when the files disagree.
 
-`scripts/release.py` runs every step below and refuses a step that does not fit the version or the branch. `uv run python scripts/release.py --help` lists its subcommands, and its module docstring explains each guard. The Release workflow (`.github/workflows/release.yml`) publishes all five wheels to PyPI on every `v*` tag. A tag push cannot be undone.
+`scripts/release.py` runs every step below and refuses a step that does not fit the version or the branch. `uv run python scripts/release.py --help` lists its subcommands, and its module docstring explains each guard. The Release workflow (`.github/workflows/release.yml`) publishes every distribution's wheel to PyPI on every `v*` tag. A tag push cannot be undone.
 
 ## Tracks
 
@@ -74,4 +74,4 @@ uvx "pipefy-mcp-server==0.6.0b1" --help
 
 ## Repository setup
 
-Each of the five distributions needs a [Trusted Publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/) on PyPI, and a new distribution needs PyPI's pending-publisher flow for its first upload. The workflow uses OIDC, so no PyPI token is stored.
+Each distribution needs a [Trusted Publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/) on PyPI, and a new distribution needs PyPI's pending-publisher flow for its first upload. The workflow uses OIDC, so no PyPI token is stored.

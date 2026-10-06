@@ -194,7 +194,7 @@ Deprecation and semver (post-1.0): [`docs/DEPRECATION.md`](docs/DEPRECATION.md).
 
 ## Repository layout
 
-`uv` workspace with five Python packages and a skills catalog. **`pipefy`** is the vendor GraphQL layer. MCP and CLI depend on it and do not import each other.
+`uv` workspace of Python packages, plus a skills catalog. **`pipefy`** is the vendor GraphQL layer. MCP and CLI depend on it and do not import each other.
 
 | Path | Distribution | Role |
 |------|--------------|------|
