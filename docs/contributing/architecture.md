@@ -708,6 +708,13 @@ The MCP layer prefers a tool that expresses an outcome over one tool per API end
 
 The machinery is this large because the catalog is. The tool names copy the API operations today, which is the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt), so this section narrows a surface that a smaller one would not need. Closing that gap shrinks what this section has to do. The taxonomy itself is not settled either, and [Risks and technical debt](#risks-and-technical-debt) carries that. The domain and tool profile boundaries, and the reasoning behind them, are in [`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md).
 
+**By component.**
+
+- SDK: not reached.
+- CLI: not reached.
+- MCP: owns the catalog, its domains and tool profiles, and the floor of the remote profile.
+- Skills: not reached.
+
 ### Response shape
 
 This section is `PARSE-5` in [`conventions.md`](conventions.md) applied to what a tool returns.
