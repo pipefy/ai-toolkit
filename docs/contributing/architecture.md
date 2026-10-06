@@ -566,7 +566,7 @@ This scenario serves `QR-4`, which [Quality goals](#quality-goals) ranks first, 
 
 ## Cross-cutting concepts
 
-These rules hold whichever building block you are in, which is why none of them sits under one. A rule that one application alone obeys today still sits here, because the rule and not its reach makes it a concept.
+The concepts below cross the building blocks, so none of them sits under one. Where a concept differs between components, its `By component` block says how.
 
 ### Dependency rule
 
