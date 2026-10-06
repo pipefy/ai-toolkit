@@ -769,7 +769,7 @@ These requirements hold while the system runs.
 | `QR-8` | A denied call states the likely cause, whether a retry can succeed, and the next step | A caller can decide from the response alone whether to retry, change the input, or stop |
 | `QR-9` | A deployment lists only the tools it selected, and under the remote profile only tools marked remote-safe | The listing holds no tool outside the selection, and under the remote profile no tool without the remote-safe mark |
 | `QR-10` | A tool keeps its answer short, and a caller who needs more asks for more | Every read names the fields it returns by default, and an argument widens that set |
-| `QR-12` | A partial result states what did not succeed | A caller can tell which parts succeeded and which did not from the response alone |
+| `QR-12` | A response never reports success for a part that did not succeed | A caller that reads the outcome alone never takes a denied or failed part for a success |
 | `QR-15` | The toolkit checks where a URL points before it fetches it, and it refuses a private address | A URL the toolkit fetches is refused where it points at a private address, as a literal and after it resolves |
 | `QR-16` | A token issued for another service is refused | The bearer's audience is checked against this resource |
 | `QR-17` | A name in the toolkit matches the name the Pipefy product uses | A name the toolkit exposes can be found in the Pipefy domain model |
