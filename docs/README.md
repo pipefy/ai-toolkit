@@ -16,7 +16,7 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`config.md`](config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain |
 | [`parity.md`](parity.md) | Which CLI command matches each MCP tool, and where the two differ |
 | [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
-| [`DEPRECATION.md`](DEPRECATION.md) | Versioning and deprecation policy after v1.0 |
+| [`DEPRECATION.md`](DEPRECATION.md) | What a version number promises: semantic versioning and the deprecation window, from v1.0 |
 | [`../TERMS.md`](../TERMS.md) | Repository terms notice (license, platform terms, disclaimers) |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability disclosure |
 
@@ -31,4 +31,4 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`contributing/adr/`](contributing/adr/README.md) | Architecture decision records |
 | [`contributing/skills.md`](contributing/skills.md) | How to write, name, and maintain a skill |
 | [`contributing/authoring.md`](contributing/authoring.md) | How the docs tree is organized and where a new doc goes |
-| [`contributing/release.md`](contributing/release.md) | Versioning and the release procedure |
+| [`contributing/release.md`](contributing/release.md) | The release tracks and the procedure to cut a release |

@@ -1,5 +1,7 @@
 # Release process
 
+This page owns how a release ships. [`DEPRECATION.md`](../DEPRECATION.md) owns what a version number promises: which change needs a major, minor, or patch release, and how long a deprecated contract keeps working.
+
 Every workspace distribution shares one version. The `members` list under `[tool.uv.workspace]` in the root `pyproject.toml` names the distributions. `scripts/bump_version.py` writes it to every version-bearing file, and CI fails when the files disagree.
 
 `scripts/release.py` runs every step below and refuses a step that does not fit the version or the branch. `uv run python scripts/release.py --help` lists its subcommands, and its module docstring explains each guard. The Release workflow (`.github/workflows/release.yml`) publishes every distribution's wheel to PyPI on every `v*` tag. A tag push cannot be undone.
