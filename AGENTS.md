@@ -95,4 +95,3 @@ Skills (`skills/`) and tools (`packages/mcp/`, `packages/cli/`) live in the same
 
 ## Security
 - Credentials via env vars or `.env`; never commit secrets.
-- GraphQL schema updates: `uv run gql-cli ...` → update `packages/sdk/tests/services/pipefy/schema.graphql`; see README schema hygiene checklist.
