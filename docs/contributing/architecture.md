@@ -314,6 +314,12 @@ flowchart TB
     port --> errors
 ```
 
+The legend:
+
+- An arrow points from a block to a block that it imports from.
+
+The SDK is a library, so it owns no composition root: the caller wires it, and the facade constructs the gateways that it delegates to.
+
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Facade | Service, as the published facade | Constructs each gateway, and delegates one call per public method | `PipefyClient`, at a package root that a check holds closed | `client.py` |
@@ -325,8 +331,6 @@ flowchart TB
 | Error classification | Service, as a domain type | Turns a GraphQL problem into a typed exception | The exception hierarchy, and the problem parser behind it | `exceptions.py`, `graphql_problem.py` |
 | Pure helpers | Service, as a domain type | Filters a field, reads a phase inventory, formats a hint, and picks a label color, with no I/O | Functions that a gateway or the package surface calls | `field_filters.py`, `phase_inventory.py`, `transition_hints.py`, `label_color.py`, `behavior_placeholders.py`, `automation_input.py`, `report_filter_preflight.py`, and the rest of `utils/` |
 | Configuration and telemetry | Service, as a domain type | Holds the parsed configuration, and builds the outbound headers that name the caller | A settings object, and the `User-Agent` that every request carries | `settings.py`, `telemetry.py` |
-
-An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. A library owns no composition root, because the caller wires it, so the facade constructs the gateways that it delegates to.
 
 Preflight validation is a service, because one answer is correct for every caller, and the SDK holds no layer above its service layer. A narrower defect survives, because each function takes a `PipefyClient` and therefore imports the facade that publishes it. [Risks and technical debt](#risks-and-technical-debt) carries that, and the grouping inside the few operation gateways that fan out.
 
