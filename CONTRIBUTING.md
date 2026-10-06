@@ -20,7 +20,7 @@ Contributions are licensed to Pipefy and to all recipients under the Apache Lice
 
 ## Content review for regulated domains
 
-Pipefy's Privacy, Legal & Compliance team reviews every skill and blueprint under `skills/legal/`, `skills/human-resources/`, `skills/finance/`, and `skills/compliance/`, and any skill that decides about a natural person, before it merges. Expect more review time and possible content changes. A published blueprint in a regulated domain includes a `COMPLIANCE.md` beside the skill, started from [`COMPLIANCE.template.md`](.github/skill-template/COMPLIANCE.template.md).
+Pipefy's Privacy, Legal & Compliance team reviews every skill and blueprint under `skills/legal/`, `skills/human-resources/`, `skills/finance/`, and `skills/compliance/`, and any skill that decides about a natural person, before it merges. Expect more review time and possible content changes. A published blueprint in a regulated domain includes a `COMPLIANCE.md` beside the skill, started from [`COMPLIANCE.template.md`](template/COMPLIANCE.template.md).
 
 Community skills are published as templates and are not professional advice. Pipefy may decline, edit, or remove any contribution.
 

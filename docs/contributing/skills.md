@@ -22,7 +22,7 @@ skills/
 
 Each folder directly under `skills/` is a domain, named for an area of the MCP tool surface. Open an issue before you add a domain.
 
-A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`COMPLIANCE.template.md`](../../.github/skill-template/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
+A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`COMPLIANCE.template.md`](../../template/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
 
 ## Add a skill
 
@@ -31,10 +31,10 @@ A skill in a regulated domain (`legal`, `human-resources`, `finance`, `complianc
 3. Copy the template and rename it:
 
    ```bash
-   cp -R .github/skill-template/pipefy-skill-template skills/<domain>/pipefy-<name>
+   cp -R template/pipefy-skill-template skills/<domain>/pipefy-<name>
    ```
 
-4. Fill in `SKILL.md` by the rules below. The template's [`SKILL.md`](../../.github/skill-template/pipefy-skill-template/SKILL.md) shows every section a skill has.
+4. Fill in `SKILL.md` by the rules below. The template's [`SKILL.md`](../../template/pipefy-skill-template/SKILL.md) shows every section a skill has.
 5. Add the skill to the `skills` array in both `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json`.
 6. Stage the skill and run the checks, which are the same checks that CI runs:
 
