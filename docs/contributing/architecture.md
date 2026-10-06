@@ -616,9 +616,7 @@ A package depends on another package of this workspace at one exact version, as 
 
 ### Ports and dependency inversion
 
-The service layer depends on an interface shaped by what it needs, and the gateway implements it. This rule states where the boundary sits, so "invert" does not mean "invert everything". The boundary is the service layer to a gateway: a third-party SDK, the network, a database. Ports are not universal, and the rules that add one are `PORT-1` to `PORT-3` in [`conventions.md`](conventions.md).
-
-These are the ports the repository owns today. `GraphQLExecutor` in the SDK is a port over the GraphQL client. The attachment service owns `S3Uploader` and `UrlDownloader`. A test injects a fake against each, which is `QR-13`. Each one serves `QR-2` too, because a change behind a port stops at that port. The outbound HTTP chain of the iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
+The repository owns these ports today: `GraphQLExecutor` in the SDK is a port over the GraphQL client. The attachment service owns `S3Uploader` and `UrlDownloader`. A test injects a fake against each, which is `QR-13`. Each one serves `QR-2` too, because a change behind a port stops at that port. The outbound HTTP chain of the iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technical-debt) carries it.
 
 ### Composition root
 
