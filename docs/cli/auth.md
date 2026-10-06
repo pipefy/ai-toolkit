@@ -62,8 +62,6 @@ PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET=<SERVICE_ACCOUNT_CLIENT_SECRET>
 
 The CLI loads `.env` from the current working directory; see [`docs/config.md#precedence`](../config.md#precedence) for the full pydantic-settings precedence rules.
 
-> **Legacy names:** `PIPEFY_OAUTH_CLIENT` and `PIPEFY_OAUTH_SECRET` are still honored (with a one-shot stderr deprecation warning) for back-compat. They will be removed in a future beta. `PIPEFY_OAUTH_URL` has no alias — the OAuth token endpoint now derives from `PIPEFY_BASE_URL`. See [`docs/MIGRATION.md`](../MIGRATION.md#service-account-env-var-rename).
-
 ### Static bearer (one-off)
 
 For a single command — or to override the precedence chain on the fly:
@@ -82,28 +80,17 @@ PIPEFY_TOKEN="$MY_BEARER" uv run pipefy pipe list
 
 ### Environment variables
 
-| Key | Used by | Effect |
-|-----|---------|--------|
-| `PIPEFY_BASE_URL` | All commands | Pipefy API host root. Defaults to `https://app.pipefy.com`. Drives the GraphQL, internal-API, interfaces, and service-account OAuth token URLs (all four are computed from this base). Set to a different host for non-prod / regional / proxy / local-dev deployments. |
-| `PIPEFY_AUTH_URL` | Tier 4 | Full OIDC issuer URL for interactive login. The CLI appends `/.well-known/openid-configuration` to discover the authorization and token endpoints. Defaults to `https://signin.pipefy.com/realms/pipefy`. Set to the full issuer URL for a non-prod IdP. |
-| `PIPEFY_TOKEN` | Tier 2 | Direct bearer token. Overridden by `--token`. |
-| `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` | Tier 3 | Service-account client id. |
-| `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` | Tier 3 | Service-account client secret. |
-| `PIPEFY_AUTH_CLIENT_ID` | Tier 4 | Public client id registered for the CLI. Defaults to `pipefy-cli`. |
-| `PIPEFY_DISABLE_STORED_SESSION` | Tier 4 | When `1` / `true`, the stored-session tier is skipped end-to-end: tier resolution never probes the keychain, and `pipefy auth login` / `pipefy auth logout` refuse with exit code 2. Use to avoid the keyring backend-discovery cost on cold start (headless Linux, CI) or to opt out of OS-keychain storage entirely. TOML key: `disable_stored_session`. |
-| `PIPEFY_KEYCHAIN_BACKEND` | Tier 4 | Active `keyring` backend. `auto` (default) uses OS-keyring discovery; `file` swaps to a plaintext on-disk keyring under `~/.config/pipefy/keyring.cfg` (POSIX) / `%APPDATA%/pipefy/keyring.cfg` (Windows). TOML key: `keychain_backend`. |
+Each variable below feeds one credential tier. [`docs/config.md`](../config.md) gives its default and full effect.
 
-The service-account OAuth token URL (Tier 3) and the OIDC issuer URL (Tier 4) are **not** interchangeable: the first is `<base>/oauth/token` for client-credentials, the second is the full OIDC discovery root for the user-login flow.
+| Key | Tier |
+|-----|------|
+| `PIPEFY_TOKEN` | 2 |
+| `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID`, `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` | 3 |
+| `PIPEFY_AUTH_URL`, `PIPEFY_AUTH_CLIENT_ID`, `PIPEFY_DISABLE_STORED_SESSION`, `PIPEFY_KEYCHAIN_BACKEND` | 4 |
 
-**Empty / malformed values raise.** Any `PIPEFY_*` env var that does not match its pattern is rejected at settings load. Unset the variable to fall back to the default.
+`PIPEFY_BASE_URL` applies to every tier. The service-account token URL (tier 3) and the OIDC issuer URL (tier 4) are **not** interchangeable: the first is `<base>/oauth/token` for client credentials, and the second is the discovery root for the user login flow.
 
-### Global flags
-
-| Flag | Effect |
-|------|--------|
-| `--token <bearer>` | Tier 1 bearer. Overrides `PIPEFY_TOKEN` if both are set. |
-| `--base-url <url>` | Override `PIPEFY_BASE_URL` for this process. |
-| `--allow-insecure-urls` | Allow `http://` and private hosts for this process (dev only). |
+`--token`, `--base-url`, and `--allow-insecure-urls` override their variables for one process. `pipefy --help` lists them.
 
 ### Commands
 
@@ -180,10 +167,6 @@ When no entry is stored, `pipefy auth logout` prints `Not signed in. Nothing to 
 | Unreadable entry cleared (no server-side revoke) | **0** |
 | Keychain rejected the delete | **1** — the credential may survive; the message names the manual removal step. |
 | Keychain read failed and no entry was deleted | **1** — presence unknown, so neither removal nor "nothing to do" can be claimed. |
-
-### Pipefy issuer URLs
-
-Production: `https://signin.pipefy.com/realms/pipefy` (the `PIPEFY_AUTH_URL` default). For a non-prod IdP, set `PIPEFY_AUTH_URL` to the full issuer URL (host + realm) directly — the CLI doesn't try to derive it from any tenant convention.
 
 ---
 
