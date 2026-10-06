@@ -844,7 +844,7 @@ Each entry below is a place where the code does not yet do what this document st
 
 ## Glossary
 
-These names carry a second meaning elsewhere, so each one is fixed here.
+These names carry a second meaning elsewhere, so each one is settled here.
 
 - Contract. Qualified at each use. The typed input contract is the parsed model at the edge of an application. The import-linter contract is the layer order in `packages/mcp/pyproject.toml`.
 - Agent. Qualified at each use, because this document carries three senses and no default. An AI agent is a Pipefy entity that a builder defines in a pipe, and it acts inside a process as a non-human assignee. Where the surrounding text does not already carry Pipefy, the product takes its prefix, as Pipefy AI Agent. An LLM agent is a program that runs a model's decisions and reaches the toolkit from outside, which the `Stakeholders` table names. [Requirements overview](#requirements-overview) calls the same party an external AI agent, against Pipefy's own. A contributing agent opens a pull request, under [`AGENTS.md`](../../AGENTS.md).
