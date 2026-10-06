@@ -118,8 +118,8 @@ layers = [
 # process-global — under the remote profile they are shared across concurrent
 # callers, so such a read may only ever make a per-deployment decision, and each
 # one is reviewed onto ignore_imports (direct or via a core helper; the contract
-# checks transitive chains). The line and its rationale live in CLAUDE.md
-# ("Process-global configuration and the single-backend assumption").
+# checks transitive chains). The rationale lives in "Identity lifetime" in
+# docs/contributing/architecture.md.
 [[tool.importlinter.contracts]]
 name = "Tools read no process-global settings"
 type = "forbidden"
