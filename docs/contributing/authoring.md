@@ -137,7 +137,7 @@ A code example names no shipped symbol. A symbol in an example rots on the next 
 
 `conventions.md` states what we commit to, and it names no gap. A convention governs the next change, so older code that predates it is legacy rather than a shortfall.
 
-[`architecture.md`](architecture.md) is a map rather than a rule set, so it works the other way. A map claim is either true of the code or not, and the document owes the reader every place the code is behind it. Those places gather in one final section, `Risks and technical debt`, and each entry names the target that closes it. A disabled import-linter contract is one such target, because it sits beside the live contracts and one edit enables it. This split follows [the arc42 template](#authoring-a-section-of-architecturemd), which keeps the building block view apart from risks and technical debt.
+[`architecture.md`](architecture.md) is a map rather than a rule set, so it works the other way. A map claim is either true of the code or not, and the document owes the reader every place the code is behind it. It also owes every requirement that no section satisfies, and every section that nothing owns yet. Those gaps gather in one final section, `Risks and technical debt`, and each entry names the target that closes it, or says that no target is chosen yet. A disabled import-linter contract is one such target, because it sits beside the live contracts and one edit enables it. This split follows [the arc42 template](#authoring-a-section-of-architecturemd), which keeps the building block view apart from risks and technical debt.
 
 Neither document carries the inventory or the remediation plan for a gap. A concrete step is closeable work, so it belongs in an issue.
 
