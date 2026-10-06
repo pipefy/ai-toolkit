@@ -675,7 +675,9 @@ A deployment chooses which tools it lists, apart from what the catalog holds, wh
 
 A domain is the one subject that a tool is about, and every registered tool belongs to exactly one domain. A tool profile is a set of tools for one kind of work, so it crosses domains, and one tool can sit in several profiles. `--toolsets` and `PIPEFY_MCP_TOOLSETS` take the name of a domain, a tool profile, or a reserved keyword such as `all` or `power`, so a deployment changes its tools without a source change, which is `QR-21`. [`docs/config.md`](../config.md) is the reference for those names and their precedence.
 
-The remote profile applies a default-deny floor before any selection runs. Selection only removes, so it narrows within the floor and never widens past it. The `power` branch takes a different route. It withdraws the curated tools from the listing and registers the catalog meta-tools over them, alongside the raw GraphQL tools. The model-facing set is then a constant, whatever the catalog holds. No row states that bound, and [Risks and technical debt](#risks-and-technical-debt) carries it. Every call then routes through a meta-tool, so `QR-5` is partly satisfied.
+Under the remote profile, the listing holds only tools marked remote-safe, before any selection runs. A selection only removes tools, so it never lists a tool without that mark.
+
+The `power` keyword replaces the listing instead of narrowing it. It hides the curated tools and lists meta-tools in their place, alongside the raw GraphQL tools. The meta-tools search the hidden tools, describe one, and run one. The listing then stays the same size whatever the catalog holds, and `execute_tool` still reaches only the tools that the remote profile allowed. The cost falls on `QR-5`, because a model finds a tool before it runs it, so one piece of work costs more calls.
 
 A build-time guard keys the partition to the registered tool names, so a new tool with no domain fails the build. The guard also holds the domains disjoint, and it writes no tool count down. It reads names and not subjects, so a tool filed under the wrong domain still passes.
 
