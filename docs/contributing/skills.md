@@ -1,6 +1,6 @@
 # Skill authoring
 
-This guide says how to write, name, and maintain a skill in `skills/`. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) has the steps to open a pull request with one, the sign-off, and the review for a regulated domain.
+This guide says how to add, write, name, and review a skill in `skills/`. A skill is Markdown only, so it needs no Python code and no tests. You need [`uv`](https://docs.astral.sh/uv/getting-started/installation/) only to run the checks. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) has the sign-off and the review for a regulated domain.
 
 ## What a skill is
 
@@ -24,9 +24,27 @@ Each folder directly under `skills/` is a domain, named for an area of the MCP t
 
 A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`docs/compliance/COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
 
-## Start from the template
+## Add a skill
 
-Copy [`.github/skill-template/pipefy-skill-template/`](../../.github/skill-template/pipefy-skill-template/), as [Contributing a skill](../../CONTRIBUTING.md#contributing-a-skill) describes. The template's `SKILL.md` shows every section a skill has.
+1. Fork and clone the repository.
+2. Choose a domain folder under `skills/`.
+3. Copy the template and rename it:
+
+   ```bash
+   cp -R .github/skill-template/pipefy-skill-template skills/<domain>/pipefy-<name>
+   ```
+
+4. Fill in `SKILL.md` by the rules below. The template's [`SKILL.md`](../../.github/skill-template/pipefy-skill-template/SKILL.md) shows every section a skill has.
+5. Add the skill to the `skills` array in both `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json`.
+6. Stage the skill and run the checks, which are the same checks that CI runs:
+
+   ```bash
+   git add skills/<domain>/pipefy-<name> .cursor-plugin/plugin.json .claude-plugin/plugin.json
+   uvx pre-commit run
+   ```
+
+7. Load your branch in Claude Code, as [Test the Claude Code plugin from a local checkout](development.md#test-the-claude-code-plugin-from-a-local-checkout) describes, and run the skill end to end against a real Pipefy organization.
+8. Open a pull request.
 
 ## Names
 
@@ -87,6 +105,11 @@ When a pull request renames a tool or a command, it updates every skill that nam
 
 The `test` job runs `lint_plugin_packaging.py`, which checks that `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json` each list every published skill. So adding or removing a published skill also edits the `skills` array in both files.
 
-## Before you open a pull request
+## Review rubric
 
-Run the skill end to end against a real Pipefy organization.
+CI checks what the previous section lists. A reviewer checks the rest:
+
+1. The content is accurate against the current MCP tools and CLI commands.
+2. The examples run. For a high-impact skill, the reviewer runs them against a real Pipefy organization.
+3. The body follows [Body style](#body-style).
+4. The skill is generic, with no content tailored to one agent persona.

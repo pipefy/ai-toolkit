@@ -274,7 +274,7 @@ Contributions are welcome via issues and pull requests. Commits must include a [
 
 | Area | How to contribute |
 |------|-------------------|
-| **Skills** | Markdown only — see [`CONTRIBUTING.md`](CONTRIBUTING.md). |
+| **Skills** | Markdown only — see [`docs/contributing/skills.md`](docs/contributing/skills.md). |
 | **MCP / CLI / SDK** | Follow [`docs/contributing/development.md`](docs/contributing/development.md) and [`docs/parity.md`](docs/parity.md). |
 | **Field mapping gaps** | Open an issue with the field type and expected behavior. |
 | **Existing MCP setups** | [`docs/MIGRATION.md`](docs/MIGRATION.md) — configuration remains compatible. |

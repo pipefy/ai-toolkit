@@ -23,7 +23,7 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 
 | Doc | Contents |
 |-----|----------|
-| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing a skill, the sign-off, and the review for a regulated domain |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Which guide fits a change, the sign-off, and the review for a regulated domain |
 | [`contributing/development.md`](contributing/development.md) | Setup, checks, tests, the steps to add a capability, and commit and pull request rules |
 | [`contributing/architecture.md`](contributing/architecture.md) | Map of the architecture: where a change goes, what it may import, and the known debt |
 | [`contributing/conventions.md`](contributing/conventions.md) | Code rules with permanent IDs |

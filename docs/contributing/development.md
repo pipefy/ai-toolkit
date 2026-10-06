@@ -1,6 +1,6 @@
 # Development
 
-This guide covers a change to the SDK, the CLI, or the MCP server. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) covers a skill, the sign-off, and the review for a regulated domain. [`architecture.md`](architecture.md) says where a change goes and what it may import, and [`conventions.md`](conventions.md) holds the code rules.
+This guide covers a change to the SDK, the CLI, or the MCP server. [`skills.md`](skills.md) covers a skill, and [`CONTRIBUTING.md`](../../CONTRIBUTING.md) covers the sign-off and the review for a regulated domain. [`architecture.md`](architecture.md) says where a change goes and what it may import, and [`conventions.md`](conventions.md) holds the code rules.
 
 ## Set up a clone
 
