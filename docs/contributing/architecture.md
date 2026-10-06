@@ -628,7 +628,7 @@ The iPaaS gateway has no port, and [Risks and technical debt](#risks-and-technic
 
 Each application has its own composition root. At startup, it parses the environment, the config file, and the startup flags into decisions. It also performs every startup effect, such as a keychain read or a network call, and builds the clients that the rest of the code uses. Downstream code then receives a decision it can rely on, and never a raw value it must read again. That parse is `QR-1` applied to configuration, under `VALID-2` in [`conventions.md`](conventions.md), so an invalid value fails at startup and not in the code that later reads it.
 
-A tool module does not construct a concrete client. It receives what it needs from the composition root. A shared package exports parsed types and resolvers, not application wiring or effects. An application can wire eagerly and fail fast at boot, or it can keep effectful members lazy. That choice, like the place the wiring lives, is the application's.
+Inside an application, code outside the composition root does not construct a client: it gets one from the root. A shared package supplies the parts that a root assembles, such as parsed types and credential resolvers, and it wires nothing itself. Each application decides whether its root builds a client at startup or when the code first needs it.
 
 **By component.**
 
