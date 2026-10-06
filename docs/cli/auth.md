@@ -1,40 +1,14 @@
-# CLI authentication
+# Sign in with the CLI
 
-See also the **[CLI docs index](README.md)** and **[`docs/config.md`](../config.md)** for the broader `PIPEFY_*` env-var story and the optional `~/.config/pipefy/config.toml` file that pins defaults across CLI and MCP invocations. To find and remove every credential this toolkit stored, whichever backend holds it, see **[`docs/uninstall.md`](../uninstall.md)**.
+The `pipefy` CLI accepts a credential from four sources. This page shows how to set up each source and how to fix a failed sign-in. [`auth-reference.md`](auth-reference.md) holds the precedence between the sources, the `pipefy auth` commands, their flags and exit codes, and how a stored session behaves. [`docs/config.md`](../config.md) holds the default and effect of each `PIPEFY_*` variable. To find and remove every credential that this toolkit stored, see [`docs/uninstall.md`](../uninstall.md).
 
-The `pipefy` CLI accepts authentication from four sources. This page covers all of them, how the CLI picks one, and how to recover when something goes wrong.
+Pick the source by who the commands must act as:
 
-## Contents
+- To act as your own Pipefy user, [sign in as yourself](#sign-in-as-yourself).
+- To run in CI, in a script, or in an MCP server, [use a service account](#use-a-service-account).
+- To run one command with a token you already hold, [pass a token for one command](#pass-a-token-for-one-command).
 
-- [Credential precedence](#credential-precedence)
-- [Quick start](#quick-start)
-- [Reference](#reference)
-- [Headless / SSH](#headless--ssh)
-- [Troubleshooting](#troubleshooting)
-- [How it works](#how-it-works)
-
----
-
-## Credential precedence
-
-Most-explicit wins. The CLI walks this list top-down and stops at the first source it can resolve:
-
-| # | Source | Identity | Notes |
-|---|--------|----------|-------|
-| 1 | `--token <bearer>` | Whoever owns the token | Skips OAuth entirely |
-| 2 | `PIPEFY_TOKEN` env var | Whoever owns the token | Same path as `--token` |
-| 3 | `PIPEFY_SERVICE_ACCOUNT_*` triple | Service account | OAuth2 client-credentials grant |
-| 4 | Stored user session | You (the signed-in user) | Eager refresh inside a 60 s leeway window |
-
-Every tier wires the `InternalApiClient` against `<PIPEFY_BASE_URL>/internal_api` (derived from `PIPEFY_BASE_URL`), so features that go through the internal API (AI agent automations, some relation flows) work from any path — not just the service-account one.
-
-If `pipefy auth login` succeeds but a higher-precedence source is set in your shell env, the CLI prints a one-line note so you know your stored session is being shadowed.
-
----
-
-## Quick start
-
-### Interactive (you, in a browser)
+## Sign in as yourself
 
 Use this when you want commands to run **as your Pipefy user** — useful for parity with the app's permission model and for AI-automation features that need a real user identity.
 
@@ -48,7 +22,7 @@ This opens your browser, completes an OAuth 2.0 Authorization Code + PKCE flow a
 
 After login, every other `pipefy <cmd>` invocation transparently reuses that session and refreshes the access token on demand.
 
-### Service account (non-interactive)
+## Use a service account
 
 Use this for CI, scripts, MCP servers, and any context where opening a browser isn't an option. Get the client id and secret from **Pipefy Admin → Service Accounts** and put them in `.env` at the repo root:
 
@@ -62,7 +36,7 @@ PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET=<SERVICE_ACCOUNT_CLIENT_SECRET>
 
 The CLI loads `.env` from the current working directory; see [`docs/config.md#precedence`](../config.md#precedence) for the full pydantic-settings precedence rules.
 
-### Static bearer (one-off)
+## Pass a token for one command
 
 For a single command — or to override the precedence chain on the fly:
 
@@ -73,102 +47,6 @@ PIPEFY_TOKEN="$MY_BEARER" uv run pipefy pipe list
 ```
 
 `--token` wins over every other source, including a stored session and `PIPEFY_SERVICE_ACCOUNT_*`.
-
----
-
-## Reference
-
-### Environment variables
-
-Each variable below feeds one credential tier. [`docs/config.md`](../config.md) gives its default and full effect.
-
-| Key | Tier |
-|-----|------|
-| `PIPEFY_TOKEN` | 2 |
-| `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID`, `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` | 3 |
-| `PIPEFY_AUTH_URL`, `PIPEFY_AUTH_CLIENT_ID`, `PIPEFY_DISABLE_STORED_SESSION`, `PIPEFY_KEYCHAIN_BACKEND` | 4 |
-
-`PIPEFY_BASE_URL` applies to every tier. The service-account token URL (tier 3) and the OIDC issuer URL (tier 4) are **not** interchangeable: the first is `<base>/oauth/token` for client credentials, and the second is the discovery root for the user login flow.
-
-`--token`, `--base-url`, and `--allow-insecure-urls` override their variables for one process. `pipefy --help` lists them.
-
-### Commands
-
-| Command | Status | Notes |
-|---------|--------|-------|
-| `pipefy auth login` | Available | Browser-based PKCE login; persists the session in the OS keychain. |
-| `pipefy auth status` | Available | Print which auth source is active, identity, and session expiry. |
-| `pipefy auth logout` | Available | Revoke the refresh token at the IdP and clear the stored session. |
-
-#### `pipefy auth login` flags
-
-| Flag | Default | Effect |
-|------|---------|--------|
-| `--no-browser` | _off_ | Print the authorization URL to stdout instead of trying to launch a browser. |
-| `--callback-timeout <s>` | `180.0` | Seconds to wait for the browser callback (minimum 5). |
-
-#### `pipefy auth status` flags
-
-| Flag | Default | Effect |
-|------|---------|--------|
-| `--json` / `-j` | _off_ | Emit a stable JSON schema instead of human-readable text. |
-
-The command answers four diagnostic questions: am I signed in, as whom, via which precedence tier, and (for stored sessions) when does the access/refresh token expire. It also reports which *other* credential sources are configured, so a CI failure where `PIPEFY_SERVICE_ACCOUNT_*` masks a stored login is one command away from being obvious.
-
-##### JSON schema
-
-```jsonc
-{
-  "signed_in": true,
-  "identity": {"email": "user@pipefy.com", "name": "Pipefy User"},
-  "auth_source": "stored-session",                // or "flag-token" | "env-token" | "service-account" | "none"
-  "detected_sources": ["stored-session"],         // every configured source (winner + masked)
-  "issuer": "https://signin.pipefy.com/realms/pipefy",
-  "state": "active",                              // or "refresh-expired" | "needs-login" | "n/a"
-  "access_expires_at": "2026-05-20T22:14:03Z",    // ISO 8601, null for static-bearer
-  "refresh_expires_at": "2026-06-19T18:02:00Z",   // ISO 8601; null when not a stored session, or when the IdP advertises no refresh-token expiry (refresh_expires_in: 0)
-  "token_rejected": false,                        // true only when the identity `me` query returned 401
-  "keychain_backend": "Keyring",                  // null for non-stored-session sources
-  "masking_env_vars": []                          // env vars masking a stored session, if any
-}
-```
-
-The shape is stable across all sources (fields you don't have are `null` rather than absent), so a script can `jq .auth_source` without branching on which tier is active.
-
-##### Exit codes
-
-| Case | Exit |
-|------|------|
-| `auth_source == "none"` | **2** — same code as a domain command that fails on missing credentials. |
-| Stored session present but refresh grant rejected (`state` ∈ {`refresh-expired`, `needs-login`}) | **2** |
-| Signed in, but the identity `me` query returned 401 or transport-failed | **1** |
-| Signed in, identity fetched successfully | **0** |
-
-#### `pipefy auth logout`
-
-POSTs the stored refresh token to the IdP's `end_session_endpoint` (advertised in the OIDC discovery document) and removes the keychain entry. Without server-side revocation the refresh token would remain valid at the IdP until natural expiry — anyone who recovered it from a backup could still mint new access tokens.
-
-Whether there is anything to clear is decided by the **presence** of a keychain entry, not by whether that entry parses: a stale, corrupt, or schema-drifted entry is still a credential on disk and is removed. The command always clears the local entry once it runs, even when the IdP round-trip fails. The non-happy paths surface a stderr warning so the user knows whether server-side revocation succeeded:
-
-- **Revocation network / non-2xx failure** — stderr `Could not revoke refresh token at the IdP: <reason>. Clearing local session anyway; the refresh token may remain valid at the server until natural expiry.`
-- **IdP doesn't advertise `end_session_endpoint`** — stderr `Pipefy auth server does not advertise a logout endpoint; the refresh token could not be revoked server-side. Clearing local session only.` (OIDC Discovery 1.0 makes the field optional; Keycloak ships it.)
-- **Entry present but unreadable** — revocation needs a readable refresh token, so the entry is delete-only: stdout `Removed an unreadable Pipefy session entry (<issuer>).` and stderr `The stored session entry could not be read, so its refresh token could not be revoked at the IdP; that token remains valid at the server until natural expiry.` Nothing was revoked server-side, so the unrevoked refresh token stays usable at the IdP until it expires on its own.
-- **Keychain read failed and nothing was deleted** — presence could not be established, so the command claims neither removal nor a clean machine: stderr `Could not read the keychain to check for a stored session (<issuer>), and no entry was removed. A credential may still be present; check for it manually via your OS keychain (service: 'pipefy').` and exit 1.
-
-When no entry is stored, `pipefy auth logout` prints `Not signed in. Nothing to do.` and exits 0 — idempotent, matching `gh auth logout` and similar CLIs.
-
-##### Exit codes
-
-| Case | Exit |
-|------|------|
-| `PIPEFY_AUTH_URL=""` (or any other `PIPEFY_*` env var set to empty) | **2** — pydantic rejects empty values at settings load. Unset the var to fall back to the prod default. |
-| No entry stored (no-op) | **0** |
-| Session cleared (revoke succeeded, failed, or unsupported) | **0** |
-| Unreadable entry cleared (no server-side revoke) | **0** |
-| Keychain rejected the delete | **1** — the credential may survive; the message names the manual removal step. |
-| Keychain read failed and no entry was deleted | **1** — presence unknown, so neither removal nor "nothing to do" can be claimed. |
-
----
 
 ## Headless / SSH
 
@@ -182,9 +60,9 @@ Options today:
 
 Forthcoming: an OAuth 2.0 Device Authorization Grant (`pipefy auth login --device`) that swaps the loopback callback for a code you paste into a browser elsewhere. Tracked in issue #138.
 
----
+## Fix a failed sign-in
 
-## Troubleshooting
+Each entry below starts from the message that the CLI prints.
 
 ### `Stored Pipefy session could not be refreshed: <reason>`
 
@@ -192,7 +70,7 @@ The keychain has a session but its refresh token won't exchange. Most common cau
 
 ### `String should match pattern '<regex>'` (any `PIPEFY_*` env var)
 
-Every `PIPEFY_*` env var is validated against a semantically meaningful regex at settings load — URL env vars (`PIPEFY_BASE_URL`, `PIPEFY_AUTH_URL`) must start with `http(s)://`, credentials must not begin/end with whitespace, `PIPEFY_ORG_ID` must be a numeric string. Empty / blank / specially-charactered values are rejected at construction — there's no overload of `PIPEFY_<NAME>=""` for opt-out semantics. To turn the stored-session tier off without unsetting `PIPEFY_AUTH_URL`, use `PIPEFY_DISABLE_STORED_SESSION=1` (see [Keychain backends](#keychain-backends)). Otherwise unset the variable to fall back to the prod default (for URLs) or to leave the tier unconfigured (for credentials). The error message names the offending field plus the violated pattern.
+Every `PIPEFY_*` env var is validated against a semantically meaningful regex at settings load — URL env vars (`PIPEFY_BASE_URL`, `PIPEFY_AUTH_URL`) must start with `http(s)://`, credentials must not begin/end with whitespace, `PIPEFY_ORG_ID` must be a numeric string. Empty / blank / specially-charactered values are rejected at construction — there's no overload of `PIPEFY_<NAME>=""` for opt-out semantics. To turn the stored-session tier off without unsetting `PIPEFY_AUTH_URL`, use `PIPEFY_DISABLE_STORED_SESSION=1` (see [Keychain backends](auth-reference.md#keychain-backends)). Otherwise unset the variable to fall back to the prod default (for URLs) or to leave the tier unconfigured (for credentials). The error message names the offending field plus the violated pattern.
 
 > **`VAR= command` is not "unset".** A shell command-prefix assignment (`PIPEFY_AUTH_URL= pipefy auth status`) sets the variable to the empty string for the child process; it does **not** unset it. Pydantic then rejects the empty value and the command exits with a `ValidationError`. To actually unset a variable for a single command, use `env -u VAR command` (POSIX one-shot, leaves the parent shell untouched):
 >
@@ -223,7 +101,7 @@ When `PIPEFY_KEYCHAIN_BACKEND=file` is active the backend reports as `PlaintextK
 
 ### `Missing Pipefy authentication. Set PIPEFY_TOKEN, configure PIPEFY_SERVICE_ACCOUNT_*, or run \`pipefy auth login\`.`
 
-No source resolved. Pick one from [Credential precedence](#credential-precedence). You can also pass `--token <bearer>` for a one-off override.
+No source resolved. Pick one from [Credential precedence](auth-reference.md#credential-precedence). You can also pass `--token <bearer>` for a one-off override.
 
 ### `Note: PIPEFY_SERVICE_ACCOUNT_* is set in your environment; other pipefy commands will continue to use it ...`
 
@@ -236,37 +114,3 @@ Run `whoami`-style queries (e.g. `pipefy graphql exec --query '{ me { email name
 ### `State mismatch on OAuth callback (possible CSRF)`
 
 The browser came back with a different `state` than the CLI sent. Re-run `pipefy auth login`. If it happens repeatedly, suspect a stale browser tab from a previous login attempt.
-
----
-
-## How it works
-
-[`architecture.md`](../contributing/architecture.md#runtime-view) walks both flows step by step: the browser login, and the credential that every later invocation resolves. This section holds the details the entries above depend on.
-
-### Login (`pipefy auth login`)
-
-The CLI binds the loopback socket on `127.0.0.1:<ephemeral>` **before** it opens the browser, so no other process can take the port mid-flight. It sends a one-time `state` value with the authorization request and refuses a callback that returns a different one, which is what raises [`State mismatch on OAuth callback`](#state-mismatch-on-oauth-callback-possible-csrf).
-
-The stored shape is keyed by `(issuer_host, client_id)`: one active session per (IdP, client) pair, per machine. Re-running `pipefy auth login` against the same issuer replaces the previous entry.
-
-### Eager refresh
-
-Each `pipefy <cmd>` invocation refreshes the access token before it builds the client, when that token has less than **60 s** of life left. A failure surfaces as `Stored Pipefy session could not be refreshed: ...`, with no fallback to another tier. The precedence chain is evaluated before the refresh, so a user who chose tier 4 gets a hard "re-login" signal rather than a silent service-account swap.
-
-A token revoked mid-session is handled separately, and the eager refresh above never sees it. When an API call answers 401, the CLI forces one refresh and retries the call. When that refresh returns nothing, or returns the same token, the 401 propagates, so you get a "session expired" error rather than a loop.
-
-### Keychain backends
-
-`keyring` selects an OS backend automatically: macOS Keychain on Darwin, Credential Manager on Windows, Secret Service (gnome-keyring / kwallet) on Linux. `pipefy auth login` prints the resolved backend name on success so you can confirm where the entry landed; `pipefy auth status` reports it as `Keychain: <BackendName>`.
-
-#### Opting out of the OS keychain
-
-Two env vars (mirrored as TOML keys) override the default behaviour:
-
-- `PIPEFY_DISABLE_STORED_SESSION=1` skips the keychain entirely. `pipefy auth login` refuses with exit 2, tier resolution never probes the backend, and `pipefy auth status` omits the `stored-session` tier. Use when only `PIPEFY_TOKEN` / `PIPEFY_SERVICE_ACCOUNT_*` matter (CI runners, automation) and the cold-start keyring backend-discovery cost (~30-80 ms on Darwin, more on a Linux box with no Secret Service daemon) is undesirable.
-
-- `PIPEFY_KEYCHAIN_BACKEND=file` swaps the active backend to a plaintext on-disk keyring under `config_dir() / "keyring.cfg"` (`~/.config/pipefy/keyring.cfg` on POSIX, `%APPDATA%/pipefy/keyring.cfg` on Windows). Unblocks headless Linux without Secret Service. **The file is plaintext, not OS-secured**: anyone with read access to the file (including a co-tenant on a shared CI runner) reads the refresh token. Opt-in only.
-
-These are independent: `PIPEFY_DISABLE_STORED_SESSION=1` takes precedence (the file backend is never read or written). `pipefy auth status` will reflect the active backend name regardless (`Keyring`, `PlaintextKeyring`, etc.).
-
-Removing `PIPEFY_KEYCHAIN_BACKEND=file` **moves** the store rather than clearing it: the next login writes to the OS keychain while whatever is already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. `./uninstall.sh --scan` resolves the effective backend and reads both stores regardless of which one is active — see [`docs/uninstall.md`](../uninstall.md).

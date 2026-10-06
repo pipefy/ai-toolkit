@@ -218,5 +218,5 @@ Use the names the report printed: a registration can be called anything.
 ## Related
 
 - [`install.md`](install.md) — the install paths this reverses
-- [`cli/auth.md`](cli/auth.md) — where credentials live, and `pipefy auth logout` in detail
+- [`cli/auth-reference.md`](cli/auth-reference.md) — where credentials live, and `pipefy auth logout` in detail
 - [`config.md`](config.md) — every `PIPEFY_*` variable the scan looks for
