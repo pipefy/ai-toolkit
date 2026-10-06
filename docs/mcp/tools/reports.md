@@ -1,6 +1,6 @@
 # Reports
 
-Pipe reports and organization reports: discovery, CRUD, single pipe report fetch, and async exports. **17 tools.**
+Pipe reports and organization reports: discovery, CRUD, single pipe report fetch, and async exports.
 
 ## Cross-cutting patterns
 

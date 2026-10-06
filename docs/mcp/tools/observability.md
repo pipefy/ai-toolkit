@@ -1,6 +1,6 @@
 # Observability
 
-Monitor AI agent and automation execution, usage stats, credit consumption, and export job history. **11 tools.**
+Monitor AI agent and automation execution, usage stats, credit consumption, and export job history.
 
 Read-only observability tools use `readOnlyHint=True`. The async export mutation (`export_automation_jobs`) does not.
 

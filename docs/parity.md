@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **187** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py`. `tests/test_parity.py` fails when a registered tool has no row, a row names an unregistered tool, or a shipped row names a CLI command that does not exist.
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -215,17 +215,3 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `validate_knowledge_base_access` | `pipefy kb validate-access` | shipped | Knowledge base read-access probe (pipe-scoped, `--pipe-uuid`); green proves read access only (`read_ai_agents`), never write entitlement. |
 | `validate_llm_provider_access` | `pipefy ai-provider validate-access` | shipped | LLM provider read-access probe; green proves read access only, never write entitlement. |
 
-## Row count check
-
-```bash
-uv run python -c "import ast, pathlib; p=pathlib.Path('packages/mcp/src/pipefy_mcp/tools/registry.py'); m=ast.parse(p.read_text());
-for n in m.body:
-    if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id=='PIPEFY_TOOL_NAMES' for t in n.targets):
-        v=n.value
-        if isinstance(v, ast.Call) and getattr(v.func,'id',None)=='frozenset':
-            print(len(v.args[0].elts))"
-```
-
-Expect **187** tool names in `PIPEFY_TOOL_NAMES` and **187** data rows in the parity table (excluding the header rows).
-
-When adding or removing an MCP tool, update **this file** and `PIPEFY_TOOL_NAMES` in the same change set.

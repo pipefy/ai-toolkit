@@ -1,6 +1,6 @@
 # LLM providers
 
-Discovery and management of the LLM providers an organization can use: custom (BYOM) providers, Pipefy-managed system providers, vendor model lists, owner defaults, provider dependencies, a read-access probe, plus custom-provider writes (create/update/delete, active-status toggle, and organization default set/reset). **11 tools.**
+Discovery and management of the LLM providers an organization can use: custom (BYOM) providers, Pipefy-managed system providers, vendor model lists, owner defaults, provider dependencies, a read-access probe, plus custom-provider writes (create/update/delete, active-status toggle, and organization default set/reset).
 
 These are the counterpart to the `providerId` / `systemProviderId` fields on AI agent behaviors (see [Automations & AI](automations-and-ai.md)): use `get_llm_providers` to find the IDs a behavior accepts, and the write tools to manage the custom providers behind them.
 

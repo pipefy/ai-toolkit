@@ -126,17 +126,3 @@ def test_each_mcp_tool_has_documentation_row(tool):
     """Parametrized companion so ``pytest -k`` can target a single tool name."""
     rows = _parse_parity_rows(_PARITY_MD.read_text(encoding="utf-8"))
     assert tool in rows, f"{tool}: add a docs/parity.md matrix row"
-
-
-def test_registry_tool_count_matches_documented_expectation():
-    """Keep the parity doc header (``**N** tools``) honest; update docs when the registry changes."""
-    text = _PARITY_MD.read_text(encoding="utf-8")
-    m = re.search(r"\*\*(\d+)\*\*\s+tools", text)
-    assert m is not None, (
-        "docs/parity.md must document the expected MCP tool count near the top."
-    )
-    documented = int(m.group(1))
-    assert len(PIPEFY_TOOL_NAMES) == documented, (
-        f"PIPEFY_TOOL_NAMES has {len(PIPEFY_TOOL_NAMES)} tools but docs/parity.md documents {documented}. "
-        "Update the **N** tools line and the matrix together."
-    )

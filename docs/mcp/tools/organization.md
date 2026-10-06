@@ -1,6 +1,6 @@
 # Organization
 
-Discover the organizations you can access, or fetch one by ID. **2 tools.**
+Discover the organizations you can access, or fetch one by ID.
 
 ---
 

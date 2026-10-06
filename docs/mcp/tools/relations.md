@@ -1,6 +1,6 @@
 # Connections & Relations
 
-Link processes and cards across workflows. **8 tools.**
+Link processes and cards across workflows.
 
 ## Key concepts
 

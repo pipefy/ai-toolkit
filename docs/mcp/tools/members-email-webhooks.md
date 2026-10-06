@@ -1,6 +1,6 @@
 # Members, Email & Webhooks
 
-Manage pipe membership, send emails from card inboxes, read inbox replies, and manage webhooks (list, create, update, delete). **12 tools.**
+Manage pipe membership, send emails from card inboxes, read inbox replies, and manage webhooks (list, create, update, delete).
 
 ---
 

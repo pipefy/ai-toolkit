@@ -1,6 +1,6 @@
 # Portal
 
-Read and manage Pipefy portals (Interfaces schema): list org portals, fetch detail, create/update/delete portal metadata, manage pages (create, update, delete, sort, layout), manage page elements (create, update, delete, duplicate), and manage sub-portals (create, attach, publish, unpublish, detach, delete). **20 tools** — parity matrix rows in [`docs/parity.md`](../../parity.md).
+Read and manage Pipefy portals (Interfaces schema): list org portals, fetch detail, create/update/delete portal metadata, manage pages (create, update, delete, sort, layout), manage page elements (create, update, delete, duplicate), and manage sub-portals (create, attach, publish, unpublish, detach, delete). Parity matrix rows are in [`docs/parity.md`](../../parity.md).
 
 Most portal tools call the **Interfaces** GraphQL endpoint (`interfaces_graphql_url`, default `https://app.pipefy.com/graphql/interfaces`), derived from `PIPEFY_BASE_URL`. Sub-portal **attach**, **publish**, **unpublish**, **detach**, and **delete** use **internal_api** (`<PIPEFY_BASE_URL>/internal_api`); only **`create_sub_portal`** uses Interfaces (`createSubPortal`).
 

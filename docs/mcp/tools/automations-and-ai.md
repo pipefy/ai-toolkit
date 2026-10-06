@@ -1,6 +1,6 @@
 # Automations & AI
 
-Traditional automations (if/then rules) and AI-powered automations and agents. **23 tools.** (Execution logs, usage exports, and credit dashboards are in [Observability](observability.md).)
+Traditional automations (if/then rules) and AI-powered automations and agents. (Execution logs, usage exports, and credit dashboards are in [Observability](observability.md).)
 
 ---
 

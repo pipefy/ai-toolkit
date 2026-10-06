@@ -1,6 +1,6 @@
 # iPaaS (Advanced Automations)
 
-Discover and invoke the iPaaS tools available to a pipe's workspace, and connect the apps those tools orchestrate. **4 tools.**
+Discover and invoke the iPaaS tools available to a pipe's workspace, and connect the apps those tools orchestrate.
 
 ---
 
