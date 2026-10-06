@@ -639,7 +639,7 @@ Inside an application, code outside the composition root does not construct a cl
 
 ### Identifier resolution
 
-No global choice sets the identifier form, because each component picks its own.
+An identifier names a resource, and it takes one of several forms: a numeric ID, a UUID, a slug, or the resource's name. Each component picks the forms that its arguments take.
 
 `QR-7` demands that an identifier which fits more than one resource never resolves silently. Rather than pick one resource for an ambiguous name, the MCP server returns every match.
 
