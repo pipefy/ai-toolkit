@@ -715,10 +715,9 @@ A credential is resolved once per process or once per request, and the choice fo
 
 Under either profile, the MCP server resolves no credential itself and delegates to Identity. Under the remote profile it holds no caller credential at startup, and each request's session acts as the bearer that Identity checked.
 
+`QR-4` sets the rule for code. Where a process serves one caller, code can hold the credential it received. Where a process serves many, nothing caches a credential, and no state shared across the process answers a question about the caller. An import-linter contract holds that rule in the MCP server, because it bans a `settings` import from the `tools` layer.
+
 A credential also ends. `pipefy auth logout` revokes the refresh token at the issuer and deletes the stored session, so nothing can refresh that credential again. No process keeps a copy of the stored session, because every call reads it again. An access token that was already issued keeps working until it expires, because a server checks the token's signature and never asks the issuer about it. Asking the issuer on every call would close that gap, but every call would then pay a round trip, so a short token lifetime bounds the gap instead, and the issuer sets that lifetime. That bound is `QR-27`, and [`docs/cli/auth.md`](../cli/auth.md) states what the command reports when a step of the logout fails.
-
-One rule follows, and it is what `QR-4` requires of any application here. With a per-process identity, downstream code can hold what it received. With a per-request identity, nothing caches it, and process-global state never answers a question about the caller. That is why the import-linter contract bans a `settings` import from the `tools` layer, and the full reasoning is in [`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md).
-
 A caller can also carry state between calls, such as a vendor cursor or an export id. The API authorizes that value on each request. A handle that we mint ourselves obeys the same rule.
 
 **By component.**
