@@ -586,15 +586,6 @@ Within the MCP package, import-linter holds the folder order `server > tools > c
 Inside a package, `MODULE-1` and `MODULE-2` in [`conventions.md`](conventions.md) place a module by its layer, and an import follows the stack except on the bottom edge. Where that edge carries a port, the service layer declares the port and a gateway fulfills it, so the gateway imports the service layer. `PORT-1` to `PORT-3` decide which edges earn a port. A facade takes the position of the layer it publishes. [ADR-0001](adr/0001-layered-responsibility.md) holds the reasoning. No package checks this order, because the folder order above is the only contract, and [Risks and technical debt](#risks-and-technical-debt) states what that leaves unheld.
 
 ```mermaid
-flowchart TB
-    presentation["Presentation"] --> application["Application"]
-    application --> service["Service"]
-    service --> gateway["Gateway"]
-```
-
-That is the stack, and an arrow is the path a call travels. The diagram below is the import direction, which differs on the bottom edge.
-
-```mermaid
 flowchart LR
     root["Composition root"]
     subgraph chain["The import direction"]
