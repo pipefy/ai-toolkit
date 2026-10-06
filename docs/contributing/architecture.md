@@ -444,9 +444,7 @@ Each scenario below follows one credential lifetime: resolved once per process, 
 
 ### A credential resolved once per process
 
-The CLI runs this scenario on every invocation, and so does the MCP server under the local profile. One caller owns the process, so the credential it resolves lasts as long as the process does.
-
-A browser login comes first, and the CLI alone runs it. It is `FR-1`, and it happens once rather than on every invocation.
+The CLI resolves its credential once per command, and the MCP server under the local profile resolves it once at startup. One caller owns the process, so the credential lasts as long as the process does. Before either one runs, a person logs in once through the CLI, which is `FR-1`.
 
 ```mermaid
 sequenceDiagram
