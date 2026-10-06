@@ -262,6 +262,12 @@ flowchart TB
     envelope --> config
 ```
 
+The legend:
+
+- An arrow points from a block to a block that it imports from.
+
+The tool surface spans presentation and application, because the tool body that `@mcp.tool` registers also runs the calls behind the tool. Startup and wiring is the [composition root](#composition-root): it imports and builds every other block, so it sits off the stack.
+
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Tool surface | Presentation and application | Declares each tool with its annotations, parses the arguments, orchestrates the calls behind it, and decides what the answer says | A registered tool, called over stdio or HTTP | `tools/*_tools.py` apart from `tools/meta_tools.py`, the `tools/*_tool_helpers.py` beside them, `tools/phase_transition_helpers.py`, `tools/field_condition_planner.py`, `tools/behavior_placeholder_interpolation.py` |
@@ -273,8 +279,6 @@ flowchart TB
 | Logging | Gateway | Writes one JSON line per event to the log stream | A configured logger | `observability/json_logging.py` |
 | Startup and wiring | Composition root | Parses the startup flags, builds every effect once, assembles the tool surface, and hands each request the objects it needs | The `pipefy-mcp-server` entry point | `main.py`, `server.py`, `core/runtime.py`, `core/transport_security.py`, `observability/wiring.py`, `tools/registry.py`, `tools/tool_context.py` |
 | Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
-
-An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. Startup and wiring sits off that stack, because it builds every other block once. The tool surface holds two layers at once, because the function that declares the tool is also the function that orchestrates the calls behind it, and inbound middleware wraps that call from further out.
 
 [Tool surface](#tool-surface) at arc42 8 partitions that block by subject domain and by persona profile. That partition refines one block into a level 3, and this document does not take it.
 
