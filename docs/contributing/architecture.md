@@ -730,7 +730,7 @@ A credential also ends. `pipefy auth logout` revokes the refresh token at the is
 
 ## Architecture decisions
 
-[`adr/`](adr/README.md) holds one decision record per decision. [Solution strategy](#solution-strategy) already carries the decisions that shape everything else, so the set reaches further than that section does. This document carries the rule each decision record produced, and the reasoning stays with it.
+Each architectural decision has a record in [`adr/`](adr/README.md). [Solution strategy](#solution-strategy) names the decisions that shape the whole system, and the records also cover narrower ones. This document states the rule that each decision produced, and the record keeps the reasoning.
 
 ## Quality requirements
 
