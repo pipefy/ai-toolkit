@@ -263,7 +263,7 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 | [`docs/config.md`](docs/config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain. |
 | [`docs/parity.md`](docs/parity.md) | MCP tool ↔ CLI command matrix. |
 | [`docs/contributing/development.md`](docs/contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules. |
-| [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
+| [`docs/contributing/release.md`](docs/contributing/release.md) | Versioning and release process. |
 
 ---
 

@@ -28,4 +28,4 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`contributing/adr/`](contributing/adr/README.md) | Architecture decision records |
 | [`contributing/skills.md`](contributing/skills.md) | How to write, name, and maintain a skill |
 | [`contributing/authoring.md`](contributing/authoring.md) | How the docs tree is organized and where a new doc goes |
-| [`../RELEASE.md`](../RELEASE.md) | Versioning and the release procedure |
+| [`contributing/release.md`](contributing/release.md) | Versioning and the release procedure |

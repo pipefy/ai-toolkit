@@ -55,7 +55,7 @@ The table below says who the toolkit serves, and what each role expects. The con
 | Maintainer | The core team, at `dev@pipefy.com` | A stack it controls, a layer order a merge cannot break, and a decision that outlives whoever made it: [Architecture decisions](#architecture-decisions), [Dependency rule](#dependency-rule), and [Declared dependencies](#declared-dependencies) |
 | Security reviewer | Whoever answers `security@pipefy.com`, per [`SECURITY.md`](../../SECURITY.md) | Trust boundaries and outbound URL policy in every component, and then per component. SDK: stores no credential. CLI: stores one, so where it lives and who can read it. MCP: validates an inbound bearer, so how. Skills: nothing. [Identity lifetime](#identity-lifetime) and [Architecture constraints](#architecture-constraints) |
 | Privacy, Legal and Compliance | Pipefy's review team, at `dpos@pipefy.com` | The three positions [`TERMS.md`](../../TERMS.md) defines: human review for a decision that affects an individual, a compliance card on every published blueprint, and Apache 2.0 for the code and the docs |
-| Release manager | The maintainers who cut a release, at `dev@pipefy.com` | What counts as a breaking change, and what is owed before one ships: [`DEPRECATION.md`](../DEPRECATION.md) and [`RELEASE.md`](../../RELEASE.md) |
+| Release manager | The maintainers who cut a release, at `dev@pipefy.com` | What counts as a breaking change, and what is owed before one ships: [`DEPRECATION.md`](../DEPRECATION.md) and [`release.md`](release.md) |
 | Domain expert | The owners of Pipefy's internal domain model, reached through `dev@pipefy.com` | Names that match the Pipefy product: [Requirements overview](#requirements-overview) and [Glossary](#glossary) |
 | Pipefy platform | The team that owns the GraphQL API, at [`community.pipefy.com/api-76`](https://community.pipefy.com/api-76) | A stated outbound policy: a caller that identifies itself, that does not chain calls it could make in one, that gives up rather than hold a connection open, and that honors a refusal to serve |
 | Operator of the remote deployment | Whoever runs the remote profile. The hosted wrapper is built outside this repository, and no team is named here | For MCP alone, because no other component runs as a shared process. The deployment story: which tools a deployment exposes, where the credential comes from, who can use it, the deploy shape, what reaches a log, and what one caller costs another: [Identity lifetime](#identity-lifetime) and [What reaches a log](#what-reaches-a-log) |
@@ -103,7 +103,7 @@ We work inside a constraint rather than around it. When a limit blocks us, we ne
 
 **Conventions.**
 
-Every rule we set for ourselves lives in a file of its own, so this block has no table. [`conventions.md`](conventions.md) owns the code rules, each under a permanent ID that a review cites, and [`authoring.md`](authoring.md) owns the documentation rules. [`development.md`](development.md) owns the rules for a code change, a commit and a pull request, and [`skills.md`](skills.md) owns the rules for a skill. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off and the review for a regulated domain, and [`RELEASE.md`](../../RELEASE.md) and [`DEPRECATION.md`](../DEPRECATION.md) own the rules for a version and a release.
+Every rule we set for ourselves lives in a file of its own, so this block has no table. [`conventions.md`](conventions.md) owns the code rules, each under a permanent ID that a review cites, and [`authoring.md`](authoring.md) owns the documentation rules. [`development.md`](development.md) owns the rules for a code change, a commit and a pull request, and [`skills.md`](skills.md) owns the rules for a skill. [`CONTRIBUTING.md`](../../CONTRIBUTING.md) owns the sign-off and the review for a regulated domain, and [`release.md`](release.md) and [`DEPRECATION.md`](../DEPRECATION.md) own the rules for a version and a release.
 
 ## Context and scope
 
@@ -161,7 +161,7 @@ The table below holds the decisions that the rest of this map rests on. Every go
 | Stability | The SDK answers in types of its own, so a change to the GraphQL schema stops inside the SDK | [SDK](#sdk), [Ports and dependency inversion](#ports-and-dependency-inversion) |
 | Backward compatibility | From v1.0, the published packages follow semantic versioning, so a documented contract breaks only in a major release | [`DEPRECATION.md`](../DEPRECATION.md) |
 | Callers whose needs differ by how they use the toolkit | The toolkit offers a separate component for each way a caller uses it, over libraries they share, so a caller installs only the one it uses | [Package decomposition](#package-decomposition) |
-| A change to shared behavior that lands as one reviewed change (`QR-26`) | Every package lives in one repository and ships on one version | [`RELEASE.md`](../../RELEASE.md) |
+| A change to shared behavior that lands as one reviewed change (`QR-26`) | Every package lives in one repository and ships on one version | [`release.md`](release.md) |
 | A public repository | The repository holds no credential, so a deployment reads its credentials from its own environment | [Architecture constraints](#architecture-constraints), [`docs/config.md`](../config.md) |
 
 ## Building block view
@@ -612,7 +612,7 @@ The legend:
 
 A dependency can instead be pinned to one minor series, but only where this code uses parts of it that its version numbers do not protect, as `mcp` is in `packages/mcp/pyproject.toml`.
 
-A package depends on another package of this workspace at one exact version, as [`RELEASE.md`](../../RELEASE.md) rules and `QR-26` demands.
+A package depends on another package of this workspace at one exact version, as [`release.md`](release.md) rules and `QR-26` demands.
 
 ### Ports and dependency inversion
 

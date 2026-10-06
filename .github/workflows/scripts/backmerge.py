@@ -402,7 +402,7 @@ def checks_blurb(has_ci: bool) -> str:
         "deliberately does not trigger `on: pull_request` workflows for events raised by it — an "
         "unchecked pull request that merely *looks* green would be worse. To run them, close and "
         "reopen this pull request, or push any commit to its branch. Setting a `BACKMERGE_TOKEN` "
-        "secret makes checks run on their own; see RELEASE.md."
+        "secret makes checks run on their own; see docs/contributing/release.md."
     )
 
 

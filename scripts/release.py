@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release orchestrator: run the steps in RELEASE.md as one guided CLI.
+"""Release orchestrator: run the steps in docs/contributing/release.md as one guided CLI.
 
 The release has a single natural fault line: ``git push origin <tag>`` triggers
 PyPI publishing, which cannot be undone. Everything before it is local and
