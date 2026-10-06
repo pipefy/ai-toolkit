@@ -599,7 +599,10 @@ flowchart LR
     root -.->|constructs| chain
 ```
 
-A solid arrow is an import that the direction permits. The dotted arrow is construction, and the composition root imports across the stack to perform it.
+The legend:
+
+- A solid arrow points from a layer to what that layer imports.
+- The dotted arrow is construction. The composition root builds every layer, so it imports across the stack and sits off it.
 
 An application is entered through its presentation layer, for example an MCP tool call or a CLI command. The service layer reaches the outside through a gateway, for example Pipefy data access. A library is not entered this way, because a caller imports it and calls it directly.
 
