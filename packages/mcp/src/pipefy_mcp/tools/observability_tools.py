@@ -48,11 +48,10 @@ _DEFAULT_EXPORT_DOWNLOAD_BYTES = 50 * 1024 * 1024
 
 
 def _rewrite_ai_agent_log_not_found(exc: BaseException, log_uuid: str) -> str | None:
-    """Translate the Pipefy resolver's internal type leak to tool semantics.
+    """Rewrite the ``aiAgentLogDetails`` not-found error in the tool's own terms.
 
-    The ``aiAgentLogDetails`` resolver looks up by ``AutomationAction`` under
-    the hood; when the UUID isn't found, the upstream error string exposes
-    that internal type (``"Couldn't find AutomationAction with 'id'=..."``).
+    For an unknown UUID the API error names a record type the tool does not
+    expose, so an agent would not read it as "log not found".
     ``PipefyGraphQLError`` keeps per-error messages in ``.errors``, so we check
     both ``str(exc)`` and the structured error list.
     """

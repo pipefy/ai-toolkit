@@ -155,8 +155,7 @@ def _graphql_create_element_input(
         "type": validated.type,
         "metadata": _serialize_interfaces_json(validated.metadata),
     }
-    # Always send data_sources (even []). Omitting it makes Pipefy pass nil and crash
-    # in UpdateElement#authorized? / CreateDependencies (pipefy-core).
+    # Always send data_sources (even []): the API fails the create when it is omitted.
     payload["data_sources"] = _normalize_portal_data_sources(validated.data_sources)
     if validated.element_id is not None:
         payload["id"] = validated.element_id

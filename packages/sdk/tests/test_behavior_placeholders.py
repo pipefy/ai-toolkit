@@ -226,8 +226,8 @@ def test_extract_referenced_field_ids_deduplicates():
 
 @pytest.mark.unit
 def test_extract_referenced_field_ids_skips_slug_refs():
-    """Pipefy-core's ``referencedFieldIds`` is a list of numeric ids; slug-form
-    references should be resolved upstream before this runs."""
+    """``referencedFieldIds`` is a list of numeric ids; slug-form references
+    should be resolved upstream before this runs."""
     text = "Numeric %{field:159} and slug %{field:my_slug_field}"
     assert extract_referenced_field_ids(text) == ["159"]
 
@@ -239,11 +239,9 @@ def test_extract_referenced_field_ids_no_tokens():
 
 @pytest.mark.unit
 def test_extract_referenced_field_ids_skips_dotted_connected_refs():
-    """Dotted connected-pipe refs like ``%{field:136.135}`` are handled by
-    pipefy-core's importer for clone-time static analysis but are not picked up
-    by pipefy-core's runtime ``start_behavior_execution.rb`` parser. Mirroring
-    runtime here keeps populated ids aligned with what actually arrives in
-    ``BehaviorRequest.card.fields[]``."""
+    """Dotted connected-pipe refs like ``%{field:136.135}`` are not picked up
+    when the behavior runs. Skipping them keeps populated ids aligned with the
+    field values the behavior actually receives."""
     text = "Bare %{field:159} and dotted %{field:136.135}"
     assert extract_referenced_field_ids(text) == ["159"]
 

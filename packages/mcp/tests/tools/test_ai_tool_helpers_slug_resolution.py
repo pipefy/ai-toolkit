@@ -508,8 +508,8 @@ async def test_resolve_and_populate_mixed_numeric_and_slug_instruction():
     refs, both must end up in ``referencedFieldIds``. Earlier versions called
     ``populate_referenced_field_ids`` before slug resolution; the conservative
     non-empty guard then prevented the slug-resolved id from being added on a
-    second pass, silently dropping it from the list pipefy-core uses to forward
-    card field values at trigger time."""
+    second pass, silently dropping it from the list Pipefy reads to pick the
+    card field values the behavior receives."""
     client = AsyncMock()
     client.get_pipe = AsyncMock(
         return_value={

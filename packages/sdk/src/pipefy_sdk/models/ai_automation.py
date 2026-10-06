@@ -169,8 +169,8 @@ class AutomationActionParamsInput(BaseModel):
     Only the fields preflight touches are typed (``field_map``, ``to_phase_id`` — both
     snake wire names, so no alias); ``extra="allow"`` passes every other declared or
     unknown key (``card_id``, ``aiBehaviorParams``, ``httpMethod``, …) through verbatim.
-    There is deliberately no ``phase`` field: it is not a declared write input (Core
-    rejects it), only an output-type convenience derived from ``to_phase_id``.
+    There is deliberately no ``phase`` field: it is not a declared write input (the
+    API rejects it), only an output-type convenience derived from ``to_phase_id``.
     """
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
