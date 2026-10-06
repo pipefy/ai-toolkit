@@ -694,7 +694,7 @@ Domains, tool profiles and the `power` keyword exist because the catalog is larg
 
 One envelope carries both outcomes, so a caller reads success and failure the same way. A success carries `success: true` and `data`, with `message` and `pagination` when they apply. A failure carries `success: false` and an `error` that holds a `message`, with a `code` and `details` when they apply. Today only the tools moved onto the envelope return it on success, and [Risks and technical debt](#risks-and-technical-debt) carries the rest.
 
-An invalid argument does not reach a tool body. The argument error is reshaped into that same envelope, so a caller receives the field and the rule rather than a stack trace. That is `QR-1` at the tool boundary, and [Composition root](#composition-root) is the same requirement applied to configuration.
+An invalid argument never reaches a tool body. The server returns it as a failure envelope that names the field and the rule it broke, which is `QR-1` at the tool boundary.
 
 A denial states the likely cause and the next step. A `debug` argument adds the vendor error codes and a correlation id to any GraphQL error. That is the cause half of `QR-8`. No response states whether a retry can succeed, so [Risks and technical debt](#risks-and-technical-debt) holds the other half.
 
