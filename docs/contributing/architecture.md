@@ -696,7 +696,7 @@ One envelope carries both outcomes, so a caller reads success and failure the sa
 
 An invalid argument never reaches a tool body. The server returns it as a failure envelope that names the field and the rule it broke, which is `QR-1` at the tool boundary.
 
-A denial states the likely cause and the next step. A `debug` argument adds the vendor error codes and a correlation id to any GraphQL error. That is the cause half of `QR-8`. No response states whether a retry can succeed, so [Risks and technical debt](#risks-and-technical-debt) holds the other half.
+A denial states the likely cause and the next step, so a caller can decide from the response whether to change the input or stop, which is `QR-8`. No response says whether a retry can succeed, and [Risks and technical debt](#risks-and-technical-debt) carries that gap. A tool that takes a `debug` argument also adds the vendor error codes and the correlation ID, for the person who reports a failure.
 
 A partial result is not a failure. A read that the caller may perform in part returns what succeeded, plus a list of what was denied, which is `QR-12`. One exception comes with it: `success` stays true on that response, so the list is the only signal and a caller that reads `success` alone misses it.
 
