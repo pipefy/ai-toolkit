@@ -653,7 +653,7 @@ Before it acts, a tool can lack data, which is what to act on, or permission, wh
 
 An MCP tool asks for data through the client, which is `QR-22`. The client puts the question to the person and returns the answer without a second call from the model, whereas a question that the tool returns to the model costs another call, so `QR-22` also serves `QR-5`. Not every client can take a question, and [Risks and technical debt](#risks-and-technical-debt) states which clients a tool can ask and what a tool does with the rest.
 
-When the MCP deployer sets up the client, they settle permission for good, so `QR-25` leaves that decision where they made it. `QR-3` rules out any wait for an answer when nobody is present, and a question about permission survives that, because the deployer settled it before the run began. A question about data does not survive, because nobody can settle a value in advance, so there `QR-22` conflicts with `QR-3`.
+A run with nobody present must not wait for an answer, which is `QR-3`. Permission never makes it wait, because the deployer settled permission in the client's settings before the run began, and `QR-25` stops a call only where they chose. Data can make it wait, because nobody can settle a value in advance, so here `QR-22` conflicts with `QR-3`. `QR-3` wins: where the tool cannot ask and more than one answer fits, the call fails and names the input it lacked, so the caller can supply it and call again. [Risks and technical debt](#risks-and-technical-debt) carries the tools that go ahead without saying so today.
 
 Each party does the one thing it alone can do:
 
