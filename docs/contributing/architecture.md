@@ -655,14 +655,11 @@ An MCP tool asks for data through the client, which is `QR-22`. The client puts 
 
 A run with nobody present must not wait for an answer, which is `QR-3`. Permission never makes it wait, because the deployer settled permission in the client's settings before the run began, and `QR-25` stops a call only where they chose. Data can make it wait, because nobody can settle a value in advance, so here `QR-22` conflicts with `QR-3`. `QR-3` wins: where the tool cannot ask and more than one answer fits, the call fails and names the input it lacked, so the caller can supply it and call again. [Risks and technical debt](#risks-and-technical-debt) carries the tools that go ahead without saying so today.
 
-Each party does the one thing it alone can do:
+Around an MCP tool, each party does what only it can do:
 
 - The MCP server states what a tool changes, both in the tool's description and in its annotations.
 - The client then decides whether a human sees that statement, under settings that the human chose.
 - Pipefy's API authorizes the call, so it alone can refuse one.
-
-[`packages/mcp/AGENTS.md`](../../packages/mcp/AGENTS.md) owns the protocol.
-
 Today the server does more than this, because a destructive tool returns a preview and acts only on a second call that sets `confirm`. Since the model makes that second call, the preview reaches the model, and no person agrees to anything. [Risks and technical debt](#risks-and-technical-debt) carries the correction.
 
 **By component.**
