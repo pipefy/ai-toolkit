@@ -365,6 +365,12 @@ flowchart TB
     credentials --> config
 ```
 
+The legend:
+
+- An arrow points from a block to a block that it imports from.
+
+The command surface spans presentation and application, because the command body that Typer registers also runs the SDK calls behind the command.
+
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Registration | Composition root | Registers every command group, parses the global flags, and picks the keychain backend | The `pipefy` entry point | `main.py` |
@@ -373,8 +379,6 @@ flowchart TB
 | Credential resolution | Composition root | Resolves the credential precedence chain, builds the authenticated client, and says what a keychain failure means | The `auth` command group, and the client that a command body receives | `auth.py`, `commands/auth.py`, `commands/_auth_keychain_hints.py`, and the client build in `commands/_common.py` |
 | Renderers | Presentation | Writes JSON lines for a script, or a Rich table for a person | Two renderers, one of which the run harness picks per call | `output/` |
 | Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
-
-An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. A command module holds two layers at once, because the function that declares the command is also the function that orchestrates the calls behind it. The run harness is presentation too, because every command body runs inside it.
 
 Two blocks share `commands/_common.py`, which the table splits by function rather than by file. [Risks and technical debt](#risks-and-technical-debt) carries that grouping.
 
