@@ -2,7 +2,7 @@
 
 This document settles the decisions that recur when we write code, so a review applies a rule instead of reopening the argument. A rule belongs here when a reviewer applies it by judgment to one unit of code. For the decomposition, the dependency rule, and the split by application, see [`architecture.md`](architecture.md). That document is the map of the architecture, and CI enforces the import bans that its dependency rule produces. The role order inside a package is checked in one package alone, which its `Risks and technical debt` section records.
 
-How to read it. Each rule has a permanent ID, so a review comment cites `PARSE-3` rather than quoting a paragraph. A retired rule keeps its ID. Every code block is illustrative and names no shipped symbol. This document states what we commit to, and it names no gap in the current code.
+How to read it. Each rule has a permanent ID, so a review comment cites `PARSE-3` rather than quoting a paragraph. A rule with an `Enforced by:` line also has a check in CI, which covers the part of the rule that the line names. Review covers the rest. A retired rule keeps its ID. Every code block is illustrative and names no shipped symbol. This document states what we commit to, and it names no gap in the current code.
 
 ## Type validation at boundaries, not inside
 
@@ -175,6 +175,8 @@ Do not
 - Let a module at the package root take a facade and call it.
 
 Why: `QR-14` again. The SDK and `packages/auth` are libraries, so multi-step logic inside them is a service and not a use case. A module that reaches back to the facade above it sits in no layer, and no contract can hold it.
+
+Enforced by: the import-linter contract in `packages/sdk/pyproject.toml`, for a module under `pipefy_sdk.services` that imports `pipefy_sdk.client`.
 
 ## Type ownership
 
@@ -373,6 +375,8 @@ Do not
 Why: the protocol defaults a tool to a destructive write, so a tool that declares nothing misinforms every client that reads the hint. The client owns the policy its consumer set, so a stop inside the server overrides that policy and asks the model rather than the person.
 
 Weighed: elicitation, rejected because a client can auto-accept it, so the prompt proves nothing about a person.
+
+Enforced by: `packages/mcp/tests/tools/test_tool_annotations.py`, for the read-only declaration on every registered tool.
 
 ## Testing at boundaries
 
