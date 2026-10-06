@@ -494,16 +494,24 @@ sequenceDiagram
     Store-->>Chain: the session, where one is stored
     Chain-->>Entry: an authentication the client takes
     Entry->>Attach: build the client around it
-    loop every call, for a stored session
-        Attach->>Refresh: the token for this call
-        Refresh->>Store: read the stored session again
-        opt the access token is near expiry
-            Refresh->>Refresh: take the lock that guards a refresh
-            Refresh->>Idp: trade the refresh token for a fresh one
-            Idp-->>Refresh: a fresh access token
-            Refresh->>Store: keep what came back
+    loop every call this process makes
+        alt a stored session
+            Attach->>Refresh: the token for this call
+            Refresh->>Store: read the stored session again
+            opt the access token is near expiry
+                Refresh->>Refresh: take the lock that guards a refresh
+                Refresh->>Idp: trade the refresh token for a fresh one
+                Idp-->>Refresh: a fresh access token
+                Refresh->>Store: keep what came back
+            end
+            Refresh-->>Attach: the token to use
+        else a service account
+            Attach->>Attach: read the token this process holds in memory
+            opt the access token is near expiry
+                Attach->>Api: trade the client secret for a fresh access token
+                Api-->>Attach: a fresh access token
+            end
         end
-        Refresh-->>Attach: the token to use
         Attach->>Api: the call, with that token
     end
 ```
