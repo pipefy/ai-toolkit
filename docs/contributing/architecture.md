@@ -419,6 +419,12 @@ flowchart TB
     config --> types
 ```
 
+The legend:
+
+- An arrow points from a block to a block that it imports from.
+
+The login flow starts the loopback callback and stops it again, so a service owns an inbound gateway for the length of one login.
+
 | Name | Role | Responsibility | Interfaces | Code |
 |---|---|---|---|---|
 | Credential chain | Service, as the published facade | Decides which credential the caller holds, which is a static token, a service account, or a stored session, and builds the authentication that a client takes | `resolve_pipefy_auth`, which every application calls, and the message that states what is missing | `resolver.py` |
@@ -431,8 +437,6 @@ flowchart TB
 | Bearer validation | Service | Validates a bearer that arrives from outside, against the issuer's keys | The check that the MCP server runs on an inbound call | `verification.py` |
 | Identity types | Service, as a domain type | Holds the OIDC client identity, the parsed token response, and the PKCE pair, with no I/O | Types that every block above takes | `identity.py`, `responses.py`, `pkce.py` |
 | Configuration | Service, as a domain type | Holds the parsed authentication settings, and the settings that the inbound check reads | `AuthSettings` and `JwtValidationSettings` | `settings.py` |
-
-An arrow is an import, and the diagram draws the ones that set the direction rather than every one. The `Role` column places each block in the stack that [Dependency rule](#dependency-rule) draws. The login flow starts the loopback callback and stops it again, so a service owns an inbound gateway for the length of one login.
 
 This package declares no order inside itself, so no check holds the chain above. `packages/auth/pyproject.toml` carries the ruff `TID251` list that holds the direction between packages, and it carries nothing that holds the direction within this one. [Risks and technical debt](#risks-and-technical-debt) states what this package leaves open.
 
