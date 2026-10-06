@@ -303,14 +303,22 @@ flowchart TB
     end
 
     preflight --> facade
+    preflight --> helpers
+    preflight --> models
+    facade --> preflight
     facade --> services
     facade --> port
     facade --> models
+    facade --> helpers
     facade --> config
     services --> documents
     services --> port
     services --> models
     services --> helpers
+    services --> errors
+    services --> config
+    helpers --> services
+    helpers --> models
     port --> errors
 ```
 
