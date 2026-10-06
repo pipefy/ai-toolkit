@@ -782,7 +782,7 @@ These requirements hold while the system runs.
 | `QR-25` | A call is stopped for approval only where the deployer chose | A call is stopped where the client's settings say, and nowhere else |
 | `QR-27` | A logout ends the credential, and only a token already issued outlives it, until that token expires | After a logout, no new token can be issued, and the last one stops at its own expiry |
 | `QR-28` | A name that is incomplete or misspelled still finds the resource | An inexact name returns the resource, or the matches that `QR-7` demands |
-| `QR-29` | An operation that no tool wraps is still reachable | An agent needs an operation with no tool of its own. One call runs it against the API, under the same credential |
+| `QR-29` | An operation that no tool wraps is still reachable | One call runs any API operation, under the caller's own credential |
 
 #### Change
 
