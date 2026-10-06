@@ -226,63 +226,6 @@ The cost of an install divided the shared code into Identity and Commons. Becaus
 
 Commons and Skills have no section here. Commons holds helpers that are not related to each other, and [`skills/README.md`](../../skills/README.md) owns the skills catalog while each `SKILL.md` owns its steps.
 
-#### MCP server
-
-The diagram and the table below divide the MCP server into blocks by responsibility. The folders group files by kind instead, so a block cuts across them, and the `Code` column lists the files of each block.
-
-```mermaid
-flowchart TB
-    subgraph server["MCP server"]
-        direction TB
-        startup["Startup and wiring"]
-        middleware["Inbound middleware"]
-        surface["Tool surface"]
-        curation["Surface curation"]
-        envelope["Response envelope"]
-        caller["Caller identity"]
-        gateway["iPaaS gateway"]
-        logging["Logging"]
-        config["Configuration"]
-    end
-
-    startup --> middleware
-    startup --> surface
-    startup --> curation
-    startup --> envelope
-    startup --> caller
-    startup --> gateway
-    startup --> logging
-    startup --> config
-    middleware --> caller
-    middleware --> envelope
-    middleware --> logging
-    surface --> curation
-    surface --> envelope
-    surface --> gateway
-    surface --> startup
-    curation --> envelope
-    caller --> config
-    envelope --> config
-```
-
-The legend:
-
-- An arrow points from a block to a block that it imports from.
-
-The tool surface spans presentation and application, because the tool body that `@mcp.tool` registers also runs the calls behind the tool. Startup and wiring is the [composition root](#composition-root): it imports and builds every other block, so it sits off the stack.
-
-| Name | Role | Responsibility | Interfaces | Code |
-|---|---|---|---|---|
-| Tool surface | Presentation and application | Declares each tool with its annotations, parses the arguments, orchestrates the calls behind it, and decides what the answer says | A registered tool, called over stdio or HTTP | `tools/*_tools.py` apart from `tools/meta_tools.py`, the `tools/*_tool_helpers.py` beside them, `tools/phase_transition_helpers.py`, `tools/field_condition_planner.py`, `tools/behavior_placeholder_interpolation.py` |
-| Surface curation | Service, with a presentation face for the discovery tools | Decides which tools a deployment exposes, by subject domain, by persona profile, and by the remote marker, and holds a destructive call behind a confirmation | The `--toolsets` flag, the `meta=REMOTE` marker, and the discovery tools of the `power` profile | `tools/toolsets.py`, `tools/remote_profile.py`, `tools/meta_tools.py`, `tools/destructive_tool_guard.py`, `tools/mcp_capabilities.py` |
-| Inbound middleware | Presentation | Wraps every inbound call before a tool body runs, and carries the logging, the quota, and the protection of what sits downstream | An ordered chain that the composition root builds | `core/tool_middleware.py`, `observability/request_log_middleware.py`, `observability/tool_log_middleware.py` |
-| Response envelope | Presentation | Builds the single response shape that every tool returns, for a success, for an error, and for a page | Functions that a tool body calls, and one patch that startup installs | `tools/validation_envelope.py`, `core/tool_error_envelope.py`, `tools/graphql_error_helpers.py`, `tools/pagination_helpers.py`, `tools/validation_helpers.py` |
-| Caller identity | Gateway | Holds the startup identity and the request-scoped identity, and validates an inbound bearer against the issuer | The identity that a tool body reads from its request context | `auth/` |
-| iPaaS gateway | Gateway | Reaches a pipe's iPaaS workspace over HTTP | An async client that a tool body calls | `core/ipaas_gateway.py` |
-| Logging | Gateway | Writes one JSON line per event to the log stream | A configured logger | `observability/json_logging.py` |
-| Startup and wiring | Composition root | Parses the startup flags, builds every effect once, assembles the tool surface, and hands each request the objects it needs | The `pipefy-mcp-server` entry point | `main.py`, `server.py`, `core/runtime.py`, `core/transport_security.py`, `observability/wiring.py`, `tools/registry.py`, `tools/tool_context.py` |
-| Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
-
 #### SDK
 
 The diagram and the table below divide the SDK into blocks by responsibility. A folder mostly holds one block, but the package root holds a facade, a service, a port, and domain types side by side, so the `Code` column lists the modules of each block.
@@ -381,6 +324,63 @@ The command surface spans presentation and application, because the command body
 | Run harness | Presentation | Runs a command body, validates a shared argument, maps an exception to an exit code, and calls the chosen renderer | A wrapper that every command body runs inside | The run harness, the shared validators, and the confirmation prompt in `commands/_common.py` |
 | Credential resolution | Composition root | Resolves the credential precedence chain, builds the authenticated client, and says what a keychain failure means | The `auth` command group, and the client that a command body receives | `auth.py`, `commands/auth.py`, `commands/_auth_keychain_hints.py`, and the client build in `commands/_common.py` |
 | Renderers | Presentation | Writes JSON lines for a script, or a Rich table for a person | Two renderers, one of which the run harness picks per call | `output/` |
+| Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
+
+#### MCP server
+
+The diagram and the table below divide the MCP server into blocks by responsibility. The folders group files by kind instead, so a block cuts across them, and the `Code` column lists the files of each block.
+
+```mermaid
+flowchart TB
+    subgraph server["MCP server"]
+        direction TB
+        startup["Startup and wiring"]
+        middleware["Inbound middleware"]
+        surface["Tool surface"]
+        curation["Surface curation"]
+        envelope["Response envelope"]
+        caller["Caller identity"]
+        gateway["iPaaS gateway"]
+        logging["Logging"]
+        config["Configuration"]
+    end
+
+    startup --> middleware
+    startup --> surface
+    startup --> curation
+    startup --> envelope
+    startup --> caller
+    startup --> gateway
+    startup --> logging
+    startup --> config
+    middleware --> caller
+    middleware --> envelope
+    middleware --> logging
+    surface --> curation
+    surface --> envelope
+    surface --> gateway
+    surface --> startup
+    curation --> envelope
+    caller --> config
+    envelope --> config
+```
+
+The legend:
+
+- An arrow points from a block to a block that it imports from.
+
+The tool surface spans presentation and application, because the tool body that `@mcp.tool` registers also runs the calls behind the tool. Startup and wiring is the [composition root](#composition-root): it imports and builds every other block, so it sits off the stack.
+
+| Name | Role | Responsibility | Interfaces | Code |
+|---|---|---|---|---|
+| Tool surface | Presentation and application | Declares each tool with its annotations, parses the arguments, orchestrates the calls behind it, and decides what the answer says | A registered tool, called over stdio or HTTP | `tools/*_tools.py` apart from `tools/meta_tools.py`, the `tools/*_tool_helpers.py` beside them, `tools/phase_transition_helpers.py`, `tools/field_condition_planner.py`, `tools/behavior_placeholder_interpolation.py` |
+| Surface curation | Service, with a presentation face for the discovery tools | Decides which tools a deployment exposes, by subject domain, by persona profile, and by the remote marker, and holds a destructive call behind a confirmation | The `--toolsets` flag, the `meta=REMOTE` marker, and the discovery tools of the `power` profile | `tools/toolsets.py`, `tools/remote_profile.py`, `tools/meta_tools.py`, `tools/destructive_tool_guard.py`, `tools/mcp_capabilities.py` |
+| Inbound middleware | Presentation | Wraps every inbound call before a tool body runs, and carries the logging, the quota, and the protection of what sits downstream | An ordered chain that the composition root builds | `core/tool_middleware.py`, `observability/request_log_middleware.py`, `observability/tool_log_middleware.py` |
+| Response envelope | Presentation | Builds the single response shape that every tool returns, for a success, for an error, and for a page | Functions that a tool body calls, and one patch that startup installs | `tools/validation_envelope.py`, `core/tool_error_envelope.py`, `tools/graphql_error_helpers.py`, `tools/pagination_helpers.py`, `tools/validation_helpers.py` |
+| Caller identity | Gateway | Holds the startup identity and the request-scoped identity, and validates an inbound bearer against the issuer | The identity that a tool body reads from its request context | `auth/` |
+| iPaaS gateway | Gateway | Reaches a pipe's iPaaS workspace over HTTP | An async client that a tool body calls | `core/ipaas_gateway.py` |
+| Logging | Gateway | Writes one JSON line per event to the log stream | A configured logger | `observability/json_logging.py` |
+| Startup and wiring | Composition root | Parses the startup flags, builds every effect once, assembles the tool surface, and hands each request the objects it needs | The `pipefy-mcp-server` entry point | `main.py`, `server.py`, `core/runtime.py`, `core/transport_security.py`, `observability/wiring.py`, `tools/registry.py`, `tools/tool_context.py` |
 | Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
 
 #### Identity
