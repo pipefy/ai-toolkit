@@ -33,10 +33,10 @@ stays the sole owner of which files carry the version and how they are
 rewritten (it is pure, offline, and separately tested). This orchestrator
 shells out to it for the bump and imports it only for read-only lookups.
 
-Verification (also runnable on its own via ``verify <tag>``) asserts the three
-things RELEASE.md tells you to check by hand, so none of them can be forgotten:
-the GitHub Release ships all five wheels, the published version installs from
-PyPI, and the ``install.sh`` dry-run resolves the just-cut tag.
+Verification (also runnable on its own via ``verify <tag>``) asserts three
+things, so none of them can be forgotten: the GitHub Release ships all five
+wheels, the published version installs from PyPI, and the ``install.sh``
+dry-run resolves the just-cut tag.
 
 The reversible half also carries the one check no diff can show: the wheels are
 built and installed into a throwaway virtualenv before the confirmation prompt,
