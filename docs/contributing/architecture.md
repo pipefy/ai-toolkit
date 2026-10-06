@@ -440,7 +440,7 @@ The login flow starts the loopback callback and stops it again, so a service own
 
 ## Runtime view
 
-[Identity lifetime](#identity-lifetime) states that a credential is resolved once per process, or once per request, and its `By component` block says which component takes which shape. Those two shapes are the scenarios below, because the difference between them decides what any block downstream can hold.
+Each scenario below follows one credential lifetime: resolved once per process, or once per request. The lifetime decides whether code downstream may keep the credential it received, as [Identity lifetime](#identity-lifetime) states.
 
 ### A credential resolved once per process
 
