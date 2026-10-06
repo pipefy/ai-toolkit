@@ -9,7 +9,8 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`quickstart.md`](quickstart.md) | Start here: connect Claude Code to Pipefy and ask a first question |
 | [`install.md`](install.md) | Every install path, how to choose one, and the per-client MCP wiring |
 | [`troubleshooting.md`](troubleshooting.md) | Common failures by symptom, with the fix or the guide that owns it |
-| [`mcp/`](mcp/README.md) | MCP tool reference by area, and the behavior every tool shares |
+| [`mcp/`](mcp/README.md) | MCP tool guides by area, and the behavior every tool shares |
+| [`mcp/reference.md`](mcp/reference.md) | Every MCP tool with its flags and parameters, generated from the code |
 | [`cli/`](cli/README.md) | CLI usage patterns and discover-then-execute flows |
 | [`cli/auth.md`](cli/auth.md) | Sign in with the CLI, and fix a failed sign-in |
 | [`cli/auth-reference.md`](cli/auth-reference.md) | CLI credential precedence, the `pipefy auth` commands, and session behavior |

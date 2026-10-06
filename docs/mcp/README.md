@@ -8,6 +8,7 @@ Each tool expresses one outcome for the user, not one API endpoint, so an agent 
 
 | Path | Description |
 |------|-------------|
+| [`reference.md`](reference.md) | Every tool with its flags and parameters, generated from the code |
 | [`tools/cross-cutting.md`](tools/cross-cutting.md) | Behavior every tool shares |
 | [`tools/identifiers.md`](tools/identifiers.md) | Which id form each tool and argument expects |
 | [`tools/pipes-and-cards.md`](tools/pipes-and-cards.md) | Pipes, phases, fields, labels, and cards |
@@ -38,7 +39,7 @@ The hosted URL always serves the remote-safe floor, so toolset selection applies
 
 ## Where tool behavior is documented
 
-Each tool's description and `Args:` block come from its Python docstring, which is what an MCP client shows to the model. The read-only and destructive hints come from the tool annotations. The reference pages in this tree cover the concepts, edge cases, and shared behavior that the docstrings do not state. `PIPEFY_TOOL_NAMES` in [`registry.py`](../../packages/mcp/src/pipefy_mcp/tools/registry.py) holds the canonical tool names.
+Each tool's description and `Args:` block come from its Python docstring, which is what an MCP client shows to the model. The read-only and destructive hints come from the tool annotations. [`reference.md`](reference.md) renders all three for every tool, and `scripts/gen_mcp_reference.py` regenerates it. The guides in [`tools/`](tools/cross-cutting.md) cover the concepts, edge cases, and shared behavior that the docstrings do not state. `PIPEFY_TOOL_NAMES` in [`registry.py`](../../packages/mcp/src/pipefy_mcp/tools/registry.py) holds the canonical tool names.
 
 Start with [`tools/cross-cutting.md`](tools/cross-cutting.md) for pagination, IDs, `debug`, permissions, and error shape — then open the domain guide you need.
 
