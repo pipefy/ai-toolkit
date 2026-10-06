@@ -283,8 +283,6 @@ The tool surface spans presentation and application, because the tool body that 
 | Startup and wiring | Composition root | Parses the startup flags, builds every effect once, assembles the tool surface, and hands each request the objects it needs | The `pipefy-mcp-server` entry point | `main.py`, `server.py`, `core/runtime.py`, `core/transport_security.py`, `observability/wiring.py`, `tools/registry.py`, `tools/tool_context.py` |
 | Configuration | Service, as a domain type | Holds the parsed configuration, and the documentation reference that an error message points at | A settings object that every block reads | `settings.py`, `_docs.py` |
 
-[Tool surface](#tool-surface) at arc42 8 partitions that block by subject domain and by persona profile. That partition refines one block into a level 3, and this document does not take it.
-
 A `_helpers` suffix predicts no block. `tools/graphql_error_helpers.py`, `tools/pagination_helpers.py`, and `tools/validation_helpers.py` build the envelope, `tools/phase_transition_helpers.py` runs a check for the tool surface, and a `tools/*_tool_helpers.py` module sits beside the tool it serves. [Risks and technical debt](#risks-and-technical-debt) carries that grouping.
 
 import-linter holds a contract in `packages/mcp/pyproject.toml`, and CI runs it. That contract orders the folders, which runs `server > tools > core > auth > settings`, and no contract orders the blocks above. [Dependency rule](#dependency-rule) states what else that file holds, while [Risks and technical debt](#risks-and-technical-debt) states what runs unheld.
