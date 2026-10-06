@@ -570,9 +570,7 @@ The concepts below cross the building blocks, so none of them sits under one. Wh
 
 ### Dependency rule
 
-The code has a thin service layer. Most of this codebase is presentation or gateway, because `pipefy-mcp-server` wraps the MCP SDK and the Pipefy SDK, while `pipefy-cli` wraps Typer over the Pipefy SDK. The logic that is genuinely ours is small, so the service layer is small. A module that touches a framework does the work of presentation or of a gateway, and it is not a leak. This shape serves `QR-2`, because a vendor change stops at the part that wraps it. The reasoning behind the model is in the decision record [ADR-0001](adr/0001-layered-responsibility.md).
-
-The stack has four layers, top to bottom, which is the path a call travels:
+The stack serves `QR-2`, because a vendor change stops at the layer that wraps the vendor. It has four layers, top to bottom, which is the path a call travels:
 
 - Presentation. What the outside touches, and what shapes the answer that goes back out. Framework and third-party SDK imports live here.
 - Application. Intent and orchestration, which is which operations run to satisfy one request.
