@@ -4,27 +4,28 @@ Scoped to `packages/mcp/`. Repo-wide guidance lives in `../../AGENTS.md`. The la
 
 ## Distribution model
 
-This MCP server is distributed as code that runs in the user's environment as
-a subprocess of the agent runtime (Claude Code, Claude Desktop, etc.). The
-trust boundary is the user; the server has the same filesystem and network
-access the user already has.
+Under the `local` profile, the server runs in the user's environment as a
+subprocess of the agent runtime (Claude Code, Claude Desktop, etc.), with the
+filesystem and network access that the user already has. For that profile, the
+trust boundary is the user. Under the `remote` profile, the server runs as a
+multi-user HTTP service, and the trust boundary is each caller's bearer.
 
 Implications for tool design:
 
-- Local filesystem inputs (`file_path`) are first-class. There is no
-  path-traversal threat surface beyond what the user can already access, and a
-  local `file_path` needs no SSRF guard, redirect cap, or download size limit —
-  the user already has that filesystem and network reach.
+- Local filesystem inputs (`file_path`) are first-class under the `local`
+  profile. There is no path-traversal threat surface beyond what the user can
+  already access, and a local `file_path` needs no SSRF guard, redirect cap, or
+  download size limit. The `remote` profile rejects a `file_path` input (see
+  "Exposure vs input restriction").
 - A **server-side URL fetch is different**: when the server (not the user) makes
-  the request, those defenses apply. The `file_url` attachment source carries
-  them in the SDK (`HttpxUrlDownloader`: HTTPS + public-IP gate, 80/443 ports,
-  connect-time re-validation, redirect cap, size cap), and any future URL
-  ingestion should do the same.
+  the request, those defenses apply under every profile. The `file_url`
+  attachment source carries them in the SDK (`HttpxUrlDownloader`: HTTPS +
+  public-IP gate, 80/443 ports, connect-time re-validation, redirect cap, size
+  cap), and any future URL ingestion should do the same.
 
-A hosted/remote distribution profile is in progress. It runs the server as a
-multi-user HTTP service. Tool exposure there is **default-deny**: only tools
-explicitly marked remote-safe are registered; everything else is withheld. The
-marker is described below.
+Tool exposure under the `remote` profile is **default-deny**: only tools
+explicitly marked remote-safe are registered, and everything else is withheld.
+The marker is described below.
 
 ## Transport profiles
 
