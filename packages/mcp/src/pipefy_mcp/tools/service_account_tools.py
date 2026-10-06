@@ -79,12 +79,12 @@ class ServiceAccountTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not isinstance(organization_uuid, str) or not organization_uuid.strip():
+            if not organization_uuid.strip():
                 return tool_error(
                     "Invalid 'organization_uuid': provide the organization UUID.",
                     code="INVALID_ARGUMENTS",
                 )
-            if not isinstance(name, str) or not name.strip():
+            if not name.strip():
                 return tool_error(
                     "Invalid 'name': provide a non-empty service account name.",
                     code="INVALID_ARGUMENTS",
@@ -95,7 +95,7 @@ class ServiceAccountTools:
                     f"Invalid 'name': must be at most {_SA_NAME_MAX} characters.",
                     code="INVALID_ARGUMENTS",
                 )
-            if not isinstance(role, str) or not role.strip():
+            if not role.strip():
                 return tool_error(
                     "Invalid 'role': provide an organization role.",
                     code="INVALID_ARGUMENTS",
@@ -104,14 +104,12 @@ class ServiceAccountTools:
             if err is not None:
                 return err
             if pipe_ids is not None:
-                if not isinstance(pipe_ids, list) or not all(
-                    isinstance(p, str) and p.strip() for p in pipe_ids
-                ):
+                if not all(p.strip() for p in pipe_ids):
                     return tool_error(
                         "Invalid 'pipe_ids': provide a list of non-empty pipe IDs.",
                         code="INVALID_ARGUMENTS",
                     )
-                if not isinstance(pipe_role, str) or not pipe_role.strip():
+                if not pipe_role.strip():
                     return tool_error(
                         "Invalid 'pipe_role': provide a non-empty pipe role.",
                         code="INVALID_ARGUMENTS",
@@ -198,15 +196,12 @@ class ServiceAccountTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not isinstance(organization_uuid, str) or not organization_uuid.strip():
+            if not organization_uuid.strip():
                 return tool_error(
                     "Invalid 'organization_uuid': provide the organization UUID.",
                     code="INVALID_ARGUMENTS",
                 )
-            if (
-                not isinstance(service_account_uuid, str)
-                or not service_account_uuid.strip()
-            ):
+            if not service_account_uuid.strip():
                 return tool_error(
                     "Invalid 'service_account_uuid': provide the service account UUID.",
                     code="INVALID_ARGUMENTS",

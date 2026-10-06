@@ -180,7 +180,7 @@ class AutomationTools:
             )
             if size_err is not None:
                 return size_err
-            cursor = after.strip() if isinstance(after, str) and after.strip() else None
+            cursor = after.strip() if after is not None and after.strip() else None
             try:
                 page = await client.get_automations(
                     organization_id=org,
@@ -393,7 +393,7 @@ class AutomationTools:
             )
             if bad is not None:
                 return bad
-            if name is not None and (not isinstance(name, str) or not name.strip()):
+            if name is not None and not name.strip():
                 return build_automation_error_payload(
                     message="Invalid 'name': provide a non-empty string when supplied.",
                 )
@@ -406,7 +406,7 @@ class AutomationTools:
                     event_params=event_params,
                     action_params=action_params,
                     condition=condition,
-                    name=name.strip() if isinstance(name, str) else None,
+                    name=name.strip() if name is not None else None,
                     extra_input=extra_input,
                 )
             except Exception as exc:  # noqa: BLE001
@@ -531,7 +531,7 @@ class AutomationTools:
             aid, aid_err = validate_tool_id(action_id, "action_id")
             if aid_err is not None:
                 return aid_err
-            if not isinstance(name, str) or not name.strip():
+            if not name.strip():
                 return build_automation_error_payload(
                     message="Invalid 'name': provide a non-empty string.",
                 )

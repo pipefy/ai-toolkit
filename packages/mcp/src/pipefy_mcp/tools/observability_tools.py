@@ -95,7 +95,7 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not repo_uuid or not isinstance(repo_uuid, str):
+            if not repo_uuid:
                 return build_observability_error_payload(
                     message="Invalid 'repo_uuid': provide a non-empty string.",
                 )
@@ -139,7 +139,7 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not log_uuid or not isinstance(log_uuid, str):
+            if not log_uuid:
                 return build_observability_error_payload(
                     message="Invalid 'log_uuid': provide a non-empty string.",
                 )
@@ -184,10 +184,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not automation_id:
-                return build_observability_error_payload(
-                    message="Invalid 'automation_id': provide a non-empty string.",
-                )
             if not _MIN_PAGE_SIZE <= first <= _MAX_PAGE_SIZE:
                 return build_observability_error_payload(
                     message=f"Invalid 'first': must be between {_MIN_PAGE_SIZE} and {_MAX_PAGE_SIZE}.",
@@ -236,10 +232,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not repo_id:
-                return build_observability_error_payload(
-                    message="Invalid 'repo_id': provide a non-empty string.",
-                )
             if not _MIN_PAGE_SIZE <= first <= _MAX_PAGE_SIZE:
                 return build_observability_error_payload(
                     message=f"Invalid 'first': must be between {_MIN_PAGE_SIZE} and {_MAX_PAGE_SIZE}.",
@@ -581,10 +573,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not export_id:
-                return build_observability_error_payload(
-                    message="Invalid 'export_id': provide a non-empty string.",
-                )
             try:
                 raw = await client.get_automation_jobs_export(export_id)
             except Exception as exc:  # noqa: BLE001
@@ -619,20 +607,14 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not export_id:
-                return build_observability_error_payload(
-                    message="Invalid 'export_id': provide a non-empty string.",
-                )
-            if not isinstance(max_output_chars, int) or not (
-                _MIN_CSV_CHARS <= max_output_chars <= _MAX_CSV_CHARS
-            ):
+            if not (_MIN_CSV_CHARS <= max_output_chars <= _MAX_CSV_CHARS):
                 return build_observability_error_payload(
                     message=(
                         f"Invalid 'max_output_chars': must be an integer between "
                         f"{_MIN_CSV_CHARS} and {_MAX_CSV_CHARS}."
                     ),
                 )
-            if not isinstance(max_download_bytes, int) or not (
+            if not (
                 _MIN_EXPORT_DOWNLOAD_BYTES
                 <= max_download_bytes
                 <= _MAX_EXPORT_DOWNLOAD_BYTES

@@ -13,10 +13,7 @@ from pipefy_sdk import InboxEmailDraft, PipefyId
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
-from pipefy_mcp.tools.validation_helpers import (
-    mutation_error_if_not_optional_dict,
-    validate_tool_id,
-)
+from pipefy_mcp.tools.validation_helpers import validate_tool_id
 from pipefy_mcp.tools.webhook_tool_helpers import (
     build_webhook_error_payload,
     build_webhook_success_payload,
@@ -192,31 +189,22 @@ class WebhookTools:
             cid, err = validate_tool_id(card_id, "card_id")
             if err is not None:
                 return err
-            if not isinstance(to, list) or not to:
+            if not to:
                 return build_webhook_error_payload(
                     message="Invalid 'to': provide a non-empty list of email addresses.",
                 )
-            if not all(isinstance(e, str) and e.strip() for e in to):
+            if not all(e.strip() for e in to):
                 return build_webhook_error_payload(
                     message="Invalid 'to': each recipient must be a non-empty string.",
                 )
-            if not isinstance(subject, str) or not subject.strip():
+            if not subject.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'subject': provide a non-empty string.",
                 )
-            if not isinstance(body, str):
-                return build_webhook_error_payload(
-                    message="Invalid 'body': provide a string.",
-                )
-            if not isinstance(from_, str) or not from_.strip():
+            if not from_.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'from_': provide a non-empty sender email address.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
-            )
-            if bad is not None:
-                return bad
             draft = InboxEmailDraft(
                 card_id=cid,
                 to=to,
@@ -313,22 +301,10 @@ class WebhookTools:
             cid, err = validate_tool_id(card_id, "card_id")
             if err is not None:
                 return err
-            if not email_template_id.strip():
-                return build_webhook_error_payload(
-                    message="Invalid 'email_template_id': provide a non-empty string.",
-                )
-            if to is not None and (
-                not isinstance(to, list)
-                or not all(isinstance(e, str) and e.strip() for e in to)
-            ):
+            if to is not None and not all(e.strip() for e in to):
                 return build_webhook_error_payload(
                     message="Invalid 'to': when provided, must be a non-empty list of email strings.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
-            )
-            if bad is not None:
-                return bad
             template_id = email_template_id.strip()
             try:
                 draft = await client.draft_email_from_template(
@@ -456,23 +432,18 @@ class WebhookTools:
             pid, err = validate_tool_id(pipe_id, "pipe_id")
             if err is not None:
                 return err
-            if not isinstance(url, str) or not url.strip():
+            if not url.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'url': provide a non-empty string.",
                 )
-            if not isinstance(actions, list) or not actions:
+            if not actions:
                 return build_webhook_error_payload(
                     message="Invalid 'actions': provide a non-empty list of event action strings.",
                 )
-            if not all(isinstance(a, str) and a.strip() for a in actions):
+            if not all(a.strip() for a in actions):
                 return build_webhook_error_payload(
                     message="Invalid 'actions': each action must be a non-empty string.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
-            )
-            if bad is not None:
-                return bad
             try:
                 raw = await client.create_webhook(
                     pid,
@@ -533,28 +504,24 @@ class WebhookTools:
                 )
 
             if name is not None:
-                if not isinstance(name, str) or not name.strip():
+                if not name.strip():
                     return build_webhook_error_payload(
                         message="Invalid 'name': when provided, must be a non-empty string.",
                     )
             if url is not None:
-                if not isinstance(url, str) or not url.strip():
+                if not url.strip():
                     return build_webhook_error_payload(
                         message="Invalid 'url': when provided, must be a non-empty string.",
                     )
             if actions is not None:
-                if not isinstance(actions, list) or not actions:
+                if not actions:
                     return build_webhook_error_payload(
                         message="Invalid 'actions': when provided, must be a non-empty list.",
                     )
-                if not all(isinstance(a, str) and a.strip() for a in actions):
+                if not all(a.strip() for a in actions):
                     return build_webhook_error_payload(
                         message="Invalid 'actions': each action must be a non-empty string.",
                     )
-            if headers is not None and not isinstance(headers, dict):
-                return build_webhook_error_payload(
-                    message="Invalid 'headers': when provided, must be a JSON object (dict).",
-                )
 
             kwargs: dict[str, Any] = {}
             if name is not None:
