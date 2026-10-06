@@ -304,7 +304,7 @@ uv run ruff check . && uv run ruff format .
 npx @modelcontextprotocol/inspector uv --directory . run pipefy-mcp-server
 ```
 
-**Adding an MCP tool:** implement under `packages/mcp/src/pipefy_mcp/tools/`, register in `ToolRegistry`, add the name to `PIPEFY_TOOL_NAMES`, and ship the matching CLI command (or document a deferral in `docs/parity.md`). See [`AGENTS.md`](AGENTS.md) for the full TDD workflow.
+**Adding an MCP tool:** follow [Adding a New Capability](AGENTS.md#adding-a-new-capability) in `AGENTS.md`. It lists every file a new tool touches, including the domain in `tools/toolsets.py` that a build check requires.
 
 ### Test the Claude Code plugin from a local checkout
 
