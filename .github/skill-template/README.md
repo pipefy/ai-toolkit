@@ -5,3 +5,5 @@ Starter layout for a new Pipefy skill in the Anthropic Skills format. Use it in 
 To contribute a skill here, follow [Add a skill](../../docs/contributing/skills.md#add-a-skill).
 
 This starter lives outside `skills/`, so it is not part of the published catalog.
+
+A skill in a regulated domain also needs a `COMPLIANCE.md`. Start it from [`COMPLIANCE.template.md`](COMPLIANCE.template.md).

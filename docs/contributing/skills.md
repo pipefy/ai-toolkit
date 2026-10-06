@@ -22,7 +22,7 @@ skills/
 
 Each folder directly under `skills/` is a domain, named for an area of the MCP tool surface. Open an issue before you add a domain.
 
-A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`docs/compliance/COMPLIANCE.template.md`](../compliance/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
+A skill in a regulated domain (`legal`, `human-resources`, `finance`, `compliance`, or any skill that decides about a natural person) needs a filled `COMPLIANCE.md`, started from [`COMPLIANCE.template.md`](../../.github/skill-template/COMPLIANCE.template.md), and the review that [`CONTRIBUTING.md`](../../CONTRIBUTING.md#content-review-for-regulated-domains) describes.
 
 ## Add a skill
 

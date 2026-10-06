@@ -20,6 +20,6 @@
 
 ## Governing terms
 
-Use of this blueprint is governed by the [Pipefy Solutions Terms and Conditions](https://www.pipefy.com/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/termos-e-condicoes/)), the Pipefy AI Additional Terms (URL when published), and the repository [Terms Notice](../../TERMS.md).
+Use of this blueprint is governed by the [Pipefy Solutions Terms and Conditions](https://www.pipefy.com/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/termos-e-condicoes/)), the Pipefy AI Additional Terms (URL when published), and the repository [Terms Notice](https://github.com/pipefy/ai-toolkit/blob/main/TERMS.md).
 
 _Card version: [CC-XX vX.X] · Issued: [date] · Gate record: Regulatory Classification Gate record — Committee process per AIA v3 Annex II_

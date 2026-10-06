@@ -23,7 +23,7 @@ The Toolkit is a client of the Pipefy platform. Access to and use of the Pipefy 
 
 ## 5. Skills and blueprints
 
-Skills and blueprints are templates for general informational purposes and do not constitute legal, HR, financial, tax, or other professional advice. Default configurations require human review for medium/high/critical scenarios; weakening these defaults is your decision and responsibility. Each published blueprint includes a [COMPLIANCE.md](docs/compliance/COMPLIANCE.template.md) / AI Compliance Card describing intended purpose, out-of-scope uses, and AI risk classification for the default configuration. Out-of-scope uses (e.g., decisions about natural persons such as hiring or credit) may qualify as high-risk AI uses under applicable law (EU AI Act; Brazilian Bill No. 2338/2023 once enacted), triggering obligations that rest with you as deployer.
+Skills and blueprints are templates for general informational purposes and do not constitute legal, HR, financial, tax, or other professional advice. Default configurations require human review for medium/high/critical scenarios; weakening these defaults is your decision and responsibility. Each published blueprint includes a [COMPLIANCE.md](.github/skill-template/COMPLIANCE.template.md) / AI Compliance Card describing intended purpose, out-of-scope uses, and AI risk classification for the default configuration. Out-of-scope uses (e.g., decisions about natural persons such as hiring or credit) may qualify as high-risk AI uses under applicable law (EU AI Act; Brazilian Bill No. 2338/2023 once enacted), triggering obligations that rest with you as deployer.
 
 ## 6. Beta status
 
