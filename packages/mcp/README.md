@@ -10,7 +10,7 @@ uvx pipefy-mcp-server
 
 `pipefy-mcp-server` and its workspace dependencies (`pipefy`, `pipefy-auth`, `pipefy-infra`) are published to PyPI, so `uvx` resolves the whole set from there. While the toolkit ships only pre-release versions (the 0.x line), `uvx` resolves the latest pre-release automatically; once a stable release exists it resolves that instead. Do not pass a global `--prerelease allow`: it also lets transitive dependencies jump to their own pre-releases, which can pull a broken build.
 
-For per-client wiring (Claude Code / Cursor / Claude Desktop / Codex), see [root `README.md#installation`](../../README.md#installation). To remove the server, see [`docs/uninstall.md`](../../docs/uninstall.md).
+For per-client wiring (Claude Code / Cursor / Claude Desktop / Codex), see [`docs/install.md`](../../docs/install.md). To remove the server, see [`docs/uninstall.md`](../../docs/uninstall.md).
 
 ## Configuration
 
@@ -25,7 +25,7 @@ PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET=your_client_secret
 
 ## Claude Code: local stdio
 
-Use this when you want the full local tool surface rather than the [hosted MCP](../../README.md#1-hosted-mcp-claude-code). Do not also register the Claude Code plugin under the same server name.
+Use this when you want the full local tool surface rather than the [hosted MCP](../../docs/install.md#1-hosted-mcp-claude-code). Do not also register the Claude Code plugin under the same server name.
 
 ```bash
 claude mcp add --scope project pipefy \

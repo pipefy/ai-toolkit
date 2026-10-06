@@ -46,7 +46,7 @@ A unit test needs no marker.
 
 ## Test the Claude Code plugin from a local checkout
 
-The [Claude Code plugin install](../../README.md#2-claude-code-plugin) adds the marketplace from the `pipefy/ai-toolkit` GitHub repo, which tracks `main`. To run **your local branch** (e.g. `dev`) as the plugin instead, point the marketplace at your clone:
+The [Claude Code plugin install](../install.md#2-claude-code-plugin) adds the marketplace from the `pipefy/ai-toolkit` GitHub repo, which tracks `main`. To run **your local branch** (e.g. `dev`) as the plugin instead, point the marketplace at your clone:
 
 ```text
 /plugin marketplace add /absolute/path/to/ai-toolkit
@@ -56,6 +56,27 @@ The [Claude Code plugin install](../../README.md#2-claude-code-plugin) adds the 
 Whatever is checked out in that clone — any branch — is what loads. Use the `plugin@marketplace` form (`pipefy@pipefy`) since the marketplace and the plugin share the name `pipefy`. After editing plugin files (skills, commands), run `/reload-plugins` to pick up changes without restarting.
 
 > **Already installed the GitHub version?** A marketplace named `pipefy` can be registered only once, and a marketplace declared in `~/.claude/settings.json` under `extraKnownMarketplaces` is locked — `/plugin marketplace add` becomes a no-op (`already on disk — declared in user settings`) and keeps pointing at GitHub. Run `/plugin marketplace remove pipefy` first (or delete that `extraKnownMarketplaces` entry), **then** add the local path. Why removing a marketplace does not always stick: [`docs/uninstall.md`](../uninstall.md#two-things-that-come-back).
+
+## Test the Cursor plugin from a local checkout
+
+Cursor rejects a symlink whose target is outside `~/.cursor/plugins/local`, and it logs `loadUserLocalPlugin pipefy rejected`. For this reason, copy the plugin files into that directory as a real folder:
+
+1. If `~/.cursor/plugins/local/pipefy` is a symlink to this checkout, remove the link. Removing it does not delete the repository.
+2. From the repository root, copy the plugin files:
+
+   ```sh
+   dest="$HOME/.cursor/plugins/local/pipefy"
+   if [ -L "$dest" ]; then rm "$dest"; fi
+   mkdir -p "$dest/assets"
+   cp -R .cursor-plugin skills LICENSE NOTICE README.md .mcp.json "$dest/"
+   cp assets/logo.svg "$dest/assets/"
+   ```
+
+3. Fully restart Cursor.
+
+The copy leaves out `commands/`, because the Cursor manifest declares `"commands": []`. Neither a local copy nor a Marketplace tarball surfaces `/install` or `/pipefy-login`. Include `commands/` only if you want the copy to match what ships.
+
+To remove a copy, run `rm -rf ~/.cursor/plugins/local/pipefy`. To remove only a leftover symlink, run `rm ~/.cursor/plugins/local/pipefy`.
 
 ## Add a capability
 

@@ -1,6 +1,6 @@
 # Documentation index
 
-Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** monorepo, which ships the MCP server `pipefy-mcp-server`, the CLI `pipefy-cli`, the SDK `pipefy`, and the agent skills. First-time install and per-client MCP wiring live in the root [`README.md#installation`](../README.md#installation).
+Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** monorepo, which ships the MCP server `pipefy-mcp-server`, the CLI `pipefy-cli`, the SDK `pipefy`, and the agent skills.
 
 ## Using the toolkit
 

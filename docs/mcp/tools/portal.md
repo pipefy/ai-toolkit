@@ -198,7 +198,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | Mode | Setup |
 |------|--------|
 | **Unit** | `uv run pytest -m "not integration" -k portal` — fictional IDs in [`fixture_ids.py`](../../../packages/sdk/tests/_shared/fixture_ids.py). |
-| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [README#installation](../../../README.md#installation); env reference: [`docs/config.md`](../../config.md#environment-variables). |
+| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [`docs/install.md`](../../install.md); env reference: [`docs/config.md`](../../config.md#environment-variables). |
 
 ---
 

@@ -88,7 +88,7 @@ When a skill needs a stable link into this repository:
 - MCP tool semantics: `docs/mcp/tools/<domain>.md`, and `docs/mcp/tools/cross-cutting.md` for the rules that cross tools.
 - CLI-only flows: `docs/cli/`, such as `docs/cli/self-healing.md`.
 - SDK usage: `docs/sdk/README.md`.
-- Install: the root `README.md#installation`, and `skills/onboarding/pipefy-toolkit-setup/SKILL.md` for the first-time agent checklist.
+- Install: [`docs/install.md`](../install.md), and `skills/onboarding/pipefy-toolkit-setup/SKILL.md` for the first-time agent checklist.
 - `PIPEFY_*` variables and `config.toml`: `docs/config.md`.
 - The MCP tool and CLI command matrix: `docs/parity.md`.
 

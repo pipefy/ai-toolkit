@@ -19,7 +19,7 @@ The Cursor Marketplace plugin installs from Cursor's plugin UI; there is no inst
 
 | Actor | Does |
 |-------|------|
-| **Agent** | Asks path; prints README commands verbatim; runs shell `claude mcp add` / `install.sh` when the user agrees; checks `claude mcp get` / list. Does **not** run `install.sh --client cursor` when the user chose the Marketplace plugin |
+| **Agent** | Asks path; prints install guide commands verbatim; runs shell `claude mcp add` / `install.sh` when the user agrees; checks `claude mcp get` / list. Does **not** run `install.sh --client cursor` when the user chose the Marketplace plugin |
 | **User types** | Claude slash commands (`/plugin …`, `/pipefy:…`) — the model cannot invoke them |
 | **User in browser** | OAuth for hosted (`claude mcp login …`), Cursor's own sign-in for the Marketplace plugin, or `/pipefy:pipefy-login` / the local CLI login described in [CLI setup](cli.md) |
 
@@ -38,11 +38,11 @@ Setup is outside the Pipefy MCP tool surface. After auth succeeds, verify with:
 
    **Never** register both a hosted HTTP and a local stdio/plugin Pipefy server, whatever they are named: a second registration shadows the one you meant to use. Switching between paths is remove-then-add — [`docs/uninstall.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/uninstall.md#switching-channels). On Cursor that applies to the Marketplace plugin and any entry in `~/.cursor/mcp.json`, including one written by `install.sh --client cursor`.
 
-2. **Execute the chosen README block** — run it in the shell, or print it for the user to paste (required for Claude slash commands). Do not reorder the plugin sequence: marketplace → `/plugin install pipefy` → `/pipefy:install` → `/pipefy:pipefy-login`.
+2. **Execute the chosen install guide block** — run it in the shell, or print it for the user to paste (required for Claude slash commands). Do not reorder the plugin sequence: marketplace → `/plugin install pipefy` → `/pipefy:install` → `/pipefy:pipefy-login`.
 
    Cursor Marketplace plugin: the user installs **Pipefy** from Cursor's plugin UI and fully restarts Cursor. Nothing to run, and the `/pipefy:…` commands do not exist on this path.
 
-3. **Auth** — Cursor plugin: finish Cursor's own sign-in prompt (Customize / MCP). Hosted: finish the client browser OAuth prompt (`claude mcp login <name>` if status is Needs authentication). Local/plugin/CLI: the local CLI login described in [CLI setup](cli.md) or `/pipefy:pipefy-login` (see README). Service accounts: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
+3. **Auth** — Cursor plugin: finish Cursor's own sign-in prompt (Customize / MCP). Hosted: finish the client browser OAuth prompt (`claude mcp login <name>` if status is Needs authentication). Local/plugin/CLI: the local CLI login described in [CLI setup](cli.md) or `/pipefy:pipefy-login` (see the install guide). Service accounts: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
 
 4. **Verify**
 
@@ -60,14 +60,14 @@ Setup is outside the Pipefy MCP tool surface. After auth succeeds, verify with:
 
 | Symptom | Likely cause | Recovery |
 |---------|--------------|----------|
-| Slash commands missing | Plugin not installed | README [Claude Code plugin](https://github.com/pipefy/ai-toolkit/blob/main/README.md#2-claude-code-plugin) — marketplace + install first |
+| Slash commands missing | Plugin not installed | Install guide [Claude Code plugin](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#2-claude-code-plugin) — marketplace + install first |
 | More than one Pipefy MCP registration | Hosted + local/plugin both registered, possibly under different names | The `--scan` above names each one and where it lives; remove-then-add recipes in [`docs/uninstall.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/uninstall.md#switching-channels). A plugin-provided server ranks below user scope, so removing the user entry alone falls through to it: `claude mcp remove <name> -s user` (or the client's settings) |
 | Two Pipefy servers in Cursor | Marketplace plugin plus an entry in `~/.cursor/mcp.json` | Keep one. `--scan` names the user-config entry (the key is free text); delete that key, or uninstall the plugin. [`docs/uninstall.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/uninstall.md#to-the-cursor-marketplace-plugin) |
 | `/pipefy:install` or `/plugin …` offered in Cursor | Those are Claude Code commands | Do not run them; they install the CLI. Stay in Cursor's plugin UI. Skills may still appear as `/pipefy-*` palette entries |
-| **Pipefy** is missing from Cursor's plugin catalog | The listing is not published yet | Offer README [Quick install](https://github.com/pipefy/ai-toolkit/blob/main/README.md#3-quick-install-script) with `--client cursor`, saying first that it installs the local CLI and server the user was avoiding. From there they are on the Quick install path: the local CLI login described in [CLI setup](cli.md), the CLI version check described in [CLI setup](cli.md) |
+| **Pipefy** is missing from Cursor's plugin catalog | The listing is not published yet | Offer [Quick install](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#3-quick-install-script) with `--client cursor`, saying first that it installs the local CLI and server the user was avoiding. From there they are on the Quick install path: the local CLI login described in [CLI setup](cli.md), the CLI version check described in [CLI setup](cli.md) |
 | Cursor sign-in fails with `unauthorized_client` or `Invalid client credentials` | The plugin's OAuth client is rejected at the token endpoint | Re-triggering repeats the same failing call. Uninstall the plugin, then offer the Quick install fallback above |
 | Cursor sign-in never completed, no error | Browser prompt dismissed | Re-trigger sign-in from Cursor Customize (MCP). The local CLI login described in [CLI setup](cli.md) does not apply; this path has no CLI |
 | `Needs authentication` after hosted add | OAuth not finished | `claude mcp login <name>` + browser |
-| `pipefy: command not found` | CLI not on PATH | `/pipefy:install` or README [CLI](https://github.com/pipefy/ai-toolkit/blob/main/README.md#4-cli-only); check `$HOME/.local/bin` |
+| `pipefy: command not found` | CLI not on PATH | `/pipefy:install` or [CLI](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#4-cli-only); check `$HOME/.local/bin` |
 | MCP tools empty / auth errors | Login not done | Re-run login; service accounts → `docs/config.md` |
 | macOS `errSecInvalidOwnerEdit` | Keychain write | [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/packages/mcp/README.md) |

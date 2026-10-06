@@ -11,6 +11,7 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python 3.11+" /></a>
   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/badge/uv-package%20manager-blueviolet" alt="uv package manager" /></a>
   <a href="https://modelcontextprotocol.io/introduction"><img src="https://img.shields.io/badge/MCP-Server-orange" alt="MCP Server" /></a>
+  <a href="https://github.com/pipefy/ai-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/pipefy/ai-toolkit?include_prereleases&sort=semver" alt="Latest release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
 </p>
 
@@ -30,6 +31,8 @@
 
 ## Overview
 
+The Pipefy AI Toolkit lets an AI agent, a script, or a Python program work in Pipefy: read and change pipes, cards, tables, automations, AI agents, and reports, with the permissions of the account that signs in. It ships four components:
+
 | Component | Package / path | Purpose |
 |-----------|----------------|---------|
 | **MCP server** | `pipefy-mcp-server` | Exposes the full local catalog to MCP clients (Cursor, Claude Desktop, Claude Code, and others). The hosted URL that the Cursor Marketplace plugin and Hosted MCP use serves the remote-safe floor instead; see [MCP server](#mcp-server). |
@@ -39,156 +42,37 @@
 
 Feedback and issues: [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) · **dev@pipefy.com**
 
+### What it looks like
+
+In an MCP client, ask in plain words. The agent picks the tools, such as `search_pipes` and `get_cards`:
+
+```text
+Which cards in my "Hiring" pipe are still in the Interview phase?
+```
+
+In a terminal, the CLI runs the same operations:
+
+```sh
+pipefy pipe list --name Hiring --json
+pipefy card list --pipe 67890
+```
+
 ---
 
 ## Installation
 
-**Six ways to use the toolkit** — pick one based on your client and whether you need the full tool set:
+[`docs/install.md`](docs/install.md) covers every path in full:
 
-- **In Cursor and want the fastest start with no local setup?** → **Cursor Marketplace plugin**.
-- **In Claude Code and want the fastest start with no local setup?** → **Hosted MCP**.
-- **In Claude Code and want the CLI, `/pipefy:*` slash commands, or skills on the hosted MCP?** → **Claude Code plugin**.
-- **On Cursor, Claude Desktop, or Codex and need the local-file tools, the CLI, or one command for everything?** → **Quick-install script**.
-- **Terminal, scripting, or CI, with no agent?** → **CLI only**.
-- **Just want the workflow playbooks in any agent?** → **Skills only**.
+| You are in | You want | Path |
+|---|---|---|
+| Claude Code | The fastest start, no local Python | [Hosted MCP](docs/install.md#1-hosted-mcp-claude-code) |
+| Claude Code | The hosted server plus slash commands, skills, and the CLI | [Claude Code plugin](docs/install.md#2-claude-code-plugin) |
+| Cursor | The fastest start, no local Python | [Cursor Marketplace plugin](docs/install.md#6-cursor-marketplace-plugin) |
+| Cursor, Claude Desktop, or Codex | The local-file tools, the CLI, or one command for everything | [Quick-install script](docs/install.md#3-quick-install-script) |
+| A terminal, a script, or CI | No agent | [CLI only](docs/install.md#4-cli-only) |
+| Any agent | Only the workflow playbooks | [Skills only](docs/install.md#5-skills-only) |
 
-| Install path | MCP server runs on | Tools available | Auth | Also installs | Best for |
-|---|---|---|---|---|---|
-| **[Cursor Marketplace plugin](#6-cursor-marketplace-plugin)** | Pipefy cloud (HTTPS) | Remote-safe surface; local-file tools withheld | In-client OAuth | skills | Fastest start in Cursor; zero local Python |
-| **[Hosted MCP](#1-hosted-mcp-claude-code)** | Pipefy cloud (HTTPS) | Remote-safe surface: all but the few local-file tools | In-client OAuth | nothing else | Fastest start in Claude Code; zero local Python |
-| **[Claude Code plugin](#2-claude-code-plugin)** | Pipefy cloud (HTTPS) | Remote-safe surface; local-file tools withheld | In-client OAuth | slash commands + skills + CLI | Claude Code users who want slash commands, skills, and the CLI on the hosted MCP |
-| **[Quick-install script](#3-quick-install-script)** | Your machine (stdio) | Full [tool surface](#mcp-server) | `pipefy auth login` | CLI + skills, wired into your client config | Local-file tools, CLI, Claude Desktop / Codex, or one-command full setup |
-| **[CLI only](#4-cli-only)** | — (no MCP) | CLI commands ([parity](docs/parity.md)) | login or service account | — | Terminal use, scripting, CI |
-| **[Skills only](#5-skills-only)** | — | — | — | markdown playbooks | Adding playbooks to any agent |
-
-> **Claude Code is the recommended client** and the most complete, best-tested path today. In Cursor, prefer the [Marketplace plugin](#6-cursor-marketplace-plugin) over the Quick-install script unless you need the local-file tools or the CLI. The Marketplace listing tracks `main`. Contributors can always load a checkout as a local plugin (section 6). Claude Desktop and Codex still use the script.
-
-> **Register exactly one Pipefy MCP server** — do not mix the hosted HTTP server with a local stdio or plugin server, whatever they are named. To check a machine, including one this repository never installed for you:
->
-> ```sh
-> curl -LsSf https://raw.githubusercontent.com/pipefy/ai-toolkit/main/uninstall.sh | sh -s -- --scan
-> ```
->
-> That reports every registration and how each one is reached. It removes nothing, edits nothing, and exits `0` when it finds nothing, `1` when findings remain, `2` when a source could not be inspected. A registration is matched on what it **runs** — the `pipefy-mcp-server` command, a known runner invoking it, or the host `mcp.pipefy.com` — so one registered under any other name is still found. First-time setup checklist to hand your agent: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](skills/onboarding/pipefy-toolkit-setup/SKILL.md). Removing a path, or moving between them: [Uninstalling](#uninstalling-and-switching-between-paths) and [`docs/uninstall.md`](docs/uninstall.md).
-
-> **Too many tools for your client?** The local paths can expose a subset instead of the whole catalog — by subject domain, by tool profile, or as four catalog meta-tools the agent searches on demand. See [Choosing a tool surface](#choosing-a-tool-surface). That selection (`PIPEFY_MCP_TOOLSETS`) applies to the local stdio path only. Any client on the hosted URL always receives the remote-safe floor.
-
-**Authentication** (for the local paths; the hosted server uses its own in-client OAuth):
-
-- **Human OAuth (interactive):** `pipefy auth login` runs the browser flow and stores a session in your OS keychain. Pipe access is whatever the signed-in user already has.
-- **Service account (unattended / CI):** provision one in [Pipefy Admin](https://app.pipefy.com/) (Admin → Service Accounts), add it to every pipe the tools should touch, and set `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` / `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`.
-
-Full env-var reference and `config.toml` precedence: [`docs/config.md`](docs/config.md).
-
-> **Pre-1.0 note:** builds ship as pre-releases to PyPI on every tag, and `uvx` and `uv tool install` resolve them automatically. The stable default lands at **v1.0**, and the current line is always the [latest release](https://github.com/pipefy/ai-toolkit/releases/latest). `pipefy-cli` and `pipefy-mcp-server` each bring `pipefy`, `pipefy-auth`, and `pipefy-infra` with them. To pin a version, convert the tag to its PEP 440 form: the tag `v0.5.0-alpha.1` installs as `pipefy-cli==0.5.0a1`. Do **not** pass a global `--prerelease allow`, because it lets transitive deps jump to their own pre-releases and can pull a broken build.
-
-### 1. Hosted MCP (Claude Code)
-
-**Pick this when:** you're in Claude Code and want the fastest start with zero local Python. The server runs on Pipefy's infrastructure and exposes the **remote-safe surface**: reads, create / update / delete, and the raw GraphQL escape hatch — everything your own API permissions allow. Withheld are only the tools whose input is a file on your machine (knowledge-base document upload, custom LLM-provider credential files); attachment uploads still work from a URL or a presigned upload target instead of a local path.
-
-```bash
-claude mcp add --transport http --scope user --client-id pipefy-mcp pipefy https://mcp.pipefy.com/mcp
-```
-
-Complete the browser login when prompted (`claude mcp login pipefy` if the client reports *Needs authentication*). If a local or plugin Pipefy MCP server is already registered, remove it first — under whatever name it carries, since a second registration shadows this one and a plugin-provided server ranks below user scope. `./uninstall.sh --scan` names them; the switch is in [`docs/uninstall.md`](docs/uninstall.md#to-hosted). Need the CLI and slash commands too? Use the [Claude Code plugin](#2-claude-code-plugin) instead. Hand-wired local stdio: [`packages/mcp/README.md`](packages/mcp/README.md).
-
-### 2. Claude Code plugin
-
-**Pick this when:** you're in Claude Code and want the hosted MCP server plus the `/pipefy:*` slash commands, the skill catalog, and the CLI. The plugin's `.mcp.json` is the same hosted URL the Cursor plugin uses (`https://mcp.pipefy.com/mcp`). Local-file tools stay on the [Quick-install script](#3-quick-install-script).
-
-```text
-/plugin marketplace add pipefy/ai-toolkit
-/plugin install pipefy
-/pipefy:install
-/pipefy:pipefy-login
-```
-
-Type the slash commands **in order** (the model cannot invoke `/plugin …` for you). `/plugin install pipefy` registers the hosted MCP server plus the `/pipefy:install` and `/pipefy:pipefy-login` commands; `/pipefy:install` runs `uv tool install` once to put `pipefy` on PATH (idempotent); `/pipefy:pipefy-login` runs the OAuth browser flow for the CLI. MCP sign-in for the hosted server is the in-client OAuth prompt. Hand-wired local stdio: [`packages/mcp/README.md`](packages/mcp/README.md). Keychain errors: [`docs/cli/auth.md`](docs/cli/auth.md#troubleshooting). To run a local branch as the plugin, see [Test the Claude Code plugin from a local checkout](docs/contributing/development.md#test-the-claude-code-plugin-from-a-local-checkout).
-
-### 3. Quick-install script
-
-**Pick this when:** you need the local-file tools or the CLI, or you're on Claude Desktop or Codex — one command installs the CLI + local MCP server, optionally adds skills, and registers the server in your client config. In Cursor, prefer the [Marketplace plugin](#6-cursor-marketplace-plugin) unless you need that local surface.
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/pipefy/ai-toolkit/main/install.sh \
-  | sh -s -- --client cursor
-```
-
-Replace `--client cursor` with one of `claude-code`, `claude-desktop`, `codex`, or `none` (prints the snippet to paste). Useful flags: `--yes` (skip prompts), `--no-skills` (skip `npx skills add`), `--version vX.Y.Z` (pin a [Release](https://github.com/pipefy/ai-toolkit/releases)), `--dry-run` (print commands without executing), `--allow-root` (opt-in; refused by default). After install, run `pipefy auth login` (`--device` on headless systems). The installer puts `pipefy-mcp-server` on PATH, so each client's config collapses to `{"command": "pipefy-mcp-server"}`.
-
-> **Production / shared environments:** pin an explicit release with `--version vX.Y.Z` (and prefer fetching `install.sh` from that same [Release](https://github.com/pipefy/ai-toolkit/releases) tag, not the floating `main` branch). Untagged/`@latest`-style installs are fine for local experiments; they are not the default practice for reproducible or corporate rollouts.
-
-### 4. CLI only
-
-**Pick this when:** you want terminal commands, scripting, or CI — no agent or MCP.
-
-```sh
-uvx --from pipefy-cli pipefy --help        # ad-hoc, no install
-
-uv tool install pipefy-cli                 # permanent install
-pipefy --install-completion bash           # or zsh, fish
-pipefy auth login                          # browser OAuth, session in OS keychain
-```
-
-CLI deep-dives (auth precedence, `--token` / `PIPEFY_TOKEN`, parity matrix): [`packages/cli/README.md`](packages/cli/README.md) and [`docs/cli/`](docs/cli/README.md).
-
-### 5. Skills only
-
-**Pick this when:** you just want the workflow playbooks in any Markdown-aware agent (Cursor, Claude Code, Codex, and others).
-
-```sh
-npx skills add pipefy/ai-toolkit                           # all skills
-npx skills add pipefy/ai-toolkit --skill pipefy-pipes-and-cards
-```
-
-Catalog and authoring guide: [`skills/README.md`](skills/README.md).
-
-### 6. Cursor Marketplace plugin
-
-**Pick this when:** you're in Cursor and want the hosted MCP server with browser sign-in and no local Python. The plugin ships the skill catalog and points Cursor at `https://mcp.pipefy.com/mcp`. Cursor runs the OAuth flow. The surface is the hosted deployment's remote-safe floor. Withheld are the tools whose input is a file on your machine; attachment uploads still work from a URL or a presigned upload target. Toolset selection (`PIPEFY_MCP_TOOLSETS`) does not apply to the hosted URL — use the [Quick-install script](#3-quick-install-script) when you need that, or the local-file tools.
-
-Install **Pipefy** from the Cursor Marketplace (the listing tracks `main`). Complete the browser sign-in when Cursor prompts, then fully restart Cursor before the first tool call. No `uv`, no CLI, no token paste. This path has no `/install` or `/pipefy-login` commands (those files belong to the [Claude Code plugin](#2-claude-code-plugin), where they surface namespaced as `/pipefy:install` and `/pipefy:pipefy-login`). Skills may appear in the slash palette as `/pipefy-*`.
-
-This path and any user-config Pipefy MCP entry (including one written by `install.sh --client cursor`) both occupy Cursor's MCP list. They are mutually exclusive — the same rule as mixing hosted HTTP with local stdio. The registration key is free text: delete the matching key from `~/.cursor/mcp.json` (Windows: `%USERPROFILE%\.cursor\mcp.json`) and keep the Marketplace plugin. `./uninstall.sh --scan` prints the name it found; the switch is in [`docs/uninstall.md`](docs/uninstall.md#to-the-cursor-marketplace-plugin).
-
-To load this checkout as a local plugin (contributors): Cursor rejects a symlink whose target is outside `~/.cursor/plugins/local` (it logs `loadUserLocalPlugin pipefy rejected`). Copy the plugin files into that directory as a real folder, then fully restart Cursor. If `~/.cursor/plugins/local/pipefy` is already a symlink to this checkout, `rm` the link first - that does not delete the repo. Copying `commands/` is optional: the Cursor manifest declares `"commands": []`, so neither a local copy nor a Marketplace tarball of this repo surfaces `/install` or `/pipefy-login`. Include it if you want the copy to match what ships.
-
-```sh
-dest="$HOME/.cursor/plugins/local/pipefy"
-if [ -L "$dest" ]; then rm "$dest"; fi
-mkdir -p "$dest/assets"
-cp -R .cursor-plugin skills LICENSE NOTICE README.md .mcp.json "$dest/"
-cp assets/logo.svg "$dest/assets/"
-```
-
-Remove a copy with `rm -rf ~/.cursor/plugins/local/pipefy`. Remove only a leftover symlink with `rm ~/.cursor/plugins/local/pipefy`.
-
-### Uninstalling, and switching between paths
-
-`uninstall.sh` sits beside `install.sh` and reverses the script, CLI, hosted-user-config, and Claude Code plugin paths, including one this repository never installed for you. It does **not** uninstall the Cursor Marketplace plugin (that lives in Cursor's plugin UI). `--scan` still reports a competing `~/.cursor/mcp.json` registration if one exists (including `install.sh --client cursor`).
-
-```sh
-# Report only: what is on this machine, across every channel and client.
-curl -LsSf https://raw.githubusercontent.com/pipefy/ai-toolkit/main/uninstall.sh | sh -s -- --scan
-
-# Then remove what you approve. Approval is asked in three tiers.
-curl -LsSf https://raw.githubusercontent.com/pipefy/ai-toolkit/main/uninstall.sh | sh
-```
-
-`--scan` changes nothing and exits `0` clean / `1` findings remain / `2` a source could not be inspected. A registration is matched on what it **runs** — the `pipefy-mcp-server` command, a known runner invoking it, or the host `mcp.pipefy.com` — so an entry registered under any other name is still found, and removed under that name. Useful flags: `--dry-run`, `--yes`, `--keep-credentials`, `--keep-config`, `--client <id>`.
-
-**Switching paths is remove-then-add**: register exactly one Pipefy MCP server at a time, since a plugin-provided server ranks below user scope and a leftover entry silently wins. Full teardown reference, the per-channel switching recipes, and what is never removed by design: [`docs/uninstall.md`](docs/uninstall.md).
-
-### Post-1.0 (PyPI, preview)
-
-Once the stable line lands, the MCP server and CLI resolve straight from PyPI by name:
-
-```sh
-uvx pipefy-mcp-server
-uv tool install pipefy-cli
-```
-
-Deprecation and semver (post-1.0): [`docs/DEPRECATION.md`](docs/DEPRECATION.md).
+**Register exactly one Pipefy MCP server.** A second registration shadows the first, whatever its name. [Before you install](docs/install.md#before-you-install) shows how to check a machine, and [`docs/uninstall.md`](docs/uninstall.md) shows how to switch paths.
 
 ---
 
@@ -257,13 +141,7 @@ Full catalog: [`skills/README.md`](skills/README.md). Authoring: [`docs/contribu
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [`docs/README.md`](docs/README.md) | Index by surface (MCP, CLI, SDK). |
-| [`docs/config.md`](docs/config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain. |
-| [`docs/parity.md`](docs/parity.md) | MCP tool ↔ CLI command matrix. |
-| [`docs/contributing/development.md`](docs/contributing/development.md) | Setup, tests, the steps to add a capability, and commit and pull request rules. |
-| [`docs/contributing/release.md`](docs/contributing/release.md) | Versioning and release process. |
+[`docs/README.md`](docs/README.md) indexes every guide, for people who use the toolkit and for people who contribute to it.
 
 ---
 
