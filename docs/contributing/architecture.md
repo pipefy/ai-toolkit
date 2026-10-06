@@ -649,7 +649,7 @@ The choice between the matches sits above the SDK, because it is a decision, and
 
 ### Asking the caller
 
-A tool faces two kinds of question that look alike, although it must treat them differently. A question about data asks what to act on, whereas a question about permission asks whether to act at all. Only the first kind ever reaches the caller.
+Before it acts, a tool can lack data, which is what to act on, or permission, which is whether to act at all. A tool asks the caller for data. Permission belongs to the party that faces the person: the client for an MCP tool, and the CLI itself at a terminal.
 
 Where a tool lacks an input it needs, it asks the caller for that input, which is what `QR-22` demands. A question the model must answer costs a round trip, whereas a question that goes to the client costs `QR-5` nothing, so `QR-22` is the cheap way to satisfy `QR-5` and not a rival to it. Because not every client can take a question, [Risks and technical debt](#risks-and-technical-debt) states which callers a tool can ask, and what a tool does with the rest.
 
