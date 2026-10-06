@@ -793,7 +793,7 @@ These requirements hold when the system, or something it depends on, changes.
 | `QR-2` | A reshaped GraphQL response never reaches the code that imports the SDK | A vendor schema change touches no type or signature on the SDK's public surface |
 | `QR-11` | After v1.0, a deprecated public SDK function warns first and keeps working | A deprecated path keeps working for at least two minor releases |
 | `QR-13` | A test that passes tells the truth about the released code | A unit can be tested through its public contract, and the suite runs on every platform the toolkit ships to |
-| `QR-14` | A merged change never breaks the layer order | A merge that inverts the import direction fails a build check |
+| `QR-14` | A merged change never breaks the import direction between packages and layers | A merge that breaks the import direction fails a build check |
 | `QR-21` | A deployment picks which tools it exposes by configuration, and never by changing the source | A deployment changes its tool set without a release |
 | `QR-26` | A change to a behavior that more than one application uses lands as one reviewed change, tested against all of them | One test run gates the change, and no application ships it separately |
 
