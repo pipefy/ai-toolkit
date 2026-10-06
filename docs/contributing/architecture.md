@@ -641,7 +641,7 @@ Inside an application, code outside the composition root does not construct a cl
 
 An identifier names a resource, and it takes one of several forms: a numeric ID, a UUID, a slug, or the resource's name. Each component picks the forms that its arguments take.
 
-`QR-28` demands that an inexact name still finds its resource. A pipe search and a table search take a substring first, and then a similarity score above a threshold.
+The SDK finds the matches for a name, and it tolerates a name that is incomplete or misspelled, which is `QR-28`. [Risks and technical debt](#risks-and-technical-debt) states which searches reach that tolerance today.
 
 Resolution sits above the SDK, because picking one match out of many is a decision, and `QR-7` leaves that decision with the caller. Today the caller makes it: the SDK, the CLI and the MCP server each offer a search that returns the matches. [ADR-0003](adr/0003-mcp-tools-express-outcomes.md) moves the pick into the MCP tool, which takes the name itself, and the `QR-5` entry in [Risks and technical debt](#risks-and-technical-debt) carries the gap.
 
