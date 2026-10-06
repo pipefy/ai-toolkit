@@ -24,3 +24,12 @@ def test_references_resolve_in_flat_installation(tmp_path):
             resolved = (document.parent / unquote(url.path)).resolve()
             assert resolved.is_relative_to(tmp_path), (document, target)
             assert resolved.is_file(), (document, target)
+
+
+def test_catalog_lists_every_skill():
+    catalog = (_SKILLS / "README.md").read_text(encoding="utf-8")
+    linked = set(re.findall(r"\]\(([^)\s]+/SKILL\.md)\)", catalog))
+    entrypoints = {str(p.relative_to(_SKILLS)) for p in _SKILLS.glob("*/*/SKILL.md")}
+    assert not entrypoints - linked, (
+        f"skills/README.md does not list: {sorted(entrypoints - linked)}"
+    )
