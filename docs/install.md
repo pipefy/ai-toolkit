@@ -43,7 +43,7 @@ Six paths install the toolkit. Pick one based on your client and whether you nee
 
 Full env-var reference and `config.toml` precedence: [`docs/config.md`](config.md).
 
-> **Pre-1.0 note:** builds ship as pre-releases to PyPI on every tag, and `uvx` and `uv tool install` resolve them automatically. The stable default lands at **v1.0**, and the current line is always the [latest release](https://github.com/pipefy/ai-toolkit/releases/latest). `pipefy-cli` and `pipefy-mcp-server` each bring `pipefy`, `pipefy-auth`, and `pipefy-infra` with them. To pin a version, convert the tag to its PEP 440 form: the tag `v0.5.0-alpha.1` installs as `pipefy-cli==0.5.0a1`. Do **not** pass a global `--prerelease allow`, because it lets transitive deps jump to their own pre-releases and can pull a broken build.
+> **Pre-1.0 note:** builds ship as pre-releases to PyPI on every tag, and `uvx` and `uv tool install` resolve them automatically. The stable default lands at **v1.0**, and the current line is always the [latest release](https://github.com/pipefy/ai-toolkit/releases/latest). `pipefy-cli` and `pipefy-mcp-server` each bring `pipefy`, `pipefy-auth`, and `pipefy-infra` with them. To pin a version, or to recover from a broken dependency, see [Package versions](troubleshooting.md#package-versions).
 
 ## 1. Hosted MCP (Claude Code)
 

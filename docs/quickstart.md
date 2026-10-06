@@ -58,3 +58,4 @@ The tools can also change data, for example by creating or moving a card. A tool
 - Add the workflow playbooks, so the agent follows tested procedures for common jobs: `npx skills add pipefy/ai-toolkit`. [`skills/README.md`](../skills/README.md) lists them.
 - Add the CLI and the `/pipefy:*` slash commands with the [Claude Code plugin](install.md#2-claude-code-plugin).
 - Browse what the tools do in the [MCP tool reference](mcp/README.md).
+- If something fails, start with [`troubleshooting.md`](troubleshooting.md).
