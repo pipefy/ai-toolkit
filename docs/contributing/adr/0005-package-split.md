@@ -1,6 +1,6 @@
 # ADR-0005: One package per way in, over shared libraries
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Context

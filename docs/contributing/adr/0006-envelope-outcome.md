@@ -1,6 +1,6 @@
 # ADR-0006: The envelope states the outcome, and a partial write says so
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Status notes

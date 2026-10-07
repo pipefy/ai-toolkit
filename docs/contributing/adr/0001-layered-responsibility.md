@@ -1,6 +1,6 @@
 # ADR-0001: Layered responsibility
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Context

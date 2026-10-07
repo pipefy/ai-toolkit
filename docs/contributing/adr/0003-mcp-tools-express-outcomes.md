@@ -1,6 +1,6 @@
 # ADR-0003: MCP tools express outcomes
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Status notes

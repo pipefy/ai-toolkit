@@ -1,6 +1,6 @@
 # ADR-0002: Typed, single-form contract
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Status notes

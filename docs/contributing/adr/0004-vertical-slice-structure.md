@@ -1,6 +1,6 @@
 # ADR-0004: Vertical-slice structure and naming
 
-Status: Proposed
+Status: Accepted
 Target release: none
 
 ## Status notes

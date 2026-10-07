@@ -9,16 +9,16 @@ Each record opens with two header lines:
 
 After a record is accepted, only these two lines change. Git holds the author and the date of each record. Whether the code has caught up with an accepted record is current state, so `Risks and technical debt` in [`architecture.md`](../architecture.md#risks-and-technical-debt) tracks it, not the header.
 
-Every record is proposed today, and none is adopted yet. The rule each decision produces lives in a living doc, and that is what a contributor follows day to day. A record can defer part of its decision, and its row names the deferred part. The record keeps the why. To change an adopted decision, add a new record that supersedes the old one. Do not edit an adopted record, and do not change its decision by a refactor. See [`authoring.md`](../authoring.md).
+Every record is accepted. The rule each decision produces lives in a living doc, and that is what a contributor follows day to day. A record can defer part of its decision, and its row names the deferred part. The record keeps the why. To change an adopted decision, add a new record that supersedes the old one. Do not edit an adopted record, and do not change its decision by a refactor. See [`authoring.md`](../authoring.md).
 
-| ADR | Decision | Status | Current rule |
-|---|---|---|---|
-| [0001](0001-layered-responsibility.md) | Layered responsibility | Proposed | [`architecture.md`](../architecture.md) |
-| [0002](0002-typed-single-form-contract.md) | Typed, single-form contract | Proposed, typed-output rollout later | [`conventions.md`](../conventions.md) |
-| [0003](0003-mcp-tools-express-outcomes.md) | MCP tools express outcomes | Proposed, consolidation, resolver migration, and gate reshaping deferred | [`conventions.md`](../conventions.md) |
-| [0004](0004-vertical-slice-structure.md) | Vertical-slice structure and naming | Proposed, slice folders and the `Pipefy` rename deferred | [`architecture.md`](../architecture.md), [`conventions.md`](../conventions.md) |
-| [0005](0005-package-split.md) | One package per way in, over shared libraries | Proposed | [`architecture.md`](../architecture.md#package-decomposition) |
-| [0006](0006-envelope-outcome.md) | The envelope states the outcome | Proposed, the envelope migration deferred | [`architecture.md`](../architecture.md#response-shape) |
+| ADR | Decision | Status | Deferred part | Current rule |
+|---|---|---|---|---|
+| [0001](0001-layered-responsibility.md) | Layered responsibility | Accepted | none | [`architecture.md`](../architecture.md) |
+| [0002](0002-typed-single-form-contract.md) | Typed, single-form contract | Accepted | the typed-output rollout | [`conventions.md`](../conventions.md) |
+| [0003](0003-mcp-tools-express-outcomes.md) | MCP tools express outcomes | Accepted | the consolidation, the resolver migration, and the gate reshaping | [`conventions.md`](../conventions.md) |
+| [0004](0004-vertical-slice-structure.md) | Vertical-slice structure and naming | Accepted | the slice folders and the `Pipefy` rename | [`architecture.md`](../architecture.md), [`conventions.md`](../conventions.md) |
+| [0005](0005-package-split.md) | One package per way in, over shared libraries | Accepted | none | [`architecture.md`](../architecture.md#package-decomposition) |
+| [0006](0006-envelope-outcome.md) | The envelope states the outcome | Accepted | the envelope migration | [`architecture.md`](../architecture.md#response-shape) |
 
 The governance rule that says when to refactor lives in [`conventions.md`](../conventions.md), not as a separate record.
 
