@@ -6,10 +6,10 @@ Pipefy exposes several identifier forms, and different tools expect different on
 
 | Form | Looks like | What it is |
 | --- | --- | --- |
-| **numeric id** | `"303088927"` | The node's numeric database id, as a string. Pipes, cards, organizations, automations. GraphQL types it as `ID` — always pass a string; a JSON integer is coerced to the same string. |
-| **uuid** | `"5f66417e-5adc-4c83-908f-0b888493c847"` | The node's UUID. Pipe UUID (`repo_uuid` / `pipe_uuid`), organization UUID, portal UUID, agent UUID, data-source id, log UUID. |
+| **numeric id** | `"301234567"` | The node's numeric database id, as a string. Pipes, cards, organizations, automations. GraphQL types it as `ID`, so always pass a string; a JSON integer is coerced to the same string. |
+| **uuid** | `"550e8400-e29b-41d4-a716-446655440000"` | The node's UUID. Pipe UUID (`repo_uuid` / `pipe_uuid`), organization UUID, portal UUID, agent UUID, data-source id, log UUID. |
 | **slug** | `"document_upload"` | A field's human-readable id (GraphQL `id` on a field row). Used to address a **card** field for a one-off edit. |
-| **internal_id** | `"429659034"` | A field's numeric id (GraphQL `internal_id` on a field row). Used by automations, field conditions, and AI prompt/behavior field references. |
+| **internal_id** | `"421234567"` | A field's numeric id (GraphQL `internal_id` on a field row). Used by automations, field conditions, and AI prompt/behavior field references. |
 
 Discover ids with `list_organizations` (org id + uuid, no input needed), `search_pipes` / `get_pipe` (pipe id + uuid), and `get_start_form_fields` / `get_phase_fields` (a field's `id` = slug **and** `internal_id`).
 

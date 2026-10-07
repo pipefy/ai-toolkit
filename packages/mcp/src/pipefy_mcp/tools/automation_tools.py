@@ -479,10 +479,10 @@ class AutomationTools:
 
             Common ``value`` tokens when ``inputMode`` is ``copy_from``:
 
-            - ``%{id}`` — triggering card id (use in ``card_id``, not only ``value``)
-            - ``%{created_at}`` — card creation timestamp
-            - ``%{automation_event_execution_datetime}`` — automation run timestamp
-            - ``%{<internal_id>}`` — copy from another field (digits only, e.g. ``%{429659034}``)
+            - ``%{id}``: triggering card id (use in ``card_id``, not only ``value``)
+            - ``%{created_at}``: card creation timestamp
+            - ``%{automation_event_execution_datetime}``: automation run timestamp
+            - ``%{<internal_id>}``: copy from another field (digits only, e.g. ``%{421234567}``)
 
             **Condition** (``condition``) — gate the rule on field tests. It is a
             ``ConditionInput``: ``{"expressions": [...], "expressions_structure": [[...]]}``.

@@ -335,17 +335,17 @@ class FieldConditionTools:
             ``internal_id``, ``id``, or ``uuid``. Clear ``required`` first or do
             not use ``hide``.
 
-            **Working example** — hide field ``425848637`` when field ``425848636``
+            **Working example**: hide field ``421234568`` when field ``421234567``
             equals ``"Option A"``::
 
                 create_field_condition(
-                    phase_id="342182326",
+                    phase_id="341234567",
                     name="Hide brief when campaign is Option A",
                     condition={
                         "expressions": [
                             {
                                 "structure_id": 0,
-                                "field_address": "425848636",
+                                "field_address": "421234567",
                                 "operation": "equals",
                                 "value": "Option A"
                             }
@@ -354,7 +354,7 @@ class FieldConditionTools:
                     },
                     actions=[
                         {
-                            "phaseFieldId": "425848637",
+                            "phaseFieldId": "421234568",
                             "actionId": "hide"
                         }
                     ]
