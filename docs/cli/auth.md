@@ -52,13 +52,11 @@ PIPEFY_TOKEN="$MY_BEARER" uv run pipefy pipe list
 
 The PKCE flow needs a loopback HTTP server on `127.0.0.1:<ephemeral>` and a browser that can reach it. SSH sessions and headless boxes break both assumptions.
 
-Options today:
+Options:
 
 1. **Run `pipefy auth login` on your laptop**, then copy `.env` plus the relevant secrets over. The keychain entry itself doesn't transfer between machines.
 2. **Use a service account** (`PIPEFY_SERVICE_ACCOUNT_*`) on the headless box — this is the canonical answer for CI and servers.
 3. **Static bearer** via `PIPEFY_TOKEN` for short-lived debugging.
-
-Forthcoming: an OAuth 2.0 Device Authorization Grant (`pipefy auth login --device`) that swaps the loopback callback for a code you paste into a browser elsewhere. Tracked in issue #138.
 
 ## Fix a failed sign-in
 

@@ -90,7 +90,7 @@ The **`pipefy`** CLI mirrors shipped MCP capabilities where parity is defined in
 ```sh
 pipefy pipe list --json
 pipefy card get 123456789
-pipefy introspect query --name getPipe
+pipefy introspect query getPipe
 ```
 
 CLI-specific guides: **[`docs/cli/`](docs/cli/README.md)** (including [introspect-then-execute](docs/cli/self-healing.md)).

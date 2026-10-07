@@ -1,6 +1,6 @@
-# Deprecation and versioning (post-1.0)
+# Deprecation and versioning
 
-This policy applies **after v1.0.0**, when published `pipefy-cli` and `pipefy-mcp-server` follow public [semantic versioning](https://semver.org/) on PyPI. Before that milestone, interfaces may still change without the guarantees below.
+This page states what a version number of `pipefy-cli` and `pipefy-mcp-server` promises. A `0.x` release promises nothing: any interface can change in any release, and [`CHANGELOG.md`](../CHANGELOG.md) names each breaking change. From `1.0.0`, every release follows [semantic versioning](https://semver.org/), and the rules below hold.
 
 ## Version bumps
 

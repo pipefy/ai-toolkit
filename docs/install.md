@@ -146,14 +146,3 @@ curl -LsSf https://raw.githubusercontent.com/pipefy/ai-toolkit/main/uninstall.sh
 `--scan` changes nothing and exits `0` clean / `1` findings remain / `2` a source could not be inspected. A registration is matched on what it **runs** — the `pipefy-mcp-server` command, a known runner invoking it, or the host `mcp.pipefy.com` — so an entry registered under any other name is still found, and removed under that name. Useful flags: `--dry-run`, `--yes`, `--keep-credentials`, `--keep-config`, `--client <id>`.
 
 **Switching paths is remove-then-add**: register exactly one Pipefy MCP server at a time, since a plugin-provided server ranks below user scope and a leftover entry silently wins. Full teardown reference, the per-channel switching recipes, and what is never removed by design: [`docs/uninstall.md`](uninstall.md).
-
-## Post-1.0 (PyPI, preview)
-
-Once the stable line lands, the MCP server and CLI resolve straight from PyPI by name:
-
-```sh
-uvx pipefy-mcp-server
-uv tool install pipefy-cli
-```
-
-Deprecation and semver (post-1.0): [`docs/DEPRECATION.md`](DEPRECATION.md).
