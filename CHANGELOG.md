@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **CI (docs)**: a `Docs` workflow runs `markdownlint-cli2` and checks external links with `lychee`, on each pull request that changes Markdown and once a week. Tests check that the user docs name only shipped MCP tools and `pipefy` commands, that absolute links into this repository resolve, and that the decision record index matches each record's status.
 - **SDK `PipefyClient.send_inbox_email_draft`**: sends an `InboxEmailDraft` (from `draft_email_from_template` or built by hand) as-is. The MCP send tools and `pipefy email inbox send` call it after the preview, so the approved draft is the value that reaches the mutation.
 
 - **SDK methods named after MCP tools**: `PipefyClient.get_ai_automation`, `get_ai_automations`, `delete_ai_automation`, `remove_member_from_pipe`, and `fill_card_phase_fields` expose those operations as client methods, with the MCP tool names and parameters. The corresponding MCP tools and CLI commands now call these methods (MCP `fill_card_phase_fields` still elicits when a form can be shown). The AI-list filter, member-removal verification, and editable-field filter move into the SDK. Skills retarget `get_labels` to `get_pipe` and `get_pipe_report` to `get_pipe_reports`; those two names stay MCP aliases (projection remains in MCP and CLI). (#696)

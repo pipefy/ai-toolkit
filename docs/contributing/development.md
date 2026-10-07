@@ -92,7 +92,7 @@ A capability is an SDK method, an MCP tool, and a CLI command that do the same t
 
 ## Rename a tool or a command
 
-A rename that breaks a command or a tool updates every affected skill in the same pull request, or in a paired one opened in the same review window. CI enforces this rule: `skills-lint.yml` checks the frontmatter of each `SKILL.md`, the operation and MCP tool names with their `name=` arguments, and every `pipefy` invocation written as code, down to its subcommand path and `--` options, in `skills/**/SKILL.md` and its `references/`. A rename that leaves a skill behind fails the build.
+A rename that breaks a command or a tool updates every affected skill in the same pull request, or in a paired one opened in the same review window. CI enforces this rule: `skills-lint.yml` checks the frontmatter of each `SKILL.md`, the operation and MCP tool names with their `name=` arguments, and every `pipefy` invocation written as code, down to its subcommand path and `--` options, in `skills/**/SKILL.md` and its `references/`. `tests/test_doc_refs.py` checks the tool names and the `pipefy` invocations in the user docs the same way. A rename that leaves a skill or a doc behind fails the build.
 
 ## Commits and pull requests
 
