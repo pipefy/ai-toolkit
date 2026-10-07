@@ -4,22 +4,49 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 
 ## Using the toolkit
 
+The pages for users sort into four kinds, so you can pick by what you need right now. A tutorial teaches by doing, a how-to guide finishes one task, a reference states facts, and an explanation says why.
+
+### Tutorials
+
 | Doc | Contents |
 |-----|----------|
 | [`quickstart.md`](quickstart.md) | Start here: connect Claude Code to Pipefy and ask a first question |
-| [`install.md`](install.md) | Every install path, how to choose one, and the per-client MCP wiring |
-| [`troubleshooting.md`](troubleshooting.md) | Common failures by symptom, with the fix or the guide that owns it |
-| [`mcp/`](mcp/README.md) | MCP tool guides by area, and the behavior every tool shares |
-| [`mcp/reference.md`](mcp/reference.md) | Every MCP tool with its flags and parameters, generated from the code |
-| [`cli/`](cli/README.md) | CLI usage patterns and discover-then-execute flows |
-| [`cli/reference.md`](cli/reference.md) | Every CLI command with its arguments and options, generated from the code |
+
+### How-to guides
+
+| Doc | Contents |
+|-----|----------|
+| [`install.md`](install.md) | Choose an install path, and wire each MCP client |
 | [`cli/auth.md`](cli/auth.md) | Sign in with the CLI, and fix a failed sign-in |
+| [`cli/self-healing.md`](cli/self-healing.md) | Discover a GraphQL operation with `pipefy introspect`, then run it |
+| [`sdk/`](sdk/README.md) | Make a first call, handle SDK errors, and read the skill catalog from code |
+| [`uninstall.md`](uninstall.md) | Scan and tear down an install, and switch between the hosted, local, and plugin channels |
+| [`troubleshooting.md`](troubleshooting.md) | Fix a common failure, found by its symptom |
+
+### Reference
+
+| Doc | Contents |
+|-----|----------|
+| [`mcp/reference.md`](mcp/reference.md) | Every MCP tool with its flags and parameters, generated from the code |
+| [`cli/reference.md`](cli/reference.md) | Every CLI command with its arguments and options, generated from the code |
+| [`sdk/reference.md`](sdk/reference.md) | SDK error types, and the client methods whose behavior goes beyond their docstrings |
 | [`cli/auth-reference.md`](cli/auth-reference.md) | CLI credential precedence, the `pipefy auth` commands, and session behavior |
-| [`sdk/`](sdk/README.md) | Using `pipefy` as a library: a first call, errors, and the [reference](sdk/reference.md) |
+| [`cli/`](cli/README.md) | CLI output, confirmation, and configuration conventions |
 | [`config.md`](config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain |
 | [`parity.md`](parity.md) | Which CLI command matches each MCP tool, and where the two differ |
-| [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
-| [`DEPRECATION.md`](DEPRECATION.md) | What a version number promises: semantic versioning and the deprecation window, from v1.0 |
+| [`DEPRECATION.md`](DEPRECATION.md) | What a version number promises: semantic versioning and the deprecation window |
+
+### Explanation
+
+| Doc | Contents |
+|-----|----------|
+| [`mcp/`](mcp/README.md) | How the MCP tools behave by area, what every tool shares, and how to choose a tool surface |
+| [`contributing/architecture.md`](contributing/architecture.md) | How the toolkit is built, and why |
+
+### Policies
+
+| Doc | Contents |
+|-----|----------|
 | [`../TERMS.md`](../TERMS.md) | Repository terms notice (license, platform terms, disclaimers) |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability disclosure |
 
