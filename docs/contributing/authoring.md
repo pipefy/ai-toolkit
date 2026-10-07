@@ -159,7 +159,7 @@ Every fact has one owner: the code, a schema, an enforced contract, or another d
 
 Where the code owns a list, generate the document from that code: docstrings, pydantic `Field(description=...)`, the tool registry, or Typer help. Hand-author only where there is no code source, such as a concept doc. Do not keep a generated table and durable prose in the same file.
 
-Enforced by: `tests/test_gen_mcp_reference.py` for the MCP reference, `tests/test_config_doc.py` for [`config.md`](../config.md), and `tests/test_parity.py` for [`parity.md`](../parity.md), each against the code that owns the list. `tests/test_doc_refs.py` holds every tool name and `pipefy` command that a user doc names to the registered tools and commands.
+Enforced by: `tests/test_gen_mcp_reference.py` for the MCP reference, `tests/test_gen_cli_reference.py` for the CLI reference, `tests/test_config_doc.py` for [`config.md`](../config.md), and `tests/test_parity.py` for [`parity.md`](../parity.md), each against the code that owns the list. `tests/test_doc_refs.py` holds every tool name and `pipefy` command that a user doc names to the registered tools and commands.
 
 ## Links and format
 

@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Docs: CLI command reference**: `docs/cli/reference.md` lists every `pipefy` command with its arguments and options. `scripts/gen_cli_reference.py` generates it from the Typer app, and a test fails the build when the committed page is stale.
 - **Docs: feedback on every page**: each page under `docs/` ends with a link to a new docs problem form and a link to edit the page.
 - **CI (docs)**: a `Docs` workflow runs `markdownlint-cli2` and checks external links with `lychee`, on each pull request that changes Markdown and once a week. Tests check that the user docs name only shipped MCP tools and `pipefy` commands, that absolute links into this repository resolve, and that the decision record index matches each record's status.
 - **SDK `PipefyClient.send_inbox_email_draft`**: sends an `InboxEmailDraft` (from `draft_email_from_template` or built by hand) as-is. The MCP send tools and `pipefy email inbox send` call it after the preview, so the approved draft is the value that reaches the mutation.

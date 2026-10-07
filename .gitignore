@@ -54,6 +54,8 @@ scripts/*
 !scripts/check_deletion_guard.py
 !scripts/check_pipe_drain.py
 !scripts/doc_footer.py
+!scripts/doc_footer.py
+!scripts/gen_cli_reference.py
 !scripts/gen_mcp_reference.py
 !scripts/lint_plugin_packaging.py
 !scripts/lint_skill_frontmatter.py

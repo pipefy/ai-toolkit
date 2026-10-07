@@ -12,6 +12,7 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`mcp/`](mcp/README.md) | MCP tool guides by area, and the behavior every tool shares |
 | [`mcp/reference.md`](mcp/reference.md) | Every MCP tool with its flags and parameters, generated from the code |
 | [`cli/`](cli/README.md) | CLI usage patterns and discover-then-execute flows |
+| [`cli/reference.md`](cli/reference.md) | Every CLI command with its arguments and options, generated from the code |
 | [`cli/auth.md`](cli/auth.md) | Sign in with the CLI, and fix a failed sign-in |
 | [`cli/auth-reference.md`](cli/auth-reference.md) | CLI credential precedence, the `pipefy auth` commands, and session behavior |
 | [`sdk/`](sdk/README.md) | Using `pipefy` as a library: a first call, errors, and the [reference](sdk/reference.md) |

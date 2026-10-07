@@ -88,7 +88,7 @@ A capability is an SDK method, an MCP tool, and a CLI command that do the same t
 4. Register the MCP tool in `packages/mcp/src/pipefy_mcp/tools/`, add its name to `PIPEFY_TOOL_NAMES` in `tools/registry.py`, and give it a domain in `tools/toolsets.py`. The test in `tests/tools/test_toolsets.py` fails the build for a tool with no domain.
 5. Add the CLI command in `packages/cli/src/pipefy_cli/commands/`, and register it in `main.py`.
 6. Mark the capability as shipped in [`docs/parity.md`](../parity.md).
-7. Run `uv run python scripts/gen_mcp_reference.py` to regenerate [`docs/mcp/reference.md`](../mcp/reference.md). A test fails the build when the committed reference differs from the registered tools.
+7. Run `uv run python scripts/gen_mcp_reference.py` and `uv run python scripts/gen_cli_reference.py` to regenerate [`docs/mcp/reference.md`](../mcp/reference.md) and [`docs/cli/reference.md`](../cli/reference.md). A test fails the build when a committed reference differs from the registered tools or commands.
 8. Update every skill in `skills/` that the capability affects, in the same pull request or in a paired one opened in the same review window.
 
 ## Rename a tool or a command
@@ -101,7 +101,7 @@ A rename that breaks a command or a tool updates every affected skill in the sam
 
 1. Run `uvx pre-commit run --all-files`. It runs `markdownlint-cli2` with the rules in [`.markdownlint-cli2.jsonc`](../../.markdownlint-cli2.jsonc), and it checks the feedback footer on every page under `docs/`.
 2. If a page has no footer, or its footer names another path, run `python3 scripts/doc_footer.py --fix`.
-3. Run `uv run pytest -m "not integration" tests/`. These tests check every relative link and anchor, every absolute link into this repository, every tool and command that a user doc names, the generated MCP reference, [`config.md`](../config.md), [`parity.md`](../parity.md), and the status of each decision record.
+3. Run `uv run pytest -m "not integration" tests/`. These tests check every relative link and anchor, every absolute link into this repository, every tool and command that a user doc names, the generated MCP and CLI references, [`config.md`](../config.md), [`parity.md`](../parity.md), and the status of each decision record.
 
 The `Docs` workflow in [`.github/workflows/docs.yml`](../../.github/workflows/docs.yml) runs the same Markdown lint in CI. It also checks every external link with `lychee`, on each pull request that changes a Markdown file and once a week, because an outside page can disappear while no file here changes.
 
