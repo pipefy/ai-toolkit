@@ -104,3 +104,7 @@ creation time, so a bad token fails immediately with the host's own message.
   [`docs/config.md`](../../config.md)). Staging/single-tenant hosts override
   `PIPEFY_IPAAS_URL` + `PIPEFY_IPAAS_OAUTH_CLIENT_ID`; a blank client id
   disables both tools, which then answer with a clear "disabled" error.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/ipaas.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/ipaas.md).

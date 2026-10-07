@@ -18,3 +18,7 @@ Material here describes **`pipefy-cli`** (Typer): terminal workflows, flags, and
 - **Flags:** `pipefy <command> --help` documents each command's arguments and flags.
 
 Parity with MCP tools: **[`../parity.md`](../parity.md)**.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/cli/README.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/cli/README.md).

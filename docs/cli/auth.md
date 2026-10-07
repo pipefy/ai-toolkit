@@ -112,3 +112,7 @@ Run `whoami`-style queries (e.g. `pipefy graphql exec --query '{ me { email name
 ### `State mismatch on OAuth callback (possible CSRF)`
 
 The browser came back with a different `state` than the CLI sent. Re-run `pipefy auth login`. If it happens repeatedly, suspect a stale browser tab from a previous login attempt.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/cli/auth.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/cli/auth.md).

@@ -59,3 +59,7 @@ The tools can also change data, for example by creating or moving a card. A tool
 - Add the CLI and the `/pipefy:*` slash commands with the [Claude Code plugin](install.md#2-claude-code-plugin).
 - Browse what the tools do in the [MCP tool reference](mcp/README.md).
 - If something fails, start with [`troubleshooting.md`](troubleshooting.md).
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/quickstart.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/quickstart.md).

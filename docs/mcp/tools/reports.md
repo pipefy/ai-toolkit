@@ -30,3 +30,7 @@ Replace `field` / `value` when filterable-field metadata uses different names or
 - `get_pipe_reports` omits `cardCount` in the query (Pipefy can error when resolving it).
 - `debug=true` on writes like other mutation tools.
 - **Async export pattern:** trigger export -> poll the matching `get_*_report_export` until `state` is done -> use `fileURL`. `export_pipe_audit_logs` only returns `success` (no export ID to poll — the file is delivered to the requesting user).
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/reports.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/reports.md).

@@ -35,3 +35,7 @@ The deferred work of these decisions is tracked in epics outside the records:
 - The envelope migration from `success` to `status`, with `isError` set from the outcome (0006).
 
 The step-by-step exploration behind these decisions is in the repository history.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/adr/README.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/adr/README.md).

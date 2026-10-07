@@ -912,3 +912,7 @@ These names carry a second meaning elsewhere, so each one is settled here.
 - Role. The layer a module takes inside a package, which is presentation, application, service, or gateway. A facade is the published face of a layer, and the composition root sits off the stack. [Dependency rule](#dependency-rule) states the stack, and the import direction that differs from it on one edge. [Stakeholders](#stakeholders) spends the word on a person instead, and Pipefy's own product sense, which [Requirements overview](#requirements-overview) names, is a member's permission set.
 - SDK. A bare "SDK" means the Pipefy SDK, the `pipefy` distribution. A third-party SDK is always named, for example the MCP SDK.
 - auth. `pipefy-auth` is the shared package, and Identity is the name that [Package decomposition](#package-decomposition) gives that block. The `auth` layer is the gateway inside `pipefy-mcp-server`. Identity and Access Management is a sub-domain of the product, which [Requirements overview](#requirements-overview) names, and the block serves the toolkit's own calls rather than that sub-domain.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/architecture.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/architecture.md).

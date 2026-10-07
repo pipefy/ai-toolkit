@@ -71,3 +71,7 @@ The toolkit validates the definition client-side because the API accepts shapes 
 ## Error classification
 
 Failures on this surface are classified by the shared SDK-level module (`pipefy_sdk.graphql_problem`) into structured problems — `permission_denied`, `not_found`, `invalid_arguments`, `feature_not_enabled`, or `runtime` — carried on `error.details.kind` alongside the GraphQL `extensions.code` and `correlation_id`. The same classifier backs the CLI (`pipefy kb ...`), so both surfaces report the same problem kinds.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/knowledge-bases.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/knowledge-bases.md).

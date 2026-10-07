@@ -46,3 +46,7 @@ Start with [`tools/cross-cutting.md`](tools/cross-cutting.md) for pagination, ID
 For install and per-client MCP wiring (hosted HTTP, Cursor, Claude Desktop, Claude Code, Codex), see [`docs/install.md`](../install.md). First-time agent checklist: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](../../skills/onboarding/pipefy-toolkit-setup/SKILL.md). For environment variables and `config.toml`, see [`../config.md`](../config.md). Local stdio wiring with `claude mcp add`: [Wire a local server by hand](../install.md#wire-a-local-server-by-hand).
 
 The MCP ↔ CLI coverage matrix lives at **[`../parity.md`](../parity.md)**.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/README.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/README.md).

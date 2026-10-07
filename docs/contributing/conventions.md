@@ -455,3 +455,7 @@ Do not
 - Keep a shape because the rework reaches far.
 
 Why: the previous-decision trap is how a design rots. A wide rework is a question of scheduling, and it settles nothing about whether the current shape stands.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/conventions.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/conventions.md).

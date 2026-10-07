@@ -64,3 +64,7 @@ Empty lists (`totalCount: 0`) are valid: the pipe or automation may have no rece
 - [Automations & AI](automations-and-ai.md) — `get_automations` / `get_pipe` when resolving ids before calling observability tools.
 - [Organization](organization.md) — `get_organization` for org UUID, plan, and member count (replaces `execute_graphql` workarounds for org discovery).
 - [Introspection](introspection.md) — `execute_graphql` for ad-hoc queries; `introspect_query` / `introspect_mutation` to discover query shapes before calling `execute_graphql`.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/observability.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/observability.md).

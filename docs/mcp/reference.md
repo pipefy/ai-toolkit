@@ -2475,3 +2475,7 @@ Flags: remote.
 | `actions` | `array of string \| null` | `null` | Optional new list of event action strings (non-empty when provided). |
 | `headers` | `object \| null` | `null` | Optional JSON object of custom HTTP headers for the webhook request. |
 | `debug` | `boolean` | `false` | When True, append GraphQL codes and correlation_id to errors. |
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/reference.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/reference.md).

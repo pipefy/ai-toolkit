@@ -30,3 +30,7 @@ A service account has **no pipe access** when created. The full setup is:
 - **Listing:** there is no tool to list service accounts — the API exposes no such query.
 - **Update:** there is no update mutation; change an account by deleting and recreating it.
 - **Delete result:** `delete_service_account` reports success only when the mutation returns `success: true`. Any other payload is an error (`Delete service account did not succeed.`), never a deletion that did not happen reported as done.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/service-accounts.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/service-accounts.md).

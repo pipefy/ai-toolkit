@@ -114,3 +114,7 @@ These tools read and configure conditional visibility on phase fields.
 
 - `upload_attachment_to_card`: a `field_id` given as the field uuid returns `RESOURCE_NOT_FOUND`. Pass the field slug.
 - `upload_attachment_to_card`: when `file_url` has no basename, pass `file_name` explicitly.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/pipes-and-cards.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/pipes-and-cards.md).

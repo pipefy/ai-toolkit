@@ -4,6 +4,8 @@ This guide describes the structure of the `docs/` tree and where a new doc goes.
 
 A file that does not follow this structure yet has an open issue that tracks its move.
 
+A rule with an `Enforced by:` line also has a check, which covers the part of the rule that the line names. Review covers the rest. [Change a doc](development.md#change-a-doc) lists the commands that run the checks.
+
 ## Where a doc goes
 
 Sort by audience first, then by kind.
@@ -19,6 +21,8 @@ Then keep a doc to one kind where practical. The Diataxis kinds are tutorial, ho
 ## Decision records
 
 A decision record is contributor explanation of a distinct kind: one architectural decision, immutable once adopted. A proposed record is the only doc that describes planned work. Every other doc describes the code on the default branch. [`adr/README.md`](adr/README.md) defines the `Status` and `Target release` header lines. The set lives under `docs/contributing/adr/`, one file per decision. To change a decision, add a record that supersedes the old one. Do not edit an adopted record. The rule a record produces graduates to `architecture.md` or `conventions.md`, where a contributor reads the current rule. The record keeps the reasoning. In its `Consequences` section, each consequence names what it changes, which is a `QR` row, a convention rule, or a constraint, and grades that change as satisfied, partly satisfied, or violated. A consequence that changes no row, no rule, and no constraint says so.
+
+Enforced by: `tests/test_adr_index.py`, for the two header lines and for an index row that states the same status as its record.
 
 ## Citing by ID
 
@@ -155,6 +159,14 @@ Every fact has one owner: the code, a schema, an enforced contract, or another d
 
 Where the code owns a list, generate the document from that code: docstrings, pydantic `Field(description=...)`, the tool registry, or Typer help. Hand-author only where there is no code source, such as a concept doc. Do not keep a generated table and durable prose in the same file.
 
+Enforced by: `tests/test_gen_mcp_reference.py` for the MCP reference, `tests/test_config_doc.py` for [`config.md`](../config.md), and `tests/test_parity.py` for [`parity.md`](../parity.md), each against the code that owns the list. `tests/test_doc_refs.py` holds every tool name and `pipefy` command that a user doc names to the registered tools and commands.
+
+## Links and format
+
+A relative link names a file in this repository, and an anchor names a heading in that file. A package README links to `docs/` by absolute GitHub URL, so that PyPI can resolve it. Every page under `docs/` ends with the feedback footer, which links to the [docs problem form](../../.github/ISSUE_TEMPLATE/docs_problem.yml) and to the page's edit view. A decision record is the exception, because an accepted record is immutable.
+
+Enforced by: `tests/test_doc_links.py` for relative links and anchors, `tests/test_doc_self_links.py` for absolute links into this repository, `lychee` in the `Docs` workflow for external links, `scripts/doc_footer.py` for the footer, and `markdownlint-cli2` for the format rules in [`.markdownlint-cli2.jsonc`](../../.markdownlint-cli2.jsonc).
+
 ## Name no vendor behind a capability
 
 A Pipefy capability can run on a third-party service. Name the capability, and never the service. A document that names it hands a reader outside Pipefy the product to probe, and the vendor can change without the capability changing.
@@ -164,3 +176,7 @@ State a limit without its mechanism. [`docs/mcp/tools/ipaas.md`](../mcp/tools/ip
 ## Keep it small
 
 Keep recognizable names: `README`, `CHANGELOG`, `CONTRIBUTING`, `SECURITY`, `MIGRATION`, `DEPRECATION`, and `ARCHITECTURE` (as `docs/contributing/architecture.md`). A directory earns its keep by file count and homogeneity, so do not invent a `guides/` or `reference/` bucket for a few files. The root `template/` directory is the one exception. It holds the starter that a skill author copies, and [`anthropics/skills`](https://github.com/anthropics/skills), the repository that publishes the skill format, keeps its starter under the same name. Its `SKILL.md` sits two levels below the root, because `skills.sh` reads every `SKILL.md` one level below the root as a published skill. A concrete cleanup or migration step is a closeable task, so open an issue instead of listing it here.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/authoring.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/authoring.md).

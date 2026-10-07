@@ -34,3 +34,7 @@ Guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** mon
 | [`contributing/skills.md`](contributing/skills.md) | How to write, name, and maintain a skill |
 | [`contributing/authoring.md`](contributing/authoring.md) | How the docs tree is organized and where a new doc goes |
 | [`contributing/release.md`](contributing/release.md) | The release tracks and the procedure to cut a release |
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/README.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/README.md).

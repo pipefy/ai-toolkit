@@ -73,3 +73,7 @@ When a GraphQL exception carries a structured `errors` list, error payloads retu
 The MCP `tool_error` envelope replaces empty or whitespace-only messages with `Tool request failed.`. Existing non-blank messages, codes, and details are preserved, including domain-specific recovery instructions. This fallback supplies no evidence that a write failed before applying its effect; verify the resource before retrying an ambiguous write.
 
 This invariant applies to MCP envelopes only. CLI errors do not go through `tool_error`.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/cross-cutting.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/cross-cutting.md).

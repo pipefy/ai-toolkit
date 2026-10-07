@@ -220,3 +220,7 @@ Use the names the report printed: a registration can be called anything.
 - [`install.md`](install.md) — the install paths this reverses
 - [`cli/auth-reference.md`](cli/auth-reference.md) — where credentials live, and `pipefy auth logout` in detail
 - [`config.md`](config.md) — every `PIPEFY_*` variable the scan looks for
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/uninstall.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/uninstall.md).

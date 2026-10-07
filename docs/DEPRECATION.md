@@ -42,3 +42,7 @@ Non-breaking examples: clearer error strings, help text fixes, purely additive J
 - [`install.md`](install.md) — install
 - [`docs/config.md`](config.md) — environment variables and `config.toml`
 - [`docs/parity.md`](parity.md) — MCP tool ↔ CLI matrix
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/DEPRECATION.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/DEPRECATION.md).

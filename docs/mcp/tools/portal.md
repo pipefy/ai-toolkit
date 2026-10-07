@@ -232,3 +232,7 @@ When changing portal SDK/MCP/CLI behavior:
    ```
 
 3. **Registry:** add tool names to `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` and keep the count in [`docs/parity.md`](../../parity.md) in sync.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/portal.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/portal.md).

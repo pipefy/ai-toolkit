@@ -58,6 +58,12 @@ repos:
         language: system
         files: ^uninstall\.sh$
         pass_filenames: false
+      - id: doc-footer
+        name: every docs page ends with the feedback footer
+        entry: python3 scripts/doc_footer.py
+        language: system
+        files: ^docs/.*\.md$
+        pass_filenames: false
       - id: skill-frontmatter
         name: SKILL.md frontmatter
         entry: uv run python scripts/lint_skill_frontmatter.py

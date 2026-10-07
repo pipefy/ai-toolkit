@@ -40,3 +40,7 @@ query {
   }
 }
 ```
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/organization.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/organization.md).

@@ -106,3 +106,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
   - The two relation reads are not symmetric. `get_pipe_relations` takes a pipe id, but `get_table_relations` never takes a table id, so the id from `search_tables` or `get_table` is the wrong kind.
   - A card relation runs through an existing pipe relation, so `source_id` is never a table-relation id, a table id, or a pipe or card id. When the API needs a field-based link, pass `extra_input={"sourceType": "Field"}`; `introspect_type` on `CreateCardRelationInput` shows the options.
 - Reports: filter `field` values come from `get_pipe_report_filterable_fields`.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/identifiers.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/identifiers.md).

@@ -8,6 +8,7 @@ while the committed page differs from what this script renders.
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import json
 import re
@@ -21,6 +22,15 @@ from pipefy_mcp.tools.toolsets import DOMAIN_DESCRIPTIONS, DOMAINS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REFERENCE = REPO_ROOT / "docs/mcp/reference.md"
+
+# Loaded by path, because a test loads this script by path and `scripts/` is not a package.
+_footer_spec = importlib.util.spec_from_file_location(
+    "doc_footer", Path(__file__).with_name("doc_footer.py")
+)
+if _footer_spec is None or _footer_spec.loader is None:
+    raise ImportError("scripts/doc_footer.py not found")
+_doc_footer = importlib.util.module_from_spec(_footer_spec)
+_footer_spec.loader.exec_module(_doc_footer)
 
 _PARAM_LINE = re.compile(r"^\*{0,2}(\w+)(?:\s*\([^)]*\))?:\s*(.*)$")
 
@@ -154,7 +164,8 @@ def render_reference(domains: list[Domain]) -> str:
         lines += [f"## {domain.name}", "", domain.description, ""]
         for tool in domain.tools:
             lines += _render_tool(tool)
-    return "\n".join(lines).rstrip("\n") + "\n"
+    body = "\n".join(lines).rstrip("\n") + "\n"
+    return _doc_footer.with_footer(body, str(REFERENCE.relative_to(REPO_ROOT)))
 
 
 def _entry(tool: Any) -> ToolEntry:

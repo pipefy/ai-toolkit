@@ -84,3 +84,7 @@ Provider `configuration` is included in read output, and the API **redacts secre
 ## Error classification
 
 Failures on this surface are classified by a shared SDK-level module (`pipefy_sdk.graphql_problem`) into structured problems — `permission_denied`, `not_found`, `invalid_arguments`, `feature_not_enabled`, or `runtime` — carried on `error.details.kind` alongside the GraphQL `extensions.code` and `correlation_id`. The same classifier backs the CLI (`pipefy ai-provider ...`), so both surfaces report the same problem kinds.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/llm-providers.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/llm-providers.md).

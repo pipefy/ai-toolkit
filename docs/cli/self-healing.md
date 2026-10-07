@@ -59,3 +59,7 @@ Malformed `--vars` JSON also exits with code **2**.
 
 - Parity matrix: `docs/parity.md`
 - MCP introspection tools map 1:1 to `pipefy introspect` subcommands (see [`docs/parity.md`](../parity.md)).
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/cli/self-healing.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/cli/self-healing.md).

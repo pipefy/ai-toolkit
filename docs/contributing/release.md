@@ -77,3 +77,7 @@ uvx "pipefy-mcp-server==0.6.0b1" --help
 ## Repository setup
 
 Each distribution needs a [Trusted Publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/) on PyPI, and a new distribution needs PyPI's pending-publisher flow for its first upload. The workflow uses OIDC, so no PyPI token is stored.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/release.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/release.md).

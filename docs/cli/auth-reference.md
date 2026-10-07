@@ -138,3 +138,7 @@ Two env vars (mirrored as TOML keys) override the default behaviour:
 These are independent: `PIPEFY_DISABLE_STORED_SESSION=1` takes precedence (the file backend is never read or written). `pipefy auth status` will reflect the active backend name regardless (`Keyring`, `PlaintextKeyring`, etc.).
 
 Removing `PIPEFY_KEYCHAIN_BACKEND=file` **moves** the store rather than clearing it: the next login writes to the OS keychain while whatever is already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. `./uninstall.sh --scan` resolves the effective backend and reads both stores regardless of which one is active — see [`docs/uninstall.md`](../uninstall.md).
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/cli/auth-reference.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/cli/auth-reference.md).

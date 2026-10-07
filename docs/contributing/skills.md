@@ -113,3 +113,7 @@ CI checks what the previous section lists. A reviewer checks the rest:
 2. The examples run. For a high-impact skill, the reviewer runs them against a real Pipefy organization.
 3. The body follows [Body style](#body-style).
 4. The skill is generic, with no content tailored to one agent persona.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/contributing/skills.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/contributing/skills.md).

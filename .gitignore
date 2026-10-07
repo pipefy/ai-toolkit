@@ -53,6 +53,7 @@ scripts/*
 !scripts/bump_version.py
 !scripts/check_deletion_guard.py
 !scripts/check_pipe_drain.py
+!scripts/doc_footer.py
 !scripts/gen_mcp_reference.py
 !scripts/lint_plugin_packaging.py
 !scripts/lint_skill_frontmatter.py

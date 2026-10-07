@@ -205,3 +205,7 @@ Use `get_ai_agents` with the pipe's `uuid` (same as `repo_uuid`) before `create_
 ## Execution logs & usage
 
 For **AI agent run history**, **traditional automation logs**, **org-level usage**, and **credit / export** tooling, use the observability tools. See [Observability](observability.md) for how `repo_uuid`, `repo_id`, and `automation_id` differ and for recommended call order (`get_automation_logs_by_repo` vs `get_automation_logs`).
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/mcp/tools/automations-and-ai.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/mcp/tools/automations-and-ai.md).

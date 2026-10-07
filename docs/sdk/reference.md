@@ -57,3 +57,7 @@ These `PipefyClient` methods share names and parameters with MCP tools so an age
 - **`fill_card_phase_fields(card_id, phase_id, fields, *, required_fields_only=False)`** reads `get_phase_fields` once, filters `fields` to editable ids, and does not write a field the phase does not expose. When nothing survives: `success`, `message`, `phase_id`, `phase_name`, `skipped_field_ids`. When a write runs: the `update_card` dict, plus `skipped_field_ids` only when a key was dropped.
 
 Skills cite `get_pipe` (labels are on the pipe) and `get_pipe_reports` (the reports connection). There is no `PipefyClient.get_labels` or `PipefyClient.get_pipe_report`; MCP keeps those names as aliases, and projection stays in MCP and CLI.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/sdk/reference.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/sdk/reference.md).

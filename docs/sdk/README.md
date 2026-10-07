@@ -69,3 +69,7 @@ for skill_file in skills.directory().glob("*/SKILL.md"):
 - [`reference.md`](reference.md): the error types, AI agent creation, pre-write validation, and the methods named after MCP tools.
 - [`../parity.md`](../parity.md): which CLI command and MCP tool match each operation.
 - [`../config.md`](../config.md): every `PIPEFY_*` variable and `config.toml`.
+
+---
+
+Found a problem on this page? [Open an issue](https://github.com/pipefy/ai-toolkit/issues/new?template=docs_problem.yml&page=docs/sdk/README.md), or [edit the page](https://github.com/pipefy/ai-toolkit/edit/main/docs/sdk/README.md).

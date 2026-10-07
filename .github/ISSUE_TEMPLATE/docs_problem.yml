@@ -1,0 +1,30 @@
+name: Docs problem
+description: Report a page that is wrong, unclear, out of date, or missing something.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The path of the page, such as `docs/install.md`. The link at the bottom of each page fills it in.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - A step or a command does not work
+        - A fact is wrong or out of date
+        - The page is hard to follow
+        - Something is missing
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What is wrong
+      description: Quote the sentence or the command, and say what you expected.
+    validations:
+      required: true
