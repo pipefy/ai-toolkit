@@ -34,7 +34,7 @@ def _make_facade_client(execute_return_value: dict):
 @pytest.mark.asyncio
 async def test_create_card_with_dict_fields():
     """Test create_card converts dict fields to FieldValueInput array format."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields_dict = {"title": "Teste-MCP", "description": "Test description"}
 
     client, mock_execute = _make_facade_client(
@@ -68,7 +68,7 @@ async def test_create_card_with_dict_fields():
 @pytest.mark.asyncio
 async def test_create_card_with_array_fields():
     """Test create_card works with already formatted array fields."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields_array = [
         {"field_id": "title", "field_value": "Teste-MCP"},
         {"field_id": "description", "field_value": "Test description"},
@@ -105,7 +105,7 @@ async def test_create_card_with_array_fields():
 @pytest.mark.asyncio
 async def test_create_card_with_empty_dict():
     """Test create_card handles empty dict fields."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     client, mock_execute = _make_facade_client(
         {"createCard": {"card": {"id": "12345"}}}
@@ -127,7 +127,7 @@ async def test_create_card_with_empty_dict():
 @pytest.mark.asyncio
 async def test_create_card_with_single_field():
     """Test create_card with a single field."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields_dict = {"title": "Teste-MCP"}
 
     client, mock_execute = _make_facade_client(
@@ -161,7 +161,7 @@ async def test_create_card_with_single_field():
 @pytest.mark.asyncio
 async def test_get_start_form_fields_returns_all_fields():
     """Test get_start_form_fields returns all fields correctly."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     mock_fields = [
         {
             "id": "title",
@@ -203,7 +203,7 @@ async def test_get_start_form_fields_returns_all_fields():
 @pytest.mark.asyncio
 async def test_get_start_form_fields_required_only_filter():
     """Test get_start_form_fields with required_only=True filters correctly."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     mock_fields = [
         {
             "id": "title",
@@ -251,7 +251,7 @@ async def test_get_start_form_fields_required_only_filter():
 @pytest.mark.asyncio
 async def test_get_start_form_fields_empty_returns_friendly_message():
     """Test get_start_form_fields returns user-friendly message when no fields configured."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     client, _ = _make_facade_client({"pipe": {"start_form_fields": []}})
     result = await client.get_start_form_fields(pipe_id)
@@ -266,7 +266,7 @@ async def test_get_start_form_fields_empty_returns_friendly_message():
 @pytest.mark.asyncio
 async def test_get_start_form_fields_required_only_no_required_fields():
     """Test get_start_form_fields with required_only=True when all fields are optional."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     mock_fields = [
         {
             "id": "priority",
@@ -553,7 +553,7 @@ def test_table_service_is_submodule_only_not_root_reexport():
 @pytest.mark.asyncio
 async def test_get_pipe_passes_pipe_id_variable():
     """Test get_pipe passes pipe_id under variable_values unchanged."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     client, mock_execute = _make_facade_client({"pipe": {"id": str(pipe_id)}})
     result = await client.get_pipe(pipe_id)
@@ -611,7 +611,7 @@ async def test_get_card_passes_card_id_variable():
 @pytest.mark.asyncio
 async def test_get_cards_with_none_search_sends_empty_search_dict():
     """Test get_cards sends an empty search object when search is None."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     client, mock_execute = _make_facade_client({"cards": {"edges": []}})
     result = await client.get_cards(pipe_id, None)
@@ -627,7 +627,7 @@ async def test_get_cards_with_none_search_sends_empty_search_dict():
 @pytest.mark.asyncio
 async def test_get_cards_with_search_dict_passes_search_as_is():
     """Test get_cards passes search dict unchanged when provided."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     search = {"title": "Test"}
 
     client, mock_execute = _make_facade_client({"cards": {"edges": []}})
@@ -644,7 +644,7 @@ async def test_get_cards_with_search_dict_passes_search_as_is():
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_true_passes_include_fields_to_service():
     """Test get_cards facade passes include_fields=True to CardService.get_cards."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     expected = {"cards": {"edges": []}}
 
     card_service = AsyncMock()
@@ -666,7 +666,7 @@ async def test_get_cards_with_include_fields_true_passes_include_fields_to_servi
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_false_passes_include_fields_to_service():
     """Test get_cards facade passes include_fields=False to CardService.get_cards."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     expected = {"cards": {"edges": []}}
 
     card_service = AsyncMock()
@@ -688,7 +688,7 @@ async def test_get_cards_with_include_fields_false_passes_include_fields_to_serv
 @pytest.mark.asyncio
 async def test_find_cards_delegates_to_card_service_with_include_fields_true():
     """Test find_cards facade delegates to CardService.find_cards with include_fields=True."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     field_id = "status"
     field_value = "In Progress"
     expected = {"findCards": {"edges": []}}

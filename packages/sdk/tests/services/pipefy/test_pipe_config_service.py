@@ -309,8 +309,8 @@ async def test_update_phase_field_resolves_slug_via_phase_id():
             "fields": [
                 {
                     "id": "priority",
-                    "internal_id": "429358624",
-                    "uuid": "08c3f133-6dae-4a35-9276-b6d0d63a7c24",
+                    "internal_id": "421234570",
+                    "uuid": "550e8400-e29b-41d4-a716-446655440103",
                     "label": "Priority",
                     "type": "select",
                 },
@@ -333,15 +333,15 @@ async def test_update_phase_field_resolves_slug_via_phase_id():
         "priority",
         label="Priority",
         description="x",
-        phase_id="343162749",
+        phase_id="341234570",
     )
-    pipe_svc.get_phase_fields.assert_awaited_once_with("343162749")
+    pipe_svc.get_phase_fields.assert_awaited_once_with("341234570")
     pipe_svc.get_pipe.assert_not_called()
     _q, variables = executor.execute_query.call_args[0]
     assert variables == {
         "input": {
             "id": "priority",
-            "uuid": "08c3f133-6dae-4a35-9276-b6d0d63a7c24",
+            "uuid": "550e8400-e29b-41d4-a716-446655440103",
             "label": "Priority",
             "description": "x",
         }
@@ -371,8 +371,8 @@ async def test_update_phase_field_resolves_slug_via_pipe_id():
             "fields": [
                 {
                     "id": "priority",
-                    "internal_id": "429358624",
-                    "uuid": "08c3f133-6dae-4a35-9276-b6d0d63a7c24",
+                    "internal_id": "421234570",
+                    "uuid": "550e8400-e29b-41d4-a716-446655440103",
                     "label": "Priority",
                     "type": "select",
                 },
@@ -401,7 +401,7 @@ async def test_update_phase_field_resolves_slug_via_pipe_id():
     assert variables == {
         "input": {
             "id": "priority",
-            "uuid": "08c3f133-6dae-4a35-9276-b6d0d63a7c24",
+            "uuid": "550e8400-e29b-41d4-a716-446655440103",
             "label": "Priority",
             "description": "x",
         }
@@ -595,14 +595,14 @@ async def test_delete_phase_field_accepts_string_slug():
 async def test_delete_phase_field_includes_pipe_uuid_when_provided():
     service, executor = _make_service({"deletePhaseField": {"success": True}})
     result = await service.delete_phase_field(
-        "prioridade", pipe_uuid="b3bba313-6b99-44dc-b17e-f192dc00bb21"
+        "prioridade", pipe_uuid="550e8400-e29b-41d4-a716-446655440102"
     )
 
     _query, variables = executor.execute_query.call_args[0]
     assert variables == {
         "input": {
             "id": "prioridade",
-            "pipeUuid": "b3bba313-6b99-44dc-b17e-f192dc00bb21",
+            "pipeUuid": "550e8400-e29b-41d4-a716-446655440102",
         },
     }
     assert result == {"deletePhaseField": {"success": True}}
@@ -724,7 +724,7 @@ async def test_create_field_condition_success():
             },
         ],
     }
-    act = [{"phaseFieldId": "308821043", "whenEvaluator": True}]
+    act = [{"phaseFieldId": "421234578", "whenEvaluator": True}]
     service, executor = _make_service(
         {
             "createFieldCondition": {

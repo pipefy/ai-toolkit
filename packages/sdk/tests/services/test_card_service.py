@@ -24,7 +24,7 @@ def _make_service(return_value: dict):
 @pytest.mark.asyncio
 async def test_create_card_converts_fields_and_sets_generated_by_ai():
     """Test create_card converts dict fields to array format with generated_by_ai."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {"title": "Teste-MCP"}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -52,7 +52,7 @@ async def test_create_card_converts_fields_and_sets_generated_by_ai():
 @pytest.mark.asyncio
 async def test_create_card_with_phase_id_sends_create_card_input():
     """create_card with phase_id uses CreateCardInput with phase_id and fields_attributes."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     phase_id = 987654321
     fields = {"title": "Orphan phase card"}
 
@@ -82,7 +82,7 @@ async def test_create_card_with_phase_id_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_phase_id_and_title_sends_create_card_input():
     """create_card passes optional title on CreateCardInput when provided."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     phase_id = 987654321
     card_title = "Seed card title"
 
@@ -104,7 +104,7 @@ async def test_create_card_with_phase_id_and_title_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_without_phase_id_uses_create_card_input():
     """create_card without phase_id still uses CreateCardInput (no phase_id key)."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {"title": "Start form card"}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -133,7 +133,7 @@ async def test_create_card_without_phase_id_uses_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_title_only_sends_create_card_input():
     """create_card passes title on CreateCardInput without phase_id (MCP happy path)."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     card_title = "Start form title"
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -154,7 +154,7 @@ async def test_create_card_with_title_only_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_empty_dict_sends_empty_list():
     """Test that create_card with empty dict sends fields as empty list to GraphQL."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -176,7 +176,7 @@ async def test_create_card_with_empty_dict_sends_empty_list():
 @pytest.mark.asyncio
 async def test_get_cards_with_none_search_sends_empty_search():
     """Test get_cards sends empty search object when search is None."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     result = await service.get_cards(pipe_id, None)
@@ -194,7 +194,7 @@ async def test_get_cards_with_none_search_sends_empty_search():
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_true_passes_includeFields_variable():
     """Test get_cards uses GET_CARDS_QUERY with includeFields=True when include_fields=True."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     await service.get_cards(pipe_id, search=None, include_fields=True)
@@ -209,7 +209,7 @@ async def test_get_cards_with_include_fields_true_passes_includeFields_variable(
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_false_passes_includeFields_variable():
     """Test get_cards uses GET_CARDS_QUERY with includeFields=False when include_fields=False."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     await service.get_cards(pipe_id, search=None, include_fields=False)
@@ -224,7 +224,7 @@ async def test_get_cards_with_include_fields_false_passes_includeFields_variable
 @pytest.mark.asyncio
 async def test_find_cards_sends_pipeId_search_and_includeFields():
     """Test find_cards uses FIND_CARDS_QUERY with pipeId, search.fieldId, search.fieldValue, includeFields."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     field_id = "status"
     field_value = "In Progress"
 

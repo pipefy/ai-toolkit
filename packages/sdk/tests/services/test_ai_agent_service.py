@@ -348,7 +348,7 @@ def test_inject_reference_ids_replaces_placeholder_lines_from_a_previous_update(
 @pytest.mark.unit
 def test_inject_reference_ids_drops_the_persisted_action_id():
     """A read action ``id`` is dropped: under a new behavior it fails the save (RECORD_NOT_SAVED)."""
-    action = {**_make_action_dict(), "id": "eb30b574-9d45-4da0-bd11-219d5546bdb8"}
+    action = {**_make_action_dict(), "id": "550e8400-e29b-41d4-a716-446655440107"}
     behavior = _make_behavior_dict(instruction="Move it.", actions=[action])
 
     result = inject_reference_ids([behavior])
@@ -416,7 +416,7 @@ _MCP_TOOL_METADATA = {
 def _agent_behavior_as_read() -> dict:
     """A behavior shaped like a ``get_ai_agent`` read, after one earlier update."""
     return {
-        "id": "308221777",
+        "id": "308123456",
         "name": "Review then look up",
         "active": True,
         "eventId": "card_created",

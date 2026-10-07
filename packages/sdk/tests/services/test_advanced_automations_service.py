@@ -15,11 +15,11 @@ async def test_get_token_returns_token_and_stringifies_pipe_id():
     executor = mock_executor({"advancedAutomationsToken": {"token": "jwt-123"}})
     service = AdvancedAutomationsService(internal_executor=executor)
 
-    token = await service.get_token(303088927)
+    token = await service.get_token(301234567)
 
     assert token == "jwt-123"
     _, variables = executor.execute_query.await_args.args
-    assert variables == {"repoId": "303088927"}
+    assert variables == {"repoId": "301234567"}
 
 
 @pytest.mark.anyio

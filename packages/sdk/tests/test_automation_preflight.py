@@ -262,7 +262,7 @@ async def test_validate_ai_automation_prompt_null_pipe_does_not_raise(mock_clien
 async def test_validate_ai_automation_prompt_overlap_prompt_and_output(mock_client):
     from pipefy_sdk.ai_preflight import validate_ai_automation_prompt_sdk
 
-    fid = "429358623"
+    fid = "421234569"
     mock_client.get_pipe_with_preferences = AsyncMock(
         return_value={
             "pipe": {
@@ -348,11 +348,11 @@ def test_extract_field_map_ids_declared_shape():
     ids = extract_field_map_destination_ids(
         {
             "action_params": {
-                "field_map": [{"fieldId": "429659044", "inputMode": "copy_from"}],
+                "field_map": [{"fieldId": "421234574", "inputMode": "copy_from"}],
             },
         },
     )
-    assert ids == ["429659044"]
+    assert ids == ["421234574"]
 
 
 def test_extract_field_map_ids_ignores_camel_wrapper_keys():

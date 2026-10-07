@@ -10,7 +10,7 @@ from pipefy_sdk.queries.service_account_queries import (
 )
 from pipefy_sdk.services.service_account_service import ServiceAccountService
 
-ORG = "341c1327-261c-4766-bb96-7953e4c3970d"
+ORG = "550e8400-e29b-41d4-a716-446655440100"
 
 
 @pytest.mark.unit

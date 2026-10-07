@@ -45,12 +45,12 @@ async def test_get_email_templates_success(mock_settings):
         }
     }
     service, executor = _make_service(mock_settings, payload)
-    result = await service.get_email_templates("307061640")
+    result = await service.get_email_templates("301234570")
 
     executor.execute_query.assert_awaited_once()
     query, variables = executor.execute_query.call_args[0]
     assert query is GET_EMAIL_TEMPLATES_QUERY
-    assert variables["repoId"] == "307061640"
+    assert variables["repoId"] == "301234570"
     assert variables["first"] == DEFAULT_FIRST
     assert result == payload
 
@@ -60,7 +60,7 @@ async def test_get_email_templates_success(mock_settings):
 async def test_get_email_templates_with_filter(mock_settings):
     payload = {"emailTemplates": {"edges": []}}
     service, executor = _make_service(mock_settings, payload)
-    await service.get_email_templates("307061640", filter_by_name="Follow", first=10)
+    await service.get_email_templates("301234570", filter_by_name="Follow", first=10)
 
     _, variables = executor.execute_query.call_args[0]
     assert variables["filterByName"] == "Follow"
@@ -140,12 +140,12 @@ async def test_send_inbox_email_draft_sends_every_field_of_the_draft(mock_settin
     payload = {"createAndSendInboxEmail": {"emailSent": True, "errors": []}}
     service, executor = _make_service(mock_settings, payload)
     draft = InboxEmailDraft(
-        card_id="1320616225",
+        card_id="1312345678",
         to=["a@x.com", "b@x.com"],
         subject="Hello",
         body="Body",
         from_="sender@pipefy.com",
-        extra={"cc": ["c@x.com"], "repoId": "307061640"},
+        extra={"cc": ["c@x.com"], "repoId": "301234570"},
     )
 
     result = await service.send_inbox_email_draft(draft)
@@ -153,13 +153,13 @@ async def test_send_inbox_email_draft_sends_every_field_of_the_draft(mock_settin
     query, variables = executor.execute_query.call_args[0]
     assert query is CREATE_AND_SEND_INBOX_EMAIL_MUTATION
     assert variables["input"] == {
-        "cardId": "1320616225",
+        "cardId": "1312345678",
         "from": "sender@pipefy.com",
         "subject": "Hello",
         "to": ["a@x.com", "b@x.com"],
         "text": "Body",
         "cc": ["c@x.com"],
-        "repoId": "307061640",
+        "repoId": "301234570",
     }
     assert result == payload
 
@@ -172,7 +172,7 @@ async def test_send_email_with_template_success(mock_settings):
         return_value={
             "card": {
                 "uuid": "550e8400-e29b-41d4-a716-446655440000",
-                "pipe": {"id": "307061640"},
+                "pipe": {"id": "301234570"},
             }
         }
     )
@@ -198,16 +198,16 @@ async def test_send_email_with_template_success(mock_settings):
     service = WebhookService(
         executor=executor, settings=mock_settings, card_service=card_service
     )
-    result = await service.send_email_with_template("1320616225", "tmpl-42")
+    result = await service.send_email_with_template("1312345678", "tmpl-42")
 
     assert card_service.get_card.await_count == 1
-    card_service.get_card.assert_awaited_once_with("1320616225")
+    card_service.get_card.assert_awaited_once_with("1312345678")
     assert executor.execute_query.await_count == 2
     first_q, first_vars = executor.execute_query.call_args_list[0][0]
     second_q, second_inp = executor.execute_query.call_args_list[1][0]
     assert first_q is GET_PARSED_EMAIL_TEMPLATE_QUERY
     assert second_q is CREATE_AND_SEND_INBOX_EMAIL_MUTATION
-    assert second_inp["input"]["repoId"] == "307061640"
+    assert second_inp["input"]["repoId"] == "301234570"
     assert second_inp["input"]["text"] == "Body"
     assert "html" not in second_inp["input"]
     assert result["createAndSendInboxEmail"]["emailSent"] is True
@@ -221,7 +221,7 @@ async def test_draft_email_from_template_resolves_without_sending(mock_settings)
         return_value={
             "card": {
                 "uuid": "550e8400-e29b-41d4-a716-446655440000",
-                "pipe": {"id": "307061640"},
+                "pipe": {"id": "301234570"},
             }
         }
     )
@@ -240,7 +240,7 @@ async def test_draft_email_from_template_resolves_without_sending(mock_settings)
     )
 
     draft = await service.draft_email_from_template(
-        "1320616225", "tmpl-42", cc=["c@x.com"]
+        "1312345678", "tmpl-42", cc=["c@x.com"]
     )
 
     assert executor.execute_query.await_count == 1
@@ -251,12 +251,12 @@ async def test_draft_email_from_template_resolves_without_sending(mock_settings)
         "cardUuid": "550e8400-e29b-41d4-a716-446655440000",
     }
     assert draft == InboxEmailDraft(
-        card_id="1320616225",
+        card_id="1312345678",
         to=["a@x.com", "b@x.com"],
         subject="Hello",
         body="Body",
         from_="from@x.com",
-        extra={"cc": ["c@x.com"], "repoId": "307061640"},
+        extra={"cc": ["c@x.com"], "repoId": "301234570"},
     )
 
 
