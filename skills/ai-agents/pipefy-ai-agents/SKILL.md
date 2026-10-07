@@ -186,6 +186,7 @@ Inside `actionParams.aiBehaviorParams` a behavior may also carry:
 ### 6 — Validate (recommended for complex behaviors)
 
 `validate_ai_agent_behaviors(pipe_id, behaviors)` checks:
+
 - Output field IDs (`fieldsAttributes[].fieldId`) exist in the pipe
 - Phase IDs exist
 - Pipe relations exist for `create_connected_card`

@@ -47,7 +47,7 @@ If a dedicated **write** reports failure, re-read the target before trying a mut
 
 Example:
 
-```
+```text
 introspect_mutation mutation_name="createCard" max_depth=2
 ```
 
@@ -57,7 +57,7 @@ Scalars (`ID`, `String`, `Int`, …) are never expanded.
 
 Optional filter: `OBJECT`, `INPUT_OBJECT`, `ENUM`, `SCALAR`, `INTERFACE`, `UNION`.
 
-```
+```text
 search_schema keyword="automation" kind="INPUT_OBJECT"
 ```
 
@@ -86,19 +86,19 @@ search_schema keyword="automation" kind="INPUT_OBJECT"
 
 1. **Search for the mutation by keyword:**
 
-   ```
+   ```text
    search_schema keyword="label"
    ```
 
 2. **Get the full mutation signature:**
 
-   ```
+   ```text
    introspect_mutation mutation_name="createLabel"
    ```
 
 3. **Discover input type fields:**
 
-   ```
+   ```text
    introspect_type type_name="CreateLabelInput"
    ```
 
@@ -112,7 +112,7 @@ Ready-to-use patterns for situations where dedicated tools are insufficient.
 
 ### Recipe 1 — Discover valid field types for `create_phase_field`
 
-```
+```text
 introspect_type('CreatePhaseFieldInput')
 ```
 
@@ -122,7 +122,7 @@ Read the `type` field description for valid values. The field is an `ID` scalar,
 
 `find_cards` only searches custom field values. To search by title:
 
-```
+```text
 execute_graphql query='query($pipeId: ID!, $first: Int) { cards(pipe_id: $pipeId, first: $first) { edges { node { id title current_phase { name } } } } }' variables='{"pipeId":"<pipe-id>","first":50}'
 ```
 
@@ -132,7 +132,7 @@ Filter by title client-side. For large pipes, paginate with `after`.
 
 When a tool accepts `extra_input` (e.g. `create_automation`, `update_label`), discover all optional keys:
 
-```
+```text
 introspect_mutation('createAutomation')     # find the input type name
 introspect_type('CreateAutomationInput')    # see all inputFields
 ```
@@ -145,7 +145,7 @@ To answer "which organizations do I have access to?" with nothing in hand, call 
 
 When the user only has a pipe ID and needs its `organization_id`:
 
-```
+```text
 execute_graphql query='query($id: ID!) { pipe(id: $id) { organization { id uuid name } } }' variables='{"id":"<pipe-id>"}'
 ```
 
@@ -153,7 +153,7 @@ execute_graphql query='query($id: ID!) { pipe(id: $id) { organization { id uuid 
 
 `create_phase_field` does not accept options. Create first, then update.
 
-```
+```text
 execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}'
 ```
 
@@ -161,7 +161,7 @@ execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseFiel
 
 When `move_card_to_phase` fails with "not a valid target phase":
 
-```
+```text
 execute_graphql query='query($id: ID!) { phase(id: $id) { id name cards_can_be_moved_to_phases { id name } } }' variables='{"id":"<current-phase-id>"}'
 ```
 

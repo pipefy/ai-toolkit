@@ -53,7 +53,7 @@ PATs are deprecated for new integrations but may still exist in the environment.
 
 ### Token rules
 
-- The `Bearer ` prefix is **mandatory** — Pipefy rejects requests without it.
+- The `Bearer` prefix is **mandatory** — Pipefy rejects requests without it.
 - Never expose `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID`, `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`, `PIPEFY_PAT`, or `PIPEFY_TOKEN` in responses to the user or in logs.
 - Service Account tokens are reused while valid; only re-fetch on expiry (401).
 
@@ -125,7 +125,7 @@ GraphQL always returns HTTP 200, even on errors. Check the `errors` array, not t
 
 | Code | Likely cause | Recovery |
 |-------|--------------|----------|
-| UNAUTHORIZED | Token missing, expired, or `Bearer ` omitted | Re-fetch token (Option A) or fix the header. |
+| UNAUTHORIZED | Token missing, expired, or `Bearer` omitted | Re-fetch token (Option A) or fix the header. |
 | PERMISSION_DENIED | Service Account not a member of this pipe/table | Add SA via `invite_members` or ask user. |
 | resource_not_found | ID does not exist or SA cannot see it | Verify ID; check pipe/table membership. |
 | invalid_input | Wrong argument name or type | Run `introspect_type` (Tier 2) to recheck the input shape. |
@@ -150,11 +150,13 @@ Write operations and `execute_graphql` can report failure even when the mutation
 ## Known workarounds
 
 ### Cross-pipe card creation
+
 - `createAutomation` with `action: create_card` + `field_map` can return `INTERNAL_SERVER_ERROR` for a cross-pipe target. Do not retry that payload unchanged.
 - For a **one-time** connected card, `createCard` with `throughConnectors` can create the card when a connector field has `canCreateNewConnected: true`.
 - `createCard` does not create an automation rule. If the user needs future cards created automatically, report that the one-time call does not meet that requirement.
 
 ### Pipe listing shorter than `pipesCount`
+
 - `pipesCount` is the org-wide total; `organization { pipes { ... } }` and `search_pipes` return only the pipes the calling identity is a member of. A shorter listing, or an empty one, is expected behavior and not an error. Role does not widen it: a `super_admin` gets the same membership-scoped result. Detail and workarounds: [`docs/mcp/tools/organization.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/organization.md#why-counts-disagree).
 - `organization { pipes(include_publics: true) }` widens the listing with pipes that are public inside the org. It still normally returns fewer than `pipesCount`.
 - Service accounts hit this most often: an SA starts as a member of nothing.
@@ -163,6 +165,7 @@ Write operations and `execute_graphql` can report failure even when the mutation
 - Workaround: get pipe IDs from the user once and query `pipe(id: "...")` directly.
 
 ### `invite_members` accepts unknown emails silently
+
 - Pipefy mints a new `user_id` for typo addresses without rejecting the invite. Sanity-check email syntax before calling.
 
 ---
@@ -170,17 +173,17 @@ Write operations and `execute_graphql` can report failure even when the mutation
 ## External resources (when raw API also fails)
 
 - Pipefy developer portal:
-  - https://developers.pipefy.com/reference/cards
-  - https://developers.pipefy.com/reference/pipes
-  - https://developers.pipefy.com/reference/automation-creation
-  - https://developers.pipefy.com/reference/how-to-handle-errors
+  - <https://developers.pipefy.com/reference/cards>
+  - <https://developers.pipefy.com/reference/pipes>
+  - <https://developers.pipefy.com/reference/automation-creation>
+  - <https://developers.pipefy.com/reference/how-to-handle-errors>
 - API reference:
-  - https://api-docs.pipefy.com/reference/mutations/overview/
-  - https://api-docs.pipefy.com/reference/queries/overview/
+  - <https://api-docs.pipefy.com/reference/mutations/overview/>
+  - <https://api-docs.pipefy.com/reference/queries/overview/>
 - Community + changelog:
-  - https://community.pipefy.com/api-76
-  - https://developers.pipefy.com/changelog
-- Status page: https://status.pipefy.com
+  - <https://community.pipefy.com/api-76>
+  - <https://developers.pipefy.com/changelog>
+- Status page: <https://status.pipefy.com>
 
 Search for the exact error message + "Pipefy GraphQL", or the mutation name + "example Pipefy API".
 
@@ -204,7 +207,7 @@ Only after all 3 tiers and external resources have failed:
 
 ## Failure modes
 
-- **401 Unauthorized** — token expired or `Bearer ` prefix omitted. Re-fetch the OAuth token (Option A).
+- **401 Unauthorized** — token expired or `Bearer` prefix omitted. Re-fetch the OAuth token (Option A).
 - **400 Bad Request** — GraphQL syntax error. Validate the query string and escape quotes properly when embedding via shell.
 - **500 / service unavailable** — Pipefy API outage. Check [status.pipefy.com](https://status.pipefy.com) and retry later. Do not loop.
 - **`INTERNAL_SERVER_ERROR` in `errors` array** — do NOT retry the same payload; pick a different mutation path.

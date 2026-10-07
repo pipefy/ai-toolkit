@@ -15,7 +15,7 @@ The Cursor Marketplace plugin installs from Cursor's plugin UI; there is no inst
 - Hosted MCP: Claude Code CLI (`claude`).
 - Local toolkit: a shell that can run `curl` (`install.sh` can install `uv`).
 
-**Who does what**
+### Who does what
 
 | Actor | Does |
 |-------|------|

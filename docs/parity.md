@@ -212,4 +212,3 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `validate_ai_automation_prompt` | `pipefy ai-automation validate-prompt` | shipped | — |
 | `validate_knowledge_base_access` | `pipefy kb validate-access` | shipped | — |
 | `validate_llm_provider_access` | `pipefy ai-provider validate-access` | shipped | — |
-

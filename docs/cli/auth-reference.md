@@ -52,7 +52,7 @@ Each variable below feeds one credential tier. [`docs/config.md`](../config.md) 
 |------|---------|--------|
 | `--json` / `-j` | _off_ | Emit a stable JSON schema instead of human-readable text. |
 
-The command answers four diagnostic questions: am I signed in, as whom, via which precedence tier, and (for stored sessions) when does the access/refresh token expire. It also reports which *other* credential sources are configured, so a CI failure where `PIPEFY_SERVICE_ACCOUNT_*` masks a stored login is one command away from being obvious.
+The command answers four diagnostic questions: am I signed in, as whom, via which precedence tier, and (for stored sessions) when does the access/refresh token expire. It also reports which _other_ credential sources are configured, so a CI failure where `PIPEFY_SERVICE_ACCOUNT_*` masks a stored login is one command away from being obvious.
 
 #### JSON schema
 

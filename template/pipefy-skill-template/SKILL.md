@@ -47,7 +47,8 @@ Unknown names fail CI in this repository.
 1. **[Step name]** — [what to do and why.]
 
    Shared operation arguments (adapt to the active surface):
-   ```
+
+   ```text
    [operation_name] [arg]=[value]
    ```
 

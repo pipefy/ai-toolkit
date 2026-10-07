@@ -8,7 +8,7 @@ A skill is a directory with a `SKILL.md` entrypoint that describes one Pipefy wo
 
 ## Directory structure
 
-```
+```text
 skills/
   <domain>/
     <skill-name>/

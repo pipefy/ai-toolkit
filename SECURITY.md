@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately to **security@pipefy.com** (or via [Pipefy’s security page](https://www.pipefy.com/security/)). Do **not** open public GitHub issues for security reports.
+Please report suspected vulnerabilities privately to **<security@pipefy.com>** (or via [Pipefy’s security page](https://www.pipefy.com/security/)). Do **not** open public GitHub issues for security reports.
 
 When available, you may also use **GitHub Private Vulnerability Reporting** (*Security → Report a vulnerability* on this repository).
 

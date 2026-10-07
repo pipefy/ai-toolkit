@@ -26,7 +26,7 @@ Discover the exact `field` string for your pipe via `get_pipe_report_filterable_
 ```
 
 Replace `field` / `value` when filterable-field metadata uses different names or option ids.
+
 - `get_pipe_reports` omits `cardCount` in the query (Pipefy can error when resolving it).
 - `debug=true` on writes like other mutation tools.
 - **Async export pattern:** trigger export -> poll the matching `get_*_report_export` until `state` is done -> use `fileURL`. `export_pipe_audit_logs` only returns `success` (no export ID to poll — the file is delivered to the requesting user).
-

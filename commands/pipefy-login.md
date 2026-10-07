@@ -9,7 +9,7 @@ If `command -v pipefy` fails, stop and tell the user to run `/pipefy:install` fi
 
 Otherwise prompt the user to confirm running:
 
-```
+```sh
 pipefy auth login $ARGUMENTS
 ```
 

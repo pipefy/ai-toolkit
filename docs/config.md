@@ -94,7 +94,7 @@ Credential variables reject leading and trailing whitespace; `PIPEFY_ORG_ID` (be
 
 ## Precedence
 
-```
+```text
 init kwargs > environment variables > .env > config.toml > field defaults
 ```
 
@@ -114,7 +114,7 @@ Storing OAuth credentials in `config.toml` puts them on disk in plain text. The 
 
 `config.toml` is hand-edited declarative configuration. It does not hold the user session minted by `pipefy auth login` — that lives in the OS keychain (`StoredSession` JSON keyed by issuer + client ID). The two files coexist under `~/.config/pipefy/`:
 
-```
+```text
 ~/.config/pipefy/
 ├── config.toml      # operator-edited (this file)
 └── refresh.lock     # cross-process refresh lock (auto-managed)

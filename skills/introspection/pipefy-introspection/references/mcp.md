@@ -17,13 +17,13 @@ Example: `introspect_mutation mutation_name="createCard" max_depth=2 include_par
 
 Mutations use two steps. The first call returns a preview with `confirmation_token` and does not mutate. The preview names the mutation; it does not claim the write is irreversible, because this server cannot tell create from delete. Resend the call unchanged with `confirm=true` and the token; if the document changed, the response is a fresh preview whose token is bound to the new document.
 
-   ```
+   ```text
    execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}'
    ```
 
    Then after the preview:
 
-   ```
+   ```text
    execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}' confirm=true confirmation_token="<token from preview>"
    ```
 
@@ -31,7 +31,7 @@ Mutations use two steps. The first call returns a preview with `confirmation_tok
 
 Then after the preview:
 
-```
+```text
 execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}' confirm=true confirmation_token="<token from preview>"
 ```
 

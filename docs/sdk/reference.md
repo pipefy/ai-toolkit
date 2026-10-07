@@ -6,7 +6,6 @@ This page describes the error types and the client methods whose behavior goes b
 
 `PipefyError` is the root of the API error types that the Pipefy API reports.
 
-
 The hierarchy:
 
 - **`PipefyError`** — root of the API error types below.

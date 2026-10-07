@@ -39,7 +39,7 @@ The Pipefy AI Toolkit lets an AI agent, a script, or a Python program work in Pi
 | **SDK** | `pipefy` | Vendor GraphQL client, services, and models shared by MCP and CLI. |
 | **Skills** | [`skills/`](skills/) | Markdown playbooks (Anthropic Skills format) for common Pipefy workflows. |
 
-Feedback and issues: [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) · **dev@pipefy.com**
+Feedback and issues: [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) · **<dev@pipefy.com>**
 
 ### What it looks like
 

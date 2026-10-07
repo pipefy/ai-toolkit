@@ -6,7 +6,7 @@ Most write tools support `debug=true` on errors, returning GraphQL codes and `co
 
 Interactive clients may elicit start-form fields on `create_card`. For agent seeding, use `skip_elicitation=true`:
 
-```
+```text
 create_card pipe_id="306996634" phase_id="340012345" skip_elicitation=true title="Seeded"
 ```
 

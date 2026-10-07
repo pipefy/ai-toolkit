@@ -202,13 +202,15 @@ Use a **disposable page** for element/layout experiments on a shared org main po
 **`update_portal_page_layout`:** read the target `pages[].layout` from **`get_portal`** and preserve its row IDs, child element UUIDs, and unaffected rows. Send the complete array with only the intended order/grouping changes; then re-read and compare. `elements[].metadata.gridMap` (`height`, `columns`, `minColumns`) describes dimensions, so it cannot reconstruct row order or grouping. Preserve the full metadata when resizing an element. If the layout is unavailable, stop the positional edit instead of guessing. Never wrap the array in `{ "rows": [ ... ] }`.
 
 MCP:
-```
+
+```text
 get_portal portal_uuid="<portal_uuid>"
 update_portal_page_layout page_id="<page_uuid>" layout=[<complete edited rows from that page>]
 get_portal portal_uuid="<portal_uuid>"
 ```
 
 CLI:
+
 ```bash
 pipefy portal get <portal_uuid> --json
 pipefy portal page layout update --page-id <page_uuid> --layout '[<complete edited rows from that page>]' --json
@@ -218,11 +220,13 @@ pipefy portal get <portal_uuid> --json
 **`create_portal_element` with placement:** read `pages[].layout`, generate a UUID for `element_id`, append or insert a row `{ "id": "<new row uuid>", "type": "row", "children": ["<element_id>"] }`, and pass both `element_id` and the complete `layout`. Without `layout` the element is created but stays off the grid. Re-read and compare.
 
 MCP:
-```
+
+```text
 create_portal_element page_id="<page_uuid>" type="link" metadata={...} element_id="<element_id>" layout=[<existing rows>, {"id": "<row uuid>", "type": "row", "children": ["<element_id>"]}]
 ```
 
 CLI:
+
 ```bash
 pipefy portal element create --page-id <page_uuid> --type link --metadata '{...}' --element-id <element_id> --layout '[<existing rows>, {"id": "<row uuid>", "type": "row", "children": ["<element_id>"]}]' --json
 ```

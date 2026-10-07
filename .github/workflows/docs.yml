@@ -1,0 +1,47 @@
+name: Docs
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "**/*.md"
+      - ".markdownlint-cli2.jsonc"
+      - "lychee.toml"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".markdownlint-cli2.jsonc"
+      - "lychee.toml"
+      - ".github/workflows/docs.yml"
+  # An external page can disappear while no file here changes.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  markdownlint:
+    name: Markdown lint
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      # The same release that the pre-commit hook pins, so the hook and the build agree.
+      # The files to lint come from `globs` in .markdownlint-cli2.jsonc.
+      - name: markdownlint-cli2
+        run: npx --yes markdownlint-cli2@0.23.3
+
+  external-links:
+    name: External links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml --no-progress "./**/*.md"
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

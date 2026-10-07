@@ -39,7 +39,7 @@ When they cannot ask, both tools still work:
 
 Agents should discover fields first and pass all required values explicitly:
 
-```
+```text
 get_start_form_fields(pipe_id)   → learn field IDs, types, required flag
 create_card(pipe_id, fields={…}) → supply every required field ID
 
@@ -84,7 +84,7 @@ Use these when you need per-phase totals or card lists without pipe-wide `CardSe
 
 Discovery path: `get_pipe(pipe_id)` → `phases[].id` for workflow phases; omit `phase_id` on `create_card` for start-form intake.
 
-```
+```text
 get_phase_cards_count(phase_id="340012345")
 get_phase_cards(phase_id="340012345", first=50, include_fields=true)
 ```

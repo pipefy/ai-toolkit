@@ -77,18 +77,23 @@ This skill activates when the user wants **consulting help** to design a process
 ## Common patterns
 
 ### Linear approval flow
+
 `Submission → Under Review → Approved / Rejected → Done`
+
 - Start form: requester fills details.
 - "Under Review" phase: approver field + due date.
 - Automation: notify approver on card creation.
 
 ### Multi-stage pipeline
+
 `Intake → Triage → In Progress → Testing → Deployed`
+
 - Each phase has role-specific fields.
 - Automations advance cards on condition.
 - SLA fields track time-in-phase.
 
 ### Hub-and-spoke (related processes)
+
 - Central "intake" pipe connected via pipe relation to domain-specific pipes.
 - Child cards created automatically via automation when parent moves to "Escalated".
 
@@ -98,7 +103,7 @@ This skill activates when the user wants **consulting help** to design a process
 
 After the design consultation, produce a concise summary:
 
-```
+```text
 Process: <Name>
 Phases: [list]
 Start form fields: [list with types]

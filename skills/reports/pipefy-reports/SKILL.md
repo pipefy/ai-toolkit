@@ -87,7 +87,8 @@ Pipe reports and organization reports: discovery, CRUD, and async exports.
 2. **Create the report with a `ReportCardsFilter` shape** (not a top-level `current_phase` array):
 
    Arguments:
-   ```
+
+   ```text
    create_pipe_report pipe_id=67890 name="Phase subset" filter='{"operator":"and","queries":[{"field":"current_phase","operator":"eq","type":"select","value":"<phase_id>"}]}'
    ```
 

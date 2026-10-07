@@ -60,4 +60,4 @@ PyPI uses the PEP 440 form of the release tag. The tag `v0.6.0-beta.1` installs 
 
 ## Still stuck
 
-Open an issue with the [bug report form](https://github.com/pipefy/ai-toolkit/issues/new/choose), or write to **dev@pipefy.com**. Report a security problem privately, as [`SECURITY.md`](../SECURITY.md) describes.
+Open an issue with the [bug report form](https://github.com/pipefy/ai-toolkit/issues/new/choose), or write to **<dev@pipefy.com>**. Report a security problem privately, as [`SECURITY.md`](../SECURITY.md) describes.

@@ -1,6 +1,6 @@
 # Repository Terms Notice
 
-_Last updated: 2026-07-29_
+Last updated: 2026-07-29.
 
 ## 1. Scope
 
@@ -39,7 +39,7 @@ Contributions are accepted under the Apache License 2.0 with Developer Certifica
 
 ## 9. Contact
 
-dev@pipefy.com · privacy/DPO: dpos@pipefy.com · security: security@pipefy.com
+<dev@pipefy.com> · privacy/DPO: <dpos@pipefy.com> · security: <security@pipefy.com>
 
 ## 10. DISCLAIMER OF WARRANTIES; LIMITATION OF LIABILITY
 

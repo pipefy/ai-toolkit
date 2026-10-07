@@ -99,7 +99,7 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 
 3. **Create cards in empty phases** — loop `create_card` with `phase_id`. When `fields` is non-empty, keys are filtered via `get_phase_fields(phase_id)` and `get_start_form_fields(pipe_id)`.
 
-   ```
+   ```text
    create_card pipe_id="306996634" phase_id="340012345" title="Seeded" fields={}
    ```
 
@@ -164,7 +164,7 @@ Read the `type` field description for valid values. The field is an `ID` scalar,
 
 2. **Create the card with fields:**
 
-   ```
+   ```text
    create_card pipe_id=67890 title="My Card" fields={"field_slug":"value"}
    ```
 
@@ -172,7 +172,7 @@ Read the `type` field description for valid values. The field is an `ID` scalar,
 
 ### Pagination for get_cards
 
-```
+```text
 get_cards pipe_id=67890 first=50 after=<endCursor>
 ```
 

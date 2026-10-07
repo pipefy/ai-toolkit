@@ -38,6 +38,7 @@ CLI: `pipefy pipe get 306996634 --json`
 CLI: `pipefy phase count 340012345 --json`
 
 CLI:
+
    ```bash
    pipefy card create 306996634 --phase-id 340012345 --title "Seeded"
    ```
@@ -75,6 +76,7 @@ Attachment uploads accept `--file` only. See `pipefy-attachments`.
 CLI: `pipefy pipe start-form 67890 --json`
 
 CLI:
+
    ```bash
    pipefy card create 67890 --title "My Card" --fields '{"field_slug":"value"}'
    ```

@@ -55,7 +55,7 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
 1. **Discover field `internal_id`s** for any field referenced in the prompt:
 
-   ```
+   ```text
    get_phase_fields phase_id="<phase_id>"
    ```
 
@@ -65,7 +65,7 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
 3. **Validate the prompt:**
 
-   ```
+   ```text
    validate_ai_automation_prompt pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"]
    ```
 
@@ -113,14 +113,14 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 
 1. **Discover field `internal_id`s** (digits only — never slug in `fieldId`):
 
-   ```
+   ```text
    get_start_form_fields pipe_id=67890
    get_phase_fields phase_id="<phase_id>"
    ```
 
 2. **Discover trigger, action, and event-attribute tokens:**
 
-   ```
+   ```text
    get_automation_events pipe_id=67890
    get_automation_actions pipe_id=67890
    get_automation_event_attributes
@@ -130,7 +130,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 
 3. **Create disabled** (`active=false`) so the rule does not fire while you verify:
 
-   ```
+   ```text
    create_automation pipe_id=67890 name="Stamp execution time on new cards" trigger_id=card_created action_id=update_card_field active=false extra_input={"action_params":{"card_id":"%{id}","field_map":[{"fieldId":"<destination_internal_id>","inputMode":"copy_from","value":"%{automation_event_execution_datetime}"}],"fields_map_order":["<destination_internal_id>"]}}
    ```
 
@@ -138,7 +138,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 
 4. **Verify persisted config:**
 
-   ```
+   ```text
    get_automation automation_id=<id>
    ```
 
@@ -146,7 +146,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 
 5. **Enable** when correct:
 
-   ```
+   ```text
    update_automation automation_id=<id> extra_input={"active":true}
    ```
 
@@ -159,7 +159,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 1. Read a working rule first: `get_automation automation_id=<id>` — copy `event_params` and `action_params` verbatim.
 2. Simulate with a real sample card:
 
-   ```
+   ```text
    simulate_automation pipe_id=67890 action_id=generate_with_ai sample_card_id=456
    ```
 

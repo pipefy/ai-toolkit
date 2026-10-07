@@ -12,7 +12,7 @@ MCP deletes (`delete_portal`, `delete_portal_page`, `delete_portal_element`, `de
 
 **`delete_portal_element` with `layout`:** the token covers the layout rows, so send the same `layout` on the preview and the confirm call. A token from a preview without `layout`, or with other rows, does not confirm the delete.
 
-```
+```text
 delete_portal_element element_id="<element_id>" page_id="<page_uuid>" layout=[<existing rows without element_id>]
 delete_portal_element element_id="<element_id>" page_id="<page_uuid>" layout=[<same rows>] confirm=true confirmation_token="<token from preview>"
 ```
@@ -22,12 +22,14 @@ delete_portal_element element_id="<element_id>" page_id="<page_uuid>" layout=[<s
 **Detach** element wiring (destructive: MCP two-step with `confirmation_token`):
 
 MCP:
-```
+
+```text
 delete_sub_portal_element portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>" confirm=false
 ```
+
 Then after approval, echo the preview's `confirmation_token`:
 
-```
+```text
 delete_sub_portal_element portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>" confirm=true confirmation_token="<token from preview>"
 ```
 
@@ -80,6 +82,5 @@ update_portal portal_uuid="<MAIN_PORTAL_UUID>" visibility="public"
 ```text
 unpublish_sub_portal portal_uuid="<MAIN_PORTAL_UUID>" element_id="<FORMS_ELEMENT_ID>"
 ```
-
 
 The GraphQL `id` is exposed as `uuid` (same value).

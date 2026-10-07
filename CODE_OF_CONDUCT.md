@@ -27,7 +27,7 @@ Project maintainers are responsible for clarifying and enforcing these standards
 
 ## Reporting
 
-Report unacceptable behavior to **dev@pipefy.com**. All complaints will be reviewed and investigated promptly and fairly. Maintainers are obligated to respect the privacy and security of the reporter.
+Report unacceptable behavior to **<dev@pipefy.com>**. All complaints will be reviewed and investigated promptly and fairly. Maintainers are obligated to respect the privacy and security of the reporter.
 
 ## Attribution
 

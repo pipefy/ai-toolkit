@@ -8,7 +8,7 @@ If `command -v pipefy` succeeds, surface `pipefy --version` and stop.
 
 Otherwise prompt the user to confirm running:
 
-```
+```sh
 uv tool install --force pipefy-cli
 ```
 

@@ -20,6 +20,7 @@ Analyze existing pipes for improvement opportunities and implement them progress
 ## When to use
 
 The user asks to analyze or improve an existing process:
+
 - "Analyze my pipe"
 - "How can I improve this process?"
 - "Is this pipe optimized?"
@@ -90,7 +91,7 @@ Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per w
 
 Each round focuses on 1–2 improvements; report results before proceeding.
 
-**Example: automate a repeated manual step**
+### Example: automate a repeated manual step
 
 1. Identify the manual step and its trigger.
 2. Call `get_automation_events` and `get_automation_actions` for the pipe; select a supported event and action.
@@ -100,7 +101,7 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 4. Verify the rule before activating it, then report the actual event and action used. If the desired event or action is unavailable, report the limitation instead of guessing an ID.
 
-**Example: add a field condition**
+### Example: add a field condition
 
 1. Identify a field that should only show when another field has a specific value.
 2. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
@@ -111,7 +112,7 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 ## Output format per round
 
-```
+```text
 ## Analysis — [Pipe Name]
 
 ### Findings

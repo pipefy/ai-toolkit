@@ -1,0 +1,19 @@
+# External links only: tests/test_doc_links.py checks every relative link and anchor.
+scheme = ["https", "http"]
+include_fragments = false
+max_concurrency = 8
+accept = ["200..=299", "429"]
+
+exclude = [
+  # API and sign-in endpoints answer 401 to an anonymous request, which is correct.
+  '^https://(api|app|staging)\.pipefy\.com',
+  '^https://mcp\.pipefy\.com',
+  # Placeholders in examples.
+  '^https?://(localhost|127\.0\.0\.1)',
+  'example\.(com|org)',
+  'your-server\.com',
+  # Links into this repository resolve against the branch, not `main`, so they are checked locally instead.
+  '^https://github\.com/pipefy/ai-toolkit/(blob|tree)/',
+]
+
+exclude_path = ["\\.claude", "\\.review", "\\.venv", "dist"]

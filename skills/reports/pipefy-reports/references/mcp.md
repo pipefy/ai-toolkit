@@ -20,7 +20,7 @@ get_pipe_report_export export_id=<EXPORT_ID>
 get_pipe_report_filterable_fields pipe_uuid=<PIPE_UUID>
 ```
 
-```
+```text
 create_pipe_report pipe_id=67890 name="Phase subset" filter='{"operator":"and","queries":[{"field":"current_phase","operator":"eq","type":"select","value":"<phase_id>"}]}'
 ```
 

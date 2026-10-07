@@ -27,4 +27,4 @@ Community skills are published as templates and are not professional advice. Pip
 
 ## Questions
 
-Open an issue, or write to **dev@pipefy.com**.
+Open an issue, or write to **<dev@pipefy.com>**.

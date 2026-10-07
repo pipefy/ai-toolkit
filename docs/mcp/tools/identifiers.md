@@ -59,39 +59,47 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 ## Per-area quick reference
 
 ### Pipes and cards
+
 - `get_pipe` / `get_card` / `create_card` / `move_card_to_phase`: numeric ids (`pipe_id`, `card_id`).
 - `phase_id` / `destination_phase_id`: numeric phase ids on every phase-scoped tool (`get_phase_fields`, `get_phase_cards`, `create_phase_field`, `update_phase`, `delete_phase`, `move_card_to_phase`, `create_card`, field conditions, …). Discover via `get_pipe` → `phases[].id` for workflow phases, or `get_pipe` → `startFormPhaseId` when the tool needs the start form (e.g. `get_phase_cards` / `get_phase_cards_count`).
 - Labels: `label_id` / `label_ids` (on update/delete/`update_card`) are numeric. Discover via `get_labels` or `get_pipe` → `labels[].id`.
 - Field references: see [Field references](#field-references-slug-vs-internal_id) above.
 
 ### Members, email, webhooks
+
 - Members: `invite_members` addresses by **email** + `role_name` (not by id). `set_role(member_id)` and `remove_member_from_pipe(user_ids)` take the **user** id — `member_id` is that user id despite the name. Prefer numeric `user.id` from `get_pipe_members`; remove also accepts a user UUID.
 - Email templates: `get_email_templates(repo_id)` — `repo_id` is a numeric **pipe or table** id (not an org id). `email_template_id` is numeric; discover via `get_email_templates`.
 - Webhooks: `webhook_id` is numeric; discover via `get_webhooks(pipe_id)` → `id`.
 
 ### AI agents and knowledge bases
+
 - AI agent tools scope by `repo_uuid` (pipe **UUID**); the agent itself is addressed by its own `uuid`.
 - Knowledge-base tools scope by `pipe_uuid` (pipe **UUID**); items (plain text, document, data source) by their data-source **UUID**; data lookups read `source_repo_id` (numeric pipe id).
 - `dataSourceIds` / `data_source_ids`: knowledge-base item **UUIDs**.
 
 ### Automations
+
 - `create_automation` / `create_ai_automation`: `pipe_id` numeric; `automation_id` (get/update/delete) is the automation's own id, not the pipe's.
 - Field references inside `field_map` and `condition`: **internal_id** (see above).
 
 ### Tables and records
+
 - `table_id` and record ids are strings — numeric or an opaque token (e.g. `"fIVcd19N"`). Record field references use the field **slug**.
 
 ### LLM providers
+
 - List / dependencies / create / update / delete: `organization_uuid` (**UUID**).
 - Default get / set / reset: numeric `organization_id` / `owner_id`.
 - `get_available_ai_models(provider_name)`: the vendor's snake_case name (e.g. `amazon_bedrock`), not the hyphenated `configuration.provider`.
 
 ### Observability
+
 - `get_ai_agent_logs(repo_uuid)` (pipe UUID); `get_ai_agent_log_details(log_uuid)`.
 - `get_automation_logs_by_repo(repo_id)` (numeric pipe id, string); `get_automation_logs(automation_id)`.
 - Usage tools (`get_agents_usage`, `get_automations_usage`, `get_ai_credit_usage`) take `organization_uuid` — UUID **or** numeric org id (resolved server-side). Metrics (`get_automation_execution_metrics`) and export (`export_automation_jobs`) take numeric `organization_id` only.
 
 ### Organization, portal, relations, reports
+
 - `list_organizations`: no id. `get_organization(organization_id)`: numeric id.
 - Portal: `organization_uuid` (UUID or numeric); `portal_uuid` (interface UUID).
 - Relations: `get_pipe_relations(pipe_id)` (numeric pipe id); `get_table_relations(relation_ids)` (table-**relation** ids, not table ids); `create_card_relation(source_id)` = a pipe-relation id from `get_pipe_relations`.

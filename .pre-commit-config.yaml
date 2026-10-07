@@ -27,6 +27,16 @@ repos:
       - id: shellcheck
         args: [--shell=sh]
 
+  # The same release that .github/workflows/docs.yml runs. The files and rules
+  # come from .markdownlint-cli2.jsonc.
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.3
+    hooks:
+      - id: markdownlint-cli2
+        # The globs in .markdownlint-cli2.jsonc pick the files, so CI and the hook lint the same set.
+        pass_filenames: false
+        files: \.md$|^\.markdownlint-cli2\.jsonc$
+
   - repo: local
     hooks:
       # `sh -n` only, because macOS has no dash; CI runs `dash -n` too, where

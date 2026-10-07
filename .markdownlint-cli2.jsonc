@@ -1,0 +1,17 @@
+{
+  "config": {
+    // Prose keeps one sentence or one paragraph per line, so a wrapped line would only add diff noise.
+    "MD013": false,
+    // Tables are written compact (`|---|`) and aligned only where a human did it by hand.
+    "MD060": false,
+    // The changelog repeats "Added", "Changed", and "Fixed" under each version.
+    "MD024": { "siblings_only": true },
+    // GitHub renders two adjacent callouts as two boxes only when a blank line separates them.
+    "MD028": false,
+    // The root README opens with the banner image, and its heading follows.
+    "MD041": false,
+    "MD033": { "allowed_elements": ["div", "br", "details", "summary", "p", "img", "a", "picture", "source", "sub", "sup"] }
+  },
+  "globs": ["**/*.md"],
+  "ignores": ["**/node_modules/**", "**/.venv/**", ".claude/**", ".review/**", ".pytest_cache/**", ".ruff_cache/**", "dist/**", "**/dist/**"]
+}
