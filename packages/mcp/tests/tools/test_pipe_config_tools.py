@@ -65,7 +65,7 @@ def test_build_field_condition_payload_helpers__no_integration():
 @pytest.mark.parametrize(
     ("value", "looks_like_slug"),
     [
-        ("308821043", False),
+        ("421234578", False),
         ("my_custom_field", True),
         (99, False),
         ("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", False),
@@ -977,7 +977,7 @@ async def test_create_phase_field_with_options(
         "createPhaseField": {
             "phase_field": {
                 "id": "prioridade",
-                "internal_id": "427957330",
+                "internal_id": "421234572",
                 "uuid": "c1d2e3f4-5678-9abc-def0-123456789abc",
                 "label": "Prioridade",
                 "type": "select",
@@ -1075,14 +1075,14 @@ async def test_update_phase_field_with_uuid_for_disambiguation(
             {
                 "field_id": "prioridade",
                 "label": "Nível de Urgência",
-                "uuid": "a796cc44-6568-4bfb-9c09-2b903eb7bff2",
+                "uuid": "550e8400-e29b-41d4-a716-446655440104",
             },
         )
 
     mock_pipe_config_client.update_phase_field.assert_awaited_once_with(
         "prioridade",
         label="Nível de Urgência",
-        uuid="a796cc44-6568-4bfb-9c09-2b903eb7bff2",
+        uuid="550e8400-e29b-41d4-a716-446655440104",
     )
     assert extract_payload(result)["success"] is True
 
@@ -1144,7 +1144,7 @@ async def test_delete_phase_field_preview_lists_dependent_conditions(
         "fields": [
             {
                 "id": "my_field",
-                "internal_id": "308821043",
+                "internal_id": "421234578",
                 "uuid": "aaa-bbb-ccc",
             }
         ]
@@ -1155,7 +1155,7 @@ async def test_delete_phase_field_preview_lists_dependent_conditions(
                 {
                     "id": "cond-1",
                     "name": "Show when X",
-                    "actions": [{"phaseFieldId": "308821043"}],
+                    "actions": [{"phaseFieldId": "421234578"}],
                 }
             ]
         }
@@ -1194,17 +1194,17 @@ async def test_delete_phase_field_preview_includes_conditions_with_expression_on
     ``when`` expression (actions may target a different field).
     """
     pipe_uuid = "bddc2aff-9c0b-4ef8-bb6d-6bb9bd380a11"
-    phase_id = 343162749
+    phase_id = 341234570
     mock_pipe_config_client.get_phase_fields.return_value = {
         "fields": [
             {
                 "id": "priority",
-                "internal_id": "429358624",
+                "internal_id": "421234570",
                 "uuid": pipe_uuid,
             },
             {
                 "id": "detail",
-                "internal_id": "429358625",
+                "internal_id": "421234571",
                 "uuid": "c0ffee00-9c0b-4ef8-bb6d-6bb9bd380a11",
             },
         ]
@@ -1213,18 +1213,18 @@ async def test_delete_phase_field_preview_includes_conditions_with_expression_on
         "phase": {
             "fieldConditions": [
                 {
-                    "id": "306743895",
+                    "id": "306123456",
                     "name": "When priority is Alta hide detail",
                     "condition": {
                         "expressions": [
                             {
-                                "field_address": "429358624",
+                                "field_address": "421234570",
                                 "operation": "equals",
                                 "value": "Alta",
                             }
                         ]
                     },
-                    "actions": [{"phaseFieldId": "429358625"}],
+                    "actions": [{"phaseFieldId": "421234571"}],
                 }
             ]
         }
@@ -1250,7 +1250,7 @@ async def test_delete_phase_field_preview_includes_conditions_with_expression_on
     assert deps is not None
     fcs = deps.get("field_conditions") or []
     assert len(fcs) >= 1
-    assert any(c.get("id") == "306743895" for c in fcs)
+    assert any(c.get("id") == "306123456" for c in fcs)
 
 
 @pytest.mark.anyio
@@ -1261,7 +1261,7 @@ async def test_delete_phase_field_preview_no_deps_unchanged(
         "fields": [
             {
                 "id": "my_field",
-                "internal_id": "308821043",
+                "internal_id": "421234578",
                 "uuid": "aaa-bbb-ccc",
             }
         ]
@@ -2284,7 +2284,7 @@ async def test_create_field_condition_success(
         ],
         "expressions_structure": [["42"]],
     }
-    actions = [{"phaseFieldId": "308821043", "whenEvaluator": True, "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "whenEvaluator": True, "actionId": "hide"}]
     mock_pipe_config_client.create_field_condition.return_value = {
         "createFieldCondition": {"fieldCondition": {"id": "cond-new"}},
     }
@@ -2360,7 +2360,7 @@ async def test_create_field_condition_top_level_name__no_integration(
     expr = {
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}],
     }
-    actions = [{"phaseFieldId": "308821043", "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "actionId": "hide"}]
     mock_pipe_config_client.create_field_condition.return_value = {
         "createFieldCondition": {"fieldCondition": {"id": "cond-top"}},
     }
@@ -2396,7 +2396,7 @@ async def test_create_field_condition_top_level_name_wins_over_extra_input__no_i
     expr = {
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}],
     }
-    actions = [{"phaseFieldId": "308821043", "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "actionId": "hide"}]
     mock_pipe_config_client.create_field_condition.return_value = {
         "createFieldCondition": {"fieldCondition": {"id": "cond-win"}},
     }
@@ -2432,7 +2432,7 @@ async def test_create_field_condition_rejects_missing_name__no_integration(
     expr = {
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}],
     }
-    actions = [{"phaseFieldId": "308821043", "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "actionId": "hide"}]
     async with pipe_config_session as session:
         result = await session.call_tool(
             "create_field_condition",
@@ -2451,7 +2451,7 @@ async def test_create_field_condition_rejects_blank_name__no_integration(
     expr = {
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}],
     }
-    actions = [{"phaseFieldId": "308821043", "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "actionId": "hide"}]
     async with pipe_config_session as session:
         result = await session.call_tool(
             "create_field_condition",
@@ -2576,7 +2576,7 @@ async def test_create_field_condition_passes_raw_actions_to_sdk__no_integration(
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}]
     }
     actions_in = [
-        {"phaseFieldId": "308821043", "whenEvaluator": True, "actionId": "hidden"}
+        {"phaseFieldId": "421234578", "whenEvaluator": True, "actionId": "hidden"}
     ]
     mock_pipe_config_client.create_field_condition.return_value = {
         "createFieldCondition": {"fieldCondition": {"id": "cond-x"}},
@@ -2618,7 +2618,7 @@ async def test_create_field_condition_forwards_condition_to_sdk__no_integration(
         ],
         "expressions_structure": [["99"]],
     }
-    actions = [{"phaseFieldId": "308821043", "whenEvaluator": True, "actionId": "hide"}]
+    actions = [{"phaseFieldId": "421234578", "whenEvaluator": True, "actionId": "hide"}]
     mock_pipe_config_client.create_field_condition.return_value = {
         "createFieldCondition": {"fieldCondition": {"id": "cond-stripped"}},
     }
@@ -2658,7 +2658,7 @@ async def test_create_field_condition_error(
     expr = {
         "expressions": [{"field_address": "a", "operation": "equals", "value": "1"}],
     }
-    actions = [{"phaseFieldId": "308821043"}]
+    actions = [{"phaseFieldId": "421234578"}]
 
     async with pipe_config_session as session:
         result = await session.call_tool(
@@ -2720,7 +2720,7 @@ async def test_update_field_condition_success_with_explicit_condition_and_action
     condition_in = {
         "expressions": [{"field_address": "f1", "operation": "equals", "value": "x"}],
     }
-    actions_in = [{"phaseFieldId": "308821043", "actionId": "hidden"}]
+    actions_in = [{"phaseFieldId": "421234578", "actionId": "hidden"}]
 
     async with pipe_config_session as session:
         result = await session.call_tool(
@@ -2870,7 +2870,7 @@ def test_normalize_phase_allowed_move_targets_missing_phase__no_integration():
 async def test_get_phase_allowed_move_targets_success(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    phase_id = 342182335
+    phase_id = 341234569
     mock_pipe_config_client.get_phase_allowed_move_targets.return_value = {
         "phase": {
             "id": str(phase_id),
@@ -2986,7 +2986,7 @@ def test_normalize_phase_cards_list_missing_phase__no_integration():
 async def test_get_phase_cards_count_success(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    phase_id = 342182335
+    phase_id = 341234569
     mock_pipe_config_client.get_phase.return_value = {
         "phase_id": str(phase_id),
         "phase_name": "Doing",
@@ -3073,7 +3073,7 @@ async def test_get_phase_cards_success(
     extract_payload,
     legacy_envelope,
 ):
-    phase_id = 342182335
+    phase_id = 341234569
     raw = {
         "phase": {
             "id": str(phase_id),
