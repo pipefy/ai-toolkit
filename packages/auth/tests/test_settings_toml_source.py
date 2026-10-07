@@ -32,13 +32,13 @@ def test_field_name_keys_load_from_toml(tmp_path: Path) -> None:
     _write(
         tmp_path / "config.toml",
         """
-        base_url = "https://pipefy.example.com"
+        base_url = "https://staging.example.com"
         auth_url = "https://signin.example.com/realms/pipefy"
         auth_client_id = "staging-client"
         """,
     )
     settings = AuthSettings()
-    assert settings.base_url == "https://pipefy.example.com"
+    assert settings.base_url == "https://staging.example.com"
     assert settings.auth_url == "https://signin.example.com/realms/pipefy"
     assert settings.auth_client_id == "staging-client"
 
@@ -100,11 +100,11 @@ def test_unknown_keys_ignored(tmp_path: Path) -> None:
     _write(
         tmp_path / "config.toml",
         """
-        base_url = "https://pipefy.example.com"
+        base_url = "https://staging.example.com"
         not_a_known_field = "ignored"
         """,
     )
-    assert AuthSettings().base_url == "https://pipefy.example.com"
+    assert AuthSettings().base_url == "https://staging.example.com"
 
 
 def test_kill_switch_and_backend_load_from_toml(tmp_path: Path) -> None:
