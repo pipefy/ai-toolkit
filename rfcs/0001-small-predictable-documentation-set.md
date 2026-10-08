@@ -7,7 +7,7 @@
 
 ## Summary and motivation
 
-The toolkit's docs copy facts that the code already owns, and no rule says where a page belongs. Authors keep the copies by hand, so the copies drift from the code, and each new page goes wherever its author chose. Today 11 statements in the docs and docstrings are false or misleading, or contain links that break where readers see them. The existing doc checks pass on all 11.
+The toolkit's docs copy facts that the code already owns, and no rule says where a page belongs. Authors keep the copies by hand, so the copies drift from the code, and each new page goes wherever its author chose. Today at least 11 statements in the docs and docstrings are false or misleading, or contain links that break where readers see them. The investigation for this RFC found these 11 without a full audit, and the existing doc checks pass on all of them.
 
 This RFC proposes two principles:
 
@@ -78,7 +78,7 @@ The repository root holds 8 Markdown files. Six of them follow a convention that
 
 ### The cheaper alternative
 
-The cheapest response is to fix the 11 statements, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. This RFC includes the first two. They do not stop the next drift, for three reasons.
+The cheapest response is to fix the 11 statements found so far, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. This RFC includes the first two. They do not stop the next drift, for three reasons.
 
 First, a fixed copy is still a copy, and nothing ties it to the code. `README.md:198` has said "three Python packages" since 2026-05-18. The `pipefy-auth` package arrived four days later, in PR #216. After that, 55 commits that are not merges changed `README.md`, and none of them corrected the sentence.
 
@@ -174,7 +174,7 @@ CI runs these checks at every commit on `dev`:
 
 Each claim about behavior in a hand-written page is tested in one of three ways: by an executable example, by a pointer or a generated block (R1), or by a link to a named test. A reviewer deletes a claim that none of these tests.
 
-The evidence is in the problem statement: the existing checks pass on all 11 false statements, and CI runs no link checker and no Markdown linter. RFC-0002 sets the quality bar for these checks as tests.
+The evidence is in the problem statement: the existing checks pass on all 11 statements that the investigation found, and CI runs no link checker and no Markdown linter. RFC-0002 sets the quality bar for these checks as tests.
 
 ### Layout
 
