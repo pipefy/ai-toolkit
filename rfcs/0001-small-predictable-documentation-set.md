@@ -107,7 +107,74 @@ This RFC does not propose a docs site with its own user interface, and the layou
 
 ### Rules
 
-Pending (pass 2).
+Four rules put the two principles into practice. Each rule says what a reviewer or a check verifies, and each one points to the evidence in the problem statement. The layout below follows from these rules.
+
+#### R1: One owner per fact
+
+Every fact has one owner: the one place where the fact is written. The code owns each fact that it can state, such as the parameters of an MCP tool, the commands and options of the CLI, the settings that the packages read, and the flags of `install.sh` and `uninstall.sh`. A person owns every other fact.
+
+Every other place reaches a fact that the code owns in one of two ways:
+
+1. A pointer to the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
+2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today: a comparison across commands, as in `docs/parity.md`, a page that readers see outside the repository, such as a package README on PyPI, and an agent that chooses a tool before it calls one.
+
+A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output.
+
+The evidence is in "Copies of facts that the code owns": four false statements in the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and 349 tool-to-command pairs. "The cheaper alternative" shows that a corrected copy drifts again.
+
+No code records today which CLI command implements which MCP tool. This RFC asks RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
+
+#### R2: The path of a page declares its role
+
+A path table maps each path pattern to a role. Every tracked Markdown file matches one pattern, and CI fails on a file that matches none. A new pattern needs a reviewed edit to the table.
+
+Under `docs/`, a path has three parts: `docs/<scope>/<kind>/<subject>.md`.
+
+- The scope is one of `docs/` (global), `docs/contributing/`, `docs/mcp/`, `docs/cli/`, and `docs/sdk/`. R3 decides the scope of each fact.
+- The kind is one of the folders `tutorial/`, `how-to/`, `reference/`, and `explanation/`. The file `README.md` in each scope is its landing page.
+- The subject names what the page covers, such as `login.md` or `identifiers.md`.
+
+Every scope uses the same kind folders, so a reader who knows one scope can find a page in any other. A folder exists only when it holds a page.
+
+Each page starts with front matter that holds two fields: `title` and `description`. The landing page of a scope lists its pages with these fields. The front matter does not repeat the kind, because the path already holds it (R1).
+
+Outside `docs/`, the path table names each other role. The repository root holds six Markdown files, each of which follows a convention that readers expect: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `AGENTS.md`, and `CHANGELOG.md`. `RELEASE.md` and `TERMS.md` move into `docs/`. The table also names the package READMEs, the skills, and `rfcs/`.
+
+A package README becomes a page on PyPI, so it links only to scope landing pages, with absolute GitHub URLs.
+
+The evidence is in "Page placement" and in the last row of the table in "Outdated references and broken links".
+
+#### R3: The scope of a fact
+
+The scope rule places each fact, not each page. It starts with one question: what is the reader working with when they need the fact?
+
+1. If the reader is changing the repository, the fact belongs to the contributor scope, `docs/contributing/`.
+2. Otherwise, the reader uses a surface: the MCP server, the CLI, or the SDK. A fact that holds for one surface belongs to the scope of that surface.
+3. A fact that holds for two or more surfaces belongs to the global scope, `docs/`.
+
+The answer follows the surface, not the location of the code. For example, `pipefy_auth/flow.py` raises `State mismatch on OAuth callback`, but only `pipefy auth login` runs that flow, so the fix for that error belongs to the CLI scope.
+
+The contributor scope shares no fact with the user scopes. Its pages can link to user pages, but no page includes text from the other side.
+
+Hand-written content flows up only. Each surface scope is complete on its own. A global page can include sections from the surface scopes and adds only the ideas that span surfaces. A surface page links to global pages and never includes them. As a result, two scopes never hold the same fact.
+
+This RFC uses "global" for a fact that holds for two or more surfaces. It does not use "cross-cutting", because today that word names `docs/mcp/tools/cross-cutting.md`, a page about one surface.
+
+The evidence is in "Page placement": contributor pages sit at the top of the user docs, and each author picks the place for a new page.
+
+#### R4: A machine checks every claim that it can check
+
+CI runs these checks at every commit on `dev`:
+
+- The path table check (R2).
+- The freshness check for generated blocks (R1).
+- A link checker over all Markdown files.
+- `markdownlint` with a committed config.
+- Executable examples: each `pipefy` command block and code snippet in a hand-written page runs as an offline test.
+
+Each claim about behavior in a hand-written page carries its proof: an executable example, a pointer or a generated block (R1), or a link to a named test. A reviewer deletes a claim that has no proof.
+
+The evidence is in the problem statement: the existing checks pass on all 11 false statements, and CI runs no link checker and no Markdown linter. RFC-0002 sets the quality bar for these checks as tests.
 
 ### Layout
 
