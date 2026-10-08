@@ -180,7 +180,134 @@ The evidence is in the problem statement: the existing checks pass on all 11 sta
 
 ### Layout
 
-Pending (pass 3).
+This part shows the docs that follow from the rules: how a fact reaches a page, the tree under `docs/`, where today's mixed pages go, and the files outside `docs/`. Part of it depends on work that RFC-0003 owns, and the last subsection names that work.
+
+#### How a fact reaches a page
+
+```mermaid
+flowchart LR
+  code["Code: signatures, docstrings, Typer commands, settings models, tool registry"]
+  gen["Generators"]
+  blocks["Generated blocks and reference pages"]
+  people["Hand-written pages"]
+  checks{"CI checks (R4)"}
+  code --> gen --> blocks --> checks
+  people --> checks
+  people -. "pointer to a command" .-> code
+```
+
+The code is the source of truth for every fact that it can state. Generators read the code and write the reference pages and the generated blocks. People write everything else, and a hand-written page reaches a fact of the code through a pointer or a generated block (R1). Every page passes the same checks before it reaches `dev`.
+
+One command runs every generator, and CI runs the same command in check mode. The generators cover these outputs:
+
+- The MCP tool reference, from the tool signatures and docstrings, one page per group of tools.
+- The CLI command reference, from the Typer app.
+- The SDK reference, from the docstrings of the public API.
+- The settings table in `docs/reference/config.md`, from the settings models.
+- The counts that a reader needs, such as the number of tools in `docs/reference/parity.md`, from the tool registry. The other copies of a count are deleted.
+- The tool-to-command table in `docs/reference/parity.md` and in each skill's `references/cli.md`, once the registry records the mapping (R1).
+- The landing page of each section, from the `title` and `description` of its pages.
+- The documentation map in `AGENTS.md`.
+
+#### The tree under `docs/`
+
+```
+docs/
+  README.md                          landing page (generated)
+  tutorial/getting-started.md        install, sign in, first task through a skill
+  how-to/install.md                  includes each product's install steps
+  how-to/login.md                    service account and static token
+  how-to/uninstall.md
+  reference/auth-errors.md
+  reference/config.md                generated block
+  reference/glossary.md
+  reference/parity.md                generated block
+  reference/terms.md
+  explanation/authentication.md      credential order, stored session, keychain
+  explanation/identifiers.md
+  explanation/versioning.md          lockstep versions and deprecation
+  contributing/
+    README.md
+    tutorial/getting-started.md      local setup and a first change
+    how-to/add-capability.md
+    how-to/release.md
+    how-to/run-checks.md
+    reference/authoring.md           rules for docs and skills
+    reference/code-rules.md
+    reference/glossary.md
+    explanation/architecture.md
+    explanation/dependencies.md
+    explanation/ipaas-internals.md
+    explanation/response-typing.md
+    explanation/rfc-process.md
+  mcp/
+    README.md
+    tutorial/getting-started.md
+    how-to/install.md
+    how-to/login.md                  OAuth sign-in in the MCP client
+    how-to/self-host.md
+    how-to/upgrade.md
+    reference/<group>.md             generated from the tools
+    explanation/confirmations.md
+    explanation/deployment.md
+    explanation/ipaas.md
+    explanation/tool-conventions.md
+  cli/
+    README.md
+    tutorial/getting-started.md
+    how-to/install.md
+    how-to/login.md                  pipefy auth login, headless and SSH
+    how-to/self-healing.md
+    reference/commands.md            generated from the Typer app
+    explanation/login.md             the login flow and eager refresh
+  sdk/
+    README.md
+    tutorial/getting-started.md
+    how-to/install.md
+    how-to/upgrade.md
+    reference/api.md                 generated from the docstrings
+```
+
+The global section holds 12 pages, because only a few ideas hold for two or more products: credentials and the stored session, shared configuration, installers that set up several products, lockstep versions, parity, Pipefy concepts such as the forms of an ID, and the legal terms.
+
+The stored session is global because two products use it. The CLI writes it with `pipefy auth login`, and the local MCP server reads it at startup (`StartupIdentity.from_configured_credential` in `packages/mcp/src/pipefy_mcp/auth/session_identity.py:42`).
+
+The global tutorial follows the agent path: install the plugin or run `install.sh`, sign in, and ask the agent for a first task. That path spans products by nature, because every skill needs the MCP server or the CLI. Each product section has its own tutorial for a reader who uses only that product.
+
+Skills have no section. A skill cannot be complete on its own, so its install steps are part of the global `how-to/install.md`, and its catalog stays in `skills/README.md`.
+
+#### Where today's mixed pages go
+
+Five pages mix kinds or products today. Each one splits by R2 and R3:
+
+| Page today | New places |
+|---|---|
+| `docs/cli/auth.md` (292 lines) | The quick start and "Headless / SSH" go to `docs/cli/how-to/login.md`. The flags and exit codes come from the generated CLI reference. The credential order and the keychain backends go to `docs/explanation/authentication.md`. Errors that any product can raise go to `docs/reference/auth-errors.md`, and errors that only `pipefy auth login` raises stay in the CLI section. |
+| `docs/mcp/tools/cross-cutting.md` | Pagination, `extra_input`, `debug`, and error payloads go to the tool docstrings, and from there to the generated MCP reference. The reasons behind confirmations go to `docs/mcp/explanation/confirmations.md`. The conventions that every tool follows go to `docs/mcp/explanation/tool-conventions.md`. The ID facts go to `docs/explanation/identifiers.md`. |
+| The 14 domain pages in `docs/mcp/tools/` | The parameter facts go to the tool docstrings. The explanations go to `docs/mcp/explanation/`. |
+| `docs/MIGRATION.md` | The cutover note goes to `CHANGELOG.md`. The MCP steps go to `docs/mcp/how-to/upgrade.md`, the settings model steps go to `docs/sdk/how-to/upgrade.md`, and the service-account rename goes to `docs/how-to/login.md`. |
+| `docs/ipaas.md` | The flow and the credential minting go to `docs/contributing/explanation/ipaas-internals.md`. The settings come from the generated `docs/reference/config.md`. The vocabulary goes to `docs/mcp/explanation/ipaas.md`. |
+
+`docs/mcp/tools/identifiers.md` becomes the global `docs/explanation/identifiers.md`, because the CLI and the SDK take the same four forms of an ID. The per-tool argument rows move to the tool docstrings.
+
+#### Files outside `docs/`
+
+- **The root.** `README.md` introduces the toolkit, keeps one tested install snippet, and links to the landing page of each section. `CONTRIBUTING.md` holds the commit, sign-off, and pull request rules, and it links to `docs/contributing/README.md`. `CHANGELOG.md` holds the history. `RELEASE.md` becomes `docs/contributing/how-to/release.md`, `DEPRECATION.md` joins `docs/explanation/versioning.md`, and `TERMS.md` becomes `docs/reference/terms.md` once the owner of the legal text agrees.
+- **Agent instructions.** `AGENTS.md` is the only instruction file, at the root, in `packages/mcp/`, and in `skills/`. Claude Code reads `AGENTS.md` when no `CLAUDE.md` exists, so the symlink `packages/mcp/CLAUDE.md` goes away. Each rule line in an `AGENTS.md` links to its page in `docs/contributing/reference/`.
+- **Package READMEs.** Each one is a short PyPI page with the install command and absolute links to its section's landing page (R2).
+- **Starter files.** The skill starter in `.github/skill-template/` and `docs/compliance/COMPLIANCE.template.md` move to the root folder `template/`, because they are files to copy, not pages to read.
+- **RFCs.** They stay in `rfcs/`, outside `docs/`. A draft asks for a decision and an accepted RFC records one, so an RFC fits no Diataxis kind.
+
+#### One fact before and after
+
+Today, 6 pages in `docs/mcp/tools/` and 4 skills tell the reader to pass `debug=true` to `execute_graphql`. The signature of `execute_graphql` (`packages/mcp/src/pipefy_mcp/tools/introspection_tools.py:177`) has no `debug` parameter, and no check notices.
+
+After this RFC, the parameter list of `execute_graphql` exists in one place: its signature. The generated MCP reference shows it, and an agent reads the same list in the tool schema. A skill that needs the list points to the tool schema. A hand-written example that calls the tool with `debug=true` runs as an executable example, and the run fails because the parameter does not exist.
+
+#### Work that the neighbors supply
+
+- **RFC-0003** adds the tool-to-command mapping to the tool registry, keeps `Args:` sections in the docstrings that the generators read, and writes the content of the architecture pages. This RFC asks RFC-0003 to accept that the arc42 sections of the architecture live by kind: the goals and the runtime view in `docs/contributing/explanation/architecture.md`, the deployment view in `docs/mcp/explanation/deployment.md`, the rules in `docs/contributing/reference/code-rules.md`, and the decisions in `rfcs/`.
+- **RFC-0002** sets the quality bar for the checks in R4, as tests.
 
 ## Drawbacks and alternatives
 
