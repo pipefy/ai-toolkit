@@ -118,7 +118,7 @@ Every other place reaches a fact that the code owns in one of two ways:
 1. A pointer: a sentence that names the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
 2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today: a comparison across commands, as in `docs/parity.md`, a page that readers see outside the repository, such as a package README on PyPI, and an agent that chooses a tool before it calls one.
 
-A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output.
+A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
 A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it: "The MCP server exposes 187 tools" becomes "The MCP server exposes tools for pipes, cards, reports, and more". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
 
@@ -166,13 +166,17 @@ The evidence is in "Page placement": contributor pages sit at the top of the use
 
 #### R4: A machine checks every claim that it can check
 
+Each check and each generator uses a maintained open-source tool when one exists. The repository writes its own code only for facts that no tool knows, such as the layout table and the tool registry. A standard tool has its own documentation and its own maintainers, so the repository keeps only its config.
+
 CI runs these checks at every commit on `dev`:
 
-- The layout table check (R2).
-- The freshness check for generated blocks (R1).
-- A link checker over all Markdown files.
-- `markdownlint` with a committed config.
-- Executable examples: each `pipefy` command block and code snippet in a hand-written page runs as an offline test.
+- The layout table check (R2). No tool knows the layout table, so this check is a short script in the repository.
+- The freshness check for generated blocks (R1), with `cog --check`.
+- A link checker over all Markdown files, with `lychee`.
+- A Markdown linter, with `markdownlint-cli2` and a committed config.
+- Executable examples, with Sybil, a pytest plugin: each `pipefy` command block and code snippet in a hand-written page runs as an offline test.
+
+`pre-commit` runs the same checks on a contributor's machine. The repository already uses it for `ruff` and `shellcheck`.
 
 Each claim about behavior in a hand-written page is tested in one of three ways: by an executable example, by a pointer or a generated block (R1), or by a link to a named test. A reviewer deletes a claim that none of these tests.
 
@@ -198,10 +202,10 @@ flowchart LR
 
 The code is the source of truth for every fact that it can state. Generators read the code and write the reference pages and the generated blocks. People write everything else, and a hand-written page reaches a fact of the code through a pointer or a generated block (R1). Every page passes the same checks before it reaches `dev`.
 
-One command runs every generator, and CI runs the same command in check mode. The generators cover these outputs:
+`cog` runs every generator that writes a block inside a page. A generator that writes a whole page also runs in CI, and CI fails when the page changes. The generators cover these outputs:
 
-- The MCP tool reference, from the tool signatures and docstrings, one page per group of tools.
-- The CLI command reference, from the Typer app.
+- The MCP tool reference, from the tool signatures and docstrings, one page per group of tools. No tool reads the tool registry, so this generator is a script in the repository.
+- The CLI command reference, from the Typer app, with `typer pipefy_cli.main utils docs`.
 - The SDK reference, from the docstrings of the public API.
 - The settings table in `docs/reference/config.md`, from the settings models.
 - The counts that a reader needs, such as the number of tools in `docs/reference/parity.md`, from the tool registry. The other copies of a count are deleted.
