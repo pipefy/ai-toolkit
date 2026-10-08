@@ -120,6 +120,8 @@ Every other place reaches a fact that the code owns in one of two ways:
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output.
 
+A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it: "The MCP server exposes 187 tools" becomes "The MCP server exposes tools for pipes, cards, reports, and more". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
+
 The evidence is in "Copies of facts that the code owns": four false statements in the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and 349 tool-to-command pairs. "The cheaper alternative" shows that a corrected copy drifts again.
 
 No code records today which CLI command implements which MCP tool. This RFC asks RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
