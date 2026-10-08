@@ -12,7 +12,7 @@ The toolkit's docs copy facts that the code already owns, and no rule says where
 This RFC proposes two principles:
 
 1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact, such as `pipefy --help`. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
-2. The path of a page tells the reader who the page is for, which part of the toolkit it covers, and what kind of page it is. The reader is a user or a contributor. The part is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
+2. The path of a page tells the reader who the page is for, which product it covers, and what kind of page it is. The reader is a user or a contributor. The product is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
 
 People write the rest by hand: tutorials, how-to guides, explanations, and the reasons behind a design. A machine checks each statement in them that a machine can check, such as a link, a command, or an example.
 
@@ -43,7 +43,7 @@ RFC-0003 owns this behavior, so this RFC corrects these three statements only af
 
 Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool.
 
-Docs also drift when no code changes. The first two rows were correct until PR #715. That PR changed skills, tests, and the skill lint, but no code under `packages/`. Its commit "docs: Separate skill surface instructions" split the skill tables per surface and dropped the note column that explained them.
+Docs also drift when no code changes. The first two rows were correct until PR #715. That PR changed skills, tests, and the skill lint, but no code under `packages/`. Its commit "docs: Separate skill surface instructions" split the skill tables per product and dropped the note column that explained them.
 
 The copies also multiply. The false `debug=true` advice appears in 6 pages in `docs/mcp/tools/` and in 4 skills. The tool count "187" appears in `docs/parity.md:5`, `docs/parity.md:229`, `packages/mcp/README.md:3`, and `packages/mcp/README.md:100`. A test compares the number at `docs/parity.md:5` with the registry (`tests/test_parity.py:131`), and no test reads the other three.
 
@@ -72,7 +72,7 @@ The 32 pages in `docs/` mix kinds of content at every level:
 - `DEPRECATION.md` is a policy page, and `docs/README.md` does not link it.
 - `docs/mcp/tools/` holds 16 pages: 14 domain pages that are part reference and part explanation, plus `cross-cutting.md` and `identifiers.md`.
 - `docs/cli/auth.md` mixes a quick start, a reference section, and a troubleshooting section in 292 lines.
-- `docs/` has no tutorial for any surface. The only quick starts are sections inside `docs/cli/auth.md` and `packages/cli/README.md`.
+- `docs/` has no tutorial for any product. The only quick starts are sections inside `docs/cli/auth.md` and `packages/cli/README.md`.
 
 The repository root holds 8 Markdown files. Six of them follow a convention that readers expect at the root. `RELEASE.md` and `TERMS.md` follow none, so a reader cannot predict that they exist. Because no rule exists, each author picks the place for a new page, and each new page adds to the mix.
 
@@ -109,13 +109,13 @@ This RFC does not propose a docs site with its own user interface, and the layou
 
 Four rules put the two principles into practice. Each rule says what a reviewer or a check verifies, and each one points to the evidence in the problem statement. The layout below follows from these rules.
 
-#### R1: One owner per fact
+#### R1: One source of truth per fact
 
-Every fact has one owner: the one place where the fact is written. The code owns each fact that it can state, such as the parameters of an MCP tool, the commands and options of the CLI, the settings that the packages read, and the flags of `install.sh` and `uninstall.sh`. A person owns every other fact.
+Every fact has one source of truth: the one place where the fact is written. The code owns each fact that it can state, such as the parameters of an MCP tool, the commands and options of the CLI, the settings that the packages read, and the flags of `install.sh` and `uninstall.sh`. A person owns every other fact.
 
 Every other place reaches a fact that the code owns in one of two ways:
 
-1. A pointer to the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
+1. A pointer: a sentence that names the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
 2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today: a comparison across commands, as in `docs/parity.md`, a page that readers see outside the repository, such as a package README on PyPI, and an agent that chooses a tool before it calls one.
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output.
@@ -124,41 +124,41 @@ The evidence is in "Copies of facts that the code owns": four false statements i
 
 No code records today which CLI command implements which MCP tool. This RFC asks RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
 
-#### R2: The path of a page declares its role
+#### R2: The path of a page declares its place
 
-A path table maps each path pattern to a role. Every tracked Markdown file matches one pattern, and CI fails on a file that matches none. A new pattern needs a reviewed edit to the table.
+A layout table maps each path pattern to the place of a file. Every tracked Markdown file matches one pattern, and CI fails on a file that matches none. A new pattern needs a reviewed edit to the table.
 
-Under `docs/`, a path has three parts: `docs/<scope>/<kind>/<subject>.md`.
+Under `docs/`, a path has three parts: `docs/<section>/<kind>/<subject>.md`.
 
-- The scope is one of `docs/` (global), `docs/contributing/`, `docs/mcp/`, `docs/cli/`, and `docs/sdk/`. R3 decides the scope of each fact.
-- The kind is one of the folders `tutorial/`, `how-to/`, `reference/`, and `explanation/`. The file `README.md` in each scope is its landing page.
+- The section is one of `docs/` (global), `docs/contributing/`, `docs/mcp/`, `docs/cli/`, and `docs/sdk/`. R3 decides the section of each fact.
+- The kind is one of the folders `tutorial/`, `how-to/`, `reference/`, and `explanation/`. The file `README.md` in each section is its landing page.
 - The subject names what the page covers, such as `login.md` or `identifiers.md`.
 
-Every scope uses the same kind folders, so a reader who knows one scope can find a page in any other. A folder exists only when it holds a page.
+Every section uses the same kind folders, so a reader who knows one section can find a page in any other. A folder exists only when it holds a page.
 
-Each page starts with front matter that holds two fields: `title` and `description`. The landing page of a scope lists its pages with these fields. The front matter does not repeat the kind, because the path already holds it (R1).
+Each page starts with front matter that holds two fields: `title` and `description`. The landing page of a section lists its pages with these fields. The front matter does not repeat the kind, because the path already holds it (R1).
 
-Outside `docs/`, the path table names each other role. The repository root holds six Markdown files, each of which follows a convention that readers expect: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `AGENTS.md`, and `CHANGELOG.md`. `RELEASE.md` and `TERMS.md` move into `docs/`. The table also names the package READMEs, the skills, and `rfcs/`.
+Outside `docs/`, the layout table names every other place. The repository root holds six Markdown files, each of which follows a convention that readers expect: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `AGENTS.md`, and `CHANGELOG.md`. `RELEASE.md` and `TERMS.md` move into `docs/`. The table also names the package READMEs, the skills, and `rfcs/`.
 
-A package README becomes a page on PyPI, so it links only to scope landing pages, with absolute GitHub URLs.
+A package README becomes a page on PyPI, so it links only to section landing pages, with absolute GitHub URLs.
 
 The evidence is in "Page placement" and in the last row of the table in "Outdated references and broken links".
 
-#### R3: The scope of a fact
+#### R3: The section of a fact
 
-The scope rule places each fact, not each page. It starts with one question: what is the reader working with when they need the fact?
+This rule places each fact, not each page. It starts with one question: what is the reader working with when they need the fact?
 
-1. If the reader is changing the repository, the fact belongs to the contributor scope, `docs/contributing/`.
-2. Otherwise, the reader uses a surface: the MCP server, the CLI, or the SDK. A fact that holds for one surface belongs to the scope of that surface.
-3. A fact that holds for two or more surfaces belongs to the global scope, `docs/`.
+1. If the reader is changing the repository, the fact belongs to the contributor section, `docs/contributing/`.
+2. Otherwise, the reader uses a product: the MCP server, the CLI, or the SDK. A fact that holds for one product belongs to the section of that product.
+3. A fact that holds for two or more products belongs to the global section, `docs/`.
 
-The answer follows the surface, not the location of the code. For example, `pipefy_auth/flow.py` raises `State mismatch on OAuth callback`, but only `pipefy auth login` runs that flow, so the fix for that error belongs to the CLI scope.
+The answer follows the product, not the location of the code. For example, `pipefy_auth/flow.py` raises `State mismatch on OAuth callback`, but only `pipefy auth login` runs that flow, so the fix for that error belongs to the CLI section.
 
-The contributor scope shares no fact with the user scopes. Its pages can link to user pages, but no page includes text from the other side.
+The contributor section shares no fact with the user sections. Its pages can link to user pages, but no page includes text from the other side.
 
-Hand-written content flows up only. Each surface scope is complete on its own. A global page can include sections from the surface scopes and adds only the ideas that span surfaces. A surface page links to global pages and never includes them. As a result, two scopes never hold the same fact.
+A global page can include text from a product page, but a product page never includes text from a global page. Each product section is complete on its own. A global page adds only the ideas that span products, and a product page links to global pages for them. As a result, two sections never hold the same fact.
 
-This RFC uses "global" for a fact that holds for two or more surfaces. It does not use "cross-cutting", because today that word names `docs/mcp/tools/cross-cutting.md`, a page about one surface.
+This RFC uses "global" for a fact that holds for two or more products. It does not use "cross-cutting", because today that word names `docs/mcp/tools/cross-cutting.md`, a page about one product.
 
 The evidence is in "Page placement": contributor pages sit at the top of the user docs, and each author picks the place for a new page.
 
@@ -166,13 +166,13 @@ The evidence is in "Page placement": contributor pages sit at the top of the use
 
 CI runs these checks at every commit on `dev`:
 
-- The path table check (R2).
+- The layout table check (R2).
 - The freshness check for generated blocks (R1).
 - A link checker over all Markdown files.
 - `markdownlint` with a committed config.
 - Executable examples: each `pipefy` command block and code snippet in a hand-written page runs as an offline test.
 
-Each claim about behavior in a hand-written page carries its proof: an executable example, a pointer or a generated block (R1), or a link to a named test. A reviewer deletes a claim that has no proof.
+Each claim about behavior in a hand-written page is tested in one of three ways: by an executable example, by a pointer or a generated block (R1), or by a link to a named test. A reviewer deletes a claim that none of these tests.
 
 The evidence is in the problem statement: the existing checks pass on all 11 false statements, and CI runs no link checker and no Markdown linter. RFC-0002 sets the quality bar for these checks as tests.
 
