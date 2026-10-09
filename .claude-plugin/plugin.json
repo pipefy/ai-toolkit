@@ -1,7 +1,7 @@
 {
   "name": "pipefy",
   "displayName": "Pipefy",
-  "version": "0.5.3-beta.1",
+  "version": "0.5.4-beta.1",
   "description": "Pipefy MCP for Claude Code. Sign in through the browser to manage pipes, cards, tables, reports, automations, and AI agents, and use the included skills to build and analyze processes.",
   "author": { "name": "Pipefy", "email": "dev@pipefy.com", "url": "https://github.com/pipefy" },
   "homepage": "https://github.com/pipefy/ai-toolkit",
