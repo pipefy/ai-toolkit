@@ -15,7 +15,7 @@ The docs also have a second, separate problem: no rule says where a page belongs
 
 We propose two principles:
 
-1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact. For example, `pipefy field create --help` lists every field type that the API defines, so no page needs its own copy of that list. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
+1. A fact that the code owns has no hand-written copy. A page tells the reader where the code shows the fact. For example, `pipefy field create --help` lists every field type that the API defines, so no page needs its own copy of that list. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
 2. The path of a page tells the reader who the page is for, which product it covers, and what kind of page it is. The reader is a user or a contributor. The product is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
 
 People write the rest by hand: tutorials, how-to guides, explanations, and the reasons behind a design. A machine checks each statement in them that a machine can check, such as a link, a command, or an example.
