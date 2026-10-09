@@ -15,7 +15,7 @@ The docs also have a second, separate problem: no rule says where a page belongs
 
 We propose two principles:
 
-1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact, such as `pipefy --help`. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
+1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact. For example, `pipefy field create --help` lists every field type that `--type` accepts, so no page needs its own copy of that list. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
 2. The path of a page tells the reader who the page is for, which product it covers, and what kind of page it is. The reader is a user or a contributor. The product is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
 
 People write the rest by hand: tutorials, how-to guides, explanations, and the reasons behind a design. A machine checks each statement in them that a machine can check, such as a link, a command, or an example.
@@ -117,11 +117,13 @@ Every fact has one source of truth: the one place where it is written. For the p
 
 Every other place reaches a fact that the code owns in one of two ways:
 
-1. A pointer: a sentence that names the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
+1. A pointer: a sentence that names the command that shows the fact, such as "Run `sh install.sh --help` for the flags." This is the default, because a pointer holds no copy of the fact, so it stays correct when the fact changes.
 2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today:
    - a comparison across commands, as in `docs/parity.md`
    - a page that readers see outside the repository, such as a package README on PyPI
    - an agent that chooses a tool before it calls one
+
+An MCP tool has no `--help`. Its pointer names the tool's input schema instead.
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
