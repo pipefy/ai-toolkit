@@ -15,7 +15,7 @@ The docs also have a second, separate problem: no rule says where a page belongs
 
 We propose two principles:
 
-1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact. For example, `pipefy field create --help` lists every field type that `--type` accepts, so no page needs its own copy of that list. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
+1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact. For example, `pipefy field create --help` lists every field type that the API defines, so no page needs its own copy of that list. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
 2. The path of a page tells the reader who the page is for, which product it covers, and what kind of page it is. The reader is a user or a contributor. The product is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
 
 People write the rest by hand: tutorials, how-to guides, explanations, and the reasons behind a design. A machine checks each statement in them that a machine can check, such as a link, a command, or an example.
@@ -28,11 +28,11 @@ If this works, a fact that the code owns stops drifting, because no person keeps
 
 ### Copies of facts that the code owns
 
-Authors describe one behavior in up to 7 places: the docstring, the CLI help, a tool page in `docs/mcp/tools/`, one or more skills, `docs/parity.md`, and sometimes `docs/architecture.md` or a package `AGENTS.md`. Each copy changes on its own schedule.
+Authors describe one behavior in many places: the docstring, the CLI help, a tool page in `docs/mcp/tools/`, one or more skills, `docs/parity.md`, and sometimes `docs/architecture.md` or a package `AGENTS.md`. Each copy changes on its own schedule.
 
 The copies multiply. The convention that write tools take `debug=true` is written out in 6 pages in `docs/mcp/tools/` and in 4 skills. One of those copies applies it to `execute_graphql`, which has no `debug` parameter. The tool count "187" appears in `docs/parity.md:5`, `docs/parity.md:229`, `packages/mcp/README.md:3`, and `packages/mcp/README.md:100`. A test compares the number at `docs/parity.md:5` with the registry (`tests/test_parity.py:131`), and no test reads the other three.
 
-`docs/parity.md` holds 187 rows that map an MCP tool to a CLI command, and the 17 skill files named `references/cli.md` hold 162 more. Each of these 349 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair, such as the reason for a deferral. No code owns those notes, so they stay hand-written.
+`docs/parity.md` holds 187 rows, one per MCP tool, and 182 of them name a CLI command. Each of 17 skills has its own `references/cli.md` file, and 13 of these files hold 162 more rows. Each of these 344 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair, such as the reason for a deferral. No code owns those notes, so they stay hand-written.
 
 The commit history shows how often a code change also needs a doc edit. Of the 10 Markdown files with the most commits on `dev` that are not merges, 2 are `CHANGELOG.md` and `RELEASE.md`, which change with the code by design. For 5 of the other 8, more than half of the commits also change `.py` files, and 3 of those 8 are skills. A commit that changes both does not prove that the doc repeats the code, but it shows that doc edits follow code changes closely.
 
@@ -42,7 +42,7 @@ Copies that change on their own schedule end up wrong. These statements are fals
 
 | Where | What the text says | What the code or the tree shows |
 |---|---|---|
-| `skills/pipes-and-cards/pipefy-pipes-and-cards/references/cli.md:19` | `get_pipe` runs as `pipefy phase get <id>` | `pipefy phase get` calls `get_phase_fields` (`packages/cli/src/pipefy_cli/commands/phase.py:43`), as `docs/parity.md:144` also says |
+| `skills/pipes-and-cards/pipefy-pipes-and-cards/references/cli.md:19` | `get_pipe` runs as `pipefy phase get <id>` | `pipefy phase get` calls `get_phase_fields` (`packages/cli/src/pipefy_cli/commands/phase.py:46`), as `docs/parity.md:144` also says |
 | `skills/pipes-and-cards/pipefy-pipes-and-cards/references/cli.md:84` | `get_pipe` runs as `pipefy label list --pipe <id>` | The command calls the SDK method `get_pipe`, but the MCP tool for it is `get_labels`. The "Operation" column mixes MCP tool names and SDK method names, so the row reads as a wrong mapping |
 | `skills/introspection/pipefy-introspection/references/mcp.md:44` | Pass `debug=true` to `execute_graphql`, and check `path` | `execute_graphql` has no `debug` parameter, and its error branch keeps only the `message` of each error, so neither `path` nor `correlation_id` reaches the caller |
 | `README.md:198`, and the layout block at `AGENTS.md:21-26` | The workspace has three Python packages | `pyproject.toml:13` lists five: `sdk`, `mcp`, `cli`, `auth`, and `infra` |
@@ -55,11 +55,11 @@ Three more statements describe behavior that the code does not have:
 
 - `docs/mcp/tools/cross-cutting.md:21` says that keys in `extra_input` that repeat a parameter are ignored. The 19 tools with `extra_input` handle such a key in several different ways, and some raise `TypeError`.
 - `docs/mcp/tools/cross-cutting.md:11` says that empty, zero, and invalid IDs fail before any network call. `PipefyId` accepts `0`, `-1`, and `"abc"`, and about a third of the 122 tools with `PipefyId` parameters never call `validate_tool_id`.
-- The docstrings at `packages/mcp/src/pipefy_mcp/tools/automation_tools.py:518` and `packages/sdk/src/pipefy_sdk/client.py:1073` say that an `active` key in `extra_input` wins. `packages/sdk/src/pipefy_sdk/client.py:1097` passes `active=active, **extra_input`, which raises `TypeError`.
+- The docstrings at `packages/mcp/src/pipefy_mcp/tools/automation_tools.py:518` and `packages/sdk/src/pipefy_sdk/client.py:1073` say that an `active` key in `extra_input` wins. `packages/sdk/src/pipefy_sdk/client.py:1097-1098` passes `active=active` and then `**(extra_input or {})`, which raises `TypeError`.
 
 RFC-0003 owns this behavior, so we correct these three statements only after RFC-0003 settles it.
 
-Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool. CI and the pre-commit hooks run no link checker and no Markdown linter, and no check reads the prose of `docs/` or of the READMEs.
+Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool. CI and the pre-commit hooks run no link checker and no Markdown linter. Only two checks read prose: `tests/test_parity.py` reads the tool count at `docs/parity.md:5`, and `tests/test_uninstall_scan.py` reads the `PIPEFY_*` table in `docs/config.md`.
 
 Docs also drift when no code changes. The first two rows were correct until PR #715. That PR changed skills, tests, and the skill lint, but no code under `packages/`. Its commit "docs: Separate skill surface instructions" split the skill tables per product and dropped the note column that explained them.
 
@@ -70,8 +70,8 @@ The 32 pages in `docs/` mix kinds of content at every level:
 - `architecture.md`, `response-typing.md`, and `dependencies.md` are pages for contributors, but they sit at the top of the user docs.
 - `DEPRECATION.md` is a policy page, and `docs/README.md` does not link it.
 - `docs/mcp/tools/` holds 16 pages: 14 domain pages that are part reference and part explanation, plus `cross-cutting.md` and `identifiers.md`.
-- `docs/cli/auth.md` mixes a quick start, a reference section, and a troubleshooting section in 292 lines.
-- `docs/` has no tutorial for any product. The only quick starts are sections inside `docs/cli/auth.md` and `packages/cli/README.md`.
+- `docs/cli/auth.md` mixes a quick start, a reference section, a troubleshooting section, and an explanation section in 292 lines.
+- `docs/` has no tutorial for any product. The only quick starts for a product are sections inside `docs/cli/auth.md` and `packages/cli/README.md`.
 
 The repository root holds 8 Markdown files. Six of them follow a convention that readers expect at the root. `RELEASE.md` and `TERMS.md` follow none, so a reader cannot predict that they exist. Because no rule exists, each author picks the place for a new page, and each new page adds to the mix.
 
@@ -122,11 +122,11 @@ An MCP tool has no `--help`. Its pointer names the tool's input schema instead.
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
-A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
+A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". A recent commit already deleted a count in this way: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values". When a reader needs the number, a generator writes it.
 
-Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 349 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
+Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 344 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
-No code records today which CLI command implements which MCP tool. We ask RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
+No code records today which CLI command implements which MCP tool. We ask RFC-0003 to add that record to the tool registry. Until the record exists, the 344 pairs stay hand-written, and the existing checks keep covering them.
 
 #### R2: The path of a page declares its place
 
@@ -146,7 +146,7 @@ Outside `docs/`, the layout table names every other place. The repository root h
 
 A package README becomes a page on PyPI, so it links only to section landing pages, with absolute GitHub URLs.
 
-Today's tree shows why the path has to carry this: three contributor pages sit at the top of the user docs, and two root files follow no convention ("Page placement"). The PyPI rule comes from the 12 relative links that break on pypi.org.
+Today's tree shows why the path has to carry this: three contributor pages sit at the top of the user docs, and two root files follow no convention ("Page placement"). The PyPI rule comes from the 23 relative links in the package READMEs that break on pypi.org, 12 of them into `docs/`.
 
 #### R3: The section of a fact
 
@@ -276,7 +276,7 @@ docs/
     reference/api.md                 generated from the docstrings
 ```
 
-The global section holds 12 pages, because only a few ideas hold for two or more products: credentials and the stored session, shared configuration, installers that set up several products, lockstep versions, parity, Pipefy concepts such as the forms of an ID, and the legal terms.
+The global section holds 12 pages besides its landing page, because only a few ideas hold for two or more products: credentials and the stored session, shared configuration, installers that set up several products, lockstep versions, parity, Pipefy concepts such as the forms of an ID, and the legal terms.
 
 The stored session is global because two products use it. The CLI writes it with `pipefy auth login`, and the local MCP server reads it at startup (`StartupIdentity.from_configured_credential` in `packages/mcp/src/pipefy_mcp/auth/session_identity.py:42`).
 
@@ -286,7 +286,7 @@ Skills have no section. A skill cannot be complete on its own, so its install st
 
 #### Where today's mixed pages go
 
-Five pages mix kinds or products today. Each one splits by R2 and R3:
+Four pages and the 14 domain pages in `docs/mcp/tools/` mix kinds or products today. Each one splits by R2 and R3:
 
 | Page today | New places |
 |---|---|
