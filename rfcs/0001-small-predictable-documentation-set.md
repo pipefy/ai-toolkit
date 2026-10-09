@@ -306,7 +306,7 @@ Today no naming rule holds across products. On MCP, one pipe has five argument n
 #### Files outside `docs/`
 
 - **The root.** `README.md` introduces the toolkit, keeps one tested install snippet, and links to the landing page of each section. `CONTRIBUTING.md` holds the commit, sign-off, and pull request rules, and it links to `docs/contributing/README.md`. `CHANGELOG.md` holds the history. `RELEASE.md` becomes `docs/contributing/how-to/release.md`, `DEPRECATION.md` joins `docs/explanation/versioning.md`, and `TERMS.md` becomes `docs/reference/terms.md` once the owner of the legal text agrees.
-- **Agent instructions.** `AGENTS.md` is the only instruction file, at the root, in `packages/mcp/`, and in `skills/`. Claude Code reads `AGENTS.md` when no `CLAUDE.md` exists, so the symlink `packages/mcp/CLAUDE.md` goes away. Each rule line in an `AGENTS.md` links to its page in `docs/contributing/reference/`.
+- **Agent instructions.** `AGENTS.md` is the only instruction file, at the root, in `packages/mcp/`, and in `skills/`. Claude Code v2.1.277 and later reads `AGENTS.md` when no `CLAUDE.md` exists, so the symlink `packages/mcp/CLAUDE.md` goes away. Each rule line in an `AGENTS.md` links to its page in `docs/contributing/reference/`.
 - **Package READMEs.** Each one is a short PyPI page with the install command and absolute links to its section's landing page (R2).
 - **Starter files.** The skill starter in `.github/skill-template/` and `docs/compliance/COMPLIANCE.template.md` move to the root folder `template/`, because a contributor copies them and nobody reads them as pages.
 - **RFCs.** They stay in `rfcs/`, outside `docs/`. A draft asks for a decision and an accepted RFC records one, so an RFC fits no Diataxis kind.
