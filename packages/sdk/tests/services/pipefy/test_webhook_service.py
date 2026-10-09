@@ -1,5 +1,6 @@
 """Unit tests for WebhookService (send inbox email, webhook CRUD)."""
 
+import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -358,7 +359,26 @@ async def test_create_webhook_success(mock_settings):
     assert inp["url"] == "https://example.com/hook"
     assert inp["actions"] == ["card.create"]
     assert inp["name"] == "Pipefy Webhook"
+    assert "headers" not in inp
     assert result == payload
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_webhook_sends_headers_as_json_string(mock_settings):
+    """``headers`` is the ``Json`` scalar: the API rejects a dict, accepts a string."""
+    service, executor = _make_service(mock_settings, {"createWebhook": {}})
+    await service.create_webhook(
+        pipe_id="601",
+        url="https://example.com/hook",
+        actions=["card.create"],
+        headers={"Authorization": "Bearer t"},
+    )
+
+    _, variables = executor.execute_query.call_args[0]
+    headers = variables["input"]["headers"]
+    assert isinstance(headers, str)
+    assert json.loads(headers) == {"Authorization": "Bearer t"}
 
 
 @pytest.mark.unit
@@ -498,7 +518,7 @@ async def test_update_webhook_success(mock_settings):
                 "name": "Renamed",
                 "url": "https://b.example/hook",
                 "actions": ["card.move"],
-                "headers": {},
+                "headers": "{}",
             }
         }
     }
@@ -519,9 +539,34 @@ async def test_update_webhook_success(mock_settings):
         "name": "Renamed",
         "url": "https://b.example/hook",
         "actions": ["card.move"],
-        "headers": {},
+        "headers": "{}",
     }
     assert result == payload
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_webhook_sends_headers_as_json_string(mock_settings):
+    """``headers`` is the ``Json`` scalar: the API rejects a dict, accepts a string."""
+    service, executor = _make_service(mock_settings, {"updateWebhook": {}})
+    await service.update_webhook(
+        "w1", headers={"Authorization": "Bearer t", "X-Api-Key": "k"}
+    )
+
+    _, variables = executor.execute_query.call_args[0]
+    headers = variables["input"]["headers"]
+    assert isinstance(headers, str)
+    assert json.loads(headers) == {"Authorization": "Bearer t", "X-Api-Key": "k"}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_webhook_passes_string_headers_through(mock_settings):
+    service, executor = _make_service(mock_settings, {"updateWebhook": {}})
+    await service.update_webhook("w1", headers='{"A":"b"}')
+
+    _, variables = executor.execute_query.call_args[0]
+    assert variables["input"]["headers"] == '{"A":"b"}'
 
 
 @pytest.mark.unit

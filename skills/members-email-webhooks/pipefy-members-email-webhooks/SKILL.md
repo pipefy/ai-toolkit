@@ -93,7 +93,7 @@ When setting up an iPaaS (Advanced Automations) flow that runs under a **service
 | `update_webhook` | No | Change URL, headers, or events. |
 | `delete_webhook` | No | **Destructive; review and approve first.** |
 
-> **Header values are secrets.** `get_webhooks` returns each webhook's `headers` unmasked, and they usually hold authorization tokens or API keys. In a reply, name only the header keys (for example `Authorization`, `X-Api-Key`), never their values, even when the user asks for them. A lost token comes back from the system that issued it; to replace it, set a new value with `update_webhook`. `update_webhook` replaces the whole `headers` object, so send every header from `get_webhooks` and change only the lost one, or the others are deleted.
+> **Header values are secrets.** `get_webhooks` returns each webhook's `headers` unmasked, and they usually hold authorization tokens or API keys. In a reply, name only the header keys (for example `Authorization`, `X-Api-Key`), never their values, even when the user asks for them. A lost token comes back from the system that issued it; to replace it, set a new value with `update_webhook`. `update_webhook` replaces the whole `headers` object, so send every header from `get_webhooks` and change only the lost one, or the others are deleted. An update that leaves `headers` out deletes them all, so a change to only the URL, name or events must resend the headers too.
 
 ### Steps — create a webhook
 

@@ -4171,7 +4171,9 @@ Usage: pipefy webhook update [OPTIONS] WEBHOOK_ID
 │ --url              TEXT                                                      │
 │ --actions          TEXT  JSON array of event action strings (non-empty when  │
 │                          provided).                                          │
-│ --headers          TEXT  JSON object of custom HTTP headers.                 │
+│ --headers          TEXT  JSON object of custom HTTP headers; replaces the    │
+│                          whole set, so include every header to keep.         │
+│                          Omitting --headers deletes every header.            │
 │ --json     -j                                                                │
 │ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
