@@ -34,6 +34,16 @@ If a write reports failure, re-read the target before changing tiers or retrying
 
 Two options (use whichever is available in the environment). Prefer the Service Account when both exist.
 
+To see which variables are set, list their names only, never their values:
+
+```bash
+env | cut -d= -f1 | grep '^PIPEFY_'
+```
+
+Do not run `env`, `printenv`, or `echo` on these variables to choose an option: that prints the secret into the conversation before the user agrees.
+
+Before reading any `PIPEFY_*` variable, tell the user which variable you will read and that its value goes to `app.pipefy.com` in the `Authorization` header or the token request, and wait for a yes. Do not read it from a file the user did not name.
+
 **Option A — OAuth2 Client Credentials (preferred):**
 
 ```bash
@@ -63,18 +73,17 @@ PATs are deprecated for new integrations but may still exist in the environment.
 
 | Purpose | URL |
 |---------|-----|
-| All queries and mutations | `https://api.pipefy.com/graphql` |
-| Schema introspection only | `https://app.pipefy.com/graphql` |
+| Queries, mutations, and introspection | `https://app.pipefy.com/graphql` |
 | OAuth2 token | `https://app.pipefy.com/oauth/token` |
 
-Real operations go to `api.pipefy.com`; introspection goes to `app.pipefy.com`. Raw-API users must distinguish these endpoints by hand.
+This one endpoint serves queries, mutations, and introspection of the public schema, and `https://api.pipefy.com/graphql` answers the same way. It is the endpoint the toolkit uses for the public schema (`PIPEFY_BASE_URL` plus `/graphql`). Portal tools and a few others use two more endpoints, `/graphql/interfaces` and `/internal_api`; see [`docs/mcp/tools/portal.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/portal.md).
 
 ---
 
 ## Execute a GraphQL query
 
 ```bash
-curl -s -X POST https://api.pipefy.com/graphql \
+curl -s -X POST https://app.pipefy.com/graphql \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"query": "{ me { id name } }"}' | jq .
@@ -83,7 +92,7 @@ curl -s -X POST https://api.pipefy.com/graphql \
 ## Execute a GraphQL mutation
 
 ```bash
-curl -s -X POST https://api.pipefy.com/graphql \
+curl -s -X POST https://app.pipefy.com/graphql \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -101,7 +110,7 @@ curl -s -X POST https://api.pipefy.com/graphql \
 
 ## Introspection via raw API
 
-When you need to discover schema over direct HTTP, call `app.pipefy.com/graphql`:
+When you need to discover schema over direct HTTP, call the same endpoint:
 
 ```bash
 # All queries and mutations
@@ -121,14 +130,16 @@ curl -s -X POST https://app.pipefy.com/graphql \
 
 ## Error code → cause
 
-GraphQL always returns HTTP 200, even on errors. Check the `errors` array, not the HTTP status code.
+GraphQL errors, including syntax errors (`GRAPHQL_PARSE_FAILED`), return HTTP 200: check the `errors` array and its `extensions.code`, not the HTTP status code. An authentication failure returns HTTP 401, and a request body that is not valid JSON returns HTTP 500 with a plain-text page.
 
 | Code | Likely cause | Recovery |
 |-------|--------------|----------|
-| UNAUTHORIZED | Token missing, expired, or `Bearer ` omitted | Re-fetch token (Option A) or fix the header. |
-| PERMISSION_DENIED | Service Account not a member of this pipe/table | Add SA via `invite_members` or ask user. |
+| HTTP 401, body `{"errors": [{"title": "Unauthorized", ...}]}` | `Authorization` header missing or empty, or the token sent without the `Bearer ` prefix | Fix the header: `Authorization: Bearer $TOKEN`, with a non-empty token. |
+| HTTP 401, body `{"error": "invalid_token", ...}` | Bearer token present but invalid or expired | Re-fetch the token (Option A). |
+| PERMISSION_DENIED | Service Account not a member of this pipe/table; Pipefy also answers this for a pipe or card ID that does not exist | Verify the ID; add the SA via `invite_members` or ask the user. |
 | resource_not_found | ID does not exist or SA cannot see it | Verify ID; check pipe/table membership. |
 | invalid_input | Wrong argument name or type | Run `introspect_type` (Tier 2) to recheck the input shape. |
+| undefinedField | The query selects a field the type does not have | Run `introspect_type` on the type and fix the selection. |
 | INTERNAL_SERVER_ERROR | API bug or unsupported payload | **Do NOT retry the same payload.** Try an alternative mutation or workaround. |
 | missingRequiredInputObjectAttribute | A required field is missing from the input | Compare the payload against `__type(name: …InputType)`. |
 | Ambiguous write failure (`success: false`, empty or unclear message) | Mutation may already have applied (side effects on the server) | **Re-read before any retry** — see [Ambiguous write failure](#ambiguous-write-failure-re-read-before-retry). |
@@ -204,9 +215,9 @@ Only after all 3 tiers and external resources have failed:
 
 ## Failure modes
 
-- **401 Unauthorized** — token expired or `Bearer ` prefix omitted. Re-fetch the OAuth token (Option A).
-- **400 Bad Request** — GraphQL syntax error. Validate the query string and escape quotes properly when embedding via shell.
-- **500 / service unavailable** — Pipefy API outage. Check [status.pipefy.com](https://status.pipefy.com) and retry later. Do not loop.
+- **HTTP 401**: header missing, empty, or without `Bearer ` (body `Unauthorized`), or the token is invalid or expired (body `invalid_token`). Fix the header, or re-fetch the OAuth token (Option A).
+- **`GRAPHQL_PARSE_FAILED` at HTTP 200**: GraphQL syntax error. Validate the query string and escape quotes properly when embedding via shell.
+- **HTTP 500**: first check that the request body is valid JSON, because a malformed body also returns 500. If it is, treat it as a Pipefy API outage: check [status.pipefy.com](https://status.pipefy.com) and retry later. Do not loop.
 - **`INTERNAL_SERVER_ERROR` in `errors` array** — do NOT retry the same payload; pick a different mutation path.
 - **Ambiguous write failure** — reported error with empty/unclear message after a create or other write: re-read counts/ids before retrying; never blind-retry creates ([Ambiguous write failure](#ambiguous-write-failure-re-read-before-retry)).
 

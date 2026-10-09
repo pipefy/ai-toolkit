@@ -32,6 +32,7 @@ from pipefy_mcp.tools.pagination_helpers import (
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
 from pipefy_mcp.tools.validation_helpers import (
+    format_validation_error_message,
     validate_optional_tool_id,
     validate_tool_id,
 )
@@ -385,7 +386,7 @@ class AiAutomationTools:
                     **optional_fields,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.create_ai_automation(validated)
@@ -448,7 +449,7 @@ class AiAutomationTools:
                     condition=condition,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.update_ai_automation(validated)

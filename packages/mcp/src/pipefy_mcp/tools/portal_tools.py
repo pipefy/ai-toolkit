@@ -641,6 +641,7 @@ class PortalTools:
             type: PortalElementType,
             metadata: dict[str, Any],
             data_sources: list[dict[str, Any]] | None = None,
+            portal_uuid: str | None = None,
             editable: bool | None = None,
         ) -> dict[str, Any]:
             """Update a portal page element (full metadata replace).
@@ -648,6 +649,12 @@ class PortalTools:
             Pipefy treats ``metadata`` as a **complete replacement** on every update —
             send the full blob for the element type, not a partial patch. ``type`` is
             used only for client-side metadata validation.
+
+            ``data_sources`` is a complete replacement too: ``[]`` unlinks the element
+            from its pipe or table. To keep the current data sources, omit
+            ``data_sources`` and pass ``portal_uuid``; the tool reads the element's
+            ``dataSources`` and ``editable`` flag from the portal and sends them back.
+            Every update passes one of the two, or it is rejected.
 
             The success payload ``metadata`` is the input echo (Interfaces
             ``updateElement`` returns only ``success``). Call ``get_portal`` for
@@ -658,8 +665,15 @@ class PortalTools:
                 page_id: Parent page UUID.
                 type: Element type for metadata validation.
                 metadata: Complete metadata JSON for the element.
-                data_sources: Optional data source bindings.
-                editable: Optional editable flag.
+                data_sources: Data source bindings that replace the element's list,
+                    each ``{"repoId": ..., "fieldKeys": [...]}`` as ``get_portal``
+                    returns them. An element with no bindings can pass ``[]``,
+                    which skips the portal read.
+                portal_uuid: The portal you passed to ``get_portal`` whose
+                    ``pages[]`` holds ``page_id``; required when ``data_sources``
+                    is omitted.
+                editable: Editable flag. The API requires it when a data source
+                    lists ``fieldKeys``; the keep path resends the stored one.
             """
             client = get_pipefy_client(ctx)
             element_id, err = validate_tool_id(element_id, "element_id")
@@ -679,7 +693,8 @@ class PortalTools:
                         "page_id": page_id,
                         "type": type,
                         "metadata": metadata,
-                        "data_sources": data_sources or [],
+                        "data_sources": data_sources,
+                        "portal_uuid": portal_uuid,
                         "editable": editable,
                     }
                 )
@@ -689,6 +704,7 @@ class PortalTools:
                 "type": validated.type,
                 "metadata": validated.metadata,
                 "data_sources": validated.data_sources,
+                "portal_uuid": validated.portal_uuid,
             }
             if validated.editable is not None:
                 update_kwargs["editable"] = validated.editable

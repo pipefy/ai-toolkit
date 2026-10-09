@@ -15,7 +15,7 @@ metadata:
 
 Choose a connection path below, then read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for that path. Load only the relevant reference.
 
-**Canonical install snippets** live only in the root [`README.md#installation`](https://github.com/pipefy/ai-toolkit/blob/main/README.md#installation) — there is no second copy of the commands. This skill is the agent **checklist** — print or run the README blocks verbatim; do not invent alternate commands.
+**Canonical install snippets** live in [`docs/install.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md). The root README has a quick-start table with the first command for each install path. This skill is the agent **checklist**: print or run the install-guide blocks verbatim, and do not invent alternate commands.
 
 Edge cases: [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/packages/mcp/README.md). Auth: [`docs/cli/auth.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/cli/auth.md). Env: [`docs/config.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/config.md).
 
@@ -38,13 +38,13 @@ Edge cases: [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob
 
    If they only say “Cursor”, ask: Cursor Marketplace plugin (hosted, no local Python) or Quick install (local CLI and tools that read local files)? If unsure, suggest the plugin.
 
-   | Path | README section | Outcome |
+   | Path | Install guide section | Outcome |
    |------|----------------|---------|
-   | Cursor Marketplace plugin | [Cursor Marketplace plugin](https://github.com/pipefy/ai-toolkit/blob/main/README.md#6-cursor-marketplace-plugin) | Hosted server, browser sign-in, no local Python |
-   | Hosted MCP | [Hosted MCP](https://github.com/pipefy/ai-toolkit/blob/main/README.md#1-hosted-mcp-claude-code) | HTTPS `mcp.pipefy.com` |
-   | Local toolkit | [Quick install](https://github.com/pipefy/ai-toolkit/blob/main/README.md#3-quick-install-script) | Local server and CLI, including local-file tools |
-   | Claude Code plugin | [Claude Code plugin](https://github.com/pipefy/ai-toolkit/blob/main/README.md#2-claude-code-plugin) | Marketplace and slash install/login |
-   | CLI only | [CLI](https://github.com/pipefy/ai-toolkit/blob/main/README.md#4-cli-only) | `pipefy` on PATH; no MCP |
+   | Cursor Marketplace plugin | [Cursor Marketplace plugin](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#6-cursor-marketplace-plugin) | Hosted server, browser sign-in, no local Python |
+   | Hosted MCP | [Hosted MCP](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#1-hosted-mcp-claude-code) | HTTPS `mcp.pipefy.com` |
+   | Local toolkit | [Quick install](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#3-quick-install-script) | Local server and CLI, including local-file tools |
+   | Claude Code plugin | [Claude Code plugin](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#2-claude-code-plugin) | Marketplace and slash install/login |
+   | CLI only | [CLI](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md#4-cli-only) | `pipefy` on PATH; no MCP |
 
 2. **Execute the canonical install instructions** for that path. Keep client setup and local installation aligned with the user's choice.
 3. **Authenticate** using the selected path's login flow.
@@ -58,6 +58,6 @@ Edge cases: [`packages/mcp/README.md`](https://github.com/pipefy/ai-toolkit/blob
 
 ## See also
 
-- [`README.md#installation`](https://github.com/pipefy/ai-toolkit/blob/main/README.md#installation)
+- [`docs/install.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/install.md)
 - [`docs/uninstall.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/uninstall.md) — `uninstall.sh --scan`, teardown, and switching between hosted, local, and plugin
 - [`skills/README.md`](https://github.com/pipefy/ai-toolkit/blob/main/skills/README.md)

@@ -367,6 +367,93 @@ def test_file_keyring_backend_lists_unescaped_accounts(tmp_path):
     assert "U0VDUkVUVkFMVUU=" not in result.stdout + result.stderr
 
 
+_FALLBACK_PIPEFY = (
+    "[pipefy]\n"
+    "signin_2epipefy_2ecom_7cpipefy_2dcli = \n\tU0VDUkVUVkFMVUU=\n"
+    "\n[other_2eservice]\n"
+    "someone = \n\tQUJD\n"
+)
+
+
+def _keyring_fallback(root: Path, body: str) -> Path:
+    path = root / "python_keyring" / "keyring_pass.cfg"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_a_session_in_the_keyring_fallback_file_is_reported(tmp_path):
+    # With no OS keychain, `keyring` falls back to its own plaintext file, which
+    # other programs share; a scan that skipped it would read as clean.
+    home = _home(tmp_path)
+    fallback = _keyring_fallback(home / ".local" / "share", _FALLBACK_PIPEFY)
+
+    result = _run(home, _stub_path(tmp_path))
+
+    assert result.returncode == 1
+    assert f"keyring fallback file: {fallback}" in result.stdout
+    assert "account: signin.pipefy.com|pipefy-cli" in result.stdout
+    assert "someone" not in result.stdout
+    assert "U0VDUkVUVkFMVUU=" not in result.stdout + result.stderr
+
+
+def test_the_keyring_fallback_file_honours_xdg_data_home(tmp_path):
+    home = _home(tmp_path)
+    xdg = tmp_path / "xdg-data"
+    fallback = _keyring_fallback(xdg, _FALLBACK_PIPEFY)
+
+    result = _run(home, _stub_path(tmp_path), env_extra={"XDG_DATA_HOME": str(xdg)})
+
+    assert result.returncode == 1
+    assert f"keyring fallback file: {fallback}" in result.stdout
+
+
+def test_a_keyring_fallback_file_without_a_pipefy_section_is_not_a_finding(tmp_path):
+    home = _home(tmp_path)
+    _keyring_fallback(
+        home / ".local" / "share", "[other_2eservice]\nsomeone = \n\tQUJD\n"
+    )
+
+    result = _run(home, _stub_path(tmp_path))
+
+    assert result.returncode == 0
+    assert "holds no Pipefy session" in result.stdout
+    assert "someone" not in result.stdout
+
+
+def test_a_hand_edited_keyring_fallback_file_is_read_the_way_keyring_reads_it(tmp_path):
+    # configparser accepts CRLF, blanks after a header, and `:` as the
+    # delimiter, so keyring still finds the session in such a file.
+    home = _home(tmp_path)
+    _keyring_fallback(
+        home / ".local" / "share",
+        "[pipefy] \r\nsignin_2epipefy_2ecom_7cpipefy_2dcli: \r\n\tU0VDUkVUVkFMVUU=\r\n",
+    )
+
+    result = _run(home, _stub_path(tmp_path))
+
+    assert result.returncode == 1
+    assert "account: signin.pipefy.com|pipefy-cli" in result.stdout
+    assert "U0VDUkVUVkFMVUU=" not in result.stdout + result.stderr
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads a mode-000 file")
+def test_an_unreadable_keyring_fallback_file_is_uninspected_and_the_scan_finishes(
+    tmp_path,
+):
+    home = _home(tmp_path)
+    fallback = _keyring_fallback(home / ".local" / "share", _FALLBACK_PIPEFY)
+    fallback.chmod(0o000)
+    try:
+        result = _run(home, _stub_path(tmp_path))
+    finally:
+        fallback.chmod(0o600)
+
+    assert result.returncode == 2
+    assert f"keyring fallback file not inspected: {fallback}" in result.stdout
+    assert "== Summary ==" in result.stdout
+
+
 def test_path_shadowed_by_a_repo_venv(tmp_path):
     home = _home(tmp_path)
     venv = tmp_path / "repo" / ".venv"
@@ -1029,6 +1116,7 @@ def test_effective_session_store_defaults_to_the_os_keychain(tmp_path):
     assert "effective session store: the OS keychain (no override in effect)" in (
         result.stdout
     )
+    assert "Python keyring's plaintext fallback file" in result.stdout
     assert "PIPEFY_KEYCHAIN_BACKEND is set in" not in result.stdout
 
 
@@ -1053,7 +1141,7 @@ def test_effective_session_store_from_the_process_environment(tmp_path):
     # The hazard the owner hit: drop the line, the store silently changes.
     assert "the next login" in out and "writes to the OS keychain instead" in out
     assert "still signed in and invisible to a keychain-only sweep" in out
-    assert "both stores are checked below" in out
+    assert "every store is checked below" in out
 
 
 def test_effective_session_store_from_config_toml(tmp_path):

@@ -42,6 +42,7 @@ from pipefy_mcp.tools.graphql_error_helpers import (
 )
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
+from pipefy_mcp.tools.validation_helpers import format_validation_error_message
 
 VALIDATE_FETCH_TIMEOUT_SECONDS = 30
 
@@ -344,7 +345,7 @@ class AiAgentTools:
                     disabled_at=disabled_at,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.create_ai_agent(validated)
@@ -485,7 +486,7 @@ class AiAgentTools:
                     disabled_at=disabled_at,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.update_ai_agent(validated)

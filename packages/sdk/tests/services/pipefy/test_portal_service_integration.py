@@ -201,7 +201,11 @@ async def test_live_update_portal_element_on_bootstrapped_page(
         "linkName": "SDK integration updated link",
     }
     updated = await live_portal_service.update_portal_element(
-        link["uuid"], live_portal_page["uuid"], type="link", metadata=metadata
+        link["uuid"],
+        live_portal_page["uuid"],
+        type="link",
+        metadata=metadata,
+        portal_uuid=live_main_portal["uuid"],
     )
 
     assert updated["uuid"] == link["uuid"]

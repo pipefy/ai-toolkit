@@ -2581,3 +2581,49 @@ class TestCreateAiAgentPermissionEnrichment:
         # Enrichment message is prepended to the error
         assert "invite_members" in tool_error_message(payload)
         assert "forbidden" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+class TestAiAgentValidationMessageHygiene:
+    """The inner SDK-model ValidationError must not leak pydantic noise."""
+
+    async def test_create_ai_agent_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_agent",
+                {
+                    "name": "My Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.create_ai_agent.assert_not_called()
+
+    async def test_update_ai_agent_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_ai_agent",
+                {
+                    "uuid": "agent-1",
+                    "name": "My Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.update_ai_agent.assert_not_called()

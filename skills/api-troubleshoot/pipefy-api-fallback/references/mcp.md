@@ -23,4 +23,4 @@
 
 ---
 
-The MCP server routes operations and introspection automatically; both endpoints derive from `PIPEFY_BASE_URL`.
+The MCP server sends public-schema operations and introspection to the same endpoint, `<PIPEFY_BASE_URL>/graphql`.

@@ -1088,6 +1088,195 @@ def test_keep_credentials_skips_tier_two_only(tmp_path):
     assert "uv tool uninstall pipefy-cli" in run.stubs
 
 
+def _keyring_fallback(home: Path) -> Path:
+    path = home / ".local" / "share" / "python_keyring" / "keyring_pass.cfg"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "[other_2eservice]\n"
+        "someone = \n\tQUJD\n"
+        "\n[pipefy]\n"
+        "signin_2epipefy_2ecom_7cpipefy_2dcli = \n\tU0VDUkVUVkFMVUU=\n"
+        "\n[third]\n"
+        "user = \n\tWFla\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_only_the_pipefy_section_leaves_the_shared_keyring_fallback_file(tmp_path):
+    home = _home(tmp_path)
+    fallback = _keyring_fallback(home)
+    stub = _no_uv_tools(_stub_path(tmp_path))
+
+    run = _run(home, stub)
+
+    # The session is revoked first, because only logout reaches the provider.
+    assert any(line.startswith("pipefy auth logout") for line in run.stubs)
+    remaining = fallback.read_text(encoding="utf-8")
+    assert "[pipefy]" not in remaining and "U0VDUkVUVkFMVUU=" not in remaining
+    assert "[other_2eservice]\nsomeone = \n\tQUJD\n" in remaining
+    assert "[third]\nuser = \n\tWFla\n" in remaining
+    # A backup would be a second plaintext copy of the token it just removed.
+    assert not list(fallback.parent.glob("keyring_pass.cfg.bak.*"))
+    removed = run.stdout.split("Removed:", 1)[1].split("\n\n", 1)[0]
+    assert f"remove the [pipefy] section from {fallback}" in removed
+    # The re-scan sees the file again and finds nothing of ours in it.
+    rescan = run.stdout.split("== Re-scan ==", 1)[1]
+    assert "keyring fallback file: " not in rescan
+    assert "holds no Pipefy session" in rescan
+
+
+def test_a_symlinked_file_keyring_takes_its_target_with_it(tmp_path):
+    home = _home(tmp_path)
+    real = tmp_path / "elsewhere" / "keyring.cfg"
+    real.parent.mkdir()
+    real.write_text("[pipefy]\nsomeone = \n\tQUJD\n", encoding="utf-8")
+    link = home / ".config" / "pipefy" / "keyring.cfg"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(real)
+
+    run = _run(home, _no_uv_tools(_stub_path(tmp_path)))
+
+    assert not link.exists() and not link.is_symlink()
+    assert not real.exists()
+    assert "QUJD" not in run.stdout + run.stderr
+
+
+def test_a_symlinked_file_keyring_whose_target_cannot_be_deleted_is_kept_and_reported(
+    tmp_path,
+):
+    home = _home(tmp_path)
+    dotfiles = tmp_path / "dotfiles"
+    dotfiles.mkdir()
+    real = dotfiles / "keyring.cfg"
+    real.write_text("[pipefy]\nsomeone = \n\tQUJD\n", encoding="utf-8")
+    link = home / ".config" / "pipefy" / "keyring.cfg"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(real)
+    dotfiles.chmod(0o555)
+    try:
+        run = _run(home, _no_uv_tools(_stub_path(tmp_path)))
+    finally:
+        dotfiles.chmod(0o755)
+
+    assert run.returncode == 2, run.stdout + run.stderr
+    assert real.exists()
+    assert link.is_symlink()
+    assert "Failed" in run.stdout
+
+
+def test_keep_credentials_leaves_the_keyring_fallback_file_alone(tmp_path):
+    home = _home(tmp_path)
+    fallback = _keyring_fallback(home)
+    before = fallback.read_text(encoding="utf-8")
+
+    run = _run(
+        home, _no_uv_tools(_stub_path(tmp_path)), args=("--yes", "--keep-credentials")
+    )
+
+    assert fallback.read_text(encoding="utf-8") == before
+    assert "kept by --keep-credentials" in run.stdout
+
+
+def test_a_symlinked_keyring_fallback_file_is_edited_through_the_link(tmp_path):
+    home = _home(tmp_path)
+    real = _keyring_fallback(tmp_path / "elsewhere")
+    link = home / ".local" / "share" / "python_keyring" / "keyring_pass.cfg"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(real)
+
+    run = _run(home, _no_uv_tools(_stub_path(tmp_path)))
+
+    assert link.is_symlink()
+    remaining = real.read_text(encoding="utf-8")
+    assert "[pipefy]" not in remaining and "U0VDUkVUVkFMVUU=" not in remaining
+    assert "[other_2eservice]" in remaining and "[third]" in remaining
+    assert "holds no Pipefy session" in run.stdout.split("== Re-scan ==", 1)[1]
+
+
+def test_a_symlinked_shell_rc_is_edited_through_the_link(tmp_path):
+    # Dotfiles repositories symlink ~/.zshrc; replacing the link with a regular
+    # file would detach it and leave the credential line in the repository.
+    home = _home(tmp_path)
+    dotfiles = tmp_path / "dotfiles"
+    dotfiles.mkdir()
+    real = dotfiles / "zshrc"
+    real.write_text('alias ll="ls -l"\nexport PIPEFY_TOKEN="x"\n', encoding="utf-8")
+    (home / ".zshrc").symlink_to(real)
+
+    _run(home, _no_uv_tools(_stub_path(tmp_path)))
+
+    assert (home / ".zshrc").is_symlink()
+    assert real.read_text(encoding="utf-8") == 'alias ll="ls -l"\n'
+
+
+def test_a_symlinked_mcp_client_config_is_edited_through_the_link(tmp_path):
+    home = _home(tmp_path)
+    real = tmp_path / "dotfiles" / "cursor-mcp.json"
+    _write_json(
+        real,
+        {
+            "mcpServers": {
+                "pipefy": {
+                    "command": "pipefy-mcp-server",
+                    "env": {"PIPEFY_TOKEN": "sentinel-token"},
+                },
+                "other": {"command": "other-server"},
+            }
+        },
+    )
+    link = home / ".cursor" / "mcp.json"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(real)
+
+    _run(home, _no_uv_tools(_stub_path(tmp_path)))
+
+    assert link.is_symlink()
+    assert "sentinel-token" not in real.read_text(encoding="utf-8")
+    servers = json.loads(real.read_text(encoding="utf-8"))["mcpServers"]
+    assert servers["other"] == {"command": "other-server"}
+
+
+def test_a_symlinked_claude_json_gets_disabled_servers_through_the_link(tmp_path):
+    home = _home(tmp_path)
+    real = tmp_path / "dotfiles" / "claude.json"
+    _write_json(real, {"projects": {}})
+    (home / ".claude.json").symlink_to(real)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write_json(
+        repo / ".mcp.json",
+        {"mcpServers": {"pipefy": {"command": "uvx", "args": ["pipefy-mcp-server"]}}},
+    )
+    stub = _stub_path(tmp_path, git=True)
+    git = str(stub / "git")
+    subprocess.run([git, "init", "-q", str(repo)], check=True)
+    subprocess.run([git, "-C", str(repo), "add", ".mcp.json"], check=True)
+
+    _run(home, stub, cwd=repo)
+
+    assert (home / ".claude.json").is_symlink()
+    payload = json.loads(real.read_text(encoding="utf-8"))
+    assert payload["projects"][str(repo)]["disabledMcpjsonServers"] == ["pipefy"]
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads a mode-000 file")
+def test_an_unreadable_keyring_fallback_file_does_not_stop_the_teardown(tmp_path):
+    home = _home(tmp_path)
+    fallback = _keyring_fallback(home)
+    fallback.chmod(0o000)
+    cfg = home / ".config" / "pipefy" / "keyring.cfg"
+    cfg.parent.mkdir(parents=True)
+    cfg.write_text("[pipefy]\nsomeone = \n\tQUJD\n", encoding="utf-8")
+    try:
+        run = _run(home, _no_uv_tools(_stub_path(tmp_path)))
+    finally:
+        fallback.chmod(0o600)
+
+    assert not cfg.exists()
+    assert "keyring fallback file not inspected" in run.stdout
+
+
 def test_keep_config_keeps_user_authored_configuration(tmp_path):
     home = _home(tmp_path)
     _full_fixture(home)

@@ -642,7 +642,7 @@ print_next_steps() {
     say ""
     say "Next: authenticate with Pipefy."
     say "  Default (browser):   pipefy auth login"
-    say "  Headless (device):   pipefy auth login --device"
+    say "  Headless:            use a service account (PIPEFY_SERVICE_ACCOUNT_*)"
     if [ "$CLIENT" = "claude-code" ]; then
         say "  Via Claude Code:     /pipefy:pipefy-login"
     fi

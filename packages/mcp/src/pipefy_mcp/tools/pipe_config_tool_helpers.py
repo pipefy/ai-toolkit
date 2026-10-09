@@ -269,7 +269,7 @@ def field_condition_actions_error_message(
                 f"Invalid actions[{index}] 'phaseFieldId': value looks like a field "
                 "slug (the `id` from get_phase_fields), but Pipefy expects "
                 "`internal_id` from get_phase_fields for field-condition actions. "
-                "See README (Field condition tools)."
+                "See docs/mcp/tools/pipes-and-cards.md (Field condition tools)."
             )
     return None
 

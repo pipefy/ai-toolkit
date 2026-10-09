@@ -1463,6 +1463,7 @@ async def test_update_portal_element_success(
                 "page_id": _PAGE_UUID,
                 "type": "link",
                 "metadata": link_metadata,
+                "data_sources": [],
             },
         )
 
@@ -1473,10 +1474,119 @@ async def test_update_portal_element_success(
         type="link",
         metadata=link_metadata,
         data_sources=[],
+        portal_uuid=None,
     )
     payload = extract_payload(result)
     assert payload["success"] is True
     assert payload["data"]["metadata"]["linkUrl"] == "https://example.com/pipefy"
+
+
+@pytest.mark.anyio
+async def test_update_portal_element_keeps_data_sources_with_portal_uuid(
+    portal_session, mock_portal_client, extract_payload
+):
+    """Omitted data_sources reach the SDK as None, with the portal to read them from."""
+    mock_portal_client.update_portal_element = AsyncMock(
+        return_value={**_CREATED_ELEMENT, "metadata": _FORMS_METADATA}
+    )
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "type": "forms",
+                "metadata": _FORMS_METADATA,
+                "portal_uuid": f" {_PORTAL_UUID} ",
+            },
+        )
+
+    assert extract_payload(result)["success"] is True
+    mock_portal_client.update_portal_element.assert_awaited_once_with(
+        _ELEMENT_UUID,
+        _PAGE_UUID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=None,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+
+@pytest.mark.anyio
+async def test_update_portal_element_rejects_missing_data_sources_and_portal_uuid(
+    portal_session, mock_portal_client, extract_payload
+):
+    """Without data_sources or portal_uuid, the call is rejected before any request."""
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "type": "forms",
+                "metadata": _FORMS_METADATA,
+            },
+        )
+
+    mock_portal_client.update_portal_element.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+    assert "portal_uuid" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+async def test_update_portal_element_rejects_blank_portal_uuid(
+    portal_session, mock_portal_client, extract_payload
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "type": "forms",
+                "metadata": _FORMS_METADATA,
+                "portal_uuid": "   ",
+            },
+        )
+
+    mock_portal_client.update_portal_element.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+    assert "portal_uuid" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+async def test_update_portal_element_reports_element_not_on_page(
+    portal_session, mock_portal_client, extract_payload
+):
+    """The SDK's keep-path lookup error reaches the agent as is."""
+    message = (
+        f"Element '{_ELEMENT_UUID}' is on no page of portal '{_PORTAL_UUID}'. "
+        "Check portal_uuid and element_id, or pass data_sources to skip the read."
+    )
+    mock_portal_client.update_portal_element = AsyncMock(
+        side_effect=ValueError(message)
+    )
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "update_portal_element",
+            {
+                "element_id": _ELEMENT_UUID,
+                "page_id": _PAGE_UUID,
+                "type": "forms",
+                "metadata": _FORMS_METADATA,
+                "portal_uuid": _PORTAL_UUID,
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert tool_error_message(payload) == message
 
 
 @pytest.mark.anyio

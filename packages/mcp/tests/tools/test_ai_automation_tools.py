@@ -1599,3 +1599,47 @@ class TestValidateAiAutomationPromptCreditCheck:
         payload = extract_payload(result)
         assert payload["success"] is True
         mock_pipefy_client.get_ai_credit_usage.assert_not_called()
+
+
+@pytest.mark.anyio
+class TestAiAutomationValidationMessageHygiene:
+    """The inner SDK-model ValidationError must not leak pydantic noise."""
+
+    async def test_create_ai_automation_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_automation",
+                {
+                    "name": "Auto",
+                    "event_id": "card_created",
+                    "pipe_id": "1",
+                    "prompt": "Summarize %{900000101}",
+                    "field_ids": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.create_ai_automation.assert_not_called()
+
+    async def test_update_ai_automation_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_ai_automation",
+                {
+                    "automation_id": "1",
+                    "field_ids": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.update_ai_automation.assert_not_called()

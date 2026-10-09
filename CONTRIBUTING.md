@@ -1,6 +1,6 @@
 # Contributing to ai-toolkit
 
-Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`AGENTS.md`](AGENTS.md) and the [Development](README.md#development) section in the root README (TDD, parity with [`docs/parity.md`](docs/parity.md), `ruff`, `pytest`).
+Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`AGENTS.md`](AGENTS.md): [Build, test, and development](AGENTS.md#build-test-and-development) for `uv`, `ruff`, and `pytest`, and [Adding a New Capability](AGENTS.md#adding-a-new-capability) for TDD and parity with [`docs/parity.md`](docs/parity.md).
 
 ---
 
@@ -33,7 +33,7 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
 
 5. Open a PR. CI validates SKILL.md frontmatter, MCP tool names, and `pipefy` CLI subcommands (`skills-lint.yml`), and that `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json` each list every published skill (`lint_plugin_packaging.py` in the `test` job).
 
-> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live — see [Test the Claude Code plugin from a local checkout](README.md#test-the-claude-code-plugin-from-a-local-checkout).
+> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live. See [Test the Claude Code plugin from a local checkout](docs/install.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ### Frontmatter requirements
 

@@ -33,6 +33,7 @@ from pipefy_mcp.tools.pagination_helpers import (
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
 from pipefy_mcp.tools.validation_helpers import (
+    format_validation_error_message,
     mutation_error_if_not_optional_dict,
     validate_optional_tool_id,
     validate_tool_id,
@@ -62,7 +63,9 @@ def _parse_condition_arg(
     try:
         parsed = AutomationConditionInput.model_validate(condition)
     except ValidationError as exc:
-        return None, build_automation_error_payload(f"Invalid 'condition': {exc}")
+        return None, build_automation_error_payload(
+            f"Invalid 'condition': {format_validation_error_message(exc)}"
+        )
     if not parsed.expressions:
         # An expressionless condition serializes to an empty payload that would
         # still win over extra_input.condition — almost always a mistake. Omit
@@ -648,7 +651,9 @@ class AutomationTools:
                     condition=condition,
                 )
             except ValidationError as exc:
-                return build_automation_error_payload(str(exc))
+                return build_automation_error_payload(
+                    format_validation_error_message(exc)
+                )
 
             try:
                 raw = await client.create_send_task_automation(

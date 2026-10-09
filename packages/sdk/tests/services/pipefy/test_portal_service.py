@@ -1247,6 +1247,7 @@ async def test_update_portal_element_calls_update_element_with_full_metadata() -
         _PAGE_ID,
         type="link",
         metadata=link_metadata,
+        data_sources=[],
     )
 
     interfaces_executor.execute_query.assert_called_once()
@@ -1263,6 +1264,267 @@ async def test_update_portal_element_calls_update_element_with_full_metadata() -
         }
     }
     assert result["metadata"]["linkUrl"] == "https://example.com/pipefy"
+
+
+_PORTAL_UUID = "portal-uuid-1"
+_SIBLING_ELEMENT_ID = "el-uuid-sibling"
+_STORED_DATA_SOURCES = [
+    {
+        "repoId": EXAMPLE_PIPE_REPO_ID,
+        "repoName": "Requests",
+        "repoType": "Pipe",
+        "fieldKeys": ["title"],
+    }
+]
+_SIBLING_DATA_SOURCES = [
+    {
+        "repoId": "sibling-repo-uuid",
+        "repoName": "Other",
+        "repoType": "Pipe",
+        "fieldKeys": [],
+    }
+]
+
+
+def _forms_element(element_id: str, data_sources: list[dict], editable: bool) -> dict:
+    return {
+        "id": element_id,
+        "type": "forms",
+        "metadata": _FORMS_METADATA,
+        "editable": editable,
+        "dataSources": data_sources,
+    }
+
+
+def _portal_with_forms_element(target_editable: bool = True) -> dict:
+    """``portalInterface`` payload: a sibling forms element, then the target.
+
+    The sibling comes first, is bound to another pipe and stores the opposite
+    ``editable``, so a lookup that does not match on ``element_id`` resends the
+    sibling's bindings and flag.
+    """
+    return {
+        "portalInterface": {
+            "id": _PORTAL_UUID,
+            "pages": [
+                {"id": _PAGE_ID_2, "elements": []},
+                {
+                    "id": _PAGE_ID,
+                    "elements": [
+                        _forms_element(
+                            _SIBLING_ELEMENT_ID,
+                            _SIBLING_DATA_SOURCES,
+                            not target_editable,
+                        ),
+                        _forms_element(
+                            _ELEMENT_ID, _STORED_DATA_SOURCES, target_editable
+                        ),
+                    ],
+                },
+            ],
+        }
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_sends_given_data_sources_without_reading() -> None:
+    """Given data_sources replace the element's list; no portal read is needed."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=_FORMS_DATA_SOURCES,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    interfaces_executor.execute_query.assert_called_once()
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": []}
+    ]
+    assert "editable" not in variables["input"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_empty_data_sources_unlink_with_portal_uuid() -> (
+    None
+):
+    """``data_sources=[]`` unlinks even when portal_uuid is given; nothing is read."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=[],
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    interfaces_executor.execute_query.assert_called_once()
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == []
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stored_editable", [True, False])
+async def test_update_portal_element_keeps_current_data_sources_when_omitted(
+    stored_editable: bool,
+) -> None:
+    """Omitted data_sources are read from the portal and sent back, not cleared.
+
+    The element's stored ``editable`` goes back with them, ``False`` included: the
+    API rejects an update whose data source lists fieldKeys when ``editable`` is
+    missing.
+    """
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _portal_with_forms_element(target_editable=stored_editable),
+        {"updateElement": {"success": True}},
+    ]
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    read_query, read_variables = interfaces_executor.execute_query.call_args_list[0][0]
+    assert read_query is GET_PORTAL_QUERY
+    assert read_variables == {"uuid": _PORTAL_UUID}
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": ["title"]}
+    ]
+    assert variables["input"]["editable"] is stored_editable
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_keep_path_sends_given_editable() -> None:
+    """A caller's editable wins over the stored flag; the bindings are still kept."""
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _portal_with_forms_element(),
+        {"updateElement": {"success": True}},
+    ]
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+        editable=False,
+    )
+
+    variables = interfaces_executor.execute_query.call_args[0][1]
+    assert variables["input"]["editable"] is False
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": ["title"]}
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_requires_data_sources_or_portal_uuid() -> None:
+    """Without either, the call is rejected before any request."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+        )
+
+    interfaces_executor.execute_query.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_failed_read_sends_no_mutation() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = PipefyGraphQLError(
+        [{"message": "Something went wrong"}]
+    )
+
+    with pytest.raises(PipefyGraphQLError):
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    interfaces_executor.execute_query.assert_called_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_on_another_page_names_that_page() -> None:
+    """The element must sit on page_id; the error names the page that holds it."""
+    portal = _portal_with_forms_element()
+    pages = portal["portalInterface"]["pages"]
+    pages[0]["elements"], pages[1]["elements"] = pages[1]["elements"], []
+    service, _public, interfaces_executor = _make_interfaces_service(portal)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    assert str(excinfo.value) == (
+        f"Element '{_ELEMENT_ID}' is on page '{_PAGE_ID_2}' of portal "
+        f"'{_PORTAL_UUID}', not on page '{_PAGE_ID}'. Pass page_id='{_PAGE_ID_2}'."
+    )
+    interfaces_executor.execute_query.assert_called_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_on_no_page_points_to_data_sources() -> None:
+    portal = _portal_with_forms_element()
+    portal["portalInterface"]["pages"][1]["elements"].pop()
+    service, _public, interfaces_executor = _make_interfaces_service(portal)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    assert str(excinfo.value) == (
+        f"Element '{_ELEMENT_ID}' is on no page of portal '{_PORTAL_UUID}'. "
+        "Check portal_uuid and element_id, or pass data_sources to skip the read."
+    )
+    interfaces_executor.execute_query.assert_called_once()
 
 
 @pytest.mark.unit
@@ -1618,6 +1880,33 @@ async def test_sub_portal_internal_api_non_permission_error_propagates() -> None
             _FORMS_ELEMENT_ID,
             _SUB_PORTAL_UUID,
         )
+
+
+def test_get_portal_selects_element_data_sources_and_editable():
+    """update_portal_element reads these to keep the bindings a caller omits."""
+    portal = GET_PORTAL_QUERY.document.definitions[0].selection_set.selections[0]
+    pages = next(
+        field
+        for field in portal.selection_set.selections
+        if field.name.value == "pages"
+    )
+    elements = next(
+        field
+        for field in pages.selection_set.selections
+        if field.name.value == "elements"
+    )
+    data_sources = next(
+        field
+        for field in elements.selection_set.selections
+        if field.name.value == "dataSources"
+    )
+    assert {field.name.value for field in data_sources.selection_set.selections} >= {
+        "repoId",
+        "fieldKeys",
+    }
+    assert "editable" in {
+        field.name.value for field in elements.selection_set.selections
+    }
 
 
 def test_get_portal_selects_page_layout():
