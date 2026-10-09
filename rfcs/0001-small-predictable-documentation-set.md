@@ -171,11 +171,11 @@ Each check and each generator uses a maintained open-source tool when one exists
 
 CI runs these checks at every commit on `dev`:
 
-- The layout table check (R2). No tool knows the layout table, so this check is a short script in the repository.
+- The layout table check (R2). No tool knows the layout table, so this check is a short script in `.github/workflows/scripts/`, beside `lint_skill_refs.py`.
 - The freshness check for generated blocks (R1), with `cog --check`.
 - A link checker over all Markdown files, with `lychee`.
 - A Markdown linter, with `markdownlint-cli2` and a committed config.
-- Executable examples, with Sybil, a pytest plugin: each `pipefy` command block and code snippet in a hand-written page runs as an offline test.
+- Executable examples, with Sybil, a pytest plugin: each `pipefy` command block and code snippet in a hand-written page runs as an offline test, and each MCP call example is checked against the input schema of its tool. In the prototype, the `debug=true` advice, written as an example, fails with `execute_graphql has no parameter debug`.
 
 `pre-commit` runs the same checks on a contributor's machine. The repository already uses it for `ruff` and `shellcheck`.
 
@@ -185,7 +185,7 @@ None of this runs today. CI has no link checker and no Markdown linter, and the 
 
 #### How confident we are
 
-We are most confident about R1 and R4. The 55 commits that never corrected "three Python packages" show that a copy kept by hand drifts, and R4 only adds standard tools. R2 and R3 are a bet. Diataxis names four kinds of documentation but does not prescribe folders, and the layout below is our best reading of it for a toolkit with three products. A prototype tests that bet on two pages before the migration starts. If readers still search more than they browse, we will change the layout and keep the principles.
+We are most confident about R1 and R4. The 55 commits that never corrected "three Python packages" show that a copy kept by hand drifts, and R4 only adds standard tools. R2 and R3 are a bet. Diataxis names four kinds of documentation but does not prescribe folders, and the layout below is our best reading of it for a toolkit with three products. A prototype on the branch `proto/docs-layout` tests that bet before the migration starts. It moves `identifiers.md` to the global section and generates the global landing list from front matter. Reviewers browse the result on GitHub, and their feedback decides whether the layout holds. The prototype also found that no naming rule for IDs holds across products (see the `identifiers.md` paragraph in the Layout). If readers still search more than they browse, we will change the layout and keep the principles.
 
 ### Layout
 
@@ -207,7 +207,7 @@ The code is the source of truth for every fact that it can state. Generators rea
 
 `cog` runs every generator that writes a block inside a page. A generator that writes a whole page also runs in CI, and CI fails when the page changes. The generators cover these outputs:
 
-- The MCP tool reference, from the tool signatures and docstrings, one page per group of tools. No tool reads the tool registry, so this generator is a script in the repository.
+- The MCP tool reference, from the tool signatures and docstrings, one page per group of tools. No tool reads the tool registry, so this generator is a script in `.github/workflows/scripts/`.
 - The CLI command reference, from the Typer app, with `typer pipefy_cli.main utils docs`. Once the registry records the mapping (R1), each command in it names the MCP tool that it implements.
 - The SDK reference, from the docstrings of the public API.
 - The settings table in `docs/reference/config.md`, from the settings models.
@@ -295,7 +295,9 @@ Four pages and the 14 domain pages in `docs/mcp/tools/` mix kinds or products to
 | `docs/MIGRATION.md` | The cutover note goes to `CHANGELOG.md`. The MCP steps go to `docs/mcp/how-to/upgrade.md`, the settings model steps go to `docs/sdk/how-to/upgrade.md`, and the service-account rename goes to `docs/how-to/login.md`. |
 | `docs/ipaas.md` | The flow and the credential minting go to `docs/contributing/explanation/ipaas-internals.md`. The settings come from the generated `docs/reference/config.md`. The vocabulary goes to `docs/mcp/explanation/ipaas.md`. |
 
-`docs/mcp/tools/identifiers.md` becomes the global `docs/explanation/identifiers.md`, because the CLI and the SDK take the same four forms of an ID. The per-tool argument rows move to the tool docstrings.
+`docs/mcp/tools/identifiers.md` becomes the global `docs/explanation/identifiers.md`, because the CLI and the SDK take the same four forms of an ID. The per-tool argument rows leave. The docstrings state each of the 12 exceptions that we checked, such as "Numeric ID of the source pipe" for `source_repo_id`.
+
+Today no naming rule holds across products. On MCP, one pipe has five argument names: `pipe_id`, `repo_id`, `source_repo_id`, `repo_uuid`, and `pipe_uuid`. On the CLI, `--repo` is a pipe UUID in `pipefy agent list` and a numeric pipe or table id in `pipefy email template list`. We ask RFC-0003 to standardize these names, so that the name of an argument or option tells its form in every product. The global page then states that one rule, and the exceptions leave the docstrings too.
 
 #### Files outside `docs/`
 
