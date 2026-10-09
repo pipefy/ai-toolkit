@@ -120,7 +120,7 @@ Every other place reaches a fact that the code owns in one of two ways:
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
-A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it: "The MCP server exposes 187 tools" becomes "The MCP server exposes tools for pipes, cards, reports, and more". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
+A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
 
 The evidence is in "Copies of facts that the code owns": four false statements in the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and 349 tool-to-command pairs. "The cheaper alternative" shows that a corrected copy drifts again.
 
@@ -166,7 +166,7 @@ The evidence is in "Page placement": contributor pages sit at the top of the use
 
 #### R4: A machine checks every claim that it can check
 
-Each check and each generator uses a maintained open-source tool when one exists. The repository writes its own code only for facts that no tool knows, such as the layout table and the tool registry. A standard tool has its own documentation and its own maintainers, so the repository keeps only its config.
+Each check and each generator uses a maintained open-source tool when one exists. The repository writes its own code only for inputs that no tool reads: the layout table, the tool registry, the settings models, and the front matter of the pages. A standard tool has its own documentation and its own maintainers, so the repository keeps only its config.
 
 CI runs these checks at every commit on `dev`:
 
