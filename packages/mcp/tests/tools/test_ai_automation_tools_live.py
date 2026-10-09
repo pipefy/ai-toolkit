@@ -7,9 +7,12 @@ tears down with **delete_automation** (preview, then confirm with token).
 Skips without **PIPEFY_*** OAuth or when **PIPE_AI_AUTOMATION_LIVE_PIPE_ID** /
 **PIPE_AI_AUTOMATION_LIVE_FIELD_ID** are unset.
 
-**Setup:** Disposable pipe with **AI enabled** and at least one card field. Set
-``PIPE_AI_AUTOMATION_LIVE_FIELD_ID`` to that field's **internal_id** (string). Grant the
-service account permission to create/delete automations on that pipe.
+**Setup:** Disposable pipe with **AI enabled** and two distinct card fields. Set
+``PIPE_AI_AUTOMATION_LIVE_FIELD_ID`` to the prompt input field's **internal_id**.
+Set ``PIPE_AI_AUTOMATION_LIVE_OUTPUT_FIELD_ID`` to the output field's **internal_id**.
+Both references must be numeric internal IDs, and they must differ. Grant the
+service account permission to create/delete automations on that pipe. The test
+fails before creation if the output reference is missing or matches the input.
 
 Run:
 
@@ -18,7 +21,8 @@ Run:
 Env:
 
     PIPE_AI_AUTOMATION_LIVE_PIPE_ID   — pipe numeric ID (required for this module)
-    PIPE_AI_AUTOMATION_LIVE_FIELD_ID  — field internal_id for prompt + field_ids (required)
+    PIPE_AI_AUTOMATION_LIVE_FIELD_ID  — prompt input field internal_id (required)
+    PIPE_AI_AUTOMATION_LIVE_OUTPUT_FIELD_ID — distinct output field internal_id (required)
 """
 
 from __future__ import annotations
@@ -66,6 +70,16 @@ async def test_live_create_ai_automation_omits_condition_uses_default_placeholde
 
     pipe_id = str(pipe_raw).strip()
     field_id = str(field_raw).strip()
+    output_field_id = os.environ.get(
+        "PIPE_AI_AUTOMATION_LIVE_OUTPUT_FIELD_ID", ""
+    ).strip()
+    assert output_field_id, (
+        "Set PIPE_AI_AUTOMATION_LIVE_OUTPUT_FIELD_ID to a distinct output field internal_id "
+        "(see module docstring)."
+    )
+    assert output_field_id != field_id, (
+        "AI automation input and output fields must have distinct internal_id values."
+    )
     token = uuid.uuid4().hex[:10]
     name = f"MCP AI auto live {token}"
 
@@ -84,7 +98,7 @@ async def test_live_create_ai_automation_omits_condition_uses_default_placeholde
                         "event_id": "card_created",
                         "pipe_id": pipe_id,
                         "prompt": f"Summarize card %{{{field_id}}}",
-                        "field_ids": [field_id],
+                        "field_ids": [output_field_id],
                     },
                 )
                 payload = extract_payload(create_result)

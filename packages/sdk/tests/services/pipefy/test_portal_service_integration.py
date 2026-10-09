@@ -7,8 +7,6 @@ The fixtures remove owned resources and compare the original portal content.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import uuid
 
@@ -19,6 +17,7 @@ from _shared.live_settings import (
     live_resolved_auth,
     require_live_creds,
 )
+from _shared.portal_assertions import assert_portal_restored
 
 from pipefy_sdk.client import build_executors
 from pipefy_sdk.services.portal_service import PortalService
@@ -40,11 +39,6 @@ def _require_portal_org_uuid():
     if not org_uuid:
         pytest.skip("Set PIPEFY_PORTAL_ORG_UUID to a dedicated test organization.")
     return org_uuid
-
-
-def _portal_fingerprint(portal):
-    encoded = json.dumps(portal, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _portal_element(portal, element_id):
@@ -89,8 +83,7 @@ async def live_portal_page(live_portal_service, live_main_portal):
     finally:
         result = await live_portal_service.delete_portal_page(portal_uuid, page_id)
         assert result.get("deletePage", {}).get("success") is True
-        after = await live_portal_service.get_portal(portal_uuid)
-        assert _portal_fingerprint(after) == _portal_fingerprint(live_main_portal)
+        await assert_portal_restored(live_portal_service, live_main_portal)
 
 
 @pytest_asyncio.fixture
@@ -120,8 +113,7 @@ async def live_first_page_forms_element(live_portal_service, live_main_portal):
                 element_id, page_id
             )
             assert result.get("deleteElement", {}).get("success") is True
-        after = await live_portal_service.get_portal(portal_uuid)
-        assert _portal_fingerprint(after) == _portal_fingerprint(live_main_portal)
+        await assert_portal_restored(live_portal_service, live_main_portal)
 
 
 @pytest_asyncio.fixture
