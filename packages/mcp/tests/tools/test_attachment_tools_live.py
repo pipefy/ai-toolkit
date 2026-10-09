@@ -132,7 +132,7 @@ async def test_live_upload_attachment_to_card_end_to_end(
     assert payload.get("success") is True
     assert payload.get("file_name") == file_name
     assert payload.get("field_id") == field_id
-    assert payload.get("card_id") == card_id
+    assert payload.get("card_id") == str(card_id)
 
     client = _live_pipefy_client()
     data = await client.get_card(card_id, include_fields=True)

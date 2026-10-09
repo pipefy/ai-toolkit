@@ -160,3 +160,5 @@ Five tools read and configure conditional visibility on phase fields.
 - Action entries use `phaseFieldId` with the target field's `internal_id` from `get_phase_fields` (not the slug `id`).
 - The tool rejects an empty `condition`, an empty `expressions` list, and slug-like `phaseFieldId` values.
 - Use `introspect_type('createFieldConditionInput')` / `UpdateFieldConditionInput` for optional keys in `extra_input`.
+
+The API can place a condition requested for an ordinary phase on the pipe's start form. The MCP tool reports this as `FIELD_CONDITION_WRONG_PHASE`. Keep `error.details.condition_id` for cleanup even though `success` is false. Do not substitute the start form for the requested phase or retry the same create. For a rule intended for the start form, use `pipe.startFormPhaseId` from `get_pipe`.

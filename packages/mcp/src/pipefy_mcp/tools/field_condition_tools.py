@@ -329,6 +329,11 @@ class FieldConditionTools:
             unavailable) -> success with a warning that verification was
             unavailable (no ``verified`` key).
 
+            The API can place a rule requested for an ordinary phase on the
+            pipe's start form. Treat that as a failed create; do not substitute
+            the start form for the user's requested phase. For a rule intended
+            for the start form, resolve its ID from ``get_pipe`` -> ``pipe.startFormPhaseId``.
+
             The toolkit **rejects** ``hide`` on a ``required=true`` field before
             calling the API (``success: false`` listing field ids), even though the
             Pipefy API may accept that combo. ``phaseFieldId`` may be

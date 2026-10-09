@@ -201,6 +201,8 @@ These tools manage label definitions on the pipe. Applying a pipe label to a car
 
 Do not hide a required field; clear `required` first.
 
+The API can attach a rule requested for an ordinary phase to the pipe's start form. Before you report success, make sure that the created condition's `phase.id` matches the requested phase. Keep its ID for cleanup when verification fails. Do not substitute the start form for the requested phase. For a rule intended for the start form, use `pipe.startFormPhaseId` from `get_pipe`.
+
 ---
 
 ## Success criteria

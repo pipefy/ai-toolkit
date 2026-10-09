@@ -4,7 +4,9 @@ Exercises **get_phase_fields** → **create_field_condition** → **delete_field
 through **pipefy_mcp.server.mcp** (full ToolRegistry + PipefyClient). Skips without
 **PIPEFY_*** OAuth or when **PIPE_FIELD_CONDITION_LIVE_PHASE_ID** is unset.
 
-**Setup:** Use a disposable pipe/phase with **at least two phase fields** (any types).
+**Setup:** Use a disposable pipe's start-form phase with **at least two optional
+text fields**. The API can attach a condition requested for an ordinary phase to
+the start form instead; that still fails this test after deleting the created rule.
 The test uses one field as the condition trigger (**field_address** = its **internal_id**)
 and the other as **phaseFieldId** in **actions**. Grant the service account **create /
 delete field conditions** on that phase.
@@ -31,7 +33,7 @@ from _shared.live_settings import pipefy_live_configured, require_live_creds
 
 from pipefy_mcp.server import build_pipefy_mcp_server
 from pipefy_mcp.settings import settings
-from tools.destructive_confirm_test_support import confirm_after_preview
+from tools.field_condition_live_test_support import exercise_field_condition_lifecycle
 
 # Building the app now resolves the Pipefy credential (the runtime wires its
 # client at construction), so this credential-dependent module skips itself
@@ -102,54 +104,19 @@ async def test_live_field_condition_tools_only_happy_path(extract_payload):
     actions = [{"phaseFieldId": target_id, "whenEvaluator": True, "actionId": "hide"}]
     rule_name = f"MCP field cond {expr_token}"
 
-    condition_id_created: str | None = None
-    deleted_successfully = False
-    try:
-        with patch("pipefy_mcp.settings.settings", settings):
-            async with create_client_session(
-                mcp_server,
-                read_timeout_seconds=timedelta(seconds=120),
-                raise_exceptions=True,
-            ) as session:
-                r_create = await session.call_tool(
-                    "create_field_condition",
-                    {
-                        "phase_id": phase_id,
-                        "condition": condition,
-                        "actions": actions,
-                        "extra_input": {"name": rule_name},
-                        "debug": True,
-                    },
-                )
-        assert r_create.is_error is False, r_create
-        created = extract_payload(r_create)
-        assert created.get("success") is True, created
-        condition_id_created = created.get("condition_id")
-        assert condition_id_created, created
-
-        with patch("pipefy_mcp.settings.settings", settings):
-            async with create_client_session(
-                mcp_server,
-                read_timeout_seconds=timedelta(seconds=120),
-                raise_exceptions=True,
-            ) as session:
-                deleted = await confirm_after_preview(
-                    session,
-                    "delete_field_condition",
-                    {"condition_id": condition_id_created, "debug": True},
-                )
-        assert deleted.get("success") is True, deleted
-        deleted_successfully = True
-    finally:
-        if condition_id_created and not deleted_successfully:
-            with patch("pipefy_mcp.settings.settings", settings):
-                async with create_client_session(
-                    mcp_server,
-                    read_timeout_seconds=timedelta(seconds=120),
-                    raise_exceptions=True,
-                ) as session:
-                    await confirm_after_preview(
-                        session,
-                        "delete_field_condition",
-                        {"condition_id": condition_id_created, "debug": True},
-                    )
+    with patch("pipefy_mcp.settings.settings", settings):
+        async with create_client_session(
+            mcp_server,
+            read_timeout_seconds=timedelta(seconds=120),
+            raise_exceptions=True,
+        ) as session:
+            await exercise_field_condition_lifecycle(
+                session,
+                {
+                    "phase_id": phase_id,
+                    "condition": condition,
+                    "actions": actions,
+                    "name": rule_name,
+                    "debug": True,
+                },
+            )

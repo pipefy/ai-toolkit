@@ -52,7 +52,7 @@ mcp_server = build_pipefy_mcp_server(settings)
 async def test_live_create_ai_automation_omits_condition_uses_default_placeholder(
     extract_payload,
 ):
-    """Full stack: create_ai_automation without condition; delete when possible."""
+    """Create without condition; always delete the created automation."""
     require_live_creds()
     pipe_raw = os.environ.get("PIPE_AI_AUTOMATION_LIVE_PIPE_ID")
     field_raw = os.environ.get("PIPE_AI_AUTOMATION_LIVE_FIELD_ID")
@@ -75,31 +75,28 @@ async def test_live_create_ai_automation_omits_condition_uses_default_placeholde
             read_timeout_seconds=timedelta(seconds=120),
             raise_exceptions=True,
         ) as session:
-            create_result = await session.call_tool(
-                "create_ai_automation",
-                {
-                    "name": name,
-                    "event_id": "card_created",
-                    "pipe_id": pipe_id,
-                    "prompt": f"Summarize card %{field_id}",
-                    "field_ids": [field_id],
-                },
-            )
-    assert create_result.is_error is False, create_result
-    payload = extract_payload(create_result)
-    assert payload.get("success") is True, payload
-    automation_id = str(payload.get("automation_id") or "").strip()
-    assert automation_id, f"Missing automation_id in payload: {payload!r}"
-
-    with patch("pipefy_mcp.settings.settings", settings):
-        async with create_client_session(
-            mcp_server,
-            read_timeout_seconds=timedelta(seconds=120),
-            raise_exceptions=True,
-        ) as session:
-            del_payload = await confirm_after_preview(
-                session,
-                "delete_automation",
-                {"automation_id": automation_id, "confirm": True},
-            )
-    assert del_payload.get("success") is True, del_payload
+            automation_id = None
+            try:
+                create_result = await session.call_tool(
+                    "create_ai_automation",
+                    {
+                        "name": name,
+                        "event_id": "card_created",
+                        "pipe_id": pipe_id,
+                        "prompt": f"Summarize card %{{{field_id}}}",
+                        "field_ids": [field_id],
+                    },
+                )
+                payload = extract_payload(create_result)
+                automation_id = (payload.get("data") or {}).get("automation_id")
+                assert create_result.is_error is False, create_result
+                assert payload.get("success") is True, payload
+                assert automation_id, f"Missing automation_id in payload: {payload!r}"
+            finally:
+                if automation_id:
+                    del_payload = await confirm_after_preview(
+                        session,
+                        "delete_automation",
+                        {"automation_id": automation_id},
+                    )
+                    assert del_payload.get("success") is True, del_payload
