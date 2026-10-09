@@ -9,7 +9,7 @@
 
 The toolkit's docs copy facts that the code already owns: the parameters of a tool, the commands of the CLI, the settings that the packages read. People keep those copies by hand, and the copies drift. We have run into this ourselves: more than once, a false statement in the docs steered an implementation before anyone noticed that the code said otherwise.
 
-To write this RFC, we searched the docs and docstrings for such statements. Without a full audit, we found at least 11 that are false or misleading, or that contain links that break where readers see them. The existing doc checks pass on all of them. The clearest one tells the reader to pass `debug=true` to `execute_graphql`, a tool that has no `debug` parameter, and that advice appears in 10 places.
+To write this RFC, we searched the docs and docstrings for such statements. Without a full audit, we found at least 11 that are false or misleading, or that contain links that break where readers see them. The existing doc checks pass on all of them. The clearest one tells the reader to pass `debug=true` to `execute_graphql`, a tool that has no `debug` parameter. It is one of 10 hand-written copies of the `debug=true` convention.
 
 The docs also have a second, separate problem: no rule says where a page belongs. Each author picks the place for a new page, so three pages for contributors sit at the top of the user docs, and a reader cannot predict where a fact lives.
 
@@ -28,7 +28,17 @@ If this works, a fact that the code owns stops drifting, because no person keeps
 
 ### Copies of facts that the code owns
 
-Authors describe one behavior in up to 7 places: the docstring, the CLI help, a tool page in `docs/mcp/tools/`, one or more skills, `docs/parity.md`, and sometimes `docs/architecture.md` or a package `AGENTS.md`. Each copy changes on its own schedule. These statements are false or misleading:
+Authors describe one behavior in up to 7 places: the docstring, the CLI help, a tool page in `docs/mcp/tools/`, one or more skills, `docs/parity.md`, and sometimes `docs/architecture.md` or a package `AGENTS.md`. Each copy changes on its own schedule.
+
+The copies multiply. The convention that write tools take `debug=true` is written out in 6 pages in `docs/mcp/tools/` and in 4 skills. One of those copies applies it to `execute_graphql`, which has no `debug` parameter. The tool count "187" appears in `docs/parity.md:5`, `docs/parity.md:229`, `packages/mcp/README.md:3`, and `packages/mcp/README.md:100`. A test compares the number at `docs/parity.md:5` with the registry (`tests/test_parity.py:131`), and no test reads the other three.
+
+`docs/parity.md` holds 187 rows that map an MCP tool to a CLI command, and the 17 skill files named `references/cli.md` hold 162 more. Each of these 349 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair, such as the reason for a deferral. No code owns those notes, so they stay hand-written.
+
+The commit history shows how often a code change also needs a doc edit. Of the 10 Markdown files with the most commits on `dev` that are not merges, 2 are `CHANGELOG.md` and `RELEASE.md`, which change with the code by design. For 5 of the other 8, more than half of the commits also change `.py` files, and 3 of those 8 are skills. A commit that changes both does not prove that the doc repeats the code, but it shows that doc edits follow code changes closely.
+
+### Wrong statements and broken links
+
+Copies that change on their own schedule end up wrong. These statements are false, outdated, or break where readers see them:
 
 | Where | What the text says | What the code or the tree shows |
 |---|---|---|
@@ -36,6 +46,10 @@ Authors describe one behavior in up to 7 places: the docstring, the CLI help, a 
 | `skills/pipes-and-cards/pipefy-pipes-and-cards/references/cli.md:84` | `get_pipe` runs as `pipefy label list --pipe <id>` | The command calls the SDK method `get_pipe`, but the MCP tool for it is `get_labels`. The "Operation" column mixes MCP tool names and SDK method names, so the row reads as a wrong mapping |
 | `skills/introspection/pipefy-introspection/references/mcp.md:44` | Pass `debug=true` to `execute_graphql`, and check `path` | `execute_graphql` has no `debug` parameter, and its error branch keeps only the `message` of each error, so neither `path` nor `correlation_id` reaches the caller |
 | `README.md:198`, and the layout block at `AGENTS.md:21-26` | The workspace has three Python packages | `pyproject.toml:13` lists five: `sdk`, `mcp`, `cli`, `auth`, and `infra` |
+| `docs/config.md:122` | "A future file-backed keyring backend will write its credential store as `~/.config/pipefy/keyring.cfg`" | The backend exists: `configure_keychain_backend("file")` writes `keyring.cfg` through `_KEYRING_FILENAME` (`packages/auth/src/pipefy_auth/storage.py:34`) |
+| `packages/cli/README.md:85` | See `CLAUDE.md` for contributor guidance | The root has no `CLAUDE.md`. The only tracked one is the symlink `packages/mcp/CLAUDE.md` |
+| `README.md:341` | "Each published blueprint ships with a `COMPLIANCE.md`" | No skill ships a `COMPLIANCE.md`. The only tracked one is the template, `docs/compliance/COMPLIANCE.template.md`. `packages/sdk/hatch_build.py` packs only `SKILL.md` and `references/`, so a `COMPLIANCE.md` would not reach the wheel. No code or skill uses the term "blueprint" |
+| `packages/mcp/README.md`, `packages/cli/README.md`, `packages/sdk/README.md` | 12 relative links of the form `../../docs/...`, on 8 lines | Each `pyproject.toml` sets `readme = "README.md"`, so these READMEs become PyPI pages, where relative links break |
 
 Three more statements describe behavior that the code does not have:
 
@@ -45,28 +59,9 @@ Three more statements describe behavior that the code does not have:
 
 RFC-0003 owns this behavior, so we correct these three statements only after RFC-0003 settles it.
 
-Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool.
+Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool. CI and the pre-commit hooks run no link checker and no Markdown linter, and no check reads the prose of `docs/` or of the READMEs.
 
 Docs also drift when no code changes. The first two rows were correct until PR #715. That PR changed skills, tests, and the skill lint, but no code under `packages/`. Its commit "docs: Separate skill surface instructions" split the skill tables per product and dropped the note column that explained them.
-
-The copies also multiply. The false `debug=true` advice appears in 6 pages in `docs/mcp/tools/` and in 4 skills. The tool count "187" appears in `docs/parity.md:5`, `docs/parity.md:229`, `packages/mcp/README.md:3`, and `packages/mcp/README.md:100`. A test compares the number at `docs/parity.md:5` with the registry (`tests/test_parity.py:131`), and no test reads the other three.
-
-`docs/parity.md` holds 187 rows that map an MCP tool to a CLI command, and the 17 skill files named `references/cli.md` hold 162 more. Each of these 349 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair, such as the reason for a deferral. No code owns those notes, so they stay hand-written.
-
-The commit history shows how often a code change also needs a doc edit. Of the 10 Markdown files with the most commits on `dev` that are not merges, 2 are `CHANGELOG.md` and `RELEASE.md`, which change with the code by design. For 5 of the other 8, more than half of the commits also change `.py` files, and 3 of those 8 are skills. A commit that changes both does not prove that the doc repeats the code, but it shows that doc edits follow code changes closely.
-
-### Outdated references and broken links
-
-Four more statements point at things that do not exist, that have changed, or that break where readers see them:
-
-| Where | What the text says | What the code or the tree shows |
-|---|---|---|
-| `docs/config.md:122` | "A future file-backed keyring backend will write its credential store as `~/.config/pipefy/keyring.cfg`" | The backend exists: `configure_keychain_backend("file")` writes `keyring.cfg` through `_KEYRING_FILENAME` (`packages/auth/src/pipefy_auth/storage.py:34`) |
-| `packages/cli/README.md:85` | See `CLAUDE.md` for contributor guidance | The root has no `CLAUDE.md`. The only tracked one is the symlink `packages/mcp/CLAUDE.md` |
-| `README.md:341` | "Each published blueprint ships with a `COMPLIANCE.md`" | No skill ships a `COMPLIANCE.md`. The only tracked one is the template, `docs/compliance/COMPLIANCE.template.md`. `packages/sdk/hatch_build.py` packs only `SKILL.md` and `references/`, so a `COMPLIANCE.md` would not reach the wheel. No code or skill uses the term "blueprint" |
-| `packages/mcp/README.md`, `packages/cli/README.md`, `packages/sdk/README.md` | 12 relative links of the form `../../docs/...`, on 8 lines | Each `pyproject.toml` sets `readme = "README.md"`, so these READMEs become PyPI pages, where relative links break |
-
-No check covers these statements. CI and the pre-commit hooks run no link checker and no Markdown linter, and no check reads the prose of `docs/` or of the READMEs.
 
 ### Page placement
 
@@ -92,7 +87,7 @@ Checking each pair runs into a deeper problem: the check needs a correct pair to
 
 ### Consequences
 
-- **Agents act on false instructions.** Authors write skills for agents. An agent that follows the first three rows of the first table calls the wrong command, or passes a parameter that does not exist.
+- **Agents act on false instructions.** Authors write skills for agents. An agent that follows the first three rows of the table in "Wrong statements and broken links" calls the wrong command, or passes a parameter that does not exist.
 - **A code change carries doc edits in several files.** A change to one tool can touch its docstring, a tool page, a skill, and `docs/parity.md`. Each extra file is one more place to forget, and one more diff to review.
 
 ## Explicit non-goals
@@ -129,7 +124,7 @@ A generator writes each generated block between two markers. CI runs the generat
 
 A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
 
-Every copy in "Copies of facts that the code owns" disappears under this rule: the four false rows of the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and the 349 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
+Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 349 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
 No code records today which CLI command implements which MCP tool. We ask RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
 
@@ -313,7 +308,7 @@ Five pages mix kinds or products today. Each one splits by R2 and R3:
 
 #### One fact before and after
 
-Today, 6 pages in `docs/mcp/tools/` and 4 skills tell the reader to pass `debug=true` to `execute_graphql`. The signature of `execute_graphql` (`packages/mcp/src/pipefy_mcp/tools/introspection_tools.py:177`) has no `debug` parameter, and no check notices.
+Today, 6 pages in `docs/mcp/tools/` and 4 skills describe the `debug=true` convention by hand. One of them, `skills/introspection/pipefy-introspection/references/mcp.md:44`, tells the reader to pass `debug=true` to `execute_graphql`. The signature of `execute_graphql` (`packages/mcp/src/pipefy_mcp/tools/introspection_tools.py:177`) has no `debug` parameter, and no check notices.
 
 Once these rules hold, the parameter list of `execute_graphql` exists in one place: its signature. The generated MCP reference shows it, and an agent reads the same list in the tool schema. A skill that needs the list points to the tool schema. A hand-written example that calls the tool with `debug=true` runs as an executable example, and the run fails because the parameter does not exist.
 
