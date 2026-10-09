@@ -112,12 +112,10 @@ Every fact has one source of truth: the one place where it is written. For the p
 
 Every other place reaches a fact that the code owns in one of two ways:
 
-1. A pointer: a sentence that names the command that shows the fact, such as "Run `sh install.sh --help` for the flags." This is the default, because a pointer holds no copy of the fact, so it stays correct when the fact changes.
+1. A pointer: a sentence that tells the reader where the code shows the fact, such as "Run `sh install.sh --help` for the flags." This is the default, because a pointer holds no copy of the fact, so it stays correct when the fact changes.
 2. A generated block, when the reader cannot run a command at the moment they need the fact. Two cases exist today:
    - a page that readers see outside the repository, such as a package README on PyPI
    - an agent that chooses a tool before it calls one
-
-An MCP tool has no `--help`. Its pointer names the tool's input schema instead.
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
