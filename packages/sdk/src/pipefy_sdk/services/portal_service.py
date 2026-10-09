@@ -58,7 +58,10 @@ def _with_uuid_alias(record: dict[str, Any]) -> dict[str, Any]:
 
 _PORTAL_PERMISSION_MESSAGE = (
     "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
+    "`create_portal` or `manage_portals` from your admin. If you already have "
+    "them, writing to an existing portal also needs you to be its admin: join it "
+    "once with the Interfaces `joinAsAdmin` mutation, which the toolkit does not "
+    "expose."
 )
 
 

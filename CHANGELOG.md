@@ -68,6 +68,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Automations skill and docs, event and action compatibility**: the skill named `field_updated` + `move_single_card` a dead pairing and told agents to gate a rule on the action's `triggerEvents`. The pairing fires, and `triggerEvents` is not a compatibility allowlist: actions return it empty, list their own `eventsBlacklist` entries inside it, and run with events outside it. Both surfaces now state the rule the catalog supports, a pair is invalid when the event is in the action's `eventsBlacklist`, name the `event_action_blacklist` rejection `create_automation` returns for one, and record that `update_automation` does not enforce the denylist, so a rule can be patched into a blacklisted pair. The skill also carries the full catalog-to-input spelling map for `event_params` (`trigger_field_ids` is `triggerFieldIds`, and `to_phase_id` is the only key that stays snake_case) and the `scheduler_frequency` plus five-field `schedulerCron` shape recurring rules need. (#689)
 
+- **Portal permission message**: `PERMISSION_DENIED` on a portal write told the caller to request `create_portal` or `manage_portals`, which sent an org admin who already had them in the wrong direction. Pipefy also requires the caller to be the portal's admin, through the Interfaces `joinAsAdmin` mutation once per portal, even for a portal they created. The SDK and MCP message now says so and that the toolkit does not expose that mutation; the portal skill and MCP docs state it for users and service accounts alike.
+
 ### Changed
 
 - **SDK `get_automations`**: returns the connection page (`nodes`, `totalCount`, `pageInfo`) instead of a bare list, so callers can detect a truncated listing.
