@@ -367,4 +367,33 @@ We surveyed the docs of 17 open-source monorepos. Eleven keep one central `docs/
 
 ## Migration plan
 
-Pending (pass 5).
+The migration runs as a series of small pull requests on `dev`. Each pull request changes one part of the docs and leaves every check green.
+
+### Order
+
+1. **Fix the statements.** Correct the 10 rows of the table in "Wrong statements and broken links". The three statements about behavior wait for RFC-0003.
+2. **Add the checks.** Add `lychee`, `markdownlint-cli2`, `cog`, Sybil, and the layout table check to CI and pre-commit. The layout table check starts with a list of today's files that match no pattern. The list only shrinks, and the check fails on any new file that matches no pattern.
+3. **Move the pages.** Move one section per pull request: the global section, `docs/contributing/`, `docs/mcp/`, `docs/cli/`, and `docs/sdk/`. Each pull request adds the front matter, leaves a redirect stub at each old path, and fixes the links to the moved pages.
+4. **Generate.** Add the generators from "How a fact reaches a page", and delete each hand-written copy that a generated page or block replaces.
+5. **Shrink `docs/parity.md`.** Keep the 5 tools that have no CLI command and the behavior differences. `tests/test_parity.py` then checks only that each listed tool exists in the registry.
+6. **Move the files outside `docs/`.** Delete `packages/mcp/CLAUDE.md`, move `RELEASE.md`, `DEPRECATION.md`, and the starter files, and repoint the references to each of them. `TERMS.md` moves last, once the owner of the legal text agrees.
+
+### Links that the moves break
+
+- **Links in Markdown.** 79 Markdown lines link into `docs/`. `lychee` fails on each one that a move breaks, so the move and the fix land in the same pull request.
+- **Doc paths in code.** 9 lines of code outside the tests name a path under `docs/`, such as the docstring at `packages/mcp/src/pipefy_mcp/tools/organization_tools.py:38`. `lychee` does not read code, so each move pull request searches the code for the old path.
+- **Doc paths that released code prints.** The CLI prints `docs/cli/auth.md` in 6 error messages (`packages/cli/src/pipefy_cli/_docs.py:3`). Released versions keep printing that path after it moves.
+- **Absolute URLs.** 43 lines link to `blob/main` URLs, 40 of them in 16 skill files, which agents read outside the repository. A redirect stub catches a link to a page, but a link to a section lands at the top of the stub, so each move pull request repoints these URLs too.
+- **READMEs on PyPI.** A published version keeps its README, so its relative links stay broken. Only new versions get the absolute links from R2.
+
+### Redirect stubs
+
+A redirect stub holds a title and one link to the new path. It stays for at least one minor release, and for as long as a supported release prints or links its path. The layout table has one pattern for stubs.
+
+### How contributors learn the layout
+
+`CONTRIBUTING.md` and `.github/PULL_REQUEST_TEMPLATE.md` link to the layout table. The layout table check names the table in its failure message, and `AGENTS.md` links to `docs/contributing/reference/authoring.md`, so an agent that adds a page meets the same rules.
+
+### Candidate issues
+
+One issue for each step in "Order", with one issue per section for step 3, and one more for the 162 tool-to-command pairs in the skills, which wait for the registry record from RFC-0003.
