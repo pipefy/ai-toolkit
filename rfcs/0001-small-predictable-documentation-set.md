@@ -7,18 +7,22 @@
 
 ## Summary and motivation
 
-The toolkit's docs copy facts that the code already owns, and no rule says where a page belongs. Authors keep the copies by hand, so the copies drift from the code, and each new page goes wherever its author chose. Today at least 11 statements in the docs and docstrings are false or misleading, or contain links that break where readers see them. The investigation for this RFC found these 11 without a full audit, and the existing doc checks pass on all of them.
+The toolkit's docs copy facts that the code already owns: the parameters of a tool, the commands of the CLI, the settings that the packages read. People keep those copies by hand, and the copies drift. We have run into this ourselves: more than once, a false statement in the docs steered an implementation before anyone noticed that the code said otherwise.
 
-This RFC proposes two principles:
+To write this RFC, we searched the docs and docstrings for such statements. Without a full audit, we found at least 11 that are false or misleading, or that contain links that break where readers see them. The existing doc checks pass on all of them. The clearest one tells the reader to pass `debug=true` to `execute_graphql`, a tool that has no `debug` parameter, and that advice appears in 10 places.
+
+The docs also have a second, separate problem: no rule says where a page belongs. Each author picks the place for a new page, so three pages for contributors sit at the top of the user docs, and a reader cannot predict where a fact lives.
+
+We propose two principles:
 
 1. A fact that the code owns has no hand-written copy. A page points to the command that shows the fact, such as `pipefy --help`. When the reader cannot run a command at the moment they need the fact, the fact is generated into the page, and CI fails when the generated text is stale.
 2. The path of a page tells the reader who the page is for, which product it covers, and what kind of page it is. The reader is a user or a contributor. The product is the MCP server, the CLI, or the SDK. The kind is one of the four kinds of the [Diataxis](https://diataxis.fr) framework: tutorial, how-to guide, reference, or explanation.
 
 People write the rest by hand: tutorials, how-to guides, explanations, and the reasons behind a design. A machine checks each statement in them that a machine can check, such as a link, a command, or an example.
 
-"Small" follows from the first principle: the docs hold fewer statements, and each fact has one source. "Predictable" follows from the second: an author knows where a new page goes, and a reader knows where to look. The proposed solution turns both principles into rules that a reviewer can check, and each rule points to the evidence below.
+"Small" follows from the first principle: the docs hold fewer statements, and each fact has one source. "Predictable" follows from the second: an author knows where a new page goes, and a reader knows where to look. R1 turns the first principle into a rule that a reviewer can check, R2 and R3 do the same for the second, and R4 makes a machine check what people write.
 
-The outcome has three parts. A fact that the code owns stops drifting, because no person keeps a copy of it. A code change touches fewer hand-written pages, because the copies that the change would make stale no longer exist. A reader finds a fact by its path, not by a search.
+If this works, a fact that the code owns stops drifting, because no person keeps a copy of it. A code change touches fewer hand-written pages, because the copies that it would make stale no longer exist. And a reader finds a fact by its path, not by a search.
 
 ## Problem statement
 
@@ -39,7 +43,7 @@ Three more statements describe behavior that the code does not have:
 - `docs/mcp/tools/cross-cutting.md:11` says that empty, zero, and invalid IDs fail before any network call. `PipefyId` accepts `0`, `-1`, and `"abc"`, and about a third of the 122 tools with `PipefyId` parameters never call `validate_tool_id`.
 - The docstrings at `packages/mcp/src/pipefy_mcp/tools/automation_tools.py:518` and `packages/sdk/src/pipefy_sdk/client.py:1073` say that an `active` key in `extra_input` wins. `packages/sdk/src/pipefy_sdk/client.py:1097` passes `active=active, **extra_input`, which raises `TypeError`.
 
-RFC-0003 owns this behavior, so this RFC corrects these three statements only after RFC-0003 settles it.
+RFC-0003 owns this behavior, so we correct these three statements only after RFC-0003 settles it.
 
 Each of these statements passes the existing checks. `lint_skill_refs.py` checks that an operation name exists, and that a `pipefy` command path and its options exist. It checks each cell on its own, so a row that pairs a real tool with the real command of another tool passes. `tests/test_parity.py` checks that every tool has a row and that the command path exists, but not that the command implements the tool.
 
@@ -78,13 +82,13 @@ The repository root holds 8 Markdown files. Six of them follow a convention that
 
 ### The cheaper alternative
 
-The cheapest response is to fix the 11 statements found so far, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. This RFC includes the first two. They do not stop the next drift, for three reasons.
+The cheapest response is to fix the 11 statements found so far, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. We include the first two, but we do not think that they stop the next drift.
 
-First, a fixed copy is still a copy, and nothing ties it to the code. `README.md:198` has said "three Python packages" since 2026-05-18. The `pipefy-auth` package arrived four days later, in PR #216. After that, 55 commits that are not merges changed `README.md`, and none of them corrected the sentence.
+A fixed copy is still a copy, and nothing ties it to the code. `README.md:198` has said "three Python packages" since 2026-05-18. The `pipefy-auth` package arrived four days later, in PR #216. After that, 55 commits that are not merges changed `README.md`, and none of them corrected the sentence.
 
-Second, a link checker finds broken links. It does not find a false statement whose links work, such as the three-package row or the keyring row.
+A link checker would not have caught that sentence either, because nothing in it is a broken link. The keyring row has the same problem.
 
-Third, a check of each pair needs a correct pair to compare against. No code records which CLI command implements which MCP tool, so the only record is the hand-kept tables that the check would test. Once the code records the mapping, the tables only repeat it, and generating them costs less than checking them.
+Checking each pair runs into a deeper problem: the check needs a correct pair to compare against. No code records which CLI command implements which MCP tool, so the only record is the hand-kept tables that the check would test. Once the code records the mapping, the tables only repeat it, and generating them costs less than checking them.
 
 ### Consequences
 
@@ -107,24 +111,25 @@ This RFC does not propose a docs site with its own user interface, and the layou
 
 ### Rules
 
-Four rules put the two principles into practice. Each rule says what a reviewer or a check verifies, and each one points to the evidence in the problem statement. The layout below follows from these rules.
-
 #### R1: One source of truth per fact
 
-Every fact has one source of truth: the one place where the fact is written. The code owns each fact that it can state, such as the parameters of an MCP tool, the commands and options of the CLI, the settings that the packages read, and the flags of `install.sh` and `uninstall.sh`. A person owns every other fact.
+Every fact has one source of truth: the one place where it is written. For the parameters of an MCP tool, the commands and options of the CLI, the settings that the packages read, and the flags of `install.sh` and `uninstall.sh`, that place is the code. Every other fact has a person as its source.
 
 Every other place reaches a fact that the code owns in one of two ways:
 
 1. A pointer: a sentence that names the command that shows the fact, such as "Run `pipefy phase --help` for the options." This is the default, because a pointer has no copy that can go stale.
-2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today: a comparison across commands, as in `docs/parity.md`, a page that readers see outside the repository, such as a package README on PyPI, and an agent that chooses a tool before it calls one.
+2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today:
+   - a comparison across commands, as in `docs/parity.md`
+   - a page that readers see outside the repository, such as a package README on PyPI
+   - an agent that chooses a tool before it calls one
 
 A generator writes each generated block between two markers. CI runs the generator again and fails when the committed text differs from its output. The tool for this is `cog`, and its `--check` flag is the check in CI.
 
 A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". When a reader needs the number, a generator writes it. A recent commit already did this: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values".
 
-The evidence is in "Copies of facts that the code owns": four false statements in the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and 349 tool-to-command pairs. "The cheaper alternative" shows that a corrected copy drifts again.
+Every copy in "Copies of facts that the code owns" disappears under this rule: the four false rows of the first table, the `debug=true` advice in 10 places, the tool count in 4 places, and the 349 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
-No code records today which CLI command implements which MCP tool. This RFC asks RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
+No code records today which CLI command implements which MCP tool. We ask RFC-0003 to add that record to the tool registry. Until the record exists, the 349 pairs stay hand-written, and the existing checks keep covering them.
 
 #### R2: The path of a page declares its place
 
@@ -144,25 +149,25 @@ Outside `docs/`, the layout table names every other place. The repository root h
 
 A package README becomes a page on PyPI, so it links only to section landing pages, with absolute GitHub URLs.
 
-The evidence is in "Page placement" and in the last row of the table in "Outdated references and broken links".
+Today's tree shows why the path has to carry this: three contributor pages sit at the top of the user docs, and two root files follow no convention ("Page placement"). The PyPI rule comes from the 12 relative links that break on pypi.org.
 
 #### R3: The section of a fact
 
-This rule places each fact, not each page. It starts with one question: what is the reader working with when they need the fact?
+This rule works on facts, because one page today often mixes facts for different readers, as `docs/cli/auth.md` does. It starts with one question: what is the reader working with when they need the fact?
 
 1. If the reader is changing the repository, the fact belongs to the contributor section, `docs/contributing/`.
 2. Otherwise, the reader uses a product: the MCP server, the CLI, or the SDK. A fact that holds for one product belongs to the section of that product.
 3. A fact that holds for two or more products belongs to the global section, `docs/`.
 
-The answer follows the product, not the location of the code. For example, `pipefy_auth/flow.py` raises `State mismatch on OAuth callback`, but only `pipefy auth login` runs that flow, so the fix for that error belongs to the CLI section.
+The location of the code does not decide. For example, `pipefy_auth/flow.py` raises `State mismatch on OAuth callback`, but only `pipefy auth login` runs that flow, so the fix for that error belongs to the CLI section.
 
 The contributor section shares no fact with the user sections. Its pages can link to user pages, but no page includes text from the other side.
 
 A global page can include text from a product page, but a product page never includes text from a global page. Each product section is complete on its own. A global page adds only the ideas that span products, and a product page links to global pages for them. As a result, two sections never hold the same fact.
 
-This RFC uses "global" for a fact that holds for two or more products. It does not use "cross-cutting", because today that word names `docs/mcp/tools/cross-cutting.md`, a page about one product.
+We use "global" for a fact that holds for two or more products, and we avoid "cross-cutting", because today that word names `docs/mcp/tools/cross-cutting.md`, a page about one product.
 
-The evidence is in "Page placement": contributor pages sit at the top of the user docs, and each author picks the place for a new page.
+We expect this rule to settle most placement questions in review, because today each author picks the place for a new page ("Page placement").
 
 #### R4: A machine checks every claim that it can check
 
@@ -180,11 +185,13 @@ CI runs these checks at every commit on `dev`:
 
 Each claim about behavior in a hand-written page is tested in one of three ways: by an executable example, by a pointer or a generated block (R1), or by a link to a named test. A reviewer deletes a claim that none of these tests.
 
-The evidence is in the problem statement: the existing checks pass on all 11 statements that the investigation found, and CI runs no link checker and no Markdown linter. RFC-0002 sets the quality bar for these checks as tests.
+None of this runs today. CI has no link checker and no Markdown linter, and the existing checks pass on all 11 statements that we found. RFC-0002 sets the quality bar for these checks as tests.
+
+#### How confident we are
+
+We are most confident about R1 and R4. The 55 commits that never corrected "three Python packages" show that a copy kept by hand drifts, and R4 only adds standard tools. R2 and R3 are a bet. Diataxis names four kinds of documentation but does not prescribe folders, and the layout below is our best reading of it for a toolkit with three products. A prototype tests that bet on two pages before the migration starts. If readers still search more than they browse, we will change the layout and keep the principles.
 
 ### Layout
-
-This part shows the docs that follow from the rules: how a fact reaches a page, the tree under `docs/`, where today's mixed pages go, and the files outside `docs/`. Part of it depends on work that RFC-0003 owns, and the last subsection names that work.
 
 #### How a fact reaches a page
 
@@ -299,18 +306,18 @@ Five pages mix kinds or products today. Each one splits by R2 and R3:
 - **The root.** `README.md` introduces the toolkit, keeps one tested install snippet, and links to the landing page of each section. `CONTRIBUTING.md` holds the commit, sign-off, and pull request rules, and it links to `docs/contributing/README.md`. `CHANGELOG.md` holds the history. `RELEASE.md` becomes `docs/contributing/how-to/release.md`, `DEPRECATION.md` joins `docs/explanation/versioning.md`, and `TERMS.md` becomes `docs/reference/terms.md` once the owner of the legal text agrees.
 - **Agent instructions.** `AGENTS.md` is the only instruction file, at the root, in `packages/mcp/`, and in `skills/`. Claude Code reads `AGENTS.md` when no `CLAUDE.md` exists, so the symlink `packages/mcp/CLAUDE.md` goes away. Each rule line in an `AGENTS.md` links to its page in `docs/contributing/reference/`.
 - **Package READMEs.** Each one is a short PyPI page with the install command and absolute links to its section's landing page (R2).
-- **Starter files.** The skill starter in `.github/skill-template/` and `docs/compliance/COMPLIANCE.template.md` move to the root folder `template/`, because they are files to copy, not pages to read.
+- **Starter files.** The skill starter in `.github/skill-template/` and `docs/compliance/COMPLIANCE.template.md` move to the root folder `template/`, because a contributor copies them and nobody reads them as pages.
 - **RFCs.** They stay in `rfcs/`, outside `docs/`. A draft asks for a decision and an accepted RFC records one, so an RFC fits no Diataxis kind.
 
 #### One fact before and after
 
 Today, 6 pages in `docs/mcp/tools/` and 4 skills tell the reader to pass `debug=true` to `execute_graphql`. The signature of `execute_graphql` (`packages/mcp/src/pipefy_mcp/tools/introspection_tools.py:177`) has no `debug` parameter, and no check notices.
 
-After this RFC, the parameter list of `execute_graphql` exists in one place: its signature. The generated MCP reference shows it, and an agent reads the same list in the tool schema. A skill that needs the list points to the tool schema. A hand-written example that calls the tool with `debug=true` runs as an executable example, and the run fails because the parameter does not exist.
+Once these rules hold, the parameter list of `execute_graphql` exists in one place: its signature. The generated MCP reference shows it, and an agent reads the same list in the tool schema. A skill that needs the list points to the tool schema. A hand-written example that calls the tool with `debug=true` runs as an executable example, and the run fails because the parameter does not exist.
 
 #### Work that the neighbors supply
 
-- **RFC-0003** adds the tool-to-command mapping to the tool registry, keeps `Args:` sections in the docstrings that the generators read, and writes the content of the architecture pages. This RFC asks RFC-0003 to accept that the arc42 sections of the architecture live by kind: the goals and the runtime view in `docs/contributing/explanation/architecture.md`, the deployment view in `docs/mcp/explanation/deployment.md`, the rules in `docs/contributing/reference/code-rules.md`, and the decisions in `rfcs/`.
+- **RFC-0003** adds the tool-to-command mapping to the tool registry, keeps `Args:` sections in the docstrings that the generators read, and writes the content of the architecture pages. We ask RFC-0003 to accept that the arc42 sections of the architecture live by kind: the goals and the runtime view in `docs/contributing/explanation/architecture.md`, the deployment view in `docs/mcp/explanation/deployment.md`, the rules in `docs/contributing/reference/code-rules.md`, and the decisions in `rfcs/`.
 - **RFC-0002** sets the quality bar for the checks in R4, as tests.
 
 ## Drawbacks and alternatives
