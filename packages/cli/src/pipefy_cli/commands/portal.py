@@ -787,7 +787,9 @@ def portal_sub_portal_create(
 def portal_sub_portal_attach(
     ctx: typer.Context,
     portal_uuid: str = resource_id_argument(help="Main portal interface UUID."),
-    element_id: str = resource_id_argument(help="Page element UUID."),
+    element_id: str = resource_id_argument(
+        help="Forms element UUID from the first portal page."
+    ),
     sub_portal_uuid: str = resource_id_argument(help="Sub-portal UUID."),
     json_out: bool = typer.Option(
         False,
@@ -796,7 +798,7 @@ def portal_sub_portal_attach(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """Attach a sub-portal to a portal page element."""
+    """Attach a sub-portal to a forms element on the first portal page."""
 
     portal_uuid = _require_non_empty_portal_uuid(portal_uuid)
     element_id = _require_non_empty_portal_uuid(element_id)
@@ -851,7 +853,9 @@ def portal_sub_portal_detach(
 def portal_sub_portal_publish(
     ctx: typer.Context,
     portal_uuid: str = resource_id_argument(help="Main portal interface UUID."),
-    element_id: str = resource_id_argument(help="Page element UUID."),
+    element_id: str = resource_id_argument(
+        help="Forms element UUID from the first portal page."
+    ),
     sub_portal_uuid: str = resource_id_argument(help="Sub-portal UUID."),
     json_out: bool = typer.Option(
         False,
@@ -860,7 +864,7 @@ def portal_sub_portal_publish(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """Publish a sub-portal on a portal page element."""
+    """Publish a sub-portal on a forms element on the first portal page."""
 
     portal_uuid = _require_non_empty_portal_uuid(portal_uuid)
     element_id = _require_non_empty_portal_uuid(element_id)
@@ -880,7 +884,9 @@ def portal_sub_portal_publish(
 def portal_sub_portal_unpublish(
     ctx: typer.Context,
     portal_uuid: str = resource_id_argument(help="Main portal interface UUID."),
-    element_id: str = resource_id_argument(help="Page element UUID."),
+    element_id: str = resource_id_argument(
+        help="Forms element UUID from the first portal page."
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -888,7 +894,7 @@ def portal_sub_portal_unpublish(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """Unpublish a sub-portal from a portal page element."""
+    """Unpublish a sub-portal from a forms element on the first portal page."""
 
     portal_uuid = _require_non_empty_portal_uuid(portal_uuid)
     element_id = _require_non_empty_portal_uuid(element_id)

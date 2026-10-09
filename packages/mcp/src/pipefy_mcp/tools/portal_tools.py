@@ -880,15 +880,16 @@ class PortalTools:
         ) -> dict[str, Any]:
             """Attach a sub-portal to a main portal page element.
 
-            Uses ``updateSubPortalElement`` (internal API) on an existing page
-            slot (typically a ``forms`` element). Main portal ``published`` is
+            Uses ``updateSubPortalElement`` (internal API) on a ``forms`` element
+            from ``get_portal`` -> ``pages[0]``. Elements on later pages are not
+            supported. Main portal ``published`` is
             always true; use ``update_portal(visibility="public")`` for public
             hub access. Check ``get_portal`` -> ``subPortals[].published`` for
             sub-portal visibility after attach.
 
             Args:
                 portal_uuid: Main portal interface UUID.
-                element_id: Page element UUID (e.g. templated ``forms`` slot).
+                element_id: Forms element UUID from the first portal page.
                 sub_portal_uuid: Sub-portal UUID to attach.
             """
             client = get_pipefy_client(ctx)
@@ -928,12 +929,13 @@ class PortalTools:
             """Publish a sub-portal on a main portal page element.
 
             Wires ``updateSubPortalElement`` with ``subPortalUuid`` on an
-            existing page slot. Confirm visibility via ``get_portal`` ->
+            existing ``forms`` element from ``get_portal`` -> ``pages[0]``.
+            Elements on later pages are not supported. Confirm visibility via ``get_portal`` ->
             ``subPortals[].published`` (main portal ``published`` stays true).
 
             Args:
                 portal_uuid: Main portal interface UUID.
-                element_id: Page element UUID (e.g. templated ``forms`` slot).
+                element_id: Forms element UUID from the first portal page.
                 sub_portal_uuid: Sub-portal UUID to publish on the element.
             """
             client = get_pipefy_client(ctx)
@@ -971,13 +973,15 @@ class PortalTools:
         ) -> dict[str, Any]:
             """Unpublish a sub-portal from a main portal page element.
 
-            Clears the sub-portal link via ``updateSubPortalElement`` with
-            ``subPortalUuid: null``. Verify state with ``get_portal`` ->
+            Clears the sub-portal link on the first portal page via
+            ``updateSubPortalElement`` with ``subPortalUuid: null``.
+            Use a forms element from ``get_portal`` -> ``pages[0]``.
+            Verify state with ``get_portal`` ->
             ``subPortals[].published``.
 
             Args:
                 portal_uuid: Main portal interface UUID.
-                element_id: Page element UUID to unpublish.
+                element_id: Forms element UUID from the first portal page.
             """
             client = get_pipefy_client(ctx)
             return await run_sub_portal_internal_api_tool(

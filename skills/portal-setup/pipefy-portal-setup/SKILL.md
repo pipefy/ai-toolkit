@@ -68,7 +68,7 @@ If **`update_portal`** or **`delete_portal`** returns `PERMISSION_DENIED` but th
 
 ### Empty main page
 
-If **`get_portal`** shows a main page with **no elements**, call **`create_portal_page`** with **`title` only** (no `elements` in the request). The API typically returns a page with **~14 templated widgets** (text, forms, links, etc.). Use that page for publish slots and element tests. Do **not** pass `type: subPortal` inside **`create_portal_page`** — validation fails at create time.
+If the first page has no forms element, use `create_portal_element` with `type: forms` on that page. Attach, publish, and unpublish accept elements only from `get_portal` → `pages[0].elements`. A new page after the first page cannot supply a publish slot. If the portal has no pages, create its first page with `create_portal_page`.
 
 ---
 
@@ -78,7 +78,7 @@ If **`get_portal`** shows a main page with **no elements**, call **`create_porta
 |-------|------|
 | **`published` on list** | **`list_portals` does not return `published`** — call **`get_portal`**. |
 | **Sub-portal in layout** | Tiles may appear under **`pages[].elements[]`** with `type: subPortal` even when top-level `subPortals[]` is empty. |
-| **Publish wire** | Use **`publish_sub_portal`** / **`update_sub_portal_element`** on an existing **`forms`** element (`updateSubPortalElement` on internal_api). **`create_portal_element` with `type: subPortal`** is not a substitute for publish. |
+| **Publish wire** | Use `publish_sub_portal` / `update_sub_portal_element` on a `forms` element from `pages[0].elements`. Elements on later pages are not supported. `create_portal_element` with `type: subPortal` is not a substitute for publish. |
 | **Element metadata** | **`update_portal_element`** is **replace-all** — send the full `metadata` JSON every time. |
 | **Metadata keys** | `forms` → `name` (not `formId`); `link` → `linkName` / `linkUrl` (not `url` / `label`). |
 | **Layout JSON** | **`update_portal_page_layout`** expects an **array** of row objects. Each row needs a non-empty `id`, `type: "row"`, and `children` as non-empty strings. Copy the target **`pages[].layout`** from **`get_portal`**. `metadata.gridMap` gives element dimensions, not placement. The API stores any JSON here verbatim, so a wrapper or an incomplete row replaces the grid. The toolkit rejects a non-array and any incomplete row locally, and still accepts `[]` as an empty page; never bypass it with raw GraphQL. |
@@ -143,9 +143,11 @@ Element `type` values (15): `text`, `table`, `field`, `embedLink`, `embedVideo`,
    get_portal(portal_uuid="<MAIN_PORTAL_UUID>")
    ```
 
-   Note `pages[]`, `elements[]`, and **`forms`** element ids. If the main page has **zero elements**, run **`create_portal_page`** (title only) on that portal before adding widgets.
+   Read the first page, `pages[0]`, and its forms element IDs. If it has no forms element, add one on that page.
 
 3. **Optional — add a `forms` element** (if no templated `forms` slot exists)
+
+   Use `pages[0].uuid` as `<PAGE_ID>`. Include the element in the page layout when visitors need a visible tile.
 
    Operation arguments:
 
@@ -181,7 +183,7 @@ Element `type` values (15): `text`, `table`, `field`, `embedLink`, `embedVideo`,
    get_portal(portal_uuid="<MAIN_PORTAL_UUID>")
    ```
 
-   Success: target **`subPortals[].published`** is **`true`**. End users can see the sub-portal only after this (and hub visibility rules).
+   Make sure that the target `subPortals[].published` is `true`. Also make sure that the forms element metadata links to the intended sub-portal. Visitor access depends on the element layout and hub visibility rules.
 
 7. **Optional — make the main hub public**
 
@@ -280,7 +282,7 @@ unpublish_sub_portal(portal_uuid="<MAIN_PORTAL_UUID>", element_id="<FORMS_ELEMEN
 | Main page empty in builder | Portal created outside `create_portal` template path | `create_portal_page` (title only) for templated elements |
 | `published` missing on list | Expected | `get_portal` |
 | Many subs in `get_portal`, empty main UI | Sub-portals not published to `forms` slots | `publish_sub_portal` per sub + `forms` `element_id` |
-| Publish no effect | Wrong element type or skipped internal_api wire | `get_portal` → `forms` element → `publish_sub_portal` |
+| Publish or unpublish rejected | The selected element is outside the first portal page or the API rejected the request | Use a forms element from `get_portal` → `pages[0].elements`. Read the result and stored state. |
 | `subPortals[]` empty but UI shows tile | Linked under `pages[].elements` | Inspect `type: subPortal` in `elements[]` |
 | `create_portal_element` opaque / 500 | Interfaces instability on some orgs | `duplicate_portal_element` from existing widget on same page |
 | Portal viewer HTTP 500 | Orphan `layout` children or wrong layout shape | Copy/fix layout from `get_portal`; delete disposable smoke page |

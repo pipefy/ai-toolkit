@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _shared.fixture_ids import EXAMPLE_PIPE_REPO_ID
-from pipefy_sdk import PipefyGraphQLError
+from _shared.mock_clients import mock_executor
+from pipefy_sdk import PipefyClient, PipefyGraphQLError, PipefySettings
+from pipefy_sdk.client import Executors
 from pipefy_sdk.exceptions import PortalPermissionError
 from pipefy_sdk.models.portal import parse_portal_page_layout
 
@@ -1525,6 +1527,34 @@ def test_portal_sub_portal_unpublish_json(
         _MAIN_PORTAL_UUID,
         _FORMS_ELEMENT_ID,
     )
+
+
+@pytest.mark.parametrize("command", ["attach", "publish", "unpublish"])
+def test_sub_portal_api_rejection_exits_one_without_traceback(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, command
+):
+    oauth_env("portal-sub-portal-api-rejection")
+    client = PipefyClient.from_executors(
+        Executors(
+            public=mock_executor(),
+            interfaces=mock_executor(),
+            internal=mock_executor({"updateSubPortalElement": {"success": False}}),
+        ),
+        settings=PipefySettings(_env_file=None),
+    )
+    arguments = ["portal", "sub-portal", command, _MAIN_PORTAL_UUID, _FORMS_ELEMENT_ID]
+    if command != "unpublish":
+        arguments.append(_SUB_PORTAL_UUID)
+
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client", return_value=client
+    ):
+        result = runner.invoke(app, [*arguments, "--json"])
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "first portal page" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_portal_sub_portal_unpublish_rejects_blank_portal_uuid_exit_2(

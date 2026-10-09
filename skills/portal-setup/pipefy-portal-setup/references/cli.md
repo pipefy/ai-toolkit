@@ -24,6 +24,8 @@ pipefy portal element delete <element_id> <page_uuid> --layout '[<existing rows 
 
 CLI `--json` prints the raw SDK payload (no `success` wrapper).
 
+Attach, publish, and unpublish require a forms element from `get_portal` → `pages[0].elements`. Use the first page UUID for the forms element creation example.
+
 ## Command mapping
 
 | Operation | CLI equivalent |
