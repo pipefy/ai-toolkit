@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.5.3-beta.1"
+__version__ = "0.5.4-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
 from pipefy_sdk.exceptions import AiAgentConfigureError, PipefyAPIError, PipefyError
