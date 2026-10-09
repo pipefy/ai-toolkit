@@ -50,6 +50,12 @@ repos:
         pass_filenames: false
       # Prototype for RFC-0001. These doc checks pin their tool with
       # `uv run --with` until the tool becomes a dev dependency.
+      - id: docs-landing
+        name: generated docs landing lists are current (cog --check)
+        entry: uv run --with cogapp==3.6.0 cog --check docs/README.md
+        language: system
+        files: ^(docs/.*\.md|\.github/workflows/scripts/docs_landing\.py)$
+        pass_filenames: false
       - id: skill-examples
         name: MCP call examples in skills match the tool schemas (Sybil)
         entry: uv run --with sybil==10.1.0 pytest -q -p no:cacheprovider skills/introspection/pipefy-introspection/references/mcp.md
