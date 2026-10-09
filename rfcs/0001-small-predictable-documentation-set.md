@@ -83,7 +83,7 @@ A fixed copy is still a copy, and nothing ties it to the code. `README.md:198` h
 
 A link checker would not have caught that sentence either, because nothing in it is a broken link. The keyring row has the same problem.
 
-Checking each pair runs into a deeper problem: the check needs a correct pair to compare against. No code records which CLI command implements which MCP tool, so the only record is the hand-kept tables that the check would test. Once the code records the mapping, the tables only repeat it, and generating them costs less than checking them.
+Checking each pair runs into a deeper problem: the check needs a correct pair to compare against. No code records which CLI command implements which MCP tool, so the only record is the hand-kept tables that the check would test. Once the code records the mapping, the tables only repeat it, so we can generate or delete them, which costs less than checking them.
 
 ### Consequences
 
