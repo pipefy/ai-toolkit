@@ -32,7 +32,7 @@ Authors describe one behavior in many places: the docstring, the CLI help, a too
 
 The copies multiply. The convention that write tools take `debug=true` is written out in 6 pages in `docs/mcp/tools/` and in 4 skills. One of those copies applies it to `execute_graphql`, which has no `debug` parameter. The tool count "187" appears in `docs/parity.md:5`, `docs/parity.md:229`, `packages/mcp/README.md:3`, and `packages/mcp/README.md:100`. A test compares the number at `docs/parity.md:5` with the registry (`tests/test_parity.py:131`), and no test reads the other three.
 
-`docs/parity.md` holds 187 rows, one per MCP tool, and 182 of them name a CLI command. Each of 17 skills has its own `references/cli.md` file, and 13 of these files hold 162 more rows. Each of these 344 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair, such as the reason for a deferral. No code owns those notes, so they stay hand-written.
+`docs/parity.md` holds 187 rows, one per MCP tool, and 182 of them name a CLI command. Each of 17 skills has its own `references/cli.md` file, and 13 of these files hold 162 more rows. Each of these 344 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair. Only 5 of these notes give the reason that a tool has no CLI command. About 150 repeat a fact that the code already holds, such as the options of a command.
 
 The commit history shows how often a code change also needs a doc edit. Of the 10 Markdown files with the most commits on `dev` that are not merges, 2 are `CHANGELOG.md` and `RELEASE.md`, which change with the code by design. For 5 of the other 8, more than half of the commits also change `.py` files, and 3 of those 8 are skills. A commit that changes both does not prove that the doc repeats the code, but it shows that doc edits follow code changes closely.
 
@@ -126,7 +126,7 @@ A count of things that the code defines, such as tools, commands, packages, or s
 
 Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 344 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
-No code records today which CLI command implements which MCP tool. We ask RFC-0003 to add that record to the tool registry. Until the record exists, the 344 pairs stay hand-written, and the existing checks keep covering them.
+No code records today which CLI command implements which MCP tool, or why a tool has none. We ask RFC-0003 to add that record to the tool registry: for each tool, either its CLI command or the reason it has none. Until the record exists, the 344 pairs and the 5 reasons stay hand-written, and the existing checks keep covering them.
 
 #### R2: The path of a page declares its place
 
