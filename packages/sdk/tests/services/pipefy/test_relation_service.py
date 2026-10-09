@@ -1,4 +1,4 @@
-"""Unit tests for RelationService (relation reads)."""
+"""Unit tests for RelationService."""
 
 import pytest
 from _shared.mock_clients import mock_executor
@@ -8,6 +8,7 @@ from pipefy_sdk.queries.relation_queries import (
     CREATE_CARD_RELATION_MUTATION,
     CREATE_PIPE_RELATION_MUTATION,
     DELETE_PIPE_RELATION_MUTATION,
+    GET_PIPE_RELATION_CONSTRAINTS_QUERY,
     GET_PIPE_RELATIONS_QUERY,
     GET_TABLE_RELATIONS_QUERY,
     INTERNAL_DELETE_CARD_RELATION_MUTATION,
@@ -123,39 +124,122 @@ async def test_create_pipe_relation_transport_error():
         await service.create_pipe_relation(1, 2, "x")
 
 
+_CURRENT_FLAGS = {
+    "allChildrenMustBeDoneToFinishParent": True,
+    "allChildrenMustBeDoneToMoveParent": True,
+    "autoFillFieldEnabled": True,
+    "canConnectExistingItems": False,
+    "canConnectMultipleItems": False,
+    "canCreateNewItems": False,
+    "childMustExistToFinishParent": True,
+    "childMustExistToMoveParent": True,
+}
+
+
+def _current_relation(relation_id: str = "r9") -> dict:
+    return {"pipe_relations": [{"id": relation_id, **_CURRENT_FLAGS}]}
+
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_pipe_relation_builds_input():
     updated = {"updatePipeRelation": {"pipeRelation": {"id": "r9", "name": "New"}}}
-    service, executor = _make_service(updated)
+    service, executor = _make_service(side_effect=[_current_relation(), updated])
     result = await service.update_pipe_relation("r9", "New")
 
     query, variables = executor.execute_query.call_args[0]
     assert query is UPDATE_PIPE_RELATION_MUTATION
     assert variables["input"]["id"] == "r9"
     assert variables["input"]["name"] == "New"
-    assert variables["input"]["canConnectExistingItems"] is True
     assert result == updated
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_update_pipe_relation_merges_attrs():
-    service, executor = _make_service({"updatePipeRelation": {}})
-    await service.update_pipe_relation(
-        "r1",
-        "N",
-        **{"canConnectExistingItems": False},
+async def test_update_pipe_relation_reads_current_flags_by_id():
+    service, executor = _make_service(
+        side_effect=[_current_relation("42"), {"updatePipeRelation": {}}]
     )
-    inp = executor.execute_query.call_args[0][1]["input"]
-    assert inp["canConnectExistingItems"] is False
+    await service.update_pipe_relation(42, "New")
+
+    query, variables = executor.execute_query.call_args_list[0][0]
+    assert query is GET_PIPE_RELATION_CONSTRAINTS_QUERY
+    assert variables == {"ids": ["42"]}
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_update_pipe_relation_transport_error():
+async def test_update_pipe_relation_keeps_current_flags_when_omitted():
+    service, executor = _make_service(
+        side_effect=[_current_relation(), {"updatePipeRelation": {}}]
+    )
+    await service.update_pipe_relation("r9", "Renamed")
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp == {"id": "r9", "name": "Renamed", **_CURRENT_FLAGS}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_merges_attrs_over_current_flags():
+    service, executor = _make_service(
+        side_effect=[_current_relation("r1"), {"updatePipeRelation": {}}]
+    )
+    await service.update_pipe_relation(
+        "r1",
+        "N",
+        **{"canConnectExistingItems": True, "ownFieldMaps": []},
+    )
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp["canConnectExistingItems"] is True
+    assert inp["ownFieldMaps"] == []
+    assert inp["autoFillFieldEnabled"] is True
+    assert inp["childMustExistToMoveParent"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_omits_own_field_maps_when_not_passed():
+    """``ownFieldMaps`` is optional on update and the API keeps it when absent."""
+    service, executor = _make_service(
+        side_effect=[_current_relation(), {"updatePipeRelation": {}}]
+    )
+    await service.update_pipe_relation("r9", "N")
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert "ownFieldMaps" not in inp
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_not_found_raises_without_mutation():
+    service, executor = _make_service({"pipe_relations": []})
+    with pytest.raises(ValueError, match="Pipe relation 'r404' was not found."):
+        await service.update_pipe_relation("r404", "N")
+
+    executor.execute_query.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_read_transport_error():
+    service, executor = _make_service(
+        side_effect=PipefyGraphQLError([{"message": "denied"}]),
+    )
+    with pytest.raises(PipefyGraphQLError):
+        await service.update_pipe_relation(5, "X")
+
+    executor.execute_query.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_mutation_transport_error():
     service, _ = _make_service(
-        side_effect=PipefyGraphQLError([{"message": "nope"}]),
+        side_effect=[
+            _current_relation("5"),
+            PipefyGraphQLError([{"message": "nope"}]),
+        ],
     )
     with pytest.raises(PipefyGraphQLError):
         await service.update_pipe_relation(5, "X")

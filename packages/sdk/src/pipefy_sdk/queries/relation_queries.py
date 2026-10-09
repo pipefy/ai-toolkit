@@ -90,6 +90,26 @@ GET_PIPE_RELATIONS_QUERY = gql(
     """
 )
 
+# Constraint flags only: ``update_pipe_relation`` reads them to keep the values the
+# caller leaves out, since ``UpdatePipeRelationInput`` requires all of them.
+GET_PIPE_RELATION_CONSTRAINTS_QUERY = gql(
+    """
+    query GetPipeRelationConstraints($ids: [ID!]!) {
+        pipe_relations(ids: $ids) {
+            id
+            allChildrenMustBeDoneToFinishParent
+            allChildrenMustBeDoneToMoveParent
+            autoFillFieldEnabled
+            canConnectExistingItems
+            canConnectMultipleItems
+            canCreateNewItems
+            childMustExistToFinishParent
+            childMustExistToMoveParent
+        }
+    }
+    """
+)
+
 GET_TABLE_RELATIONS_QUERY = gql(
     """
     query GetTableRelations($ids: [ID!]!) {
@@ -201,6 +221,7 @@ __all__ = [
     "CREATE_CARD_RELATION_MUTATION",
     "CREATE_PIPE_RELATION_MUTATION",
     "DELETE_PIPE_RELATION_MUTATION",
+    "GET_PIPE_RELATION_CONSTRAINTS_QUERY",
     "GET_PIPE_RELATIONS_QUERY",
     "GET_TABLE_RELATIONS_QUERY",
     "INTERNAL_DELETE_CARD_RELATION_MUTATION",

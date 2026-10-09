@@ -3467,6 +3467,7 @@ Usage: pipefy relation pipe update [OPTIONS] RELATION_ID
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --name   -n      TEXT  New relation name. [required]                      │
 │    --extra          TEXT  JSON object merged into UpdatePipeRelationInput.   │
+│                           Flags left out keep their current values.          │
 │    --json   -j                                                               │
 │    --help                 Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯

@@ -30,7 +30,7 @@ Link processes and cards across workflows.
 | ------------ | ----------- | --------- |
 | `get_pipe_relations` | Yes | List pipe-to-pipe relations for a pipe. |
 | `create_pipe_relation` | No | Create a new pipe-to-pipe relation. |
-| `update_pipe_relation` | No | Change relation config (auto-fill, constraints). |
+| `update_pipe_relation` | No | Change relation config (auto-fill, constraints). Flags you leave out keep their current values. |
 | `delete_pipe_relation` | No | **Destructive; review and approve first.** |
 | `get_table_relations` | Yes | Load table relations by relation ID. |
 | `get_card_relations` | Yes | List all card-to-card relations on a card. |
