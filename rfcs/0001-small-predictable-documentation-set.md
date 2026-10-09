@@ -129,7 +129,7 @@ Every copy in "Copies of facts that the code owns" disappears under this rule: t
 
 The 182 pairs in `docs/parity.md` go too. The page keeps only what neither product shows on its own: the 5 tools that have no CLI command, each with its reason, and the behavior that differs between the MCP server and the CLI. For example, MCP asks for a `confirmation_token` where the CLI asks for `--yes`. To find the command for a tool, the page points to the CLI reference.
 
-No code records today which CLI command implements which MCP tool, or why a tool has none. The 187 rows of `docs/parity.md` are the only record. `tests/test_parity.py` reads them to make sure that every new tool has either a CLI command or a stated reason. We ask RFC-0003 to move that record into the tool registry, so the check reads code instead of a doc. The same record lets the help of each command name the MCP tool that it implements, such as "MCP tool: `get_cards`" in `pipefy card list --help`. Until the record exists, `docs/parity.md` keeps its 187 rows, and the existing checks keep covering them.
+No code records today which CLI command implements which MCP tool, or why a tool has none. The 187 rows of `docs/parity.md` are the only record. `tests/test_parity.py` reads them to make sure that every new tool has either a CLI command or a stated reason. We ask RFC-0003 to move that record into the tool registry, so the check reads code instead of a doc. The same record lets the help of each command name the MCP tool that it implements, such as "MCP tool: `get_cards`" in `pipefy card list --help`. We do not wait for that record: `docs/parity.md` shrinks during the migration (see "Drawbacks").
 
 #### R2: The path of a page declares its place
 
@@ -324,11 +324,46 @@ Once these rules hold, the parameter list of `execute_graphql` exists in one pla
 
 ## Drawbacks and alternatives
 
-Pending (pass 4).
+### Drawbacks
+
+- **New tools.** `cog` and Sybil come from PyPI. `lychee` is a Rust binary: its pre-commit hook downloads it on the first run, which needs `bash` and network access. `markdownlint-cli2` runs on Node, which pre-commit installs on its own. Each tool adds a config file and a version to keep current.
+- **Code of our own.** The layout table check and the MCP reference generator are scripts that the repository maintains. A change to the tool registry or to the docstring format can need a change to the generator.
+- **Moved pages.** Most pages move, so links from outside the repository break: bookmarks, other repositories, and the READMEs of versions already on PyPI. A redirect stub at each old path catches a link to the page, but a link to a section of the page lands at the top of the stub. The migration plan covers the stubs.
+- **Deeper paths.** Each page sits in a kind folder, so a reader who browses on GitHub clicks once more, even in a section with one tutorial.
+- **Front matter on GitHub.** GitHub shows the front matter of a page as a small table above the text.
+- **A gap in the parity check.** After `docs/parity.md` shrinks, no check makes sure that a new MCP tool has a CLI command or a stated reason, until the tool registry records the mapping. We accept this risk, because today the 182 pairs mostly repeat the CLI reference.
+- **Claude Code versions.** Claude Code reads `AGENTS.md` from v2.1.277, and from v2.1.281 in Bedrock sessions and sessions with telemetry turned off. A personal `CLAUDE.local.md` stops `AGENTS.md` from loading unless the **Project instructions** setting is `claude-md-and-agents-md`. The contributor reference states both conditions.
+- **Repetition inside a page.** No check finds a fact that a hand-written page states twice. The split by kind removes part of this repetition, and review must catch the rest.
+
+### Alternatives
+
+- **The cheaper alternative.** Fix the statements, add a link checker, and check each pair. "The cheaper alternative" explains why it does not stop the next drift.
+- **Stronger review.** Review already passed the 13 statements in the problem statement. A reviewer cannot compare every copy with the code at every change.
+- **Docs beside each package**, as Airflow and google-cloud-python do. This fits packages that release on their own schedule. The toolkit releases its five distributions together, on one version (`RELEASE.md:3`), and the facts that hold for several products would have no home.
+- **Kind folders at the top**, such as `docs/how-to/mcp/login.md`, as uv, turborepo, and hatch do. Those repositories document one product. Here, the pages of one product would spread across four folders.
+- **The kind in front matter.** With the kind only in front matter, the GitHub file tree hides it. With the kind in both the folder and front matter, one fact has two sources (R1).
+- **A single page per kind**, such as `docs/cli/how-to.md`. The page has to move when a second page of its kind arrives.
+- **A skills section for the agent tutorial.** A skill needs the MCP server or the CLI, so the lesson would copy their install and login steps.
+- **A contributor folder in each product**, such as `docs/mcp/contributing/`. Most contributor work spans products, and each user section would hold pages for two readers again.
+- **A root `ARCHITECTURE.md`.** It adds a seventh root file that follows no convention, and it mixes explanation with rules. Agents load only `AGENTS.md`, so it gives them nothing.
+- **The full parity table.** Its 182 tool-to-command pairs are copies of a fact that the code will own (R1).
+
+### Prior art
+
+Two projects already generate docs from code and fail CI on a stale page. github-mcp-server runs `generate-docs` and then `git diff --exit-code README.md` in `docs-check.yml`. The Terraform provider scaffolding generates the provider docs with tfplugindocs in `test.yml` and fails on any diff. R1 applies the same check to blocks inside a page, with `cog --check`.
+
+Diataxis names the four kinds but no folder layout, and it advises against empty structures, so a kind folder in this RFC exists only when it holds a page.
+
+We surveyed the docs of 17 open-source monorepos. Eleven keep one central `docs/` folder, three keep docs beside each package, two mix both, and one keeps its docs in another repository. Airflow is the only one that writes down why it chose its layout. In the repositories that split by kind, the split happens once, at the top of one site. This layout repeats it in each section, which is part of the bet in "How confident we are".
 
 ## Unresolved questions
 
-Pending (pass 4).
+1. **The SDK reference generator.** pdoc writes only HTML. mkdocstrings needs MkDocs. Sphinx writes Markdown through `sphinx-markdown-builder`, but needs a Sphinx project. pydoc-markdown has had no release since 2023, and lazydocs none since 2021. Which one do we adopt, or do we write our own script?
+2. **The split of the MCP reference.** One page per toolset domain in `tools/toolsets.py`, or one page per tool module (21 today)?
+3. **Long landing lists.** When a kind holds many pages, such as the MCP reference, how does the landing page group them?
+4. **Repeated code blocks.** Eight fenced code blocks appear in more than one hand-written file today, such as `uvx pipefy-mcp-server` in `docs/MIGRATION.md` and `packages/mcp/README.md`. Should CI fail on a repeated block?
+5. **`TERMS.md`.** Who owns the legal text? We have three questions for that owner: may the file move to `docs/reference/terms.md`; should the text live on pipefy.com instead, with a link from the README; and may sections 2, 7, and 8, which repeat `LICENSE`, `SECURITY.md`, and `CONTRIBUTING.md`, become links?
+6. **Architecture by kind.** Does RFC-0003 accept that the arc42 sections live by kind, as "Work that the neighbors supply" proposes?
 
 ## Migration plan
 
