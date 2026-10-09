@@ -28,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK `update_portal_element` keeps data sources**: `PipefyClient.update_portal_element` sent `data_sources: []` when the caller left it out, and the API replaces an element's data sources with that list, so updating a `forms` or `table` element's metadata unlinked it from its pipe or table. `get_portal` now returns each element's `dataSources` and `editable`, and the SDK update takes `portal_uuid`: with `data_sources` omitted, it resends the element's stored data sources and, unless `editable` is passed, its stored `editable` flag (the API rejects an update whose data source lists `fieldKeys` without one). Omitting both `data_sources` and `portal_uuid` is now rejected before any request; `data_sources=[]` still unlinks. (#711)
 
+- **AI agent pre-flight, `eventId` and action metadata**: `validate_ai_agent_behaviors` passed behaviors that the API then rejects with `RECORD_NOT_SAVED`. It now checks each behavior's `eventId` against the pipe's automation events (`get_automation_events`) and lists the valid events in the error. When the events cannot be loaded, it reports that the `eventId` was not verified instead of a clean pass. A `human_validation` action needs `emails` or `title` in its metadata, and an `mcp_tool` action needs `mcpServerId` and `toolName`. The hint that `update_ai_agent` adds to a `RECORD_NOT_SAVED` error names these causes. (#729)
+
+- **MCP argument errors in AI agent, AI automation, and automation tools**: `create_ai_agent`, `update_ai_agent`, `create_ai_automation`, `update_ai_automation`, `create_send_task_automation`, and the `condition` argument of `create_automation` / `update_automation` returned the raw Pydantic error text, with the model name, an `input_value=` echo of the arguments, and an `errors.pydantic.dev` link. They now return one `field: message` clause per error, in the same format as the other tools' argument errors. The tools fail in the same cases and with the same error envelope. (#703)
+
 ## [0.5.3-beta.1] - 2026-10-06
 
 ### Added
