@@ -10,7 +10,7 @@ uvx pipefy-mcp-server
 
 `pipefy-mcp-server` and its workspace dependencies (`pipefy`, `pipefy-auth`, `pipefy-infra`) are published to PyPI, so `uvx` resolves the whole set from there. While the toolkit ships only pre-release versions (the 0.x line), `uvx` resolves the latest pre-release automatically; once a stable release exists it resolves that instead. Do not pass a global `--prerelease allow`: it also lets transitive dependencies jump to their own pre-releases, which can pull a broken build.
 
-For per-client wiring (Claude Code / Cursor / Claude Desktop / Codex), see [root `README.md#installation`](../../README.md#installation).
+For per-client wiring (Claude Code / Cursor / Claude Desktop / Codex), see [`docs/install.md`](../../docs/install.md).
 
 ## Uninstall
 
@@ -42,7 +42,7 @@ Full reference (every `PIPEFY_*` variable, validation rules, TOML schema, preced
 
 Useful when you want to wire the server without editing `~/.claude.json` by hand.
 
-**Hosted MCP (HTTP)** — zero local Python; OAuth in Claude Code. Prefer this when you do not need the full local tool surface. Do not also install the Claude Code plugin under the same server name. Canonical snippet: [root README — Hosted MCP](../../README.md#1-hosted-mcp-claude-code).
+**Hosted MCP (HTTP):** no local Python; OAuth in Claude Code. Prefer this when you do not need the full local tool surface. Do not also install the Claude Code plugin under the same server name. Canonical snippet: [install guide, Hosted MCP](../../docs/install.md#1-hosted-mcp-claude-code).
 
 **Local stdio** — runs `uvx pipefy-mcp-server` on the machine:
 
@@ -97,7 +97,7 @@ This form also works as a per-project `.mcp.json` if your team shares a clone. C
 
 ## Tools
 
-**187 tools** across fourteen domains (including **Portals**) — see the root [`README.md`](../../README.md#mcp-server) for the full table with per-area links. Deep reference: [`docs/mcp/tools/`](../../docs/mcp/tools/cross-cutting.md) (start with [`cross-cutting.md`](../../docs/mcp/tools/cross-cutting.md)); portals: [`portal.md`](../../docs/mcp/tools/portal.md).
+The per-domain tool reference, with links to each area, is in [`docs/mcp/`](../../docs/mcp/README.md). Deep reference: [`docs/mcp/tools/`](../../docs/mcp/tools/cross-cutting.md) (start with [`cross-cutting.md`](../../docs/mcp/tools/cross-cutting.md)); portals: [`portal.md`](../../docs/mcp/tools/portal.md).
 
 ## Development
 

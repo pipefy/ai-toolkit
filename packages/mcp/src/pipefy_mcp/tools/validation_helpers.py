@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pydantic import ValidationError
+
 from pipefy_mcp.core.tool_error_envelope import tool_error
 
 UUID_RE = re.compile(
@@ -135,8 +137,46 @@ def mutation_error_if_not_optional_dict(
     return None
 
 
+def format_validation_error_message(exc: ValidationError) -> str:
+    """Render a :class:`~pydantic.ValidationError` as a single agent-friendly line.
+
+    Each error becomes one short clause and the clauses are joined with ``"; "``.
+    The output never contains the Pydantic model name, an ``input_value=`` echo of
+    the arguments (which may hold secrets), nor an ``errors.pydantic.dev`` URL, so
+    it is safe to return to an agent or write to a log. Returns ``""`` when ``exc``
+    reports no errors.
+
+    This is the shared renderer behind the MCP tools' argument-validation errors;
+    callers wrap the result in their own error-payload builder (and may prefix it,
+    e.g. ``Invalid 'condition': ...``).
+    """
+    clauses: list[str] = []
+    for err in exc.errors():
+        loc = ".".join(str(part) for part in err.get("loc", ()))
+        err_type = err.get("type", "")
+        msg = err.get("msg", "")
+        if err_type == "value_error":
+            # Pydantic renders a custom validator's ValueError as "Value error, <text>";
+            # the raw text is in ctx["error"]. Use it so that prefix does not leak, the
+            # same way portal_element_validation_error does.
+            ctx = err.get("ctx") or {}
+            inner = ctx.get("error")
+            if inner is not None:
+                msg = str(inner)
+        if err_type == "missing":
+            clauses.append(f"missing required argument '{loc}'")
+        elif err_type == "extra_forbidden":
+            clauses.append(f"unknown argument '{loc}'")
+        elif loc:
+            clauses.append(f"{loc}: {msg}")
+        else:
+            clauses.append(msg)
+    return "; ".join(clause for clause in clauses if clause)
+
+
 __all__ = [
     "UUID_RE",
+    "format_validation_error_message",
     "mutation_error_if_not_optional_dict",
     "valid_repo_id",
     "validate_optional_tool_id",

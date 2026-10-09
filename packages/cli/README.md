@@ -82,4 +82,4 @@ uv run pytest packages/cli/tests     # CLI tests
 uv run ruff check packages/cli/src   # lint
 ```
 
-See [`AGENTS.md`](../../AGENTS.md) and [`CLAUDE.md`](../../CLAUDE.md) for contributor guidance.
+See [`AGENTS.md`](../../AGENTS.md) for contributor guidance.

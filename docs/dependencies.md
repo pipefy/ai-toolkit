@@ -1,6 +1,6 @@
 # Python runtime dependencies
 
-This document explains **why** the main third-party packages exist across the **uv workspace**. Values and pins live in each package’s `pyproject.toml` (`packages/sdk`, `packages/mcp`, `packages/cli`). Install commands live in the root [`README.md#installation`](../README.md#installation); env-var and `config.toml` reference is at [`docs/config.md`](config.md).
+This document explains **why** the main third-party packages exist across the **uv workspace**. Values and pins live in each package's `pyproject.toml` (`packages/sdk`, `packages/mcp`, `packages/cli`). Install commands live in [`install.md`](install.md); env-var and `config.toml` reference is at [`docs/config.md`](config.md).
 
 ## pipefy (`packages/sdk`)
 

@@ -423,6 +423,18 @@ resolve_config_dir() {
     fi
 }
 
+# Python keyring's own plaintext store, which it falls back to when no OS
+# keychain backend is available. keyring resolves it with the XDG data rule on
+# Linux and, having no macOS-specific root, on macOS too. Other programs that
+# use keyring share the file, so only our section of it is ever ours.
+keyring_fallback_path() {
+    if [ -n "${XDG_DATA_HOME:-}" ]; then
+        printf '%s\n' "$XDG_DATA_HOME/python_keyring/keyring_pass.cfg"
+    else
+        printf '%s\n' "$HOME/.local/share/python_keyring/keyring_pass.cfg"
+    fi
+}
+
 config_toml_path() {
     if [ -n "${PIPEFY_CONFIG_FILE:-}" ]; then
         printf '%s\n' "$PIPEFY_CONFIG_FILE"
@@ -1858,7 +1870,8 @@ scan_keychain_backend() {
         file)
             note "effective session store: the file backend at $CONFIG_DIR/keyring.cfg" ;;
         auto)
-            note "effective session store: the OS keychain (no override in effect)" ;;
+            note "effective session store: the OS keychain (no override in effect)"
+            detail "or, with no OS keychain backend, Python keyring's plaintext fallback file" ;;
         *)
             # Never echo the raw value; an unexpected one is reported as such.
             note "effective session store: PIPEFY_KEYCHAIN_BACKEND holds an unrecognized value" ;;
@@ -1869,7 +1882,7 @@ scan_keychain_backend() {
         detail "writes to the OS keychain instead, while anything already in keyring.cfg"
         detail "stays there, still signed in and invisible to a keychain-only sweep."
     fi
-    detail "both stores are checked below, whichever one is effective"
+    detail "every store is checked below, whichever one is effective"
 }
 
 keychain_has_entry() {
@@ -1888,11 +1901,22 @@ scan_credentials() {
     section "Stored credentials"
     scan_keychain_backend
     _cfg="$CONFIG_DIR/keyring.cfg"
+    _fb=$(keyring_fallback_path)
+    _fb_accts=""
+    _fb_state=absent
+    if [ -f "$_fb" ]; then
+        _fb_state=found
+        if [ ! -r "$_fb" ]; then
+            _fb_state=unreadable
+        else
+            _fb_accts=$(keyring_cfg_accounts "$_fb") || _fb_state=unreadable
+        fi
+    fi
     # `pipefy auth logout` is the only step that can revoke server-side, so it
     # is planned ahead of every local delete and only when there is a session
     # to revoke.
     if [ "$COLLECTING" -eq 1 ]; then
-        if [ -f "$_cfg" ] || keychain_has_entry; then
+        if [ -f "$_cfg" ] || [ -n "$_fb_accts" ] || keychain_has_entry; then
             plan_add 1 credential logout - - - - - - - \
                 "revoke and delete the stored session (pipefy auth logout)"
         fi
@@ -1901,6 +1925,7 @@ scan_credentials() {
         Darwin) scan_keychain_macos ;;
         Linux) scan_keychain_linux ;;
     esac
+    scan_keyring_fallback "$_fb" "$_fb_state" "$_fb_accts"
     if [ ! -f "$_cfg" ]; then
         note "no file-backend store at $_cfg"
         return 0
@@ -1918,6 +1943,32 @@ $(keyring_cfg_accounts "$_cfg")
 EOF
 }
 
+scan_keyring_fallback() {
+    case "$2" in
+        absent)
+            note "no keyring fallback file at $1"
+            return 0 ;;
+        unreadable)
+            uninspected "keyring fallback file not inspected: $1 is not readable by this user"
+            detail "a session stored there by another user (for example under sudo) stays signed in"
+            return 0 ;;
+    esac
+    if [ -z "$3" ]; then
+        note "keyring fallback file $1 holds no Pipefy session"
+        return 0
+    fi
+    finding "keyring fallback file: $1 stores a Pipefy session in plaintext"
+    detail "Python keyring writes it when no OS keychain is available; other programs share the file"
+    plan_add 2 credential inisection "$1" "$KEYCHAIN_SERVICE" - - - - - \
+        "remove the [$KEYCHAIN_SERVICE] section from $1"
+    while IFS= read -r _acct; do
+        [ -n "$_acct" ] || continue
+        detail "account: $_acct"
+    done <<ACCOUNTS
+$3
+ACCOUNTS
+}
+
 keyring_cfg_accounts() {
     awk -v svc="$KEYCHAIN_SERVICE" '
         function hexdigit(c,   i) { i = index("0123456789abcdef", tolower(c)); return i - 1 }
@@ -1933,9 +1984,10 @@ keyring_cfg_accounts() {
             }
             return out
         }
-        /^\[/ { inside = ($0 == "[" svc "]"); next }
-        inside && /^[^ \t#;]/ && index($0, "=") > 0 {
-            key = $0; sub(/[ \t]*=.*$/, "", key); print unescape(key)
+        { sub(/\r$/, "") }
+        /^\[/ { line = $0; sub(/[ \t]+$/, "", line); inside = (line == "[" svc "]"); next }
+        inside && /^[^ \t#;]/ && ($0 ~ /[=:]/) {
+            key = $0; sub(/[ \t]*[=:].*$/, "", key); print unescape(key)
         }
     ' "$1"
 }
@@ -2465,6 +2517,7 @@ EOF
 #   rmdir       a1 path, removed only when empty
 #   rmlock      a1 skills lock file, removed only when it records no skills
 #   rcline      a1 file  a2 extended regular expression matching the lines
+#   inisection  a1 file  a2 section name, removed from a file other programs share
 
 plan_add() {
     [ "$COLLECTING" -eq 1 ] || return 0
@@ -2866,6 +2919,16 @@ backup_file() {
 # within the same directory, so a reader sees the old file or the new one.
 atomic_awk_rewrite() {
     _aw_file="$1"
+    # A dotfile is often a symlink into a dotfiles repository. Renaming the
+    # temp file over the link would replace it with a regular file and leave
+    # the content it points at untouched, so the link's target is rewritten.
+    if [ -L "$_aw_file" ]; then
+        _aw_file=$(resolve_link "$_aw_file")
+        if [ -L "$_aw_file" ] || [ ! -f "$_aw_file" ]; then
+            warn "could not resolve the symlink $1 to a file; leaving it untouched"
+            return 1
+        fi
+    fi
     _aw_prog="$2"
     _aw_arg="$3"
     _aw_arg2="${4:-}"
@@ -2903,6 +2966,11 @@ import tempfile
 
 path = sys.argv[1]
 keys = sys.argv[2:]
+# A config kept as a symlink (a dotfiles repository) is written at its target:
+# replacing the link would leave the original, and any token in it, untouched.
+real = os.path.realpath(path)
+if os.path.exists(real):
+    path = real
 try:
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
@@ -2952,6 +3020,11 @@ import sys
 import tempfile
 
 path, projdir, name = sys.argv[1], sys.argv[2], sys.argv[3]
+# A config kept as a symlink (a dotfiles repository) is written at its target:
+# replacing the link would leave the original, and any token in it, untouched.
+real = os.path.realpath(path)
+if os.path.exists(real):
+    path = real
 data = {}
 if os.path.exists(path):
     try:
@@ -3093,6 +3166,26 @@ act_toml() {
     ' "$3" "$2"
 }
 
+# The keyring fallback file is shared, so only our section goes, and no backup
+# is kept: a copy would be a second plaintext home for the token being removed.
+act_inisection() {
+    [ -f "$1" ] || return 3
+    keyring_cfg_has_section "$1" "$2" || return 3
+    # shellcheck disable=SC2016  # an awk program, not a shell expansion
+    atomic_awk_rewrite "$1" '
+        BEGIN { sec = "[" ENVIRON["AW_ARG"] "]" }
+        /^\[/ { h = $0; sub(/\r$/, "", h); sub(/[ \t]+$/, "", h); skip = (h == sec) }
+        !skip { print }
+    ' "$2"
+}
+
+keyring_cfg_has_section() {
+    awk -v sec="[$2]" '
+        /^\[/ { h = $0; sub(/\r$/, "", h); sub(/[ \t]+$/, "", h); if (h == sec) found = 1 }
+        END { exit found ? 0 : 1 }
+    ' "$1"
+}
+
 act_rcline() {
     backup_file "$1" || return 1
     # shellcheck disable=SC2016  # an awk program, not a shell expansion
@@ -3109,6 +3202,18 @@ act_rmpath() {
     fi
     case "$2" in
         userfile|userconfig) backup_file "$1" || return 1 ;;
+        credential)
+            # A credential store behind a symlink: deleting the link would
+            # leave the secret at the target, so the target goes first.
+            if [ -L "$1" ]; then
+                _rm_target=$(resolve_link "$1")
+                if [ -L "$_rm_target" ] || [ ! -f "$_rm_target" ]; then
+                    warn "could not resolve the symlink $1 to a file; leaving it untouched"
+                    return 1
+                fi
+                # A failed delete keeps the link, so the re-scan still finds the store.
+                remove_path "$_rm_target" || return 1
+            fi ;;
     esac
     remove_path "$1"
 }
@@ -3268,6 +3373,7 @@ do_action() {
         rmdir) act_rmdir "$1" ;;
         rmlock) act_rmlock "$1" ;;
         rcline) act_rcline "$1" "$2" ;;
+        inisection) act_inisection "$1" "$2" ;;
         *) return 1 ;;
     esac
 }

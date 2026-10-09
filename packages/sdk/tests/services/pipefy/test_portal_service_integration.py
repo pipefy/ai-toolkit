@@ -217,6 +217,7 @@ async def test_live_update_portal_element_on_bootstrapped_page(
             page_id,
             type="link",
             metadata=metadata,
+            portal_uuid=portal_uuid,
         )
     except PipefyGraphQLError as exc:
         pytest.skip(

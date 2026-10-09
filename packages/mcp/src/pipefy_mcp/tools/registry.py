@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md and README MCP totals.
+# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md.
 PIPEFY_TOOL_NAMES = frozenset(
     {
         "add_card_comment",

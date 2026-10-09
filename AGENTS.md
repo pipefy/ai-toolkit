@@ -1,20 +1,21 @@
 # Repository Guidelines
 
 ## Documentation map
-- **`README.md`** — Project pitch, one-page install front door (`README.md#installation`: hosted MCP, Quick install, Claude Code plugin, CLI, skills), repo layout, MCP tools table, contributing.
-- **`CONTRIBUTING.md`** — Skills contribution guide (frontmatter, CI, style); entry point for GitHub contributors.
-- **`docs/README.md`** — Index of docs by surface (MCP, CLI, SDK) and shared guides.
-- **`docs/config.md`** — `PIPEFY_*` environment variables, `config.toml` schema, precedence chain.
-- **`docs/parity.md`** — MCP tool ↔ CLI command parity matrix. Source of truth for coverage and deferrals.
-- **`docs/MIGRATION.md`** — What existing MCP users need to know about v0.1.
-- **`docs/dependencies.md`** — Rationale for runtime dependencies.
-- **`docs/uninstall.md`** — `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. The two root scripts are colocated so `install.sh` and `uninstall.sh` stay reviewable side by side; a test asserts every file the installer writes is one the teardown accounts for.
+- **`README.md`**: Project pitch, a quick-start table with the first command for each install path, what the toolkit connects to and installs, pointers to the docs.
+- **`docs/install.md`**: Every install path in full, switching between them, tool-surface selection, and testing the Claude Code plugin from a checkout.
+- **`CONTRIBUTING.md`**: Skills contribution guide (frontmatter, CI, style); entry point for GitHub contributors.
+- **`docs/README.md`**: Index of docs by surface (MCP, CLI, SDK) and shared guides.
+- **`docs/config.md`**: `PIPEFY_*` environment variables, `config.toml` schema, precedence chain.
+- **`docs/parity.md`**: MCP tool ↔ CLI command parity matrix. Source of truth for coverage and deferrals.
+- **`docs/MIGRATION.md`**: What existing MCP users need to know about v0.1.
+- **`docs/dependencies.md`**: Rationale for runtime dependencies.
+- **`docs/uninstall.md`**: `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. The two root scripts are colocated so `install.sh` and `uninstall.sh` stay reviewable side by side; a test asserts every file the installer writes is one the teardown accounts for.
 - **`docs/architecture.md`**: Intra-package layering (domain, adapter, composition root), type ownership at boundaries, ports, and the alternative-constructor guide.
-- **`docs/mcp/tools/`** — Per-area MCP tool reference (parameters, edge cases, cross-cutting behavior). Includes `identifiers.md`, the canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id.
-- **`docs/cli/`** — CLI-specific guides (e.g. introspect-then-execute).
-- **`docs/sdk/README.md`** — Using `pipefy` as a library.
-- **`skills/AGENTS.md`** — Skill-authoring guide (frontmatter, naming, style). Start here before adding a skill.
-- **`skills/onboarding/pipefy-toolkit-setup/`** — First-time setup checklist for agents (links to README snippets; does not own commands).
+- **`docs/mcp/tools/`**: Per-area MCP tool reference (parameters, edge cases, cross-cutting behavior). Includes `identifiers.md`, the canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id.
+- **`docs/cli/`**: CLI-specific guides (e.g. introspect-then-execute).
+- **`docs/sdk/README.md`**: Using `pipefy` as a library.
+- **`skills/AGENTS.md`**: Skill-authoring guide (frontmatter, naming, style). Start here before adding a skill.
+- **`skills/onboarding/pipefy-toolkit-setup/`**: First-time setup checklist for agents (links to the install guide; does not own commands).
 
 ## Project structure
 
@@ -25,7 +26,7 @@ packages/cli/   → pipefy-cli        (Typer CLI; depends on pipefy)
 skills/         → agent skills catalog (Markdown; no Python package)
 ```
 
-**Vendor API SDK** means the GraphQL-facing library (`pipefy`) used by both MCP and CLI, distinct from app glue or generic shared helpers.
+**Vendor API SDK** means the GraphQL-facing library (`pipefy`) used by both MCP and CLI, distinct from app glue or generic shared helpers. MCP and CLI depend on it and never import each other.
 
 ## Import namespace migration: `pipefy_sdk` → `pipefy`
 
@@ -62,12 +63,14 @@ Rules for the migration:
 
 ## Build, test, and development
 
-- `uv sync` — install all workspace members.
-- `uv run pipefy-mcp-server` — run MCP server locally.
-- `uv run pipefy --help` — run CLI locally.
-- `uv run pytest` — full test suite.
-- `uv run ruff check .` / `uv run ruff format .` — lint and format.
-- `uvx pre-commit install` — opt in to the ruff lint + format git hook (one-time, per clone). Run against the whole tree with `uvx pre-commit run --all-files`; bypass for a WIP commit with `git commit --no-verify`. The hook's ruff `rev` in `.pre-commit-config.yaml` must move with `uv.lock` to keep hook and CI aligned.
+- Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first if you don't have it.
+- `uv sync`: install all workspace members.
+- `uv run pipefy-mcp-server`: run MCP server locally.
+- `uv run pipefy --help`: run CLI locally.
+- `uv run pytest`: full test suite.
+- `[[ -f .env ]] || cp .env.example .env`: first-time setup for integration tests; fill in `PIPEFY_SERVICE_ACCOUNT_*`, then run `uv run pytest -m integration -v`.
+- `uv run ruff check .` / `uv run ruff format .`: lint and format.
+- `uvx pre-commit install`: opt in to the ruff lint + format git hook (one-time, per clone). Run against the whole tree with `uvx pre-commit run --all-files`; bypass for a WIP commit with `git commit --no-verify`. The hook's ruff `rev` in `.pre-commit-config.yaml` must move with `uv.lock` to keep hook and CI aligned.
 - Shell scripts (`install.sh`, `uninstall.sh`) are covered by the same hook file: `shellcheck --shell=sh` from `shellcheck-py` (a Python package, so no Docker), `sh -n`, and a check that every `rm` / `rmdir` in `uninstall.sh` routes through its `remove_path` guard. CI runs the same three plus `dash -n`, and pins the same `shellcheck-py` release the hook does.
 - Coverage: `uv run pytest --cov=packages/sdk/src/pipefy_sdk --cov-report=term-missing`.
 
@@ -134,7 +137,7 @@ A capability means an SDK method + MCP tool + CLI command, all in parity:
 3. Expose via `PipefyClient` in `packages/sdk/src/pipefy_sdk/client.py`.
 4. Register the MCP tool in `packages/mcp/src/pipefy_mcp/tools/`, add its name to `PIPEFY_TOOL_NAMES` in `registry.py`, and assign it a subject domain in `tools/toolsets.py` (the drift-guard in `tests/tools/test_toolsets.py` fails the build for an unassigned tool).
 5. Add the CLI command in `packages/cli/src/pipefy_cli/commands/` and register it in `main.py`.
-6. Update `docs/parity.md` — mark as shipped.
+6. Update `docs/parity.md`: mark as shipped, or record a deferral.
 7. Update affected skills in `skills/` in the same PR (or a paired PR in the same review window).
 
 TDD-first: write tests before each layer (red → green → refactor).
@@ -153,4 +156,4 @@ Skills (`skills/`) and tools (`packages/mcp/`, `packages/cli/`) live in the same
 
 ## Security
 - Credentials via env vars or `.env`; never commit secrets.
-- GraphQL schema updates: `uv run gql-cli ...` → update `packages/sdk/tests/services/pipefy/schema.graphql`; see README schema hygiene checklist.
+- GraphQL schema updates: `uv run gql-cli ...` → update `packages/sdk/tests/services/pipefy/schema.graphql`.

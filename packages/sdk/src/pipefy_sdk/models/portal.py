@@ -251,6 +251,11 @@ class UpdatePortalElementInput(BaseModel):
     Pipefy treats ``metadata`` as a **full replace** on every update — callers must
     send the complete blob, not a partial patch. The ``type`` field is used only for
     client-side metadata validation and is not sent to GraphQL.
+
+    ``data_sources`` is a full replace too, and the API rejects an update without
+    it. Omitting it therefore needs ``portal_uuid``, so the element's current data
+    sources (``repoId`` and ``fieldKeys``) and ``editable`` flag can be read and sent
+    back; ``[]`` unlinks them all.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -259,7 +264,14 @@ class UpdatePortalElementInput(BaseModel):
     page_id: NonBlankStr
     type: PortalElementType
     metadata: dict[str, Any]
-    data_sources: list[dict[str, Any]] = Field(default_factory=list)
+    data_sources: list[dict[str, Any]] | None = None
+    portal_uuid: NonBlankStr | None = Field(
+        default=None,
+        description=(
+            "Portal holding the element; required when data_sources is omitted, "
+            "to keep the element's current data sources and editable flag."
+        ),
+    )
     editable: bool | None = None
 
     @model_validator(mode="after")
@@ -269,6 +281,21 @@ class UpdatePortalElementInput(BaseModel):
                 f"metadata must be a dict, got {type(self.metadata).__name__}."
             )
         _validate_element_metadata(self.type, self.metadata)
+        return self
+
+    @model_validator(mode="after")
+    def validate_data_sources_can_be_kept(self) -> Self:
+        """Omitted ``data_sources`` must come with ``portal_uuid`` to read them back.
+
+        The update replaces the element's data sources with the list it sends, so
+        sending ``[]`` for an omitted list would unlink the element from its pipe or
+        table.
+        """
+        if self.data_sources is None and self.portal_uuid is None:
+            raise ValueError(
+                "Pass portal_uuid to keep the element's current data sources, or "
+                "data_sources to replace them ([] unlinks them all)."
+            )
         return self
 
 

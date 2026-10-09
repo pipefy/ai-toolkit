@@ -8,6 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.4-beta.1] - 2026-10-09
+
+### Changed
+
+- **README and install guide**: the README is a short front door with a quick-start table (the first command for each install path) and a section listing the hosts the toolkit contacts, the headers it sends, and what the installers and `pipefy auth login` write on your machine. The full install guide, tool-surface selection, and testing the Claude Code plugin from a checkout live in `docs/install.md`; links across docs, skills, and the MCP setup error point there.
+
+- **Claude Code plugin manifest**: `.claude-plugin/plugin.json` carries the fields Anthropic's plugin directory reads for a listing (`icon`, `documentationUrl`, `supportUrl`, `privacyPolicyUrl`, `termsOfServiceUrl`) and a contact email on `author`. `TERMS.md` links the terms page itself instead of the legal index the old link redirected to, and the README embeds its banner with Markdown image syntax.
+
+- **Skill `pipefy-api-fallback`, credentials**: before it reads a `PIPEFY_*` variable, the skill names the variable and the host its value goes to, and waits for the user's yes. It finds which variables are set by listing names only, so no value is printed before that. The README now names this direct `curl` path, `api.pipefy.com` as an alias of the API host, and the scan command, which downloads `uninstall.sh` from GitHub and reads the sources `docs/uninstall.md` lists under Scope, the OS keychain included, without changing them.
+
+- **MCP `update_portal_element` / CLI `pipefy portal element update`**: an update must now pass `data_sources` (`--data-sources`) or `portal_uuid` (`--portal-uuid`). Before, leaving out `data_sources` sent `[]` and unlinked the element from its pipe or table; now `portal_uuid` keeps the current bindings and omitting both is rejected before any call (MCP `INVALID_ARGUMENTS`, CLI exit 2). Updates of elements with no bindings, such as `link`, pass `data_sources: []` / `--data-sources '[]'`. (#711)
+
+### Fixed
+
+- **`uninstall.sh --scan` and teardown, keyring fallback file**: on a machine with no OS keychain backend, Python `keyring` stores the `pipefy auth login` session in its own plaintext file, `python_keyring/keyring_pass.cfg` under `$XDG_DATA_HOME` (default `~/.local/share`), which the scan did not inspect, so it reported such a machine as clean. The scan now reports a Pipefy session there (or reports the file as not inspected when it is unreadable), and teardown removes only the `[pipefy]` section of that shared file, without keeping a backup copy of it.
+
+- **`uninstall.sh` teardown, symlinked files**: when a shell rc, an MCP client config (`~/.claude.json`, `~/.cursor/mcp.json`, and the other JSON configs), the Codex config, or the keyring fallback file is a symlink (a dotfiles repository, for example), teardown edits the file the link points at and keeps the link. It used to replace the link with a regular file and leave the original content, including any credential, untouched. A symlinked file-backend `keyring.cfg` is deleted together with the file it points at. When that file cannot be deleted, teardown keeps the link, reports the failure, and exits 2, so the re-scan still finds the store.
+
+- **Skills `pipefy-introspection` and `pipefy-api-fallback`, endpoints and auth errors**: both skills said introspection and real operations need different hosts. One endpoint, `https://app.pipefy.com/graphql` (the toolkit's default), serves queries, mutations, and introspection, and `api.pipefy.com` answers the same way. The fallback skill also said GraphQL always returns HTTP 200 and that a syntax error returns 400. Syntax errors return 200 with `GRAPHQL_PARSE_FAILED`, authentication failures return HTTP 401 with one of two bodies depending on the cause, and a malformed JSON body returns 500. The error table covers both 401 bodies, `undefinedField`, and the `PERMISSION_DENIED` Pipefy returns for a pipe or card ID that does not exist.
+
+- **SDK `update_portal_element` keeps data sources**: `PipefyClient.update_portal_element` sent `data_sources: []` when the caller left it out, and the API replaces an element's data sources with that list, so updating a `forms` or `table` element's metadata unlinked it from its pipe or table. `get_portal` now returns each element's `dataSources` and `editable`, and the SDK update takes `portal_uuid`: with `data_sources` omitted, it resends the element's stored data sources and, unless `editable` is passed, its stored `editable` flag (the API rejects an update whose data source lists `fieldKeys` without one). Omitting both `data_sources` and `portal_uuid` is now rejected before any request; `data_sources=[]` still unlinks. (#711)
+
+- **AI agent pre-flight, `eventId` and action metadata**: `validate_ai_agent_behaviors` passed behaviors that the API then rejects with `RECORD_NOT_SAVED`. It now checks each behavior's `eventId` against the pipe's automation events (`get_automation_events`) and lists the valid events in the error. When the events cannot be loaded, it reports that the `eventId` was not verified instead of a clean pass. A `human_validation` action needs `emails` or `title` in its metadata, and an `mcp_tool` action needs `mcpServerId` and `toolName`. The hint that `update_ai_agent` adds to a `RECORD_NOT_SAVED` error names these causes. (#729)
+
+- **MCP argument errors in AI agent, AI automation, and automation tools**: `create_ai_agent`, `update_ai_agent`, `create_ai_automation`, `update_ai_automation`, `create_send_task_automation`, and the `condition` argument of `create_automation` / `update_automation` returned the raw Pydantic error text, with the model name, an `input_value=` echo of the arguments, and an `errors.pydantic.dev` link. They now return one `field: message` clause per error, in the same format as the other tools' argument errors. The tools fail in the same cases and with the same error envelope. (#703)
+
 ## [0.5.3-beta.1] - 2026-10-06
 
 ### Added
@@ -75,6 +101,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Claude Code plugin MCP**: `.mcp.json` is the hosted `mcp.pipefy.com` server with in-client OAuth, the same file the Cursor plugin points at. Local stdio (`uvx`) remains the Quick-install / `claude mcp add` path.
+- **Release process (DCO expectations)**: `RELEASE.md` states that a red DCO check on a `dev → main` release cut is expected and blocks nothing, and that a cut whose check is green because it carries almost nothing was made from the wrong branch. The back-merge bullet stays scoped to back-merges, since the two ranges are complementary, and now says the mismatch is unrepairable once the commit is on `main` or `dev` rather than on the default branch alone.
 
 ## [0.5.0-beta.1] - 2026-08-21
 

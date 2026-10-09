@@ -1,6 +1,6 @@
 # Cross-cutting tool behavior
 
-Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides linked from the [main README](../../../README.md#mcp-server).
+Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides listed in the [MCP docs index](../README.md).
 
 ## Pagination
 
@@ -54,7 +54,7 @@ Pipefy often returns **`PERMISSION_DENIED`** for `card(id: …)` when the card w
 
 ## Pre-flight validation for AI features
 
-Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read-delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
+Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read--delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
 
 ## Introspection
 

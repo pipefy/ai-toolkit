@@ -176,11 +176,11 @@ Returns the valid destination phases from the current phase.
 
 ## Failure modes
 
-- **`introspect_type` returns `null`** — type name is case-sensitive; try PascalCase (e.g., `CreateLabelInput`, not `create_label_input`).
-- **`search_schema` returns many hits** — case-insensitive substring matching; broad keywords like `"card"` flood results. Prefer specific names like `"AiAgent"`, `"FieldCondition"`.
-- **`introspect_mutation` is expensive** — fetches all root mutation fields and filters client-side (single large query). Prefer `introspect_type` on the specific input type when you already know the mutation name.
-- **`execute_graphql` returns GraphQL errors** — check `path` and `message`.
-- **Endpoint confusion** — introspection uses `app.pipefy.com/graphql`; real operations use `api.pipefy.com/graphql`. The toolkit routes these automatically; raw-API users must distinguish (see `pipefy-api-fallback`).
+- **`introspect_type` returns `null`**: type name is case-sensitive; try PascalCase (e.g., `CreateLabelInput`, not `create_label_input`).
+- **`search_schema` returns many hits**: case-insensitive substring matching; broad keywords like `"card"` flood results. Prefer specific names like `"AiAgent"`, `"FieldCondition"`.
+- **`introspect_mutation` is expensive**: fetches all root mutation fields and filters client-side (single large query). Prefer `introspect_type` on the specific input type when you already know the mutation name.
+- **`execute_graphql` returns GraphQL errors**: check `path` and `message`.
+- **Raw HTTP endpoint**: the toolkit sends public-schema introspection and operations to the same endpoint, `<PIPEFY_BASE_URL>/graphql` (default `https://app.pipefy.com/graphql`). For direct calls, see `pipefy-api-fallback`.
 
 ## See also
 

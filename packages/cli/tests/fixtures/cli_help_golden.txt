@@ -2961,8 +2961,16 @@ Usage: pipefy portal element update [OPTIONS] ELEMENT_ID PAGE_ID
 │                                  [required]                                  │
 │    --metadata              TEXT  Complete element metadata JSON (Pipefy      │
 │                                  replaces the whole blob).                   │
-│    --data-sources          TEXT  Optional JSON array of data source          │
-│                                  bindings.                                   │
+│    --data-sources          TEXT  JSON array of {"repoId": ..., "fieldKeys":  │
+│                                  [...]} bindings; replaces the element's     │
+│                                  list, so '[]' unlinks them all. The API     │
+│                                  also needs editable when an entry lists     │
+│                                  fieldKeys, which this command does not      │
+│                                  send. Omit with --portal-uuid to keep the   │
+│                                  current ones.                               │
+│    --portal-uuid           TEXT  Portal holding the element; required when   │
+│                                  --data-sources is omitted. Its data sources │
+│                                  and editable flag are read and sent back.   │
 │    --json          -j            Print machine-readable JSON to stdout.      │
 │    --help                        Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯

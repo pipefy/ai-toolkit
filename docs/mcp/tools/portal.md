@@ -92,7 +92,7 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `contentBlock` | Opaque JSON | Content block |
 | `document` | Opaque JSON | Document widget |
 
-**`update_portal_element`:** `metadata` is **replace-all** on the wire (`updateElement.metadata` required every time). Send the full blob, not a patch.
+**`update_portal_element`:** `metadata` is **replace-all** on the wire (`updateElement.metadata` required every time). Send the full blob, not a patch. `data_sources` is replace-all too, and the API rejects an update without it: `[]` unlinks the element from its pipe or table. To keep the current data sources, omit `data_sources` and pass `portal_uuid`; the SDK reads them from `get_portal` (`pages[].elements[].dataSources`) and sends them back, together with the element's stored `editable` unless you pass one (the API rejects an update whose data source lists `fieldKeys` without `editable`). Every update passes one of the two; omitting both is rejected before any call. An element with no bindings (`link`, `text`) can pass `data_sources: []`, which skips the read.
 
 **`data_sources`:** Each entry needs a pipe repo id as `repoId` (the declared Interfaces field, plus optional `fieldKeys` / `field_keys`). Unknown keys are skipped with an SDK warning.
 
@@ -113,7 +113,7 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `sort_portal_pages` | No | `page_ids` ordered list. |
 | `update_portal_page_layout` | No | `page_id` + `layout` JSON only (no portal UUID on wire). |
 | `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`, `element_id`, `layout` (full row array with a row listing `element_id`: creates and places in one call). |
-| `update_portal_element` | No | Full `metadata` replace. |
+| `update_portal_element` | No | Full `metadata` replace; `data_sources` replaces the bindings, or omit it and pass `portal_uuid` to keep them. |
 | `delete_portal_element` | No | Irreversible. Optional `layout` (full row array with `element_id` removed from every row) prunes the grid in the same call; a row still listing `element_id` is rejected. MCP: send the same `layout` on the preview and the confirm call, since the token covers those rows. |
 | `duplicate_portal_element` | No | Same page; `element_id`, `portal_uuid`, `page_id`. |
 | `create_sub_portal` | No | Interfaces `createSubPortal`; `main_portal_uuid`, optional `name`. |
@@ -203,7 +203,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `sort_portal_pages` | `pipefy portal page sort --portal-uuid <uuid> --page-ids id1,id2` |
 | `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '[…]'` |
 | `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}' [--element-id <uuid> --layout '[…]']` |
-| `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type link --metadata '{…}'` |
+| `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type forms --metadata '{…}' --portal-uuid <uuid>` (or `--data-sources '[…]'`) |
 | `delete_portal_element` | `pipefy portal element delete <element-uuid> <page-uuid> [--layout '[…]'] --yes` |
 | `duplicate_portal_element` | `pipefy portal element duplicate --element-id <uuid> --portal-uuid <uuid> --page-id <uuid>` |
 | `create_sub_portal` | `pipefy portal sub-portal create --main-portal-uuid <uuid> [--name …]` |
@@ -220,7 +220,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | Mode | Setup |
 |------|--------|
 | **Unit** | `uv run pytest -m "not integration" -k portal` — fictional IDs in [`fixture_ids.py`](../../../packages/sdk/tests/_shared/fixture_ids.py). |
-| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [README#installation](../../../README.md#installation); env reference: [`docs/config.md`](../../config.md#environment-variables). |
+| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [`docs/install.md`](../../install.md); env reference: [`docs/config.md`](../../config.md#environment-variables). |
 
 ---
 

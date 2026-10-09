@@ -80,6 +80,7 @@ If **`get_portal`** shows a main page with **no elements**, call **`create_porta
 | **Sub-portal in layout** | Tiles may appear under **`pages[].elements[]`** with `type: subPortal` even when top-level `subPortals[]` is empty. |
 | **Publish wire** | Use **`publish_sub_portal`** / **`update_sub_portal_element`** on an existing **`forms`** element (`updateSubPortalElement` on internal_api). **`create_portal_element` with `type: subPortal`** is not a substitute for publish. |
 | **Element metadata** | **`update_portal_element`** is **replace-all** — send the full `metadata` JSON every time. |
+| **Element data sources** | Every **`update_portal_element`** passes `data_sources` or `portal_uuid`, whatever the element type; omitting both is rejected. `data_sources` is replace-all: `[]` unlinks the element from its pipe or table, and is the one-call choice for an element with no bindings (`link`, `text`). To keep bindings, omit `data_sources` and pass `portal_uuid` (the uuid you passed to `get_portal`, whose `pages[]` holds `page_id`); the element's `dataSources` and `editable` flag are sent back. |
 | **Metadata keys** | `forms` → `name` (not `formId`); `link` → `linkName` / `linkUrl` (not `url` / `label`). |
 | **Layout JSON** | **`update_portal_page_layout`** expects an **array** of row objects. Each row needs a non-empty `id`, `type: "row"`, and `children` as non-empty strings. Copy the target **`pages[].layout`** from **`get_portal`**. `metadata.gridMap` gives element dimensions, not placement. The API stores any JSON here verbatim, so a wrapper or an incomplete row replaces the grid. The toolkit rejects a non-array and any incomplete row locally, and still accepts `[]` as an empty page; never bypass it with raw GraphQL. |
 | **Page grid vs elements** | **`create_portal_element`** leaves the layout grid untouched unless you pass `element_id` + `layout` (existing rows plus a row listing the new id); **`duplicate_portal_element`** appends layout rows; **`delete_portal_element`** leaves layout refs unless you pass `layout` (existing rows with the element removed); orphan refs can break the portal viewer (HTTP 500). |
@@ -240,6 +241,8 @@ pipefy portal element create --page-id <page_uuid> --type link --metadata '{...}
   "linkName": "Example link"
 }
 ```
+
+A `link` has no bindings, so its update also passes `data_sources: []` (CLI `--data-sources '[]'`).
 
 ---
 

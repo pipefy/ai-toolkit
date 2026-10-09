@@ -202,7 +202,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `update_portal` | `pipefy portal update` | shipped | (`--name`, `--visibility`, optional `--color`, `--icon`, header flags). |
 | `update_portal_page` | `pipefy portal page update` | shipped | positional portal + page UUIDs; at least one of `--title`, `--description`, `--index`. |
 | `update_portal_page_layout` | `pipefy portal page layout update` | shipped | `--page-id` + `--layout` JSON only (no portal UUID on the wire). Each row needs a non-empty id, type "row", and children as non-empty strings; `[]` is an empty page. Incomplete rows are rejected before the call. |
-| `update_portal_element` | `pipefy portal element update` | shipped | positional element + page UUIDs; `--type` + full `--metadata` JSON (API replace-all). |
+| `update_portal_element` | `pipefy portal element update` | shipped | positional element + page UUIDs; `--type` + full `--metadata` JSON (API replace-all); one of `--data-sources` (replace-all, `'[]'` unlinks) or `--portal-uuid` (keep current bindings). |
 | `update_sub_portal_element` | `pipefy portal sub-portal attach` | shipped | positional portal, element, and sub-portal UUIDs; internal_api `updateSubPortalElement`. |
 | `update_table` | `pipefy table update` | shipped | — |
 | `update_table_field` | `pipefy table field update` | shipped | `--table` recommended; `--label`/`--description`/`--required`/`--options` or `--extra`. |

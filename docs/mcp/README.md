@@ -1,6 +1,6 @@
 # MCP server documentation
 
-Material in this tree describes **`pipefy-mcp-server`**: the MCP process, tool behavior, and client wiring.
+Material in this tree describes **`pipefy-mcp-server`**: the MCP process, tool behavior, and client wiring. Tool descriptions and `Args:` blocks come from the Python docstrings, and MCP clients show that text to models; these guides add parameters, edge cases, and cross-cutting behavior.
 
 ## Contents
 
@@ -25,6 +25,6 @@ Material in this tree describes **`pipefy-mcp-server`**: the MCP process, tool b
 
 Start with [`tools/cross-cutting.md`](tools/cross-cutting.md) for pagination, IDs, `debug`, permissions, and error shape — then open the domain guide you need.
 
-For install and per-client MCP wiring (hosted HTTP, Cursor, Claude Desktop, Claude Code, Codex), see the root [`README.md#installation`](../../README.md#installation). First-time agent checklist: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](../../skills/onboarding/pipefy-toolkit-setup/SKILL.md). For environment variables and `config.toml`, see [`../config.md`](../config.md). Edge cases (`errSecInvalidOwnerEdit`, local `claude mcp add`, `.mcp.json`, local-clone alternative): [`packages/mcp/README.md`](../../packages/mcp/README.md).
+For install and per-client MCP wiring (hosted HTTP, Cursor, Claude Desktop, Claude Code, Codex), see [`docs/install.md`](../install.md). First-time agent checklist: [`skills/onboarding/pipefy-toolkit-setup/SKILL.md`](../../skills/onboarding/pipefy-toolkit-setup/SKILL.md). For environment variables and `config.toml`, see [`../config.md`](../config.md). Edge cases (`errSecInvalidOwnerEdit`, local `claude mcp add`, `.mcp.json`, local-clone alternative): [`packages/mcp/README.md`](../../packages/mcp/README.md).
 
 The MCP ↔ CLI coverage matrix lives at **[`../parity.md`](../parity.md)**.

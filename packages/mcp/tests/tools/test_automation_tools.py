@@ -531,7 +531,11 @@ async def test_create_automation_invalid_condition_returns_error(
     assert result.is_error is False
     payload = extract_payload(result)
     assert payload["success"] is False
-    assert "condition" in tool_error_message(payload).lower()
+    message = tool_error_message(payload)
+    assert "condition" in message.lower()
+    # The raw pydantic rendering must not leak to the agent.
+    assert "input_value=" not in message
+    assert "pydantic.dev" not in message
     mock_automation_client.create_automation.assert_not_called()
 
 
@@ -1272,3 +1276,28 @@ class TestPipefyIdCoercion:
             result = await session.call_tool("get_automation", {"automation_id": 500})
         assert result.is_error is False
         mock_automation_client.get_automation.assert_awaited_once_with("500")
+
+
+@pytest.mark.anyio
+async def test_create_send_task_automation_validation_error_has_no_pydantic_noise(
+    automation_session, mock_automation_client, extract_payload
+):
+    """A blank recipient fails CreateSendTaskAutomationInput; the message stays clean."""
+    async with automation_session as session:
+        result = await session.call_tool(
+            "create_send_task_automation",
+            {
+                "pipe_id": "p1",
+                "name": "Notify",
+                "event_id": "card_created",
+                "task_title": "Do it",
+                "recipients": "",
+            },
+        )
+    assert result.is_error is False
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    message = tool_error_message(payload)
+    assert "input_value=" not in message
+    assert "pydantic.dev" not in message
+    mock_automation_client.create_send_task_automation.assert_not_called()
