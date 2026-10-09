@@ -9,7 +9,7 @@
 
 The toolkit's docs copy facts that the code already owns: the parameters of a tool, the commands of the CLI, the settings that the packages read. People keep those copies by hand, and the copies drift. We have run into this ourselves: more than once, a false statement in the docs steered an implementation before anyone noticed that the code said otherwise.
 
-To write this RFC, we searched the docs and docstrings for such statements. Without a full audit, we found at least 11 that are false or misleading, or that contain links that break where readers see them. The existing doc checks pass on all of them. The clearest one tells the reader to pass `debug=true` to `execute_graphql`, a tool that has no `debug` parameter. It is one of 10 hand-written copies of the `debug=true` convention.
+To write this RFC, we searched the docs and docstrings for such statements. Without a full audit, we found at least 13 that are false or misleading, or that contain links that break where readers see them. The existing doc checks pass on all of them. The clearest one tells the reader to pass `debug=true` to `execute_graphql`, a tool that has no `debug` parameter. It is one of 10 hand-written copies of the `debug=true` convention.
 
 The docs also have a second, separate problem: no rule says where a page belongs. Each author picks the place for a new page, so three pages for contributors sit at the top of the user docs, and a reader cannot predict where a fact lives.
 
@@ -34,6 +34,8 @@ The copies multiply. The convention that write tools take `debug=true` is writte
 
 `docs/parity.md` holds 187 rows, one per MCP tool, and 182 of them name a CLI command. Each of 17 skills has its own `references/cli.md` file, and 13 of these files hold 162 more rows. Each of these 344 tool-to-command pairs is a copy of a fact that the code owns. In 161 of the 187 rows of `docs/parity.md`, a note follows the pair. Only 5 of these notes give the reason that a tool has no CLI command. About 150 repeat a fact that the code already holds, such as the options of a command.
 
+The pages in `docs/mcp/tools/` follow the same pattern: they copy tool counts, parameter lists, and CLI commands from the code. We count around 200 such lines across the 16 pages.
+
 The commit history shows how often a code change also needs a doc edit. Of the 10 Markdown files with the most commits on `dev` that are not merges, 2 are `CHANGELOG.md` and `RELEASE.md`, which change with the code by design. For 5 of the other 8, more than half of the commits also change `.py` files, and 3 of those 8 are skills. A commit that changes both does not prove that the doc repeats the code, but it shows that doc edits follow code changes closely.
 
 ### Wrong statements and broken links
@@ -50,6 +52,8 @@ Copies that change on their own schedule end up wrong. These statements are fals
 | `packages/cli/README.md:85` | See `CLAUDE.md` for contributor guidance | The root has no `CLAUDE.md`. The only tracked one is the symlink `packages/mcp/CLAUDE.md` |
 | `README.md:341` | "Each published blueprint ships with a `COMPLIANCE.md`" | No skill ships a `COMPLIANCE.md`. The only tracked one is the template, `docs/compliance/COMPLIANCE.template.md`. `packages/sdk/hatch_build.py` packs only `SKILL.md` and `references/`, so a `COMPLIANCE.md` would not reach the wheel. No code or skill uses the term "blueprint" |
 | `packages/mcp/README.md`, `packages/cli/README.md`, `packages/sdk/README.md` | 12 relative links of the form `../../docs/...`, on 8 lines | Each `pyproject.toml` sets `readme = "README.md"`, so these READMEs become PyPI pages, where relative links break |
+| `docs/mcp/tools/portal.md:110` | `create_portal_page` takes `interface_uuid` and an optional `elements` | The signature takes `portal_uuid`, `title`, `description`, and `index` (`packages/mcp/src/pipefy_mcp/tools/portal_tools.py:282-287`) |
+| `docs/mcp/tools/ipaas.md:81-82` | A blank client id "disables both tools" | The server has four iPaaS tools, and each one returns the "not configured" error when the gateway is missing (`packages/mcp/src/pipefy_mcp/tools/ipaas_tools.py:168-170`) |
 
 Three more statements describe behavior that the code does not have:
 
@@ -77,7 +81,7 @@ The repository root holds 8 Markdown files. Six of them follow a convention that
 
 ### The cheaper alternative
 
-The cheapest response is to fix the 11 statements found so far, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. We include the first two, but we do not think that they stop the next drift.
+The cheapest response is to fix the 13 statements found so far, add a link checker, and extend the skill lint so that it checks each tool-to-command pair. We include the first two, but we do not think that they stop the next drift.
 
 A fixed copy is still a copy, and nothing ties it to the code. `README.md:198` has said "three Python packages" since 2026-05-18. The `pipefy-auth` package arrived four days later, in PR #216. After that, 55 commits that are not merges changed `README.md`, and none of them corrected the sentence.
 
@@ -121,7 +125,7 @@ A generator writes each generated block between two markers. CI runs the generat
 
 A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". A recent commit already deleted a count in this way: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values". When a reader needs the number, a generator writes it.
 
-Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 162 tool-to-command pairs in the skills. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
+Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, the 162 tool-to-command pairs in the skills, and the copies in `docs/mcp/tools/`. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
 The 182 pairs in `docs/parity.md` go too. The page keeps only what neither product shows on its own: the 5 tools that have no CLI command, each with its reason, and the behavior that differs between the MCP server and the CLI. For example, MCP asks for a `confirmation_token` where the CLI asks for `--yes`. To find the command for a tool, the page points to the CLI reference.
 
@@ -181,7 +185,7 @@ CI runs these checks at every commit on `dev`:
 
 Each claim about behavior in a hand-written page is tested in one of three ways: by an executable example, by a pointer or a generated block (R1), or by a link to a named test. A reviewer deletes a claim that none of these tests.
 
-None of this runs today. CI has no link checker and no Markdown linter, and the existing checks pass on all 11 statements that we found. RFC-0002 sets the quality bar for these checks as tests.
+None of this runs today. CI has no link checker and no Markdown linter, and the existing checks pass on all 13 statements that we found. RFC-0002 sets the quality bar for these checks as tests.
 
 #### How confident we are
 
@@ -291,7 +295,7 @@ Four pages and the 14 domain pages in `docs/mcp/tools/` mix kinds or products to
 |---|---|
 | `docs/cli/auth.md` (292 lines) | The quick start and "Headless / SSH" go to `docs/cli/how-to/login.md`. The flags and exit codes come from the generated CLI reference. The credential order and the keychain backends go to `docs/explanation/authentication.md`. Errors that any product can raise go to `docs/reference/auth-errors.md`, and errors that only `pipefy auth login` raises stay in the CLI section. |
 | `docs/mcp/tools/cross-cutting.md` | Pagination, `extra_input`, `debug`, and error payloads go to the tool docstrings, and from there to the generated MCP reference. The reasons behind confirmations go to `docs/mcp/explanation/confirmations.md`. The conventions that every tool follows go to `docs/mcp/explanation/tool-conventions.md`. The ID facts go to `docs/explanation/identifiers.md`. |
-| The 14 domain pages in `docs/mcp/tools/` | The parameter facts go to the tool docstrings. The explanations go to `docs/mcp/explanation/`. |
+| The 14 domain pages in `docs/mcp/tools/` | The copies of the code leave, because the docstrings and the generated MCP reference hold them. The rest splits by kind and reader: the steps go to `docs/mcp/how-to/`, the explanations go to `docs/mcp/explanation/`, and the notes for maintainers go to `docs/contributing/`. |
 | `docs/MIGRATION.md` | The cutover note goes to `CHANGELOG.md`. The MCP steps go to `docs/mcp/how-to/upgrade.md`, the settings model steps go to `docs/sdk/how-to/upgrade.md`, and the service-account rename goes to `docs/how-to/login.md`. |
 | `docs/ipaas.md` | The flow and the credential minting go to `docs/contributing/explanation/ipaas-internals.md`. The settings come from the generated `docs/reference/config.md`. The vocabulary goes to `docs/mcp/explanation/ipaas.md`. |
 
