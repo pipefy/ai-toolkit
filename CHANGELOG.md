@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.4-beta.1] - 2026-10-09
+
 ### Changed
 
 - **README and install guide**: the README is a short front door with a quick-start table (the first command for each install path) and a section listing the hosts the toolkit contacts, the headers it sends, and what the installers and `pipefy auth login` write on your machine. The full install guide, tool-surface selection, and testing the Claude Code plugin from a checkout live in `docs/install.md`; links across docs, skills, and the MCP setup error point there.
