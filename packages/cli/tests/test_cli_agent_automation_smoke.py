@@ -69,6 +69,13 @@ def test_agent_validate_behaviors_json(
     assert r.exit_code == 0
     body = json.loads(r.stdout)
     assert body.get("success") is True
+    # The fixture is a move_card targeting destinationPhaseId "2" on a pipe with
+    # no phases, so the validator must report that phase as missing. Assert the
+    # problem is surfaced, not just that the command ran, so a regression that
+    # drops the phase check fails this test (see #702).
+    assert body.get("valid") is False
+    problems = body.get("problems") or []
+    assert any('destinationPhaseId "2"' in problem for problem in problems), problems
 
 
 def _behavior_with_ai_params(**ai_behavior_params) -> dict:
