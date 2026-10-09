@@ -12,7 +12,7 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 | `clone_pipe` | `pipefy pipe clone <id>` |
 | `get_pipe_members` | `pipefy member list --pipe <id>` |
 
-CLI: `pipefy pipe create "Customer Onboarding" --org 123`
+CLI: `pipefy pipe create "Customer Onboarding" --org 300123456`
 
 | Operation | CLI |
 |---|---|
@@ -33,16 +33,16 @@ CLI: `pipefy pipe create "Customer Onboarding" --org 123`
 | `get_phase_allowed_move_targets` | `pipefy phase targets <phase_id>` |
 | `move_card_to_phase` | `pipefy card move <card_id> --phase <id>` |
 
-CLI: `pipefy pipe get 306996634 --json`
+CLI: `pipefy pipe get 301234567 --json`
 
-CLI: `pipefy phase count 340012345 --json`
+CLI: `pipefy phase count 341234567 --json`
 
 CLI:
    ```bash
-   pipefy card create 306996634 --phase-id 340012345 --title "Seeded"
+   pipefy card create 301234567 --phase-id 341234567 --title "Seeded"
    ```
 
-CLI: `pipefy phase cards 340012345 --json`
+CLI: `pipefy phase cards 341234567 --json`
 
 CLI: `pipefy phase targets <current_phase_id> --json`
 
@@ -72,11 +72,11 @@ CLI: `pipefy phase targets <current_phase_id> --json`
 
 Attachment uploads accept `--file` only. See `pipefy-attachments`.
 
-CLI: `pipefy pipe start-form 67890 --json`
+CLI: `pipefy pipe start-form 301234567 --json`
 
 CLI:
    ```bash
-   pipefy card create 67890 --title "My Card" --fields '{"field_slug":"value"}'
+   pipefy card create 301234567 --title "My Card" --fields '{"field_slug":"value"}'
    ```
 
 | Operation | CLI |

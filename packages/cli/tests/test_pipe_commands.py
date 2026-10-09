@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from pipefy_cli.main import app
 
 
@@ -136,9 +138,10 @@ def test_pipe_list_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     )
 
 
-def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+@pytest.mark.parametrize("pipe_id", ["301234567", "301234568"])
+def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env, pipe_id):
     oauth_env("pipe-create")
-    payload = {"createPipe": {"pipe": {"id": "99"}}}
+    payload = {"createPipe": {"pipe": {"id": pipe_id}}}
     mock_client = MagicMock()
     mock_client.create_pipe = AsyncMock(return_value=payload)
     with patch(
@@ -150,6 +153,7 @@ def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
             ["pipe", "create", "My Pipe", "--org", "555", "--json"],
         )
     assert result.exit_code == 0
+    assert json.loads(result.stdout) == {"createPipe": {"pipe": {"id": pipe_id}}}
     mock_client.create_pipe.assert_awaited_once_with("My Pipe", "555")
 
 

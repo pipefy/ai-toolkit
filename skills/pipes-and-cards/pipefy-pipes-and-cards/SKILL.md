@@ -42,7 +42,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 1. **Create the pipe:**
 
-   `create_pipe name="Customer Onboarding" organization_id=123`
+   `create_pipe name="Customer Onboarding" organization_id=300123456`
 
 2. **Shape the phases.** `create_pipe` already adds Inbox, Doing and Done at keys 1, 2 and 3. Do not call `create_phase` once for every requested name on top of those three.
 
@@ -91,16 +91,16 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 
 1. **Load phase IDs** — `get_pipe(pipe_id)` → collect `phases[].id` for workflow phases. Omit `phase_id` on `create_card` for start-form intake.
 
-   `get_pipe pipe_id="306996634"`
+   `get_pipe pipe_id="301234567"`
 
 2. **Find empty phases** — for each candidate `phase_id`, call `get_phase_cards_count`. Target phases where `cards_count` is 0 (if the start form shows 0 but you suspect cards, call `get_phase_cards` before creating duplicates).
 
-   `get_phase_cards_count phase_id="340012345"`
+   `get_phase_cards_count phase_id="341234567"`
 
 3. **Create cards in empty phases** — loop `create_card` with `phase_id`. When `fields` is non-empty, keys are filtered via `get_phase_fields(phase_id)` and `get_start_form_fields(pipe_id)`.
 
    ```
-   create_card pipe_id="306996634" phase_id="340012345" title="Seeded" fields={}
+   create_card pipe_id="301234567" phase_id="341234567" title="Seeded" fields={}
    ```
 
 4. **Verify inventory** — `get_phase_cards(phase_id, first=50)` and confirm expected card IDs/titles.
@@ -156,12 +156,12 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 
 1. **Get start form fields** (required — never skip):
 
-   `get_start_form_fields pipe_id=67890`
+   `get_start_form_fields pipe_id=301234567`
 
 2. **Create the card with fields:**
 
    ```
-   create_card pipe_id=67890 title="My Card" fields={"field_slug":"value"}
+   create_card pipe_id=301234567 title="My Card" fields={"field_slug":"value"}
    ```
 
 3. **Report result** with card ID and link: `https://app.pipefy.com/open-cards/<CARD_ID>`
@@ -169,7 +169,7 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 ### Pagination for get_cards
 
 ```
-get_cards pipe_id=67890 first=50 after=<endCursor>
+get_cards pipe_id=301234567 first=50 after=<endCursor>
 ```
 
 Read `pageInfo.hasNextPage` and `pageInfo.endCursor` from the response; pass `after=<endCursor>` for the next page.

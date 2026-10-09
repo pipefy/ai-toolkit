@@ -16,8 +16,8 @@ Which **form** each tool wants (slug vs `internal_id` vs uuid vs numeric id) is 
 
 Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most other nodes.
 
-- **Prefer string arguments** when calling tools (e.g. `card_id: "1332881010"`, `pipe_id: "306996634"`). This matches API responses (`get_pipe`, `get_card`, `create_card`, etc.).
-- **Integer JSON values** (e.g. `1332881010` without quotes) are still accepted on many tools: they are **coerced to strings** before variables are sent to GraphQL, so behavior matches the API.
+- **Prefer string arguments** when calling tools (e.g. `card_id: "1312345678"`, `pipe_id: "301234567"`). This matches API responses (`get_pipe`, `get_card`, `create_card`, etc.).
+- **Integer JSON values** (e.g. `1312345678` without quotes) are still accepted on many tools: they are **coerced to strings** before variables are sent to GraphQL, so behavior matches the API.
 - **Validation:** empty strings, whitespace-only IDs, and non-positive numeric IDs are rejected with a clear tool error (no spurious `ValueError` from type mixing).
 - **`delete_card`:** `card_id` follows the same rule — use a **string** (recommended) or a positive integer; the tool normalizes to a string for `getCard` / `deleteCard`. On success, `card_id` in the payload is a **string**.
 
@@ -89,7 +89,7 @@ create_card(pipe_id, fields={…}) → supply every required field ID
 get_pipe(pipe_id)                → phases[].id / cards_count for workflow inventory
 create_card(
   pipe_id,
-  phase_id="340012345",
+  phase_id="341234567",
   skip_elicitation=true,
   title="Seeded card",
   fields={…},
@@ -128,8 +128,8 @@ Use these when you need per-phase totals or card lists without pipe-wide `CardSe
 Discovery path: `get_pipe(pipe_id)` → `phases[].id` for workflow phases; omit `phase_id` on `create_card` for start-form intake.
 
 ```
-get_phase_cards_count(phase_id="340012345")
-get_phase_cards(phase_id="340012345", first=50, include_fields=true)
+get_phase_cards_count(phase_id="341234567")
+get_phase_cards(phase_id="341234567", first=50, include_fields=true)
 ```
 
 ### Phase transitions (`get_phase_allowed_move_targets`)
