@@ -20,7 +20,7 @@ from tools.field_condition_live_test_support import exercise_field_condition_lif
     "actual_phase", ["20", None, "10"], ids=["wrong-phase", "missing", "verified"]
 )
 async def test_live_lifecycle_deletes_returned_condition_before_asserting(
-    actual_phase, legacy_envelope
+    actual_phase, envelope_flag
 ):
     calls = []
 

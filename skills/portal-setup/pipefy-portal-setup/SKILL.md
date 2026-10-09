@@ -279,7 +279,7 @@ unpublish_sub_portal(portal_uuid="<MAIN_PORTAL_UUID>", element_id="<FORMS_ELEMEN
 | `PERMISSION_DENIED` on writes | Wrong org, missing `manage_portals`, or SA not joined on interface | Same org as `list_portals`; user runs portal admin join; try human admin token |
 | Reads OK, writes fail on `admin` org | Token is human on org A, numeric id is org B | Align `organization_uuid` with token membership |
 | `Menu already created` on `create_portal` | Main deleted but org menu state remains | Delete orphan sub-portals; avoid raw `createInterface`; bootstrap with `create_portal_page` on existing UUID |
-| Main page empty in builder | Portal created outside `create_portal` template path | `create_portal_page` (title only) for templated elements |
+| Main page empty in builder | Portal created outside `create_portal` template path | Read `get_portal`. If it has no pages, use `create_portal_page`. Otherwise, add a `forms` element and layout entry on `pages[0]`. |
 | `published` missing on list | Expected | `get_portal` |
 | Many subs in `get_portal`, empty main UI | Sub-portals not published to `forms` slots | `publish_sub_portal` per sub + `forms` `element_id` |
 | Publish or unpublish rejected | The selected element is outside the first portal page or the API rejected the request | Use a forms element from `get_portal` → `pages[0].elements`. Read the result and stored state. |
