@@ -113,8 +113,7 @@ Every fact has one source of truth: the one place where it is written. For the p
 Every other place reaches a fact that the code owns in one of two ways:
 
 1. A pointer: a sentence that names the command that shows the fact, such as "Run `sh install.sh --help` for the flags." This is the default, because a pointer holds no copy of the fact, so it stays correct when the fact changes.
-2. A generated block, when the reader cannot run a command at the moment they need the fact. Three cases exist today:
-   - a comparison across commands, as in `docs/parity.md`
+2. A generated block, when the reader cannot run a command at the moment they need the fact. Two cases exist today:
    - a page that readers see outside the repository, such as a package README on PyPI
    - an agent that chooses a tool before it calls one
 
@@ -124,9 +123,11 @@ A generator writes each generated block between two markers. CI runs the generat
 
 A count of things that the code defines, such as tools, commands, packages, or skills, is also a fact that the code owns. A sentence rarely needs the number, so the first choice is to delete it. For example, `packages/mcp/README.md:3` says "MCP server for Pipefy — **187 tools** for AI agents", and the sentence works as "MCP server for Pipefy, with tools for AI agents". A recent commit already deleted a count in this way: `476ada8d` changed "an `enum` of the 24 values" in `CHANGELOG.md` to "an `enum` of the values". When a reader needs the number, a generator writes it.
 
-Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 344 tool-to-command pairs. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
+Every copy in "Copies of facts that the code owns" disappears under this rule: the first four rows of the table in "Wrong statements and broken links", the `debug=true` convention in 10 places, the tool count in 4 places, and the 162 tool-to-command pairs in the skills. Fixing them by hand would not last, as the 55 commits in "The cheaper alternative" show.
 
-No code records today which CLI command implements which MCP tool, or why a tool has none. We ask RFC-0003 to add that record to the tool registry: for each tool, either its CLI command or the reason it has none. Until the record exists, the 344 pairs and the 5 reasons stay hand-written, and the existing checks keep covering them.
+The 182 pairs in `docs/parity.md` go too. The page keeps only what neither product shows on its own: the 5 tools that have no CLI command, each with its reason, and the behavior that differs between the MCP server and the CLI. For example, MCP asks for a `confirmation_token` where the CLI asks for `--yes`. To find the command for a tool, the page points to the CLI reference.
+
+No code records today which CLI command implements which MCP tool, or why a tool has none. The 187 rows of `docs/parity.md` are the only record. `tests/test_parity.py` reads them to make sure that every new tool has either a CLI command or a stated reason. We ask RFC-0003 to move that record into the tool registry, so the check reads code instead of a doc. The same record lets the help of each command name the MCP tool that it implements, such as "MCP tool: `get_cards`" in `pipefy card list --help`. Until the record exists, `docs/parity.md` keeps its 187 rows, and the existing checks keep covering them.
 
 #### R2: The path of a page declares its place
 
@@ -209,11 +210,11 @@ The code is the source of truth for every fact that it can state. Generators rea
 `cog` runs every generator that writes a block inside a page. A generator that writes a whole page also runs in CI, and CI fails when the page changes. The generators cover these outputs:
 
 - The MCP tool reference, from the tool signatures and docstrings, one page per group of tools. No tool reads the tool registry, so this generator is a script in the repository.
-- The CLI command reference, from the Typer app, with `typer pipefy_cli.main utils docs`.
+- The CLI command reference, from the Typer app, with `typer pipefy_cli.main utils docs`. Once the registry records the mapping (R1), each command in it names the MCP tool that it implements.
 - The SDK reference, from the docstrings of the public API.
 - The settings table in `docs/reference/config.md`, from the settings models.
-- The counts that a reader needs, such as the number of tools in `docs/reference/parity.md`, from the tool registry. The other copies of a count are deleted.
-- The tool-to-command table in `docs/reference/parity.md` and in each skill's `references/cli.md`, once the registry records the mapping (R1).
+- The counts that a reader needs, from the tool registry. The other copies of a count are deleted.
+- The list in `docs/reference/parity.md` of the tools that have no CLI command, with the reason for each, and the tool-to-command table in each skill's `references/cli.md`, once the registry records the mapping (R1).
 - The landing page of each section, from the `title` and `description` of its pages.
 - The documentation map in `AGENTS.md`.
 
@@ -229,7 +230,7 @@ docs/
   reference/auth-errors.md
   reference/config.md                generated block
   reference/glossary.md
-  reference/parity.md                generated block
+  reference/parity.md                tools with no CLI command, behavior differences
   reference/terms.md
   explanation/authentication.md      credential order, stored session, keychain
   explanation/identifiers.md
