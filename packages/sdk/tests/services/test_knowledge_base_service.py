@@ -57,7 +57,7 @@ def _create_flow_executor():
     """Executor whose three ``execute_query`` calls drive a full create flow."""
     return mock_executor(
         side_effect=[
-            {"pipe": {"organization": {"id": "300514213", "uuid": "org-uuid"}}},
+            {"pipe": {"organization": {"id": "300123456", "uuid": "org-uuid"}}},
             {"createPresignedUrl": {"url": _UPLOAD_URL, "downloadUrl": _DOWNLOAD_URL}},
             {"createAiKnowledgeBaseDocument": {"knowledgeBaseDocument": DOCUMENT_FULL}},
         ]
@@ -483,7 +483,7 @@ class TestCreateDocument:
         assert calls[0].args[1] == {"id": "pipe-uuid-1"}
         # 2) presign with the resolved org id, file name, pdf type, and byte length
         assert calls[1].args[1] == {
-            "organizationId": "300514213",
+            "organizationId": "300123456",
             "fileName": "handbook.pdf",
             "contentType": "application/pdf",
             "contentLength": len(_PDF_BYTES),
@@ -602,7 +602,7 @@ class TestCreateDocument:
     async def test_missing_upload_url_tagged_presigned_url(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "300123456"}}},
                 {"createPresignedUrl": {"url": None, "downloadUrl": _DOWNLOAD_URL}},
             ]
         )
@@ -622,7 +622,7 @@ class TestCreateDocument:
     async def test_s3_failure_tagged_and_carries_snippet(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "300123456"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -652,7 +652,7 @@ class TestCreateDocument:
         """A raising PUT (transport error, allowlist rejection) carries the step tag."""
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "300123456"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -687,7 +687,7 @@ class TestCreateDocument:
         """
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "300123456"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -731,7 +731,7 @@ class TestCreateDocument:
     async def test_create_mutation_failure_tagged_kb_create(self, tmp_path):
         executor = mock_executor(
             side_effect=[
-                {"pipe": {"organization": {"id": "300514213"}}},
+                {"pipe": {"organization": {"id": "300123456"}}},
                 {
                     "createPresignedUrl": {
                         "url": _UPLOAD_URL,
@@ -824,7 +824,7 @@ DATA_LOOKUP_FULL = {
     "id": "kb-3",
     "name": "Order lookup",
     "description": "Find orders by customer email",
-    "sourceRepoId": "303088927",
+    "sourceRepoId": "301234567",
     "searchQuery": None,
     "outputFields": ["title", "status"],
     "updatedAt": "2026-07-18T00:00:00Z",
@@ -889,7 +889,7 @@ class TestCreateDataLookup:
         kwargs = {
             "name": "Order lookup",
             "description": "Find orders",
-            "source_repo_id": "303088927",
+            "source_repo_id": "301234567",
             "output_fields": ["title"],
             "conditions": [dict(STATIC_CONDITION)],
         }
@@ -912,7 +912,7 @@ class TestCreateDataLookup:
                 "pipeUuid": "p",
                 "name": "Order lookup",
                 "description": "Find orders",
-                "sourceRepoId": "303088927",
+                "sourceRepoId": "301234567",
                 "outputFields": ["title"],
                 "conditions": [
                     {
@@ -987,7 +987,7 @@ class TestCreateDataLookup:
 
         with pytest.raises(ValueError, match="numeric pipe ID"):
             await self._create(
-                service, source_repo_id="5f66417e-5adc-4c83-908f-0b888493c847"
+                service, source_repo_id="550e8400-e29b-41d4-a716-446655440101"
             )
         executor.execute_query.assert_not_awaited()
 
@@ -1111,7 +1111,7 @@ class TestUpdateDataLookup:
         result = await service.update_ai_knowledge_base_data_lookup(
             "kb-3",
             "p",
-            source_repo_id="303088927",
+            source_repo_id="301234567",
             output_fields=["title"],
             conditions=[dict(STATIC_CONDITION)],
         )
@@ -1122,7 +1122,7 @@ class TestUpdateDataLookup:
             "input": {
                 "pipeUuid": "p",
                 "dataLookupId": "kb-3",
-                "sourceRepoId": "303088927",
+                "sourceRepoId": "301234567",
                 "outputFields": ["title"],
                 "conditions": [
                     {
@@ -1143,7 +1143,7 @@ class TestUpdateDataLookup:
         await service.update_ai_knowledge_base_data_lookup(
             "kb-3",
             "p",
-            source_repo_id="303088927",
+            source_repo_id="301234567",
             output_fields=["title"],
             conditions=[dict(STATIC_CONDITION)],
             search_query="records",
@@ -1165,7 +1165,7 @@ class TestUpdateDataLookup:
             await service.update_ai_knowledge_base_data_lookup(
                 "kb-3",
                 "p",
-                source_repo_id="303088927",
+                source_repo_id="301234567",
                 output_fields=["title"],
                 conditions=[],
             )
@@ -1179,7 +1179,7 @@ class TestUpdateDataLookup:
             await service.update_ai_knowledge_base_data_lookup(
                 "kb-3",
                 "p",
-                source_repo_id="303088927",
+                source_repo_id="301234567",
                 output_fields=["title"],
                 conditions=[dict(STATIC_CONDITION)],
                 description="y" * (MAX_KB_DESCRIPTION_LENGTH + 1),
@@ -1222,7 +1222,7 @@ class TestDataLookupConditionEdgeCases:
             "p",
             name="n",
             description="d",
-            source_repo_id="303088927",
+            source_repo_id="301234567",
             output_fields=["title"],
             conditions=[
                 {
@@ -1249,7 +1249,7 @@ class TestDataLookupConditionEdgeCases:
                 "p",
                 name="n",
                 description="d",
-                source_repo_id="303088927",
+                source_repo_id="301234567",
                 output_fields=["title"],
                 conditions=[{"field": 123, "operator": "eq", "value": "x"}],
             )

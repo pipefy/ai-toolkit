@@ -1,6 +1,6 @@
 """Live MCP calls for pipe-building tools using the production MCPServer app.
 
-Uses ``pipefy_mcp.server.mcp`` (same entrypoint as ``uv run pipeclaw``): lifespan,
+Uses ``pipefy_mcp.server.mcp`` (the production server entrypoint): lifespan,
 ToolRegistry, PipeConfigTools, and real PipefyClient. Skips when PIPEFY_* creds
 are missing from the environment.
 
@@ -39,7 +39,7 @@ mcp_server = build_pipefy_mcp_server(settings)
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_live_pipeclaw_mcp_introspect_type_create_pipe_input(extract_payload):
+async def test_live_mcp_introspect_type_create_pipe_input(extract_payload):
     """Full stack: MCP tool -> introspection -> GraphQL (read-only)."""
     require_live_creds()
     with patch("pipefy_mcp.settings.settings", settings):
@@ -61,7 +61,7 @@ async def test_live_pipeclaw_mcp_introspect_type_create_pipe_input(extract_paylo
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_live_pipeclaw_mcp_get_pipe(extract_payload):
+async def test_live_mcp_get_pipe(extract_payload):
     """Full stack: MCP ``get_pipe`` (read-only)."""
     require_live_creds()
     pipe_id_raw = os.environ.get("PIPE_BUILDING_LIVE_PIPE_ID")
@@ -85,7 +85,7 @@ async def test_live_pipeclaw_mcp_get_pipe(extract_payload):
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_live_pipeclaw_mcp_create_pipe(extract_payload):
+async def test_live_mcp_create_pipe(extract_payload):
     """Full stack: MCP ``create_pipe`` — creates a real pipe (opt-in via env)."""
     require_live_creds()
     org_raw = os.environ.get("PIPE_BUILDING_LIVE_ORG_ID")
@@ -115,7 +115,7 @@ async def test_live_pipeclaw_mcp_create_pipe(extract_payload):
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_live_pipeclaw_mcp_create_label_hex_color(extract_payload):
+async def test_live_mcp_create_label_hex_color(extract_payload):
     """Full stack: MCP ``create_label`` — requires pipe id (opt-in, writes)."""
     require_live_creds()
     pipe_raw = os.environ.get("PIPE_BUILDING_LIVE_PIPE_ID")
