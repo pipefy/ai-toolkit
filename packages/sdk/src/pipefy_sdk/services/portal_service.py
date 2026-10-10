@@ -8,7 +8,7 @@ from typing import Any
 
 from graphql import DocumentNode
 
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import PipefyAPIError, PortalPermissionError
 from pipefy_sdk.graphql_executor import GraphQLExecutor, PipefyGraphQLError
 from pipefy_sdk.graphql_problem import GraphQLProblemKind, classify_exception
 from pipefy_sdk.models.portal import (
@@ -205,6 +205,18 @@ def _normalize_portal_detail(portal: dict[str, Any]) -> dict[str, Any]:
         "pages": normalized_pages,
         "subPortals": sub_portals,
     }
+
+
+def _parse_sub_portal_element_result(
+    result: dict[str, Any], portal_uuid: str, element_id: str
+) -> dict[str, Any]:
+    if (result.get("updateSubPortalElement") or {}).get("success") is not True:
+        raise PipefyAPIError(
+            "updateSubPortalElement did not confirm success for "
+            f"element_id={element_id!r} in portal {portal_uuid!r}. "
+            "Use a forms element on the first portal page."
+        )
+    return result
 
 
 def _stored_element(
@@ -773,14 +785,17 @@ class PortalService:
         element_id: str,
         sub_portal_uuid: str,
     ) -> dict[str, Any]:
-        """Attach a sub-portal to a portal page element (Internal API).
+        """Attach a sub-portal to an element on the first portal page.
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID (e.g. templated ``forms`` slot).
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
             sub_portal_uuid: Sub-portal UUID to wire to the element.
+
+        Raises:
+            PipefyAPIError: When the API does not confirm the attachment.
         """
-        return await _execute_query_with_portal_errors(
+        result = await _execute_query_with_portal_errors(
             self.execute_internal_api_query,
             UPDATE_SUB_PORTAL_ELEMENT_MUTATION,
             {
@@ -791,6 +806,7 @@ class PortalService:
                 }
             },
         )
+        return _parse_sub_portal_element_result(result, portal_uuid, element_id)
 
     async def publish_sub_portal(
         self,
@@ -798,12 +814,15 @@ class PortalService:
         element_id: str,
         sub_portal_uuid: str,
     ) -> dict[str, Any]:
-        """Publish a sub-portal on a page element via ``updateSubPortalElement``.
+        """Publish a sub-portal on a forms element on the first portal page.
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID.
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
             sub_portal_uuid: Sub-portal UUID to attach.
+
+        Raises:
+            PipefyAPIError: When the API does not confirm the attachment.
         """
         return await self.update_sub_portal_element(
             portal_uuid,
@@ -816,7 +835,7 @@ class PortalService:
         portal_uuid: str,
         element_id: str,
     ) -> dict[str, Any]:
-        """Unpublish a sub-portal from a page element via ``updateSubPortalElement``.
+        """Unpublish a sub-portal from an element on the first portal page.
 
         Sends ``subPortalUuid: null`` to clear the link. Distinct from
         ``delete_sub_portal_element`` (removes the wiring slot) and
@@ -824,9 +843,12 @@ class PortalService:
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID.
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
+
+        Raises:
+            PipefyAPIError: When the API does not confirm the removal of the link.
         """
-        return await _execute_query_with_portal_errors(
+        result = await _execute_query_with_portal_errors(
             self.execute_internal_api_query,
             UPDATE_SUB_PORTAL_ELEMENT_MUTATION,
             {
@@ -837,6 +859,7 @@ class PortalService:
                 }
             },
         )
+        return _parse_sub_portal_element_result(result, portal_uuid, element_id)
 
     async def delete_sub_portal_element(
         self,

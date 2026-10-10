@@ -2341,11 +2341,11 @@ class PipefyClient:
         element_id: str,
         sub_portal_uuid: str,
     ) -> dict[str, Any]:
-        """Attach a sub-portal to a portal page element.
+        """Attach a sub-portal to a forms element on the first portal page.
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID.
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
             sub_portal_uuid: Sub-portal UUID.
         """
         return await self._portal_service.update_sub_portal_element(
@@ -2360,11 +2360,11 @@ class PipefyClient:
         element_id: str,
         sub_portal_uuid: str,
     ) -> dict[str, Any]:
-        """Publish a sub-portal on a page element.
+        """Publish a sub-portal on a forms element on the first portal page.
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID.
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
             sub_portal_uuid: Sub-portal UUID.
         """
         return await self._portal_service.publish_sub_portal(
@@ -2378,7 +2378,7 @@ class PipefyClient:
         portal_uuid: str,
         element_id: str,
     ) -> dict[str, Any]:
-        """Unpublish a sub-portal from a page element via ``updateSubPortalElement``.
+        """Unpublish a sub-portal from a forms element on the first portal page.
 
         Sends ``subPortalUuid: null`` to clear the link. Distinct from
         ``delete_sub_portal_element`` (removes the wiring slot) and
@@ -2386,7 +2386,7 @@ class PipefyClient:
 
         Args:
             portal_uuid: Main portal interface UUID.
-            element_id: Page element UUID.
+            element_id: Forms element UUID from ``get_portal`` -> ``pages[0]``.
         """
         return await self._portal_service.unpublish_sub_portal(
             portal_uuid,

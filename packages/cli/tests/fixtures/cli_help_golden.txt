@@ -3120,10 +3120,12 @@ Usage: pipefy portal sub-portal [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ create      Create a sub-portal on a main portal.                            │
-│ attach      Attach a sub-portal to a portal page element.                    │
+│ attach      Attach a sub-portal to a forms element on the first portal page. │
 │ detach      Detach a sub-portal from a portal page element.                  │
-│ publish     Publish a sub-portal on a portal page element.                   │
-│ unpublish   Unpublish a sub-portal from a portal page element.               │
+│ publish     Publish a sub-portal on a forms element on the first portal      │
+│             page.                                                            │
+│ unpublish   Unpublish a sub-portal from a forms element on the first portal  │
+│             page.                                                            │
 │ delete      Delete a sub-portal permanently.                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
@@ -3131,11 +3133,13 @@ Usage: pipefy portal sub-portal [OPTIONS] COMMAND [ARGS]...
 Usage: pipefy portal sub-portal attach [OPTIONS] PORTAL_UUID ELEMENT_ID
                                         SUB_PORTAL_UUID
 
- Attach a sub-portal to a portal page element.
+ Attach a sub-portal to a forms element on the first portal page.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    portal_uuid          TEXT  Main portal interface UUID. [required]       │
-│ *    element_id           TEXT  Page element UUID. [required]                │
+│ *    element_id           TEXT  Forms element UUID from the first portal     │
+│                                 page.                                        │
+│                                 [required]                                   │
 │ *    sub_portal_uuid      TEXT  Sub-portal UUID. [required]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
@@ -3189,11 +3193,13 @@ Usage: pipefy portal sub-portal detach [OPTIONS] PORTAL_UUID ELEMENT_ID
 Usage: pipefy portal sub-portal publish [OPTIONS] PORTAL_UUID ELEMENT_ID
                                          SUB_PORTAL_UUID
 
- Publish a sub-portal on a portal page element.
+ Publish a sub-portal on a forms element on the first portal page.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    portal_uuid          TEXT  Main portal interface UUID. [required]       │
-│ *    element_id           TEXT  Page element UUID. [required]                │
+│ *    element_id           TEXT  Forms element UUID from the first portal     │
+│                                 page.                                        │
+│                                 [required]                                   │
 │ *    sub_portal_uuid      TEXT  Sub-portal UUID. [required]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
@@ -3204,11 +3210,12 @@ Usage: pipefy portal sub-portal publish [OPTIONS] PORTAL_UUID ELEMENT_ID
 ### HELP portal/sub-portal/unpublish
 Usage: pipefy portal sub-portal unpublish [OPTIONS] PORTAL_UUID ELEMENT_ID
 
- Unpublish a sub-portal from a portal page element.
+ Unpublish a sub-portal from a forms element on the first portal page.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    portal_uuid      TEXT  Main portal interface UUID. [required]           │
-│ *    element_id       TEXT  Page element UUID. [required]                    │
+│ *    element_id       TEXT  Forms element UUID from the first portal page.   │
+│                             [required]                                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json  -j        Print machine-readable JSON to stdout.                     │

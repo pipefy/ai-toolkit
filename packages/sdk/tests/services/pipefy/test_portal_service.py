@@ -18,7 +18,7 @@ from _shared.mock_clients import mock_executor
 from gql import gql
 from pydantic import ValidationError
 
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import PipefyAPIError, PortalPermissionError
 from pipefy_sdk.graphql_executor import PipefyGraphQLError
 from pipefy_sdk.models.portal import parse_portal_page_layout
 from pipefy_sdk.queries.observability_queries import RESOLVE_ORGANIZATION_UUID_QUERY
@@ -1741,6 +1741,30 @@ async def test_unpublish_sub_portal_sends_null_sub_portal_uuid() -> None:
             "subPortalUuid": None,
         }
     }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method_name",
+    ["update_sub_portal_element", "publish_sub_portal", "unpublish_sub_portal"],
+)
+@pytest.mark.parametrize("payload", [{"success": False}, {"success": None}, {}, None])
+async def test_sub_portal_attachment_rejects_unconfirmed_success(method_name, payload):
+    service, _, _ = _make_portal_service_with_clients(
+        internal_return={"updateSubPortalElement": payload},
+    )
+    args = [_MAIN_PORTAL_UUID, _FORMS_ELEMENT_ID]
+    if method_name != "unpublish_sub_portal":
+        args.append(_SUB_PORTAL_UUID)
+
+    with pytest.raises(PipefyAPIError, match="first portal page") as exc_info:
+        await getattr(service, method_name)(*args)
+
+    message = str(exc_info.value)
+    assert _MAIN_PORTAL_UUID in message
+    assert _FORMS_ELEMENT_ID in message
+    assert "did not confirm success" in message
 
 
 @pytest.mark.unit

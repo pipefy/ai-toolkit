@@ -10,8 +10,10 @@ from _mcp_compat import (
     create_connected_server_and_client_session as create_client_session,
 )
 from _shared.fixture_ids import EXAMPLE_NUMERIC_ORG_ID, EXAMPLE_PIPE_REPO_ID
+from _shared.mock_clients import mock_executor
 from gql.transport.exceptions import TransportError
-from pipefy_sdk import PipefyClient, PipefyGraphQLError
+from pipefy_sdk import PipefyClient, PipefyGraphQLError, PipefySettings
+from pipefy_sdk.client import Executors
 from pipefy_sdk.exceptions import PortalPermissionError
 from pipefy_sdk.models.portal import parse_portal_page_layout
 
@@ -2066,6 +2068,36 @@ async def test_publish_sub_portal_fails_when_success_false(
     payload = extract_payload(result)
     assert payload["success"] is False
     assert "failed" in tool_error_message(payload).lower()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "tool_name",
+    ["update_sub_portal_element", "publish_sub_portal", "unpublish_sub_portal"],
+)
+async def test_sub_portal_sdk_api_rejection_returns_clean_tool_failure(
+    portal_session, mock_portal_client, extract_payload, tool_name
+):
+    client = PipefyClient.from_executors(
+        Executors(
+            public=mock_executor(),
+            interfaces=mock_executor(),
+            internal=mock_executor({"updateSubPortalElement": {"success": False}}),
+        ),
+        settings=PipefySettings(_env_file=None),
+    )
+    setattr(mock_portal_client, tool_name, getattr(client, tool_name))
+    arguments = {"portal_uuid": _MAIN_PORTAL_UUID, "element_id": _FORMS_ELEMENT_ID}
+    if tool_name != "unpublish_sub_portal":
+        arguments["sub_portal_uuid"] = _SUB_PORTAL_UUID
+
+    async with portal_session as session:
+        result = await session.call_tool(tool_name, arguments)
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert "first portal page" in tool_error_message(payload)
+    assert "Traceback" not in tool_error_message(payload)
 
 
 @pytest.mark.anyio

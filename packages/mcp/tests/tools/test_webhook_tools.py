@@ -207,12 +207,12 @@ async def test_get_email_templates_success(
     async with webhook_session as session:
         result = await session.call_tool(
             "get_email_templates",
-            {"repo_id": "307061640"},
+            {"repo_id": "301234570"},
         )
 
     assert result.is_error is False
     mock_webhook_client.get_email_templates.assert_awaited_once_with(
-        "307061640",
+        "301234570",
         filter_by_name=None,
         first=DEFAULT_FIRST,
     )
@@ -220,14 +220,14 @@ async def test_get_email_templates_success(
     assert payload["success"] is True
 
 
-TEMPLATE_ARGS = {"card_id": "1320616225", "email_template_id": "42"}
+TEMPLATE_ARGS = {"card_id": "1312345678", "email_template_id": "42"}
 TEMPLATE_DRAFT = InboxEmailDraft(
-    card_id="1320616225",
+    card_id="1312345678",
     to=["margaret@example.com"],
     subject="Your request",
     body="",
     from_="pipe1@inbox.example.com",
-    extra={"repoId": "307061640"},
+    extra={"repoId": "301234570"},
 )
 
 
@@ -245,7 +245,7 @@ async def test_send_email_with_template_preview_shows_the_resolved_email(
 
     assert result.is_error is False
     mock_webhook_client.draft_email_from_template.assert_awaited_once_with(
-        "1320616225", "42", to=None, from_=None, cc=["c@x.com"]
+        "1312345678", "42", to=None, from_=None, cc=["c@x.com"]
     )
     mock_webhook_client.send_inbox_email_draft.assert_not_called()
     payload = extract_payload(result)
@@ -276,7 +276,7 @@ async def test_send_email_with_template_sends_the_previewed_draft(
         )
 
     mock_webhook_client.draft_email_from_template.assert_awaited_with(
-        "1320616225",
+        "1312345678",
         "42",
         to=["recipient@example.com"],
         from_="sender@pipefy.com",
@@ -326,7 +326,7 @@ async def test_send_email_with_template_graphql_error_on_resolve(
     async with webhook_session as session:
         result = await session.call_tool(
             "send_email_with_template",
-            {"card_id": "1320616225", "email_template_id": "999"},
+            {"card_id": "1312345678", "email_template_id": "999"},
         )
 
     assert result.is_error is False

@@ -20,6 +20,8 @@ create_card pipe_id="306996634" phase_id="340012345" skip_elicitation=true title
 
 `create_field_condition` verifies the rule on the requested phase. `verified: true` indicates verification succeeded; missing/wrong phase returns `success: false` with `error.details.condition_id`. Use that ID (or the ID in the message) to delete the condition through the destructive preview flow before recreating. Do not blind-retry create. If verification reads are inconclusive, the tool may return success with a warning that verification was unavailable.
 
+Capture `error.details.condition_id` before checking `success`: a failed verification can still leave a created condition. In test runners, place cleanup in `finally` so assertion failures cannot skip deletion. Ordinary-phase requests can land on the start form through the current API; this remains a failure, even when the condition was created successfully.
+
 Do not hide a required field. MCP rejects `hide` / `hidden` on `required=true`; clear `required` first. `update_field_condition` enforces this when top-level `actions` is set. Passing `actions` through `extra_input` returns `INVALID_ARGUMENTS`. See [parity](https://github.com/pipefy/ai-toolkit/blob/main/docs/parity.md).
 
 ## Destructive deletes

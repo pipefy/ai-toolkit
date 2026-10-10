@@ -8,7 +8,7 @@ import pytest
 
 from pipefy_cli.main import app
 
-ORG = "341c1327-261c-4766-bb96-7953e4c3970d"
+ORG = "550e8400-e29b-41d4-a716-446655440100"
 SECRET = "csecret"
 
 # Every field the gates read is non-null in the schema, so a realistic payload

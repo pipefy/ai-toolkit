@@ -280,7 +280,7 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("ph-targets")
     payload = {
         "phase": {
-            "id": "342182335",
+            "id": "341234569",
             "name": "Doing",
             "cards_can_be_moved_to_phases": [{"id": "200", "name": "Done"}],
         }
@@ -293,17 +293,17 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     ):
         result = runner.invoke(
             app,
-            ["phase", "targets", "342182335", "--json"],
+            ["phase", "targets", "341234569", "--json"],
         )
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
-    mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("342182335")
+    mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("341234569")
 
 
 def test_phase_count_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("ph-count")
     payload = {
-        "phase_id": "342182335",
+        "phase_id": "341234569",
         "phase_name": "Doing",
         "cards_count": 7,
     }
@@ -315,11 +315,11 @@ def test_phase_count_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     ):
         result = runner.invoke(
             app,
-            ["phase", "count", "342182335", "--json"],
+            ["phase", "count", "341234569", "--json"],
         )
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
-    mock_client.get_phase.assert_awaited_once_with("342182335")
+    mock_client.get_phase.assert_awaited_once_with("341234569")
 
 
 def test_phase_count_not_found_exit_2(runner, clean_pipefy_env, saved_cwd, oauth_env):
@@ -345,7 +345,7 @@ def test_phase_cards_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("ph-cards-list")
     payload = {
         "phase": {
-            "id": "342182335",
+            "id": "341234569",
             "cards": {
                 "edges": [{"node": {"id": "1", "title": "A"}}],
                 "pageInfo": {"hasNextPage": False, "endCursor": None},
@@ -361,12 +361,12 @@ def test_phase_cards_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     ):
         result = runner.invoke(
             app,
-            ["phase", "cards", "342182335", "--first", "50", "--after", "c1", "--json"],
+            ["phase", "cards", "341234569", "--first", "50", "--after", "c1", "--json"],
         )
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
     mock_client.get_phase_cards.assert_awaited_once_with(
-        "342182335",
+        "341234569",
         first=50,
         after="c1",
         include_fields=False,
@@ -387,7 +387,7 @@ def test_phase_cards_first_out_of_range_exit_2(
     ):
         result = runner.invoke(
             app,
-            ["phase", "cards", "342182335", "--first", "501", "--json"],
+            ["phase", "cards", "341234569", "--first", "501", "--json"],
         )
     assert result.exit_code == 2
     mock_client.get_phase_cards.assert_not_called()

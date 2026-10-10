@@ -1,18 +1,8 @@
-"""Live portal read scenarios for PortalService.
+"""Live portal scenarios with disposable pages, elements, and sub-portals.
 
-Requires valid Pipefy credentials in repo-root **``.env``** (``PIPEFY_*``). All tests
-require ``PIPEFY_PORTAL_ORG_UUID`` (org where the token has ``manage_portals``).
-Unit tests use fictional ids in ``_shared.fixture_ids`` — never commit real org ids
-into test source. See ``docs/config.md`` and ``.env.example``.
-
-Optional smoke:
-
-    # PIPEFY_PORTAL_ORG_UUID in .env (local only)
-    uv run pytest packages/sdk/tests/services/pipefy/test_portal_service_integration.py -m integration -v
-
-    uv run pytest packages/sdk/tests/services/pipefy/test_portal_service_integration.py -m integration -k portal_element -v
-
-Sub-portal publish/unpublish cycle: ``-k "publish_sub_portal or sub_portal"``.
+Set live credentials and ``PIPEFY_PORTAL_ORG_UUID`` for a dedicated test
+organization with an existing main portal and portal-management access.
+The fixtures remove owned resources and compare the original portal content.
 """
 
 from __future__ import annotations
@@ -21,25 +11,20 @@ import os
 import uuid
 
 import pytest
+import pytest_asyncio
 from _shared.live_settings import (
     live_pipefy_settings,
     live_resolved_auth,
     require_live_creds,
 )
+from _shared.portal_assertions import assert_portal_restored
 
-from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.client import build_executors
-from pipefy_sdk.exceptions import PortalPermissionError
 from pipefy_sdk.services.portal_service import PortalService
-
-_PORTAL_ORG_SKIP = (
-    "Set PIPEFY_PORTAL_ORG_UUID to an org where the token has manage_portals."
-)
 
 
 @pytest.fixture
-def live_portal_service() -> PortalService:
-    """PortalService with live Interfaces + Internal API for sub-portal mutations."""
+def live_portal_service():
     require_live_creds()
     ex = build_executors(live_pipefy_settings(), live_resolved_auth())
     return PortalService(
@@ -49,74 +34,125 @@ def live_portal_service() -> PortalService:
     )
 
 
-def _portal_org_uuid() -> str | None:
-    value = os.environ.get("PIPEFY_PORTAL_ORG_UUID", "").strip()
-    return value or None
-
-
-def _require_portal_org_uuid() -> str:
-    org_uuid = _portal_org_uuid()
-    if org_uuid is None:
-        pytest.skip(_PORTAL_ORG_SKIP)
+def _require_portal_org_uuid():
+    org_uuid = os.environ.get("PIPEFY_PORTAL_ORG_UUID", "").strip()
+    if not org_uuid:
+        pytest.skip("Set PIPEFY_PORTAL_ORG_UUID to a dedicated test organization.")
     return org_uuid
 
 
-def _first_forms_element_id(portal_detail: dict) -> str | None:
-    for page in portal_detail.get("pages") or []:
-        for element in page.get("elements") or []:
-            if element.get("type") != "forms":
-                continue
-            element_id = element.get("uuid") or element.get("id")
-            if element_id:
-                return str(element_id)
-    return None
+def _portal_element(portal, element_id):
+    return next(
+        (
+            element
+            for page in portal.get("pages") or []
+            for element in page.get("elements") or []
+            if element["uuid"] == element_id
+        ),
+        None,
+    )
 
 
-def _sub_portal_published(
-    portal_detail: dict,
-    sub_portal_uuid: str,
-) -> bool | None:
-    for sub_portal in portal_detail.get("subPortals") or []:
-        sub_id = sub_portal.get("uuid") or sub_portal.get("id")
-        if sub_id == sub_portal_uuid:
-            published = sub_portal.get("published")
-            return published if isinstance(published, bool) else None
-    return None
+def _sub_portal_published(portal, sub_portal_uuid):
+    return next(
+        (
+            sub_portal.get("published")
+            for sub_portal in portal.get("subPortals") or []
+            if sub_portal["uuid"] == sub_portal_uuid
+        ),
+        None,
+    )
+
+
+@pytest_asyncio.fixture
+async def live_main_portal(live_portal_service):
+    portals = await live_portal_service.list_portals(_require_portal_org_uuid())
+    if not portals:
+        pytest.skip("The test organization needs an existing main portal.")
+    return await live_portal_service.get_portal(portals[0]["uuid"])
+
+
+@pytest_asyncio.fixture
+async def live_portal_page(live_portal_service, live_main_portal):
+    portal_uuid = live_main_portal["uuid"]
+    title = f"[smoke:{uuid.uuid4().hex}:sdk-portal-page]"
+    page = await live_portal_service.create_portal_page(portal_uuid, title)
+    page_id = page["uuid"]
+    try:
+        yield page
+    finally:
+        result = await live_portal_service.delete_portal_page(portal_uuid, page_id)
+        assert result.get("deletePage", {}).get("success") is True
+        await assert_portal_restored(live_portal_service, live_main_portal)
+
+
+@pytest_asyncio.fixture
+async def live_first_page_forms_element(live_portal_service, live_main_portal):
+    pages = live_main_portal.get("pages") or []
+    if not pages:
+        pytest.skip("The main portal needs a first page for sub-portal publication.")
+    portal_uuid = live_main_portal["uuid"]
+    page_id = pages[0]["uuid"]
+    element_id = str(uuid.uuid4())
+    try:
+        element = await live_portal_service.create_portal_element(
+            page_id,
+            type="forms",
+            element_id=element_id,
+            metadata={
+                "name": f"[smoke:{uuid.uuid4().hex}:sdk-publish-slot]",
+                "gridMap": {"height": 66, "columns": 4, "minColumns": 4},
+            },
+        )
+        assert element["uuid"] == element_id
+        yield {"element_id": element_id, "page_id": page_id}
+    finally:
+        current = await live_portal_service.get_portal(portal_uuid)
+        if _portal_element(current, element_id) is not None:
+            result = await live_portal_service.delete_portal_element(
+                element_id, page_id
+            )
+            assert result.get("deleteElement", {}).get("success") is True
+        await assert_portal_restored(live_portal_service, live_main_portal)
+
+
+@pytest_asyncio.fixture
+async def live_sub_portal(
+    live_portal_service, live_main_portal, live_first_page_forms_element
+):
+    # This dependency keeps element cleanup after sub-portal cleanup.
+    portal_uuid = live_main_portal["uuid"]
+    name = f"[smoke:{uuid.uuid4().hex}:sdk-sub-portal]"
+    sub_portal = await live_portal_service.create_sub_portal(portal_uuid, name)
+    sub_portal_uuid = sub_portal["uuid"]
+    try:
+        yield sub_portal_uuid
+    finally:
+        result = await live_portal_service.delete_sub_portal(sub_portal_uuid)
+        assert result.get("deleteSubPortalInterface", {}).get("success") is True
+        after = await live_portal_service.get_portal(portal_uuid)
+        assert _sub_portal_published(after, sub_portal_uuid) is None
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_live_list_portals_returns_list_shape(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: list_portals returns a list; nodes include uuid and name when present."""
-    org_uuid = _require_portal_org_uuid()
-
-    portals = await live_portal_service.list_portals(org_uuid)
+async def test_live_list_portals_returns_list_shape(live_portal_service):
+    portals = await live_portal_service.list_portals(_require_portal_org_uuid())
 
     assert isinstance(portals, list)
     if portals:
-        portal = portals[0]
-        assert "uuid" in portal
-        assert "name" in portal
+        assert "uuid" in portals[0]
+        assert "name" in portals[0]
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_get_portal_round_trip_from_list(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: get_portal returns pages and published when a main portal exists."""
-    org_uuid = _require_portal_org_uuid()
+    live_portal_service, live_main_portal
+):
+    detail = await live_portal_service.get_portal(live_main_portal["uuid"])
 
-    portals = await live_portal_service.list_portals(org_uuid)
-    if not portals:
-        pytest.skip(f"No main portal found for org {org_uuid}")
-
-    portal_uuid = portals[0]["uuid"]
-    detail = await live_portal_service.get_portal(portal_uuid)
-
-    assert detail["uuid"] == portal_uuid
+    assert detail["uuid"] == live_main_portal["uuid"]
     assert "published" in detail
     assert "pages" in detail
 
@@ -124,244 +160,111 @@ async def test_live_get_portal_round_trip_from_list(
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_create_portal_idempotent_returns_same_uuid(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: create_portal called twice returns the same portal uuid (idempotent)."""
+    live_portal_service, live_main_portal
+):
     org_uuid = _require_portal_org_uuid()
-
     first = await live_portal_service.create_portal(org_uuid)
     second = await live_portal_service.create_portal(org_uuid)
 
-    assert first["uuid"] == second["uuid"]
-    assert first["uuid"]
+    assert first["uuid"] == second["uuid"] == live_main_portal["uuid"]
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_update_portal_page_layout_on_bootstrapped_page(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: Json layout must be serialized; updatePageLayout returns success."""
-    org_uuid = _require_portal_org_uuid()
-    portal = await live_portal_service.create_portal(org_uuid)
-    portal_uuid = portal["uuid"]
-    page_title = f"mcp-layout-smoke-{uuid.uuid4().hex[:8]}"
-
-    try:
-        page = await live_portal_service.create_portal_page(portal_uuid, page_title)
-    except PortalPermissionError:
-        pytest.skip(f"Token lacks manage_portals on org {org_uuid}")
-
-    page_id = page.get("uuid") or page.get("id")
-    assert page_id
-
-    # Interfaces layout is an array of row objects (not `{rows: [...]}`). Invalid layout
-    # JSON breaks the portal UI with HTTP 500.
-    element_ids = [
-        element.get("uuid") or element.get("id")
-        for element in page.get("elements", [])
-        if element.get("uuid") or element.get("id")
-    ]
+    live_portal_service, live_portal_page
+):
     layout = [
-        {
-            "id": str(uuid.uuid4()),
-            "type": "row",
-            "children": [element_id],
-        }
-        for element_id in element_ids
+        {"id": str(uuid.uuid4()), "type": "row", "children": [element["uuid"]]}
+        for element in live_portal_page.get("elements") or []
     ]
-    try:
-        result = await live_portal_service.update_portal_page_layout(page_id, layout)
-        assert result.get("updatePageLayout", {}).get("success") is True
-    finally:
-        await live_portal_service.delete_portal_page(portal_uuid, page_id)
+    result = await live_portal_service.update_portal_page_layout(
+        live_portal_page["uuid"], layout
+    )
+
+    assert result.get("updatePageLayout", {}).get("success") is True
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_update_portal_element_on_bootstrapped_page(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: updateElement returns success (payload has no element field)."""
-    org_uuid = _require_portal_org_uuid()
-    portal = await live_portal_service.create_portal(org_uuid)
-    portal_uuid = portal["uuid"]
-    page_title = f"mcp-update-el-smoke-{uuid.uuid4().hex[:8]}"
-
-    try:
-        page = await live_portal_service.create_portal_page(portal_uuid, page_title)
-    except PortalPermissionError:
-        pytest.skip(f"Token lacks manage_portals on org {org_uuid}")
-
-    page_id = page.get("uuid") or page.get("id")
+    live_portal_service, live_portal_page, live_main_portal
+):
     link = next(
-        (
-            element
-            for element in page.get("elements", [])
-            if element.get("type") == "link"
-        ),
+        (e for e in live_portal_page.get("elements") or [] if e.get("type") == "link"),
         None,
     )
     if link is None:
-        pytest.skip("Bootstrapped page has no link element to update")
-
-    element_id = link.get("uuid") or link.get("id")
+        pytest.skip("Bootstrapped page has no link element to update.")
     metadata = {
         "gridMap": {"height": 64, "columns": 4, "minColumns": 4},
-        "linkName": "MCP integration updated link",
+        "linkName": "SDK integration updated link",
     }
+    updated = await live_portal_service.update_portal_element(
+        link["uuid"],
+        live_portal_page["uuid"],
+        type="link",
+        metadata=metadata,
+        portal_uuid=live_main_portal["uuid"],
+    )
 
-    try:
-        updated = await live_portal_service.update_portal_element(
-            element_id,
-            page_id,
-            type="link",
-            metadata=metadata,
-            portal_uuid=portal_uuid,
-        )
-    except PipefyGraphQLError as exc:
-        pytest.skip(
-            f"updateElement failed on org {org_uuid} (Interfaces API): {exc.errors}"
-        )
-
-    assert updated["uuid"] == element_id
-    assert updated["metadata"]["linkName"] == "MCP integration updated link"
+    assert updated["uuid"] == link["uuid"]
+    after = await live_portal_service.get_portal(live_main_portal["uuid"])
+    stored = _portal_element(after, link["uuid"])
+    assert stored["metadata"]["linkName"] == metadata["linkName"]
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_create_portal_element_on_bootstrapped_page(
-    live_portal_service: PortalService,
-) -> None:
-    """Smoke: createElement on a templated page (may fail with Interfaces INTERNAL_SERVER_ERROR)."""
-    org_uuid = _require_portal_org_uuid()
-    portal = await live_portal_service.create_portal(org_uuid)
-    portal_uuid = portal["uuid"]
-    page_title = f"mcp-create-el-smoke-{uuid.uuid4().hex[:8]}"
-
-    try:
-        page = await live_portal_service.create_portal_page(portal_uuid, page_title)
-    except PortalPermissionError:
-        pytest.skip(f"Token lacks manage_portals on org {org_uuid}")
-
-    page_id = page.get("uuid") or page.get("id")
-    link_metadata = {
+    live_portal_service, live_portal_page, live_main_portal
+):
+    metadata = {
         "gridMap": {"height": 64, "columns": 4, "minColumns": 4},
         "linkUrl": "https://pipefy.com",
-        "linkName": "Pipefy MCP smoke",
+        "linkName": "Pipefy SDK smoke",
     }
-
-    try:
-        element = await live_portal_service.create_portal_element(
-            page_id,
-            type="link",
-            metadata=link_metadata,
-        )
-    except PortalPermissionError:
-        pytest.skip(f"Token lacks manage_portals on org {org_uuid}")
-    except PipefyGraphQLError as exc:
-        codes = [
-            (err.get("extensions") or {}).get("code")
-            for err in (exc.errors or [])
-            if isinstance(err, dict)
-        ]
-        if "INTERNAL_SERVER_ERROR" in codes:
-            pytest.skip(
-                "createElement returned INTERNAL_SERVER_ERROR on live org "
-                "(API-side; SDK sends data_sources: [] on the wire)."
-            )
-        raise
-
-    element_id = element.get("uuid") or element.get("id")
+    element = await live_portal_service.create_portal_element(
+        live_portal_page["uuid"], type="link", metadata=metadata
+    )
+    element_id = element["uuid"]
     assert element_id
     assert element.get("type") == "link"
 
-    try:
-        await live_portal_service.delete_portal_element(element_id, page_id)
-        await live_portal_service.delete_portal_page(portal_uuid, page_id)
-    except (PortalPermissionError, PipefyGraphQLError, ValueError) as exc:
-        pytest.fail(
-            f"Failed to clean up portal element/page after create smoke: {exc}",
-            pytrace=False,
-        )
+    result = await live_portal_service.delete_portal_element(
+        element_id, live_portal_page["uuid"]
+    )
+    assert result.get("deleteElement", {}).get("success") is True
+    after = await live_portal_service.get_portal(live_main_portal["uuid"])
+    assert _portal_element(after, element_id) is None
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_publish_sub_portal_cycle(
-    live_portal_service: PortalService,
-) -> None:
-    """Publish then unpublish a sub-portal on a templated forms element (Internal API)."""
-    org_uuid = _require_portal_org_uuid()
-    sub_portal_uuid: str | None = None
+    live_portal_service,
+    live_main_portal,
+    live_first_page_forms_element,
+    live_sub_portal,
+):
+    portal_uuid = live_main_portal["uuid"]
+    element_id = live_first_page_forms_element["element_id"]
+    result = await live_portal_service.publish_sub_portal(
+        portal_uuid, element_id, live_sub_portal
+    )
+    assert result.get("updateSubPortalElement", {}).get("success") is True
 
-    try:
-        try:
-            portal = await live_portal_service.create_portal(org_uuid)
-        except PortalPermissionError:
-            pytest.skip(
-                f"Token lacks manage_portals on org {org_uuid}; "
-                "set PIPEFY_PORTAL_ORG_UUID to an org with portal write access."
-            )
+    after_publish = await live_portal_service.get_portal(portal_uuid)
+    published_after_attach = _sub_portal_published(after_publish, live_sub_portal)
+    assert published_after_attach is True
+    stored = _portal_element(after_publish, element_id)
+    assert stored["metadata"]["subPortalUuid"] == live_sub_portal
 
-        portal_uuid = portal["uuid"]
-        detail = await live_portal_service.get_portal(portal_uuid)
-        element_id = _first_forms_element_id(detail)
-        if element_id is None:
-            pytest.skip(
-                f"Main portal {portal_uuid} has no forms element on any page; "
-                "publish_sub_portal requires a templated forms slot "
-                "(updateSubPortalElement, not createElement(subPortal))."
-            )
+    result = await live_portal_service.unpublish_sub_portal(portal_uuid, element_id)
+    assert result.get("updateSubPortalElement", {}).get("success") is True
 
-        sub_name = f"mcp-publish-smoke-{uuid.uuid4().hex[:8]}"
-        try:
-            created = await live_portal_service.create_sub_portal(portal_uuid, sub_name)
-        except PortalPermissionError:
-            pytest.skip(
-                f"Token lacks manage_portals on org {org_uuid}; "
-                "set PIPEFY_PORTAL_ORG_UUID to an org with portal write access."
-            )
-
-        sub_portal_uuid = created.get("uuid") or created.get("id")
-        assert sub_portal_uuid
-
-        try:
-            await live_portal_service.publish_sub_portal(
-                portal_uuid,
-                element_id,
-                sub_portal_uuid,
-            )
-        except PipefyGraphQLError as exc:
-            pytest.skip(
-                f"publish_sub_portal failed on org {org_uuid} (internal_api): {exc}"
-            )
-
-        after_publish = await live_portal_service.get_portal(portal_uuid)
-        published_after_attach = _sub_portal_published(after_publish, sub_portal_uuid)
-        assert published_after_attach is True, (
-            f"Expected subPortals[].published is True for {sub_portal_uuid} "
-            f"after publish_sub_portal; got {published_after_attach!r} in "
-            f"{after_publish.get('subPortals')!r}"
-        )
-
-        try:
-            await live_portal_service.unpublish_sub_portal(portal_uuid, element_id)
-        except PipefyGraphQLError as exc:
-            pytest.skip(
-                f"unpublish_sub_portal failed on org {org_uuid} (internal_api): {exc}"
-            )
-
-        after_unpublish = await live_portal_service.get_portal(portal_uuid)
-        published_after_detach = _sub_portal_published(after_unpublish, sub_portal_uuid)
-        assert published_after_detach is False, (
-            f"Expected subPortals[].published is False for {sub_portal_uuid} "
-            f"after unpublish_sub_portal (subPortalUuid: null); got "
-            f"{published_after_detach!r} in {after_unpublish.get('subPortals')!r}"
-        )
-    finally:
-        if sub_portal_uuid:
-            try:
-                await live_portal_service.delete_sub_portal(sub_portal_uuid)
-            except (PortalPermissionError, PipefyGraphQLError, ValueError):
-                pass
+    after_unpublish = await live_portal_service.get_portal(portal_uuid)
+    published_after_detach = _sub_portal_published(after_unpublish, live_sub_portal)
+    assert published_after_detach is False
+    stored = _portal_element(after_unpublish, element_id)
+    assert stored["metadata"].get("subPortalUuid") is None

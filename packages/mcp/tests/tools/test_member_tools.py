@@ -402,7 +402,7 @@ async def test_remove_member_from_pipe_surfaces_client_warning(
     member_session, mock_member_client
 ):
     warning = (
-        "API returned success but member(s) 160654 are still present in the pipe. "
+        "API returned success but member(s) 307123457 are still present in the pipe. "
         "They may have org-level permissions that override pipe-level removal."
     )
     mock_member_client.remove_member_from_pipe.return_value = {
@@ -414,11 +414,11 @@ async def test_remove_member_from_pipe_surfaces_client_warning(
         payload = await confirm_after_preview(
             session,
             "remove_member_from_pipe",
-            {"pipe_id": "100", "user_ids": ["160654"]},
+            {"pipe_id": "100", "user_ids": ["307123457"]},
         )
 
     mock_member_client.remove_member_from_pipe.assert_awaited_once_with(
-        "100", ["160654"]
+        "100", ["307123457"]
     )
     mock_member_client.get_pipe_members.assert_not_awaited()
     mock_member_client.remove_members_from_pipe.assert_not_awaited()
@@ -440,12 +440,12 @@ async def test_remove_member_coerces_int_user_ids_to_str(
         payload = await confirm_after_preview(
             session,
             "remove_member_from_pipe",
-            {"pipe_id": "100", "user_ids": [307516938]},
+            {"pipe_id": "100", "user_ids": [307123456]},
         )
 
     assert payload["success"] is True
     mock_member_client.remove_member_from_pipe.assert_awaited_once_with(
-        "100", ["307516938"]
+        "100", ["307123456"]
     )
 
 

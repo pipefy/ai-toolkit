@@ -15,7 +15,7 @@ from pipefy_mcp.tools.service_account_tools import ServiceAccountTools
 from tools.conftest import build_tool_test_server
 from tools.destructive_confirm_test_support import confirm_after_preview
 
-ORG = "341c1327-261c-4766-bb96-7953e4c3970d"
+ORG = "550e8400-e29b-41d4-a716-446655440100"
 
 
 @pytest.fixture
