@@ -124,10 +124,16 @@ async def test_get_ai_agent_log_details_success(
             "status": "success",
             "executionTime": 5.2,
             "createdAt": "2026-03-01T00:00:00Z",
+            "updatedAt": "2026-03-01T00:00:06Z",
             "finishedAt": "2026-03-01T00:00:05Z",
             "tracingNodes": [
                 {"nodeName": "Step1", "status": "success", "message": "OK"},
             ],
+            "llmConfigInfo": {
+                "model": "gpt-4o",
+                "name": "OpenAI GPT-4o",
+                "provider": "openai",
+            },
         }
     }
 
@@ -140,7 +146,14 @@ async def test_get_ai_agent_log_details_success(
     mock_observability_client.get_ai_agent_log_details.assert_awaited_once_with("log-1")
     payload = extract_payload(result)
     assert payload["success"] is True
-    assert payload["data"]["aiAgentLogDetails"]["executionTime"] == 5.2
+    details = payload["data"]["aiAgentLogDetails"]
+    assert details["executionTime"] == 5.2
+    assert details["updatedAt"] == "2026-03-01T00:00:06Z"
+    assert details["llmConfigInfo"] == {
+        "model": "gpt-4o",
+        "name": "OpenAI GPT-4o",
+        "provider": "openai",
+    }
 
 
 @pytest.mark.anyio

@@ -132,7 +132,7 @@ class ObservabilityTools:
             ctx: Context,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """Get detailed AI agent execution log by UUID. Includes executionTime, finishedAt, and tracingNodes — a step-by-step trace of each action the agent performed with per-node status (success, failed, skipped, conditions_not_met).
+            """Get detailed AI agent execution log by UUID. Includes executionTime, finishedAt, LLM model and provider, and tracingNodes — a step-by-step trace of each action the agent performed with per-node status (success, failed, skipped, conditions_not_met).
 
             Args:
                 log_uuid: UUID of the AI agent log entry.

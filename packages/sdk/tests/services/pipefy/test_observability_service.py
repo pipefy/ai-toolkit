@@ -134,11 +134,17 @@ async def test_get_ai_agent_log_details_success():
             "status": "success",
             "executionTime": 12.5,
             "createdAt": "2026-03-01T00:00:00Z",
+            "updatedAt": "2026-03-01T00:00:13Z",
             "finishedAt": "2026-03-01T00:00:12Z",
             "tracingNodes": [
                 {"nodeName": "Step 1", "status": "success", "message": "Done"},
                 {"nodeName": "Step 2", "status": "failed", "message": "Timeout"},
             ],
+            "llmConfigInfo": {
+                "model": "gpt-4o",
+                "name": "GPT-4o",
+                "provider": "openai",
+            },
         }
     }
     service, executor = _make_service(payload)
@@ -147,7 +153,14 @@ async def test_get_ai_agent_log_details_success():
     query, variables = executor.execute_query.call_args[0]
     assert query is GET_AI_AGENT_LOG_DETAILS_QUERY
     assert variables == {"uuid": "log-1"}
-    assert len(result["aiAgentLogDetails"]["tracingNodes"]) == 2
+    details = result["aiAgentLogDetails"]
+    assert len(details["tracingNodes"]) == 2
+    assert details["updatedAt"] == "2026-03-01T00:00:13Z"
+    assert details["llmConfigInfo"] == {
+        "model": "gpt-4o",
+        "name": "GPT-4o",
+        "provider": "openai",
+    }
 
 
 @pytest.mark.unit
