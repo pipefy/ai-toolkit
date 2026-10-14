@@ -1,6 +1,10 @@
-"""Persist the refresh-token-bearing session in the OS keychain via ``keyring``.
+"""Persist the refresh-token-bearing session through ``keyring``.
 
-Single active session per ``(issuer_host, client_id)`` tuple. The keychain entry
+The active backend is the OS keychain, or a file store: the DPAPI-encrypted
+``keyring-dpapi.cfg`` that ``auto`` selects on Windows, or the plaintext
+``keyring.cfg`` that ``PIPEFY_KEYCHAIN_BACKEND=file`` selects.
+
+Single active session per ``(issuer_host, client_id)`` tuple. The stored entry
 holds a small JSON blob (refresh + access token + minimal metadata). The
 short-lived access token is included so a single login is usable immediately;
 the long-lived refresh token is the durable credential.
@@ -12,6 +16,8 @@ pay the ~30-80ms backend-discovery cost on every ``pipefy`` invocation.
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from typing import Annotated, Any, Literal
 from urllib.parse import urlparse
@@ -32,31 +38,65 @@ from pipefy_auth.responses import TokenResponse
 
 _SERVICE = "pipefy"
 _KEYRING_FILENAME = "keyring.cfg"
+_DPAPI_KEYRING_FILENAME = "keyring-dpapi.cfg"
 _TOKEN_FIELDS: frozenset[str] = frozenset(TokenResponse.model_fields.keys())
+
+
+KeychainBackendPlan = Literal["os-keyring", "plaintext-file", "dpapi-file"]
+
+
+def plan_keychain_backend(
+    choice: Literal["auto", "file"], *, platform: str
+) -> KeychainBackendPlan:
+    """Map the ``keychain_backend`` setting and ``sys.platform`` to a backend.
+
+    ``"auto"`` keeps the OS keyring, except on Windows: Credential Manager caps
+    an entry at 2560 bytes and a Pipefy session is larger, so ``"auto"`` there
+    selects a DPAPI-encrypted file instead. ``"file"`` selects the plaintext
+    file on every platform.
+    """
+    if choice == "file":
+        return "plaintext-file"
+    if platform == "win32":
+        return "dpapi-file"
+    return "os-keyring"
 
 
 def configure_keychain_backend(choice: Literal["auto", "file"]) -> None:
     """Apply the requested keyring backend before any session read or write.
 
-    Idempotent: safe to call multiple times; the second ``"file"`` call
-    replaces the previous file backend with one pointing at the same path.
+    Idempotent: safe to call multiple times; a second call replaces the
+    previous file backend with one pointing at the same path.
 
     Args:
-        choice: ``"auto"`` is a no-op and preserves ``keyring``'s built-in
-            backend-discovery default. ``"file"`` swaps to
-            :class:`keyrings.alt.file.PlaintextKeyring` writing under
-            ``pipefy_infra.config.config_dir() / "keyring.cfg"``; the file stores
+        choice: ``"auto"`` preserves ``keyring``'s built-in backend discovery
+            (macOS Keychain, Secret Service) except on Windows, where it swaps
+            to :class:`pipefy_auth.keyring_file.EncryptedKeyring` writing under
+            ``pipefy_infra.config.config_dir() / "keyring-dpapi.cfg"``; DPAPI
+            encrypts each entry with the Windows user's credentials.
+            ``"file"`` swaps to :class:`pipefy_auth.keyring_file.PlaintextKeyring`
+            writing under ``config_dir() / "keyring.cfg"``; the file stores
             credentials in plaintext on disk and is intended for headless
             Linux or CI runners where the OS keychain is unavailable.
     """
-    if choice == "auto":
+    plan = plan_keychain_backend(choice, platform=sys.platform)
+    if plan == "os-keyring":
         return
     import keyring
-    from keyrings.alt.file import PlaintextKeyring
+    from keyring.backend import KeyringBackend
     from pipefy_infra.config import config_dir
 
-    backend = PlaintextKeyring()
-    backend.file_path = str(config_dir() / _KEYRING_FILENAME)
+    backend: KeyringBackend
+    if plan == "dpapi-file":
+        from pipefy_auth.keyring_file import EncryptedKeyring
+
+        backend = EncryptedKeyring()
+        backend.file_path = str(config_dir() / _DPAPI_KEYRING_FILENAME)
+    else:
+        from pipefy_auth.keyring_file import PlaintextKeyring
+
+        backend = PlaintextKeyring()
+        backend.file_path = str(config_dir() / _KEYRING_FILENAME)
     keyring.set_keyring(backend)
 
 
@@ -137,14 +177,16 @@ def store_session(
     client_id: str,
     token: TokenResponse,
 ) -> StoredSession:
-    """Persist a token response in the OS keychain. Returns the stored shape.
+    """Persist a token response in the active keyring backend. Returns the stored shape.
 
     Raises:
         KeyringError: When the keychain backend rejects the write. Caller should
             surface a user-facing message (e.g. headless Linux without a Secret
-            Service daemon).
+            Service daemon, or Windows Credential Manager refusing a session
+            larger than its 2560-byte entry limit).
     """
     import keyring
+    from keyring.errors import PasswordSetError
 
     session = StoredSession(
         issuer=issuer,
@@ -152,9 +194,19 @@ def store_session(
         obtained_at=int(time.time()),
         token=token,
     )
-    keyring.set_password(
-        _SERVICE, keychain_key(issuer, client_id), session.model_dump_json()
-    )
+    # keyring's Windows backend lets pywin32-ctypes' error escape. It subclasses
+    # neither KeyringError nor OSError, so it is matched as a non-OSError with
+    # ``winerror`` (every OSError has that attribute on Windows).
+    try:
+        keyring.set_password(
+            _SERVICE, keychain_key(issuer, client_id), session.model_dump_json()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if isinstance(exc, OSError) or not hasattr(exc, "winerror"):
+            raise
+        raise PasswordSetError(
+            f"Windows Credential Manager rejected the session: {exc}"
+        ) from exc
     return session
 
 
@@ -172,16 +224,22 @@ def session_entry_presence(*, issuer: str, client_id: str) -> SessionEntryPresen
     Returns:
         ``"present"`` when the backend returns a blob of any content,
         ``"absent"`` when it returns nothing, and ``"unknown"`` when the
-        backend itself fails. ``"unknown"`` means presence was not
+        backend itself fails, including a file-backed store whose entry
+        cannot be decrypted or decoded (:func:`delete_session` can still
+        remove such an entry). ``"unknown"`` means presence was not
         established: no caller may then report the credential as removed, or
         as never having been there.
     """
     import keyring
     from keyring.errors import KeyringError
 
+    key = keychain_key(issuer, client_id)
+    # The file-backed keyrings raise OSError on a failed decrypt or a store they
+    # cannot open, and binascii.Error, a ValueError, on a damaged entry, instead
+    # of KeyringError.
     try:
-        blob = keyring.get_password(_SERVICE, keychain_key(issuer, client_id))
-    except KeyringError:
+        blob = keyring.get_password(_SERVICE, key)
+    except (KeyringError, OSError, ValueError):
         return "unknown"
     return "absent" if blob is None else "present"
 
@@ -198,9 +256,10 @@ def load_session(*, issuer: str, client_id: str) -> StoredSession | None:
     import keyring
     from keyring.errors import KeyringError
 
+    key = keychain_key(issuer, client_id)
     try:
-        blob = keyring.get_password(_SERVICE, keychain_key(issuer, client_id))
-    except KeyringError:
+        blob = keyring.get_password(_SERVICE, key)
+    except (KeyringError, OSError, ValueError):
         return None
     if not blob:
         return None
@@ -214,7 +273,8 @@ def delete_session(*, issuer: str, client_id: str) -> bool:
     """Remove the stored session. Returns True if an entry was present.
 
     Raises:
-        SessionDeleteError: When the keychain backend rejects the operation
+        SessionDeleteError: When the keychain backend rejects the operation,
+            including a file-backed store that cannot rewrite its file
             (distinct from "no entry to delete"). The local credential may
             still exist; callers should surface a user-facing error rather
             than claim a successful sign-out.
@@ -226,7 +286,7 @@ def delete_session(*, issuer: str, client_id: str) -> bool:
         keyring.delete_password(_SERVICE, keychain_key(issuer, client_id))
     except PasswordDeleteError:
         return False
-    except KeyringError as exc:
+    except (KeyringError, OSError) as exc:
         raise SessionDeleteError(str(exc)) from exc
     return True
 
@@ -243,7 +303,31 @@ def keychain_backend_name() -> str:
     return backend.__class__.__name__
 
 
+def keychain_store_path() -> str | None:
+    """Return the file the active backend stores sessions in, or ``None``.
+
+    A path is returned only for the file stores that
+    :func:`configure_keychain_backend` installs; an OS keychain has no file a
+    user can repair or delete. A symlinked store resolves to the file the link
+    points to, since that file holds the session and deleting the link alone
+    leaves it in place.
+    """
+    import keyring
+    from keyring.errors import KeyringError
+
+    from pipefy_auth.keyring_file import EncryptedKeyring, PlaintextKeyring
+
+    try:
+        backend = keyring.get_keyring()
+    except KeyringError:
+        return None
+    if isinstance(backend, (PlaintextKeyring, EncryptedKeyring)):
+        return os.path.realpath(backend.file_path)
+    return None
+
+
 __all__ = [
+    "KeychainBackendPlan",
     "SessionDeleteError",
     "SessionEntryPresence",
     "StoredSession",
@@ -251,7 +335,9 @@ __all__ = [
     "delete_session",
     "keychain_backend_name",
     "keychain_key",
+    "keychain_store_path",
     "load_session",
+    "plan_keychain_backend",
     "session_entry_presence",
     "store_session",
 ]

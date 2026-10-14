@@ -1109,7 +1109,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "httpx-auth", specifier = ">=0.23.1" },
     { name = "keyring", specifier = ">=24" },
-    { name = "keyrings-alt", specifier = ">=5" },
+    { name = "keyrings-alt", specifier = ">=5,<6" },
     { name = "pipefy-infra", editable = "packages/infra" },
     { name = "pydantic", specifier = ">=2.13.4,<3" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },

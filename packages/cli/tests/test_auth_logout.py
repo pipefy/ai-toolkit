@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
 import httpx
 import keyring
 import pytest
@@ -325,9 +328,12 @@ def _forbid_revoke(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth_module, "revoke_session", _never)
 
 
-def _break_keychain_reads(monkeypatch: pytest.MonkeyPatch) -> None:
+def _break_keychain_reads(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception | None = None,
+) -> None:
     def _boom(service: str, username: str) -> str | None:
-        raise KeyringError("keychain is locked")
+        raise error or KeyringError("keychain is locked")
 
     monkeypatch.setattr(keyring, "get_password", _boom)
 
@@ -395,6 +401,11 @@ class TestAuthLogoutUnreadableEntry:
         assert "Could not delete local session from the keychain" in result.stderr
         assert "remove it manually" in result.stderr
 
+    @pytest.mark.parametrize(
+        "read_error",
+        [KeyringError("keychain is locked"), OSError("Can't decrypt")],
+        ids=["keyring-error", "file-backend-decrypt-error"],
+    )
     def test_probe_failure_still_deletes_and_reports_removal(
         self,
         runner,
@@ -402,17 +413,41 @@ class TestAuthLogoutUnreadableEntry:
         fake_keyring: InMemoryKeyring,
         clean_pipefy_env,
         saved_cwd,
+        read_error: Exception,
     ) -> None:
         """Presence unknown, delete succeeded: the entry existed and is gone."""
         monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
         _store_unreadable_entry()
         _forbid_revoke(monkeypatch)
-        _break_keychain_reads(monkeypatch)
+        _break_keychain_reads(monkeypatch, read_error)
 
         result = runner.invoke(cli_app, ["auth", "logout"])
         assert result.exit_code == 0, result.stderr
         assert "Removed an unreadable Pipefy session entry" in result.stdout
         assert fake_keyring.get_password(_SERVICE, _KEY) is None
+
+    def test_file_backend_rewrite_failure_on_delete_exits_1(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_keyring: InMemoryKeyring,
+        clean_pipefy_env,
+        saved_cwd,
+    ) -> None:
+        """A file backend that cannot rewrite its store raises ``PermissionError``."""
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _store_unreadable_entry()
+        _forbid_revoke(monkeypatch)
+
+        def _rewrite_denied(service: str, username: str) -> None:
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(keyring, "delete_password", _rewrite_denied)
+
+        result = runner.invoke(cli_app, ["auth", "logout"])
+        assert result.exit_code == 1
+        assert "Removed an unreadable" not in result.stdout
+        assert "Could not delete local session from the keychain" in result.stderr
 
     def test_probe_failure_with_no_delete_exits_1_without_claiming_clean(
         self,
@@ -453,3 +488,149 @@ class TestAuthLogoutUnreadableEntry:
         result = runner.invoke(cli_app, ["auth", "logout"])
         assert result.exit_code == 0, result.stderr
         assert "Not signed in. Nothing to do." in result.stdout
+
+
+# --------------------------------------------------------------------------- #
+# Command: a file store that cannot be opened or parsed                       #
+# --------------------------------------------------------------------------- #
+
+_FILE_STORE_REMEDY = "fix its permissions or delete the file"
+# The parser quotes only the first bad line, so the marker sits there.
+_NOT_INI = "SYNTHETICSTORELINE is not an ini file\n[pipefy\n"
+
+
+class TestAuthLogoutFileStore:
+    def test_file_store_delete_failure_names_the_file(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _forbid_revoke(monkeypatch)
+        file_store.parent.mkdir(parents=True)
+        file_store.write_text(_NOT_INI, encoding="utf-8")
+
+        result = runner.invoke(cli_app, ["auth", "logout"])
+
+        assert result.exit_code == 1
+        assert "Could not delete local session from the keychain" in result.stderr
+        assert f"may still be present in {file_store}; {_FILE_STORE_REMEDY}." in (
+            result.stderr
+        )
+        assert "auth login" not in result.stderr
+        assert "OS keychain" not in result.stderr
+        assert "SYNTHETICSTORELINE" not in result.stderr
+        assert file_store.read_text(encoding="utf-8") == _NOT_INI
+
+    @pytest.mark.skipif(
+        sys.platform == "win32" or os.geteuid() == 0,
+        reason="POSIX permissions; root reads a mode-000 file",
+    )
+    def test_file_store_unreadable_presence_names_the_file(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _forbid_revoke(monkeypatch)
+        file_store.parent.mkdir(parents=True)
+        file_store.write_text("[pipefy]\n", encoding="utf-8")
+        file_store.chmod(0)
+        try:
+            result = runner.invoke(cli_app, ["auth", "logout"])
+        finally:
+            file_store.chmod(0o600)
+
+        assert result.exit_code == 1
+        assert "Permission denied" in result.stderr
+        assert f"may still be present in {file_store}; {_FILE_STORE_REMEDY}." in (
+            result.stderr
+        )
+        assert "auth login" not in result.stderr
+        assert "OS keychain" not in result.stderr
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges")
+    def test_symlinked_file_store_delete_failure_names_the_link_target(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+        tmp_path,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _forbid_revoke(monkeypatch)
+        target = tmp_path / "dotfiles" / "session.cfg"
+        target.parent.mkdir()
+        target.write_text(_NOT_INI, encoding="utf-8")
+        file_store.parent.mkdir(parents=True)
+        file_store.symlink_to(target)
+
+        result = runner.invoke(cli_app, ["auth", "logout"])
+
+        assert result.exit_code == 1
+        assert f"may still be present in {target}; {_FILE_STORE_REMEDY}." in (
+            result.stderr
+        )
+        assert f"present in {file_store};" not in result.stderr
+
+    @pytest.mark.skipif(
+        sys.platform == "win32" or os.geteuid() == 0,
+        reason="symlinks and POSIX permissions; root reads a mode-000 file",
+    )
+    def test_symlinked_file_store_unreadable_presence_names_the_link_target(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+        tmp_path,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _forbid_revoke(monkeypatch)
+        target = tmp_path / "dotfiles" / "session.cfg"
+        target.parent.mkdir()
+        target.write_text("[pipefy]\n", encoding="utf-8")
+        file_store.parent.mkdir(parents=True)
+        file_store.symlink_to(target)
+        target.chmod(0)
+        try:
+            result = runner.invoke(cli_app, ["auth", "logout"])
+        finally:
+            target.chmod(0o600)
+
+        assert result.exit_code == 1
+        assert f"may still be present in {target}; {_FILE_STORE_REMEDY}." in (
+            result.stderr
+        )
+        assert f"present in {file_store};" not in result.stderr
+
+    def test_os_keychain_delete_failure_keeps_the_keychain_remedy(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_keyring: InMemoryKeyring,
+        clean_pipefy_env,
+        saved_cwd,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _store_unreadable_entry()
+        _forbid_revoke(monkeypatch)
+
+        def _delete_boom(*, issuer: str, client_id: str) -> bool:
+            raise storage.SessionDeleteError("Keychain is locked")
+
+        monkeypatch.setattr(auth_module, "delete_session", _delete_boom)
+
+        result = runner.invoke(cli_app, ["auth", "logout"])
+
+        assert result.exit_code == 1
+        assert (
+            "remove it manually via your OS keychain (service: 'pipefy')"
+            in result.stderr
+        )
+        assert "delete the file" not in result.stderr

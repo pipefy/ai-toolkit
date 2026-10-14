@@ -824,7 +824,7 @@ Usage: pipefy auth [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ login    Sign in to Pipefy via your browser and store the session in the OS  │
-│          keychain.                                                           │
+│          keychain (a DPAPI-encrypted file on Windows).                       │
 │ status   Print which auth source is active, the authenticated identity, and  │
 │          session expiry.                                                     │
 │ logout   Clear the local session, revoking the refresh token when it can be  │
@@ -834,7 +834,8 @@ Usage: pipefy auth [OPTIONS] COMMAND [ARGS]...
 ### HELP auth/login
 Usage: pipefy auth login [OPTIONS]
 
- Sign in to Pipefy via your browser and store the session in the OS keychain.
+ Sign in to Pipefy via your browser and store the session in the OS keychain (a
+ DPAPI-encrypted file on Windows).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --no-browser                                    Print the authorization URL  │

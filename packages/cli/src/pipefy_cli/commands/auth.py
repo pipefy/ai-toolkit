@@ -26,6 +26,7 @@ from pipefy_auth import (
     delete_session,
     ensure_fresh_session,
     keychain_backend_name,
+    keychain_store_path,
     load_session,
     revoke_session,
     run_login,
@@ -43,7 +44,11 @@ from pipefy_cli.auth import (
     get_authenticated_client,
     to_display_source,
 )
-from pipefy_cli.commands._auth_keychain_hints import keychain_store_failure_hint
+from pipefy_cli.commands._auth_keychain_hints import (
+    keychain_store_failure_hint,
+    logout_delete_failure_message,
+    logout_presence_unknown_message,
+)
 from pipefy_cli.commands._common import settings_and_auth_from_ctx
 from pipefy_cli.output import render_json
 
@@ -129,7 +134,7 @@ def auth_login(
         min=5.0,
     ),
 ) -> None:
-    """Sign in to Pipefy via your browser and store the session in the OS keychain."""
+    """Sign in to Pipefy via your browser and store the session in the OS keychain (a DPAPI-encrypted file on Windows)."""
     # Lazy to keep keyring's ~30-80ms backend-discovery cost off every CLI startup.
     from keyring.errors import KeyringError
 
@@ -194,7 +199,9 @@ def auth_login(
         # without ownership) surfaces as ``PermissionError`` from
         # ``os.makedirs`` inside the backend, which is not a ``KeyringError``.
         backend = keychain_backend_name()
-        hint = keychain_store_failure_hint(backend=backend)
+        hint = keychain_store_failure_hint(
+            backend=backend, store_path=keychain_store_path()
+        )
         typer.echo(
             f"Login succeeded but the session could not be stored in your "
             f"keychain ({backend}): {exc}. {hint}",
@@ -521,9 +528,9 @@ def auth_logout(ctx: typer.Context) -> None:
         if revoke_warning:
             typer.echo(revoke_warning, err=True)
         typer.echo(
-            f"Could not delete local session from the keychain: {exc}. "
-            "The stored credential may still be present; remove it manually "
-            f"via your OS keychain (service: 'pipefy'). See {DOCS_CLI_AUTH_REF}.",
+            logout_delete_failure_message(
+                cause=str(exc), store_path=keychain_store_path()
+            ),
             err=True,
         )
         raise typer.Exit(1) from exc
@@ -539,10 +546,9 @@ def auth_logout(ctx: typer.Context) -> None:
         return
     if presence == "unknown":
         typer.echo(
-            "Could not read the keychain to check for a stored session "
-            f"({issuer}), and no entry was removed. A credential may still be "
-            "present; check for it manually via your OS keychain (service: "
-            f"'pipefy'). See {DOCS_CLI_AUTH_REF}.",
+            logout_presence_unknown_message(
+                issuer=issuer, store_path=keychain_store_path()
+            ),
             err=True,
         )
         raise typer.Exit(1)

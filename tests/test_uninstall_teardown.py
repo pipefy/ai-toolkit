@@ -1126,6 +1126,51 @@ def test_only_the_pipefy_section_leaves_the_shared_keyring_fallback_file(tmp_pat
     assert "holds no Pipefy session" in rescan
 
 
+@pytest.mark.parametrize(
+    "name",
+    [
+        ".keyring.cfg.backup.tmp",
+        ".keyring.cfg.pipefy-backup.tmp",
+        ".keyring.cfg.pipefy-abcdefg.tmp",
+        ".keyring.cfg.pipefy-abcdefghi.tmp",
+        ".keyring.cfg.pipefy-ABCDEFGH.tmp",
+        ".keyring-dpapi.cfg.pipefy-backup.tmp",
+        ".keyring-dpapi.cfg.pipefy-abcdefg.tmp",
+        ".keyring-dpapi.cfg.pipefy-abcdefghi.tmp",
+        ".keyring-dpapi.cfg.pipefy-ABCDEFGH.tmp",
+    ],
+)
+def test_an_interrupted_write_leftover_is_deleted_with_the_credentials(tmp_path, name):
+    home = _home(tmp_path)
+    leftover = home / ".config" / "pipefy" / ".keyring.cfg.pipefy-k3x9q2ab.tmp"
+    leftover.parent.mkdir(parents=True)
+    leftover.write_text("[pipefy]\nsomeone = \n\tQUJD\n", encoding="utf-8")
+    not_ours = leftover.parent / name
+    not_ours.write_text("kept\n", encoding="utf-8")
+
+    run = _run(home, _no_uv_tools(_stub_path(tmp_path)))
+
+    assert not leftover.exists()
+    assert not_ours.exists()
+    removed = run.stdout.split("Removed:", 1)[1].split("\n\n", 1)[0]
+    assert f"delete the interrupted-write copy {leftover}" in removed
+    assert "QUJD" not in run.stdout + run.stderr
+
+
+def test_keep_credentials_keeps_an_interrupted_write_leftover(tmp_path):
+    home = _home(tmp_path)
+    leftover = home / ".config" / "pipefy" / ".keyring.cfg.pipefy-k3x9q2ab.tmp"
+    leftover.parent.mkdir(parents=True)
+    leftover.write_text("[pipefy]\nsomeone = \n\tQUJD\n", encoding="utf-8")
+
+    run = _run(
+        home, _no_uv_tools(_stub_path(tmp_path)), args=("--yes", "--keep-credentials")
+    )
+
+    assert leftover.exists()
+    assert "kept by --keep-credentials" in run.stdout
+
+
 def test_a_symlinked_file_keyring_takes_its_target_with_it(tmp_path):
     home = _home(tmp_path)
     real = tmp_path / "elsewhere" / "keyring.cfg"

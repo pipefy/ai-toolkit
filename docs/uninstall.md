@@ -118,7 +118,9 @@ Without a receipt the run is in **heuristic mode**, which is permanent rather th
 
 ## Where the stored session lives
 
-`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the keychain while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep.
+`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain on macOS and Linux, or in `%APPDATA%\pipefy\keyring-dpapi.cfg` on Windows (DPAPI-encrypted; `uninstall.sh` does not run on Windows). For either file, `pipefy auth logout` deletes the file once it holds no session. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the default store (OS keychain, or `keyring-dpapi.cfg` on Windows) while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep.
+
+A session write killed before it finishes can leave a `.keyring.cfg.pipefy-<random>.tmp` file in the store's directory, holding the session it was writing. The CLI deletes such a file on a later write only once it is more than 60 seconds old. The scan reports one in `~/.config/pipefy` as a session store left by an interrupted write whatever its age, and teardown deletes it with the other stored credentials. When `keyring.cfg` is a symlink, the file sits next to the link target instead, which the scan does not inspect; delete it there by hand. Other `.tmp` files in that directory are reported as files this toolkit does not write and stay.
 
 On a machine with no OS keychain backend (a headless Linux host without Secret Service, for example), Python `keyring` falls back to its own plaintext file, `python_keyring/keyring_pass.cfg` under `$XDG_DATA_HOME` (default `~/.local/share`). Other programs that use `keyring` share that file, so teardown removes only the `[pipefy]` section and keeps no backup copy of the file.
 
@@ -204,7 +206,7 @@ In Cursor, the Marketplace plugin and any user-config Pipefy MCP entry (includin
 
 ## Removing pieces by hand
 
-The scan prints this list too, filled in with the names it found:
+The scan prints this list too, filled in with the names it found, except the Cursor Marketplace plugin, macOS keychain item, and Windows session file rows:
 
 | Piece | Command |
 |-------|---------|
@@ -216,6 +218,7 @@ The scan prints this list too, filled in with the names it found:
 | credentials | `pipefy auth logout` |
 | hosted OAuth token | `claude mcp logout <name>` |
 | macOS keychain item | `security delete-generic-password -s pipefy` |
+| Windows session file | delete `%APPDATA%\pipefy\keyring-dpapi.cfg` if it is still there after `pipefy auth logout` |
 
 Use the names the report printed: a registration can be called anything.
 

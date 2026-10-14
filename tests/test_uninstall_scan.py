@@ -367,6 +367,57 @@ def test_file_keyring_backend_lists_unescaped_accounts(tmp_path):
     assert "U0VDUkVUVkFMVUU=" not in result.stdout + result.stderr
 
 
+@pytest.mark.parametrize(
+    "name",
+    [".keyring.cfg.pipefy-k3x9q2ab.tmp", ".keyring-dpapi.cfg.pipefy-k3x9_2ab.tmp"],
+)
+def test_an_interrupted_write_leftover_is_a_credential(tmp_path, name):
+    home = _home(tmp_path)
+    leftover = home / ".config" / "pipefy" / name
+    leftover.parent.mkdir(parents=True)
+    leftover.write_text(
+        "[pipefy]\nsomeone = \n\tTEFGVE9WRVJNQVJLRVI=\n", encoding="utf-8"
+    )
+
+    result = _run(home, _stub_path(tmp_path))
+
+    assert result.returncode == 1
+    assert f"{leftover} (a session store left by an interrupted write)" in (
+        result.stdout
+    )
+    assert "not a file this toolkit writes" not in result.stdout
+    assert "TEFGVE9WRVJNQVJLRVI=" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        ".keyring.cfg.backup.tmp",
+        ".keyring-dpapi.cfg.k3x9q2ab.tmp",
+        ".keyring.cfg.pipefy-backup.tmp",
+        ".keyring.cfg.pipefy-abcdefg.tmp",
+        ".keyring.cfg.pipefy-abcdefghi.tmp",
+        ".keyring.cfg.pipefy-ABCDEFGH.tmp",
+        ".keyring-dpapi.cfg.pipefy-backup.tmp",
+        ".keyring-dpapi.cfg.pipefy-abcdefg.tmp",
+        ".keyring-dpapi.cfg.pipefy-abcdefghi.tmp",
+        ".keyring-dpapi.cfg.pipefy-ABCDEFGH.tmp",
+    ],
+)
+def test_a_tmp_file_outside_the_leftover_name_is_not_a_credential(tmp_path, name):
+    home = _home(tmp_path)
+    other = home / ".config" / "pipefy" / name
+    other.parent.mkdir(parents=True)
+    other.write_text("kept\n", encoding="utf-8")
+
+    result = _run(home, _stub_path(tmp_path))
+
+    assert "interrupted write" not in result.stdout
+    assert f"{other} is not a file this toolkit writes; left in place" in (
+        result.stdout
+    )
+
+
 _FALLBACK_PIPEFY = (
     "[pipefy]\n"
     "signin_2epipefy_2ecom_7cpipefy_2dcli = \n\tU0VDUkVUVkFMVUU=\n"
