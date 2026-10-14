@@ -32,7 +32,7 @@ Pick a path based on your client and whether you need the full tool set. The roo
 
 **Authentication** (for the local paths; the hosted server uses its own in-client OAuth):
 
-- **Human OAuth (interactive):** `pipefy auth login` runs the browser flow and stores a session in your OS keychain. Pipe access is whatever the signed-in user already has.
+- **Human OAuth (interactive):** `pipefy auth login` runs the browser flow and stores a session in the OS keychain (a DPAPI-encrypted file on Windows). Pipe access is whatever the signed-in user already has.
 - **Service account (unattended / CI):** provision one in [Pipefy Admin](https://app.pipefy.com/) (Admin → Service Accounts), add it to every pipe the tools should touch, and set `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` / `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`.
 
 Full env-var reference and `config.toml` precedence: [`docs/config.md`](config.md).
@@ -84,7 +84,7 @@ uvx --from pipefy-cli pipefy --help        # ad-hoc, no install
 
 uv tool install pipefy-cli                 # permanent install
 pipefy --install-completion                # detects your shell (bash, zsh, fish)
-pipefy auth login                          # browser OAuth, session in OS keychain
+pipefy auth login                          # browser OAuth, session in the OS keychain (a DPAPI-encrypted file on Windows)
 ```
 
 CLI deep-dives (auth precedence, `--token` / `PIPEFY_TOKEN`, parity matrix): [`packages/cli/README.md`](../packages/cli/README.md) and [`docs/cli/`](cli/README.md).

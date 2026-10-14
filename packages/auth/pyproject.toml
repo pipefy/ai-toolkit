@@ -8,7 +8,8 @@ dependencies = [
     "httpx>=0.28",
     "httpx-auth>=0.23.1",
     "keyring>=24",
-    "keyrings.alt>=5",
+    # pipefy_auth.keyring_file relies on keyrings.alt internals (_write_config_value, _generate_assoc, escape).
+    "keyrings.alt>=5,<6",
     "pipefy-infra==0.5.4-beta.1",
     # RS256 validation of inbound bearers (resource-server role); [crypto] pulls cryptography.
     "pyjwt[crypto]>=2.8",

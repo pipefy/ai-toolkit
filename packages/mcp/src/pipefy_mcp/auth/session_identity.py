@@ -42,7 +42,7 @@ class StartupIdentity:
     def from_configured_credential(cls, settings: Settings) -> StartupIdentity:
         """Resolve the one startup credential from settings, or fail fast.
 
-        Swaps the keyring backend (no-op when ``auto``), resolves the
+        Swaps the keyring backend (no-op for ``auto`` off Windows), resolves the
         highest-precedence configured credential (the keychain read behind
         :func:`resolve_pipefy_auth`), and raises when none is configured so a
         missing credential surfaces at startup rather than on the first tool call.

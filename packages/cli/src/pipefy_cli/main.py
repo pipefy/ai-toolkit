@@ -94,7 +94,7 @@ def main(
     ctx.obj["pipefy_settings"] = cli_settings.pipefy
     ctx.obj["auth_settings"] = cli_settings.auth
     # Swap the keyring backend before any keychain probe (resolver tier
-    # detection, ``auth login``, ``auth status``). No-op when ``auto``.
+    # detection, ``auth login``, ``auth status``). No-op for ``auto`` off Windows.
     configure_keychain_backend(cli_settings.auth.keychain_backend)
     cli_token = token.strip() if token else None
     bearer: BearerToken | None
