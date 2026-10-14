@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **CLI tracebacks, local variables**: when the `pipefy` CLI hit an error it does not turn into a message, it printed a traceback that listed the local variables of each frame. In `pipefy auth login`, and in the token refresh that runs before a data command, those variables hold the access and refresh tokens, so up to the first 80 characters of each token went to stderr, and from there to terminal scrollback or a CI log. The traceback now shows the file, line, and error without local variables.
+
 - **SDK GraphQL timeout**: a GraphQL call from the SDK, the MCP server, or the CLI that ran longer than 10 s stopped with a bare `TimeoutError`, the `gql` client's default execute timeout, although the SDK sets a 30 s request timeout. A call now waits up to 30 s, so a call that the API answers in 10 to 30 s returns its result instead of failing. A call past 30 s still fails with the same bare `TimeoutError`. (#778)
 
 ## [0.5.4-beta.1] - 2026-10-09
