@@ -17,13 +17,13 @@ Example: `introspect_mutation mutation_name="createCard" max_depth=2 include_par
 
 Mutations use two steps. The first call returns a preview with `confirmation_token` and does not mutate. The preview names the mutation; it does not claim the write is irreversible, because this server cannot tell create from delete. Resend the call unchanged with `confirm=true` and the token; if the document changed, the response is a fresh preview whose token is bound to the new document.
 
-   ```
+   ```mcp
    execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}'
    ```
 
    Then after the preview:
 
-   ```
+   ```mcp
    execute_graphql query="mutation CreateLabel($input: CreateLabelInput!) { createLabel(input: $input) { label { id name } } }" variables='{"input": {"pipe_id": 67890, "name": "Urgent", "color": "#FF0000"}}' confirm=true confirmation_token="<token from preview>"
    ```
 
@@ -31,7 +31,7 @@ To set options at creation, pass `options` to `create_phase_field`; use this mut
 
 Then after the preview:
 
-```
+```mcp
 execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}' confirm=true confirmation_token="<token from preview>"
 ```
 
@@ -41,6 +41,6 @@ For long-running agent sessions, the MCP can reuse the fetched GraphQL schema ac
 
 ---
 
-- **`execute_graphql` returns GraphQL errors** — check `path` and `message`; pass `debug=true` on the next call to surface the `correlation_id`.
+- **`execute_graphql` returns GraphQL errors** — read the `message` of each error. The tool returns no `path` and no `correlation_id`.
 
 Queries through `execute_graphql` are ungated. Mutations require the unchanged document and variables plus `confirm=true` and the preview token. Documents too deeply nested to classify are rejected without sending them.

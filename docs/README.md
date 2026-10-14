@@ -2,6 +2,26 @@
 
 Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-toolkit)** monorepo (packages: `pipefy-mcp-server`, `pipefy-cli`, `pipefy`). Use the sections below to load only the surface you need.
 
+## Global pages
+
+These pages hold facts that apply to two or more products.
+
+<!-- [[[cog
+import sys
+from pathlib import Path
+
+import cog
+
+sys.path.insert(0, ".github/workflows/scripts")
+import docs_landing
+
+cog.outl(docs_landing.page_list(Path("docs")))
+]]] -->
+### Explanation
+
+- [Identifiers](explanation/identifiers.md): The four forms of a Pipefy ID, and when a field takes its slug or its internal_id.
+<!-- [[[end]]] -->
+
 ## By surface
 
 | Area | Path | Contents |
