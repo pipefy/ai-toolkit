@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Stored session errors**: `store_session` raises `KeyringError` when keyring's Windows Credential Manager backend rejects a session; that error used to escape as a raw `pywintypes.error` traceback. `load_session`, `session_entry_presence`, and `delete_session` turn file-backed keyring decrypt, decode, and rewrite failures into their documented results, so `pipefy auth status` reports no usable session for an entry that cannot be decrypted or decoded instead of a traceback, and `pipefy auth logout` can remove that entry.
 - **SDK GraphQL timeout**: a GraphQL call from the SDK, the MCP server, or the CLI that ran longer than 10 s stopped with a bare `TimeoutError`, the `gql` client's default execute timeout, although the SDK sets a 30 s request timeout. A call now waits up to 30 s, so a call that the API answers in 10 to 30 s returns its result instead of failing. A call past 30 s still fails with the same bare `TimeoutError`. (#778)
 
 ## [0.5.4-beta.1] - 2026-10-09

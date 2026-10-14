@@ -325,9 +325,12 @@ def _forbid_revoke(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth_module, "revoke_session", _never)
 
 
-def _break_keychain_reads(monkeypatch: pytest.MonkeyPatch) -> None:
+def _break_keychain_reads(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception | None = None,
+) -> None:
     def _boom(service: str, username: str) -> str | None:
-        raise KeyringError("keychain is locked")
+        raise error or KeyringError("keychain is locked")
 
     monkeypatch.setattr(keyring, "get_password", _boom)
 
@@ -395,6 +398,11 @@ class TestAuthLogoutUnreadableEntry:
         assert "Could not delete local session from the keychain" in result.stderr
         assert "remove it manually" in result.stderr
 
+    @pytest.mark.parametrize(
+        "read_error",
+        [KeyringError("keychain is locked"), OSError("Can't decrypt")],
+        ids=["keyring-error", "file-backend-decrypt-error"],
+    )
     def test_probe_failure_still_deletes_and_reports_removal(
         self,
         runner,
@@ -402,17 +410,41 @@ class TestAuthLogoutUnreadableEntry:
         fake_keyring: InMemoryKeyring,
         clean_pipefy_env,
         saved_cwd,
+        read_error: Exception,
     ) -> None:
         """Presence unknown, delete succeeded: the entry existed and is gone."""
         monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
         _store_unreadable_entry()
         _forbid_revoke(monkeypatch)
-        _break_keychain_reads(monkeypatch)
+        _break_keychain_reads(monkeypatch, read_error)
 
         result = runner.invoke(cli_app, ["auth", "logout"])
         assert result.exit_code == 0, result.stderr
         assert "Removed an unreadable Pipefy session entry" in result.stdout
         assert fake_keyring.get_password(_SERVICE, _KEY) is None
+
+    def test_file_backend_rewrite_failure_on_delete_exits_1(
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_keyring: InMemoryKeyring,
+        clean_pipefy_env,
+        saved_cwd,
+    ) -> None:
+        """A file backend that cannot rewrite its store raises ``PermissionError``."""
+        monkeypatch.setenv("PIPEFY_AUTH_URL", _ISSUER)
+        _store_unreadable_entry()
+        _forbid_revoke(monkeypatch)
+
+        def _rewrite_denied(service: str, username: str) -> None:
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(keyring, "delete_password", _rewrite_denied)
+
+        result = runner.invoke(cli_app, ["auth", "logout"])
+        assert result.exit_code == 1
+        assert "Removed an unreadable" not in result.stdout
+        assert "Could not delete local session from the keychain" in result.stderr
 
     def test_probe_failure_with_no_delete_exits_1_without_claiming_clean(
         self,

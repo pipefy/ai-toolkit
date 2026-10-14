@@ -142,9 +142,11 @@ def store_session(
     Raises:
         KeyringError: When the keychain backend rejects the write. Caller should
             surface a user-facing message (e.g. headless Linux without a Secret
-            Service daemon).
+            Service daemon, or Windows Credential Manager refusing a session
+            larger than its 2560-byte entry limit).
     """
     import keyring
+    from keyring.errors import PasswordSetError
 
     session = StoredSession(
         issuer=issuer,
@@ -152,9 +154,19 @@ def store_session(
         obtained_at=int(time.time()),
         token=token,
     )
-    keyring.set_password(
-        _SERVICE, keychain_key(issuer, client_id), session.model_dump_json()
-    )
+    # keyring's Windows backend lets pywin32-ctypes' error escape. It subclasses
+    # neither KeyringError nor OSError, so it is matched as a non-OSError with
+    # ``winerror`` (every OSError has that attribute on Windows).
+    try:
+        keyring.set_password(
+            _SERVICE, keychain_key(issuer, client_id), session.model_dump_json()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if isinstance(exc, OSError) or not hasattr(exc, "winerror"):
+            raise
+        raise PasswordSetError(
+            f"Windows Credential Manager rejected the session: {exc}"
+        ) from exc
     return session
 
 
@@ -172,16 +184,21 @@ def session_entry_presence(*, issuer: str, client_id: str) -> SessionEntryPresen
     Returns:
         ``"present"`` when the backend returns a blob of any content,
         ``"absent"`` when it returns nothing, and ``"unknown"`` when the
-        backend itself fails. ``"unknown"`` means presence was not
+        backend itself fails, including a file-backed store whose entry
+        cannot be decrypted or decoded (:func:`delete_session` can still
+        remove such an entry). ``"unknown"`` means presence was not
         established: no caller may then report the credential as removed, or
         as never having been there.
     """
     import keyring
     from keyring.errors import KeyringError
 
+    key = keychain_key(issuer, client_id)
+    # File-backed keyrings (keyrings.alt) raise OSError on a failed decrypt and
+    # binascii.Error, a ValueError, on a damaged entry instead of KeyringError.
     try:
-        blob = keyring.get_password(_SERVICE, keychain_key(issuer, client_id))
-    except KeyringError:
+        blob = keyring.get_password(_SERVICE, key)
+    except (KeyringError, OSError, ValueError):
         return "unknown"
     return "absent" if blob is None else "present"
 
@@ -198,9 +215,10 @@ def load_session(*, issuer: str, client_id: str) -> StoredSession | None:
     import keyring
     from keyring.errors import KeyringError
 
+    key = keychain_key(issuer, client_id)
     try:
-        blob = keyring.get_password(_SERVICE, keychain_key(issuer, client_id))
-    except KeyringError:
+        blob = keyring.get_password(_SERVICE, key)
+    except (KeyringError, OSError, ValueError):
         return None
     if not blob:
         return None
@@ -214,7 +232,8 @@ def delete_session(*, issuer: str, client_id: str) -> bool:
     """Remove the stored session. Returns True if an entry was present.
 
     Raises:
-        SessionDeleteError: When the keychain backend rejects the operation
+        SessionDeleteError: When the keychain backend rejects the operation,
+            including a file-backed store that cannot rewrite its file
             (distinct from "no entry to delete"). The local credential may
             still exist; callers should surface a user-facing error rather
             than claim a successful sign-out.
@@ -226,7 +245,7 @@ def delete_session(*, issuer: str, client_id: str) -> bool:
         keyring.delete_password(_SERVICE, keychain_key(issuer, client_id))
     except PasswordDeleteError:
         return False
-    except KeyringError as exc:
+    except (KeyringError, OSError) as exc:
         raise SessionDeleteError(str(exc)) from exc
     return True
 
