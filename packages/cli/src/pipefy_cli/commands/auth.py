@@ -129,7 +129,7 @@ def auth_login(
         min=5.0,
     ),
 ) -> None:
-    """Sign in to Pipefy via your browser and store the session in the OS keychain."""
+    """Sign in to Pipefy via your browser and store the session in the OS keychain (a DPAPI-encrypted file on Windows)."""
     # Lazy to keep keyring's ~30-80ms backend-discovery cost off every CLI startup.
     from keyring.errors import KeyringError
 

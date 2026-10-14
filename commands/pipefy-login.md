@@ -1,6 +1,6 @@
 ---
 name: pipefy-login
-description: Authenticate with Pipefy via OAuth and store the session in the OS keychain.
+description: Authenticate with Pipefy via OAuth and store the session in the OS keychain (a DPAPI-encrypted file on Windows).
 disable-model-invocation: true
 argument-hint: "[--no-browser] [--callback-timeout <seconds>]"
 ---
