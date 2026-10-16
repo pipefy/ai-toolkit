@@ -76,6 +76,7 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationRuleSummary,
 )
 from pipefy_sdk.services.automation_service import AUTOMATIONS_LIST_MAX_PAGE_SIZE
+from pipefy_sdk.services.card_service import RECORDS_MAX_PAGE_SIZE
 from pipefy_sdk.services.observability_export_csv import download_bytes, stream_bytes
 from pipefy_sdk.services.observability_service import (
     AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE,
@@ -102,6 +103,9 @@ from pipefy_sdk.services.types import (
     MePayload,
     ProviderAccessProbeResult,
     ProviderDependenciesResult,
+    RecordFilter,
+    RecordOrder,
+    RecordRange,
     copy_card_search,
 )
 from pipefy_sdk.settings import PipefySettings
@@ -181,6 +185,10 @@ __all__ = [
     "PipefyId",
     "PipefyRequestTimeoutError",
     "PipefySettings",
+    "RecordFilter",
+    "RECORDS_MAX_PAGE_SIZE",
+    "RecordOrder",
+    "RecordRange",
     "TableRecordTarget",
     "UpdateAiAgentInput",
     "UpdateAiAutomationInput",
