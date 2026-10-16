@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, Literal
 
+from pydantic import ConfigDict, with_config
 from typing_extensions import TypedDict
 
 
@@ -23,6 +25,83 @@ def copy_card_search(search: CardSearch) -> CardSearch:
     :meth:`PipefyClient.get_cards`.
     """
     return {k: search[k] for k in CardSearch.__optional_keys__ if k in search}
+
+
+RecordScalar = str | int | float | bool | None
+
+# Pydantic drops unknown keys by default, so a mistyped "AND" would become an
+# empty, unfiltered query; forbid them instead.
+_FORBID_EXTRA = with_config(ConfigDict(extra="forbid"))
+
+
+@_FORBID_EXTRA
+class RecordRange(TypedDict):
+    min: RecordScalar
+    max: RecordScalar
+
+
+# Functional form because "and", "or" and "in" are Python keywords.
+RecordFilter = _FORBID_EXTRA(
+    TypedDict(
+        "RecordFilter",
+        {
+            "and": list["RecordFilter"],
+            "or": list["RecordFilter"],
+            "attribute": str,
+            "field": str,
+            "eq": RecordScalar,
+            "neq": RecordScalar,
+            "lt": RecordScalar,
+            "gt": RecordScalar,
+            "lte": RecordScalar,
+            "gte": RecordScalar,
+            "contains": list[RecordScalar],
+            "ncontains": list[RecordScalar],
+            "in": list[RecordScalar],
+            "nin": list[RecordScalar],
+            "between": RecordRange,
+            "nbetween": RecordRange,
+            "like": RecordScalar,
+            "nlike": RecordScalar,
+            "ilike": RecordScalar,
+            "nilike": RecordScalar,
+        },
+        total=False,
+    )
+)
+
+
+@_FORBID_EXTRA
+class RecordOrder(TypedDict, total=False):
+    attribute: str
+    field: str
+    direction: Literal["ASC", "DESC"]
+
+
+def _is_canonical_uuid(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
+
+# The API answers a slug or a non-canonical uuid with a generic internal error.
+def validate_record_filter(where: RecordFilter) -> None:
+    if not isinstance(where, dict):
+        return
+    field = where.get("field")
+    if field is not None and not _is_canonical_uuid(field):
+        raise ValueError(
+            "field must be the custom field uuid (from get_phase_fields), "
+            f"lowercase with hyphens, got {field!r}"
+        )
+    for key in ("and", "or"):
+        children = where.get(key)
+        if isinstance(children, list):
+            for child in children:
+                validate_record_filter(child)
 
 
 class AiAgentGraphPayload(TypedDict, total=False):

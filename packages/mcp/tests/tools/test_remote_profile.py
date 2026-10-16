@@ -26,6 +26,7 @@ REMOTE_SEED = frozenset(
         "get_pipe",
         "get_card",
         "get_cards",
+        "get_records",
         "find_cards",
         "find_records",
         "get_table",

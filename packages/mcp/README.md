@@ -1,6 +1,6 @@
 # pipefy-mcp-server
 
-MCP server for Pipefy — **187 tools** for AI agents (Cursor, Claude Desktop, Claude Code, Codex, and any MCP-compatible client). Depends on [`pipefy`](../sdk/README.md) for all GraphQL and API logic.
+MCP server for Pipefy — **188 tools** for AI agents (Cursor, Claude Desktop, Claude Code, Codex, and any MCP-compatible client). Depends on [`pipefy`](../sdk/README.md) for all GraphQL and API logic.
 
 ## Install
 

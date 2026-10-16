@@ -27,7 +27,7 @@ from pipefy_mcp.tools.pipe_tool_helpers import (
     DeleteCardErrorPayload,
 )
 from pipefy_mcp.tools.pipe_tools import FIND_CARDS_RESPONSE_KEY, PipeTools
-from tools.conftest import build_tool_test_server
+from tools.conftest import assert_invalid_arguments_envelope, build_tool_test_server
 from tools.destructive_confirm_test_support import confirm_after_preview
 
 
@@ -1465,6 +1465,165 @@ class TestGetCardsTool:
             first=None,
             after=None,
         )
+
+
+_RECORDS_FIELD_UUID = "00000000-0000-4000-8000-0000000000aa"
+
+
+def _records_response():
+    return {
+        "records": {
+            "totalCount": 1,
+            "pageInfo": {"hasNextPage": False, "endCursor": "c1=="},
+            "edges": [{"node": {"id": "1"}}],
+        }
+    }
+
+
+@pytest.mark.anyio
+class TestGetRecordsTool:
+    async def test_get_records_forwards_every_argument_to_client(
+        self, client_session, mock_pipefy_client, pipe_id
+    ):
+        mock_pipefy_client.get_records = AsyncMock(return_value=_records_response())
+        where = {
+            "and": [
+                {"attribute": "ASSIGNEES", "in": ["900000001"]},
+                {
+                    "attribute": "FINISHED_AT",
+                    "between": {
+                        "min": "2026-01-01T00:00:00-03:00",
+                        "max": "2026-01-31T23:59:59-03:00",
+                    },
+                },
+            ]
+        }
+        order_by = [{"attribute": "CREATED_AT", "direction": "DESC"}]
+
+        async with client_session as session:
+            result = await session.call_tool(
+                "get_records",
+                {
+                    "pipe_id": pipe_id,
+                    "where": where,
+                    "search_term": "acme",
+                    "phase_id": 900000201,
+                    "order_by": order_by,
+                    "include_fields": True,
+                    "first": 20,
+                    "after": "c0==",
+                },
+            )
+
+        assert result.is_error is False
+        mock_pipefy_client.get_records.assert_called_once_with(
+            str(pipe_id),
+            where,
+            "acme",
+            "900000201",
+            order_by,
+            True,
+            first=20,
+            after="c0==",
+        )
+
+    async def test_get_records_first_above_fifty_returns_invalid_arguments(
+        self,
+        client_session,
+        mock_pipefy_client,
+        pipe_id,
+        extract_payload,
+        envelope_flag,
+    ):
+        mock_pipefy_client.get_records = AsyncMock(return_value=_records_response())
+        async with client_session as session:
+            result = await session.call_tool(
+                "get_records", {"pipe_id": pipe_id, "first": 51}
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+        assert payload["error"]["details"]["max"] == 50
+        mock_pipefy_client.get_records.assert_not_called()
+
+    async def test_get_records_field_slug_returns_invalid_arguments(
+        self, client_session, mock_pipefy_client, pipe_id, extract_payload
+    ):
+        mock_pipefy_client.get_records = AsyncMock(
+            side_effect=ValueError(
+                "field must be the custom field uuid (from get_phase_fields), "
+                "got 'total_value'"
+            )
+        )
+        async with client_session as session:
+            result = await session.call_tool(
+                "get_records",
+                {"pipe_id": pipe_id, "where": {"field": "total_value", "eq": "x"}},
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+        assert "uuid" in tool_error_message(payload)
+
+    @pytest.mark.parametrize(
+        "where",
+        [
+            {"attribute": "TITLE", "bogus_op": "x"},
+            {"AND": [{"attribute": "TITLE", "eq": "a"}]},
+        ],
+    )
+    async def test_get_records_unknown_filter_key_returns_invalid_arguments(
+        self, client_session, mock_pipefy_client, pipe_id, where
+    ):
+        mock_pipefy_client.get_records = AsyncMock(return_value=_records_response())
+        async with client_session as session:
+            result = await session.call_tool(
+                "get_records", {"pipe_id": pipe_id, "where": where}
+            )
+        assert_invalid_arguments_envelope(result)
+        mock_pipefy_client.get_records.assert_not_called()
+
+    async def test_get_records_permission_denied_says_pipe_is_not_visible(
+        self, client_session, mock_pipefy_client, pipe_id, extract_payload
+    ):
+        mock_pipefy_client.get_records = AsyncMock(
+            side_effect=PipefyGraphQLError(
+                [
+                    {
+                        "message": "Permission denied",
+                        "extensions": {"code": "PERMISSION_DENIED"},
+                    }
+                ]
+            )
+        )
+        async with client_session as session:
+            result = await session.call_tool("get_records", {"pipe_id": pipe_id})
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert payload["error"]["code"] == "PERMISSION_DENIED"
+        message = tool_error_message(payload)
+        assert f"Cannot access pipe (ID: {pipe_id})" in message
+        assert message.isascii()
+
+    async def test_get_records_first_emits_pagination(
+        self,
+        client_session,
+        mock_pipefy_client,
+        pipe_id,
+        extract_payload,
+        unified_envelope,
+    ):
+        mock_pipefy_client.get_records = AsyncMock(return_value=_records_response())
+        async with client_session as session:
+            result = await session.call_tool(
+                "get_records", {"pipe_id": pipe_id, "first": 10}
+            )
+        payload = extract_payload(result)
+        assert payload["pagination"] == {
+            "has_more": False,
+            "end_cursor": "c1==",
+            "page_size": 10,
+        }
 
 
 @pytest.mark.anyio

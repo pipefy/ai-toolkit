@@ -58,6 +58,7 @@ CLI: `pipefy phase targets <current_phase_id> --json`
 |---|---|
 | `get_card` | `pipefy card get <id>` |
 | `get_cards` | `pipefy card list --pipe <id>` |
+| `get_records` | `pipefy card records --pipe <id>` (`--where` JSON, `--first`, `--after`) |
 | `find_cards` | `pipefy card find --pipe <id>` |
 | `create_card` | `pipefy card create <pipe_id>` |
 | `fill_card_phase_fields` | `pipefy card fill <id> --phase <id>` |

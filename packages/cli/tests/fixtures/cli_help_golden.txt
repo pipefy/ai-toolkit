@@ -1259,6 +1259,7 @@ Usage: pipefy card [OPTIONS] COMMAND [ARGS]...
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ get       Fetch a card by id (title, phase, pipe; not labels or assignees).  │
 │ list      List cards in a pipe (get_cards): browse, filter, and paginate.    │
+│ records   List, count and filter the cards of a pipe (records query).        │
 │ find      Find cards in a pipe where a custom field equals a value.          │
 │ create    Create a card in a pipe (start-form or phase fields via --fields   │
 │           JSON when required).                                               │
@@ -1457,6 +1458,37 @@ Usage: pipefy card move [OPTIONS] CARD_ID
 │ *  --phase          TEXT  Destination phase id. [required]                   │
 │    --json   -j                                                               │
 │    --help                 Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP card/records
+Usage: pipefy card records [OPTIONS]
+
+ List, count and filter the cards of a pipe (records query).
+
+ totalCount counts the whole result. On ASSIGNEES and LABELS, in matches any
+ and contains matches all; dates are ISO 8601 with an offset. With --where or
+ --search-term, paging stops at 10,000 cards. Page with --after set to
+ pageInfo.endCursor until hasNextPage is false.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --pipe                    TEXT     Pipe id whose cards to load.           │
+│                                       [required]                             │
+│    --where                   TEXT     JSON filter object, e.g. {"attribute": │
+│                                       "ASSIGNEES", "in": ["<user id>"]};     │
+│                                       and/or take a list of filters. field   │
+│                                       must be the custom field uuid.         │
+│    --search-term             TEXT     Match title, subtitle fields and card  │
+│                                       id.                                    │
+│    --phase                   TEXT     Only cards currently in this phase.    │
+│    --order-by                TEXT     JSON list, e.g. [{"attribute":         │
+│                                       "CREATED_AT", "direction": "DESC"}].   │
+│    --include-fields                   Include each card's custom fields.     │
+│    --first                   INTEGER  Max cards per page (1-50).             │
+│    --after                   TEXT     Pagination cursor                      │
+│                                       (pageInfo.endCursor), passed back      │
+│                                       exactly.                               │
+│    --json            -j               Print machine-readable JSON to stdout. │
+│    --help                             Show this message and exit.            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP card/update

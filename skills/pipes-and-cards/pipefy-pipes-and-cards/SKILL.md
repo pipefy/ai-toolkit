@@ -141,6 +141,7 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 | ------------ | ----------- | --------- |
 | `get_card` | Yes | Title, phase, pipe, optional fields. Does not return labels or assignees. |
 | `get_cards` | Yes | Paginated card list by pipe. |
+| `get_records` | Yes | List, count and filter the cards of a pipe by dates, phase, labels, assignees, creator, title or custom fields; exact `totalCount`. |
 | `find_cards` | Yes | Filter by a single field value. |
 | `create_card` | No | Default: start form. Optional `phase_id` creates in that phase. |
 | `fill_card_phase_fields` | No | Fill phase fields; filters to editable IDs. |
@@ -165,6 +166,17 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
    ```
 
 3. **Report result** with card ID and link: `https://app.pipefy.com/open-cards/<CARD_ID>`
+
+### Count and filter cards
+
+`get_records` answers "how many" in one call: read `records.totalCount`, not the length of a page. A count per group (per assignee, per label) is one call per group.
+In `where`, `field` must be the custom field uuid from `get_phase_fields`; a slug is rejected. Dates are ISO 8601 with an offset, and `between` takes `{"min": ..., "max": ...}`.
+With `where` or `search_term`, pages stop at 10,000 cards.
+To list every card, page with `after` set to the previous `pageInfo.endCursor` until `hasNextPage` is false, and check that the rows add up to `totalCount`.
+
+```
+get_records pipe_id=67890 where={"attribute":"FINISHED_AT","between":{"min":"2026-01-01T00:00:00-03:00","max":"2026-01-31T23:59:59-03:00"}}
+```
 
 ### Pagination for get_cards
 

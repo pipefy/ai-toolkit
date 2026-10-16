@@ -1,6 +1,6 @@
 # Pipes & Cards
 
-Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **41 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
+Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **42 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
 
 ## Cross-cutting patterns
 
@@ -41,6 +41,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 | Tool | Role |
 |------|------|
 | `get_cards` | List cards in a pipe. Use `include_fields` for custom field name/value on each card. |
+| `get_records` | List, count and filter the cards of a pipe on the server: `where` filters by dates, phase, labels, assignees, creator, title and custom fields (`field` takes the field uuid), `totalCount` is exact, and pages hold up to 50 cards. |
 | `get_card` | Load a single card by ID (title, phase, pipe; not labels or assignees). |
 | `find_cards` | Search cards by title or field values. |
 

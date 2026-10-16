@@ -163,6 +163,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_pipe_report_export",
         "get_pipe_report_filterable_fields",
         "get_pipe_reports",
+        "get_records",
         "get_start_form_fields",
         "get_table",
         "get_table_record",
