@@ -154,7 +154,7 @@ def test_field_update_forwards_extra_phase_id_for_slug_resolution(
     oauth_env("fld-upd")
     mock_client = MagicMock()
     mock_client.update_phase_field = AsyncMock(
-        return_value={"updatePhaseField": {"phase_field": {"id": "429358624"}}}
+        return_value={"updatePhaseField": {"phase_field": {"id": "421234570"}}}
     )
     with patch(
         "pipefy_cli.commands._common.get_authenticated_client",
@@ -167,13 +167,13 @@ def test_field_update_forwards_extra_phase_id_for_slug_resolution(
                 "update",
                 "priority",
                 "--extra",
-                '{"label": "Priority", "phase_id": "343162749"}',
+                '{"label": "Priority", "phase_id": "341234570"}',
                 "--json",
             ],
         )
     assert result.exit_code == 0, result.stdout
     mock_client.update_phase_field.assert_awaited_once_with(
-        "priority", label="Priority", phase_id="343162749"
+        "priority", label="Priority", phase_id="341234570"
     )
 
 

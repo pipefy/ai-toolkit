@@ -30,6 +30,7 @@ class _LiveEnvSettings(BaseSettings):
         env_nested_max_split=1,
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     pipefy: PipefySettings = Field(default_factory=PipefySettings)

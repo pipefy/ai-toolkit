@@ -361,6 +361,11 @@ class PipeConfigService:
     ) -> dict:
         """Create a field condition (Pipefy ``createFieldConditionInput``).
 
+        The API can place an ordinary-phase request on the pipe's start form.
+        The returned ID does not prove that ``phase_id`` was honored: read
+        ``get_field_condition`` and check ``phase.id`` before using the rule.
+        Keep the created ID for cleanup if that check fails.
+
         Args:
             phase_id: Phase ID (sent as ``phaseId`` on the mutation input).
             condition: ``ConditionInput`` (e.g. ``expressions``, ``expressions_structure``).

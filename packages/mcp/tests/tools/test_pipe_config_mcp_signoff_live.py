@@ -122,7 +122,7 @@ async def test_live_get_pipe_then_get_ai_agents(extract_payload):
     assert r_agents.is_error is False, r_agents
     agents_payload = extract_payload(r_agents)
     assert agents_payload.get("success") is True, agents_payload
-    assert "agents" in agents_payload
+    assert isinstance(agents_payload["data"]["agents"], list), agents_payload
 
 
 @pytest.mark.integration
@@ -147,7 +147,7 @@ async def test_live_get_ai_agent_when_env_set(extract_payload):
     assert r.is_error is False, r
     body = extract_payload(r)
     assert body.get("success") is True, body
-    assert body.get("agent"), body
+    assert body["data"]["agent"]["uuid"] == agent_uuid, body
 
 
 @pytest.mark.integration

@@ -880,7 +880,7 @@ class TestDirectToolCalls:
         self, client_session, mock_pipefy_client, extract_payload
     ):
         """get_pipe validates pipe_id and forwards the SDK response unchanged."""
-        pipe_id = "306996634"
+        pipe_id = "301234569"
         sdk_payload = {
             "pipe": {
                 "id": pipe_id,
@@ -1734,7 +1734,7 @@ class TestGetPhaseFieldsTool:
             assert response["fields"] == mock_fields
 
     async def test_permission_denied(self, client_session, mock_pipefy_client):
-        phase_id = 3190653829
+        phase_id = 341234571
         permission_error = Exception("Permission denied")
         permission_error.errors = [
             {
@@ -2012,7 +2012,7 @@ class TestFillCardPhaseFieldsTool:
         mock_pipefy_client,
     ):
         card_id = 456
-        phase_id = 3190653829
+        phase_id = 341234571
         permission_error = Exception("Permission denied")
         permission_error.errors = [
             {

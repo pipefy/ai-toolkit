@@ -45,6 +45,20 @@ def test_pipefy_settings_base_url_env_drives_derived_urls(
 
 
 @pytest.mark.unit
+def test_live_settings_loads_pipefy_values_from_shared_dotenv(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PIPEFY_BASE_URL", raising=False)
+    (tmp_path / ".env").write_text(
+        "PIPEFY_BASE_URL=https://staging.example.com\n"
+        "OTHER_SERVICE_TOKEN=synthetic-token\n"
+    )
+
+    settings = live_pipefy_settings()
+
+    assert settings.base_url == "https://staging.example.com"
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "legacy_env_var",
     [

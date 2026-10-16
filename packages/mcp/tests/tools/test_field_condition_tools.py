@@ -19,14 +19,14 @@ _MINIMAL_CREATE_CONDITION = {
     "expressions": [
         {
             "structure_id": 0,
-            "field_address": "425848636",
+            "field_address": "421234567",
             "operation": "equals",
             "value": "Option A",
         }
     ],
     "expressions_structure": [[0]],
 }
-_MINIMAL_CREATE_ACTIONS = [{"phaseFieldId": "425848637", "actionId": "hide"}]
+_MINIMAL_CREATE_ACTIONS = [{"phaseFieldId": "421234568", "actionId": "hide"}]
 
 
 @pytest.fixture
@@ -219,7 +219,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-ok"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -255,7 +255,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-wrong"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -301,7 +301,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-soft-phase"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -344,7 +344,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-list-ok"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -381,7 +381,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-ghost"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -429,7 +429,7 @@ class TestCreateFieldConditionVerify:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-unverified"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -464,7 +464,7 @@ class TestCreateFieldConditionVerify:
         extract_payload,
     ):
         """Get-by-id found the id but phase is null; list then fails → inconclusive."""
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-phase-null-list-down"
         mock_pipefy_client.create_field_condition = AsyncMock(
             return_value={"createFieldCondition": {"fieldCondition": {"id": cid}}}
@@ -509,8 +509,8 @@ class TestRequiredHiddenLint:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
-        field_id = "425848637"
+        phase_id = "341234567"
+        field_id = "421234568"
         mock_pipefy_client.get_phase_fields = AsyncMock(
             return_value={
                 "fields": [
@@ -548,8 +548,8 @@ class TestRequiredHiddenLint:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
-        field_id = "425848637"
+        phase_id = "341234567"
+        field_id = "421234568"
         mock_pipefy_client.get_phase_fields = AsyncMock(
             return_value={
                 "fields": [
@@ -585,8 +585,8 @@ class TestRequiredHiddenLint:
         extract_payload,
     ):
         condition_id = "fc-7"
-        phase_id = "342182326"
-        field_id = "425848637"
+        phase_id = "341234567"
+        field_id = "421234568"
         mock_pipefy_client.get_field_condition = AsyncMock(
             return_value={
                 "fieldCondition": {
@@ -630,7 +630,7 @@ class TestRequiredHiddenLint:
         extract_payload,
     ):
         condition_id = "fc-extra"
-        field_id = "425848637"
+        field_id = "421234568"
         mock_pipefy_client.update_field_condition = AsyncMock(
             return_value={
                 "updateFieldCondition": {"fieldCondition": {"id": condition_id}}
@@ -665,8 +665,8 @@ class TestRequiredHiddenLint:
         extract_payload,
     ):
         condition_id = "fc-7"
-        phase_id = "342182326"
-        field_id = "425848637"
+        phase_id = "341234567"
+        field_id = "421234568"
         mock_pipefy_client.get_field_condition = AsyncMock(
             return_value={
                 "fieldCondition": {
@@ -707,9 +707,9 @@ class TestRequiredHiddenLint:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-ok"
-        field_id = "425848637"
+        field_id = "421234568"
         mock_pipefy_client.get_phase_fields = AsyncMock(
             return_value={
                 "fields": [
@@ -754,7 +754,7 @@ class TestRequiredHiddenLint:
         mock_pipefy_client,
         extract_payload,
     ):
-        phase_id = "342182326"
+        phase_id = "341234567"
         cid = "fc-ok"
         mock_pipefy_client.get_phase_fields = AsyncMock(
             side_effect=RuntimeError("phase fields unavailable")
@@ -792,8 +792,8 @@ class TestRequiredHiddenLint:
         extract_payload,
     ):
         condition_id = "fc-ok"
-        phase_id = "342182326"
-        field_id = "425848637"
+        phase_id = "341234567"
+        field_id = "421234568"
         mock_pipefy_client.get_field_condition = AsyncMock(
             return_value={
                 "fieldCondition": {

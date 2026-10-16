@@ -76,7 +76,7 @@ _CALL_OK = {
     "isError": False,
 }
 
-PIPE_ID = "303088927"
+PIPE_ID = "301234567"
 
 
 def _wire_entry(name, *, destructive_hint=None, extra_annotations=None):
@@ -189,12 +189,12 @@ async def test_compact_catalog_lists_names_and_first_lines(
 ):
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     assert result.is_error is False
     payload = extract_payload(result)
     assert payload["success"] is True
-    mock_client.get_advanced_automations_token.assert_awaited_once_with("303088927")
+    mock_client.get_advanced_automations_token.assert_awaited_once_with("301234567")
     mock_gateway.list_tools.assert_awaited_once_with("embed-jwt")
     assert '"count": 2' in payload["result"]
     assert '"demo_create_flow"' in payload["result"]
@@ -213,7 +213,7 @@ async def test_tool_name_returns_full_schema(
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
         result = await session.call_tool(
-            "get_ipaas_tools", {"pipe_id": "303088927", "tool_name": "demo_create_flow"}
+            "get_ipaas_tools", {"pipe_id": "301234567", "tool_name": "demo_create_flow"}
         )
 
     payload = extract_payload(result)
@@ -230,7 +230,7 @@ async def test_unknown_tool_name_lists_available(
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
         result = await session.call_tool(
-            "get_ipaas_tools", {"pipe_id": "303088927", "tool_name": "demo_nope"}
+            "get_ipaas_tools", {"pipe_id": "301234567", "tool_name": "demo_nope"}
         )
 
     payload = extract_payload(result)
@@ -244,7 +244,7 @@ async def test_unknown_tool_name_lists_available(
 async def test_unconfigured_gateway_reports_clearly(mock_client, extract_payload):
     server = build_ipaas_test_server(mock_client, gateway=None)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -261,7 +261,7 @@ async def test_token_permission_error_becomes_error_payload(
     )
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -279,7 +279,7 @@ async def test_empty_exception_message_uses_fallback(
     )
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -299,7 +299,7 @@ async def test_non_empty_exception_message_preserved(
     )
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -315,7 +315,7 @@ async def test_gateway_error_becomes_error_payload(
     )
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "303088927"})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": "301234567"})
 
     payload = extract_payload(result)
     assert payload["success"] is False
@@ -328,11 +328,11 @@ async def test_int_pipe_id_is_coerced_to_string(
 ):
     server = build_ipaas_test_server(mock_client, mock_gateway)
     async with _session(server) as session:
-        result = await session.call_tool("get_ipaas_tools", {"pipe_id": 303088927})
+        result = await session.call_tool("get_ipaas_tools", {"pipe_id": 301234567})
 
     payload = extract_payload(result)
     assert payload["success"] is True
-    mock_client.get_advanced_automations_token.assert_awaited_once_with("303088927")
+    mock_client.get_advanced_automations_token.assert_awaited_once_with("301234567")
 
 
 @pytest.mark.anyio
@@ -353,7 +353,7 @@ async def test_call_tool_forwards_arguments_and_relays_output(
         result = await session.call_tool(
             "call_ipaas_tool",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "tool_name": "demo_create_flow",
                 "arguments": {"name": "My flow"},
             },
@@ -362,7 +362,7 @@ async def test_call_tool_forwards_arguments_and_relays_output(
     assert result.is_error is False
     payload = extract_payload(result)
     assert payload["success"] is True
-    mock_client.get_advanced_automations_token.assert_awaited_once_with("303088927")
+    mock_client.get_advanced_automations_token.assert_awaited_once_with("301234567")
     mock_gateway.list_tools.assert_awaited_once_with("embed-jwt")
     mock_gateway.opened_session.call_tool.assert_awaited_once_with(
         "demo_create_flow", {"name": "My flow"}
@@ -384,7 +384,7 @@ async def test_call_tool_arguments_default_to_none(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_list_flows"},
+            {"pipe_id": "301234567", "tool_name": "demo_list_flows"},
         )
 
     payload = extract_payload(result)
@@ -408,7 +408,7 @@ async def test_call_tool_maps_host_iserror_to_error_payload(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_create_flow"},
+            {"pipe_id": "301234567", "tool_name": "demo_create_flow"},
         )
 
     payload = extract_payload(result)
@@ -429,7 +429,7 @@ async def test_call_tool_null_result_becomes_error_payload_not_attribute_error(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_list_flows"},
+            {"pipe_id": "301234567", "tool_name": "demo_list_flows"},
         )
 
     payload = extract_payload(result)
@@ -454,7 +454,7 @@ async def test_call_tool_passes_non_text_content_through(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_list_flows"},
+            {"pipe_id": "301234567", "tool_name": "demo_list_flows"},
         )
 
     payload = extract_payload(result)
@@ -474,7 +474,7 @@ async def test_call_tool_gateway_error_becomes_error_payload(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_create_flow"},
+            {"pipe_id": "301234567", "tool_name": "demo_create_flow"},
         )
 
     payload = extract_payload(result)
@@ -490,7 +490,7 @@ async def test_call_tool_unconfigured_gateway_reports_clearly(
     async with _session(server) as session:
         result = await session.call_tool(
             "call_ipaas_tool",
-            {"pipe_id": "303088927", "tool_name": "demo_create_flow"},
+            {"pipe_id": "301234567", "tool_name": "demo_create_flow"},
         )
 
     payload = extract_payload(result)
@@ -1025,7 +1025,7 @@ async def test_create_connection_with_literal_secret(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {"secret_text": "shh"},
@@ -1056,7 +1056,7 @@ async def test_create_connection_resolves_prefixed_env_refs(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "CUSTOM_AUTH",
                 "value": {
@@ -1087,7 +1087,7 @@ async def test_create_connection_rejects_unprefixed_env_refs(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {"secret_text": {"$env": "AWS_SECRET_ACCESS_KEY"}},
@@ -1109,7 +1109,7 @@ async def test_create_connection_reports_missing_env_var(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {"secret_text": {"$env": "PIPEFY_IPAAS_CONNECTION_NOPE"}},
@@ -1136,7 +1136,7 @@ async def test_create_connection_rejects_env_refs_on_remote_profile(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {
@@ -1164,7 +1164,7 @@ async def test_create_connection_literal_secret_works_on_remote_profile(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {"secret_text": "shh"},
@@ -1195,7 +1195,7 @@ async def test_create_connection_oauth_mode_builds_value_from_bundle(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "oauth": {
                     "completion": completion,
@@ -1229,7 +1229,7 @@ async def test_create_connection_oauth_mode_accepts_bare_code(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "oauth": {
                     "completion": {
@@ -1261,7 +1261,7 @@ async def test_create_connection_env_ref_with_sibling_keys_is_rejected(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {
@@ -1288,7 +1288,7 @@ async def test_create_connection_null_authorization_response_reports_empty(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "oauth": {
                     "completion": {
@@ -1315,7 +1315,7 @@ async def test_create_connection_incomplete_bundle_names_missing_fields(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "oauth": {
                     "completion": {"type": "PLATFORM_OAUTH2"},
@@ -1343,7 +1343,7 @@ async def test_create_connection_preserves_plus_in_pasted_code(
         result = await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "oauth": {
                     "completion": {
@@ -1372,7 +1372,7 @@ async def test_create_connection_requires_one_mode(
     async with _session(server) as session:
         result = await session.call_tool(
             "create_ipaas_connection",
-            {"pipe_id": "303088927", "piece_name": PIECE_NAME},
+            {"pipe_id": "301234567", "piece_name": PIECE_NAME},
         )
 
     payload = extract_payload(result)
@@ -1390,7 +1390,7 @@ async def test_create_connection_explicit_external_id_rotates(
         await session.call_tool(
             "create_ipaas_connection",
             {
-                "pipe_id": "303088927",
+                "pipe_id": "301234567",
                 "piece_name": PIECE_NAME,
                 "connection_type": "SECRET_TEXT",
                 "value": {"secret_text": "rotated"},
@@ -1418,7 +1418,7 @@ async def test_connection_auth_url_relays_bundle_and_instructions(
     async with _session(server) as session:
         result = await session.call_tool(
             "get_ipaas_connection_auth_url",
-            {"pipe_id": "303088927", "piece_name": PIECE_NAME},
+            {"pipe_id": "301234567", "piece_name": PIECE_NAME},
         )
 
     payload = extract_payload(result)
@@ -1456,7 +1456,7 @@ async def test_connection_tools_report_unconfigured_gateway(
     async with _session(server) as session:
         result = await session.call_tool(
             "get_ipaas_connection_auth_url",
-            {"pipe_id": "303088927", "piece_name": PIECE_NAME},
+            {"pipe_id": "301234567", "piece_name": PIECE_NAME},
         )
 
     payload = extract_payload(result)

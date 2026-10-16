@@ -6,6 +6,8 @@
 
 If the raw response exposes nested `success: false`, treat the operation as failed even when the MCP envelope looks ambiguous.
 
+Attach, publish, and unpublish require a forms element from `get_portal` → `pages[0].elements`. Use the first page UUID for the forms element creation example.
+
 ## Two-step destructive deletes
 
 MCP deletes (`delete_portal`, `delete_portal_page`, `delete_portal_element`, `delete_sub_portal`, `delete_sub_portal_element`) return a preview with `confirmation_token`. Echo that token with `confirm=true` on the second call. `unpublish_sub_portal` is not gated.
