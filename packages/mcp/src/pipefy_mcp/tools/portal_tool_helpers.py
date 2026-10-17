@@ -32,7 +32,10 @@ from pipefy_mcp.tools.validation_helpers import validate_tool_id
 
 _PORTAL_PERMISSION_GUIDANCE = (
     "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
+    "`create_portal` or `manage_portals` from your admin. If you already have "
+    "them, writing to an existing portal also needs you to be its admin: join it "
+    "once with the Interfaces `joinAsAdmin` mutation, which the toolkit does not "
+    "expose."
 )
 _PORTAL_OPERATION_FAILED = (
     "Portal operation failed. Re-read portal state before retrying; do not blind-retry."
@@ -53,8 +56,8 @@ def map_portal_error_to_message(
             read-domain string.
 
     Returns:
-        User-visible error string; permission failures mention ``create_portal``
-        and ``manage_portals``.
+        User-visible error string; permission failures mention ``create_portal``,
+        ``manage_portals`` and the per-portal ``joinAsAdmin``.
     """
     if isinstance(exc, PortalPermissionError):
         return ensure_non_empty_error_message(

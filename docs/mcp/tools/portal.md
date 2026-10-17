@@ -29,6 +29,8 @@ Portal **write** tools require Pipefy permissions on the target organization:
 
 `PERMISSION_DENIED` on Interfaces or internal_api returns MCP `{ success: false }` with a message naming **`create_portal`** or **`manage_portals`**. Tokens scoped only to pipes/cards (default org on many service accounts) often fail portal writes — use an org where the token has portal admin scope.
 
+The organization permission is not enough to write to an existing portal: the caller must also be that portal's admin. An org admin with `manage_portals` gets `PERMISSION_DENIED` on every update and delete of a portal they have not joined, including one they created through `create_portal`. Joining is the Interfaces `joinAsAdmin(input: { interfaceUuid })` mutation, once per portal; the toolkit exposes it neither as a tool nor through `execute_graphql`, which runs on the public schema. The permission message says so.
+
 Integration tests (`pytest -m integration -k portal`) need **`PIPEFY_PORTAL_ORG_UUID`** pointing at such an org; see [Testing](#testing).
 
 ---

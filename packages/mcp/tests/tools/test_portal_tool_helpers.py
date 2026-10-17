@@ -17,7 +17,10 @@ from pipefy_mcp.tools.portal_tool_helpers import (
 
 _PORTAL_PERMISSION_MSG = (
     "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
+    "`create_portal` or `manage_portals` from your admin. If you already have "
+    "them, writing to an existing portal also needs you to be its admin: join it "
+    "once with the Interfaces `joinAsAdmin` mutation, which the toolkit does not "
+    "expose."
 )
 
 
@@ -33,7 +36,19 @@ def test_map_portal_error_blank_permission_message_uses_fallback():
     message = map_portal_error_to_message(PortalPermissionError("  "))
     assert "create_portal" in message
     assert "manage_portals" in message
+    assert "joinAsAdmin" in message
     assert "Try again" not in message
+
+
+@pytest.mark.unit
+def test_map_portal_error_permission_denied_code_points_to_join_as_admin():
+    """An unmapped PERMISSION_DENIED gets the same guidance as the SDK's message."""
+    exc = PipefyGraphQLError(
+        [{"message": "denied", "extensions": {"code": "PERMISSION_DENIED"}}]
+    )
+    message = map_portal_error_to_message(exc)
+    assert "manage_portals" in message
+    assert "joinAsAdmin" in message
 
 
 @pytest.mark.unit

@@ -39,7 +39,7 @@ MCP two-step `delete_sub_portal` (echo `confirmation_token`).
 
 - Read tools return `{ success: true, data: { ... } }` when `PIPEFY_MCP_UNIFIED_ENVELOPE` is enabled (default). Parse **`data`** for `portals`, `pages`, `subPortals`, etc.
 - GraphQL/transport failures → `{ success: false, error: { message: "..." } }` — do not treat transport errors as success.
-- **`PERMISSION_DENIED`** on portal tools usually names **`create_portal`** or **`manage_portals`**. Re-check org id, token, and SA **`joinAsAdmin`** (see the skill’s “Confirm access before writes” section).
+- **`PERMISSION_DENIED`** on portal tools usually names **`create_portal`** or **`manage_portals`**. Re-check org id, token, and **`joinAsAdmin`** on that portal, for users and service accounts alike (see the skill’s “Confirm access before writes” section).
 - Only **`PERMISSION_DENIED`** is rewritten to the portal permission hint; other GraphQL codes surface as generic errors with the API message.
 - Destructive deletes: default **`confirm=false`** returns a preview (`requires_confirmation: true`, `confirmation_token`); call again with **`confirm=true`** and that token only after explicit human approval.
 
