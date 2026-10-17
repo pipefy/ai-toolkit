@@ -70,7 +70,10 @@ def relation_pipe_update(
     extra_json: str | None = typer.Option(
         None,
         "--extra",
-        help="JSON object merged into UpdatePipeRelationInput.",
+        help=(
+            "JSON object merged into UpdatePipeRelationInput. Flags left out keep "
+            "their current values."
+        ),
     ),
     json_out: bool = typer.Option(False, "--json", "-j"),
 ) -> None:
