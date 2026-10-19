@@ -21,7 +21,7 @@ Link processes and cards across workflows. **8 tools.**
 | `get_pipe_relations` | Yes | Lists parent/child pipe relations for a pipe. |
 | `get_table_relations` | Yes | Batch-loads table relations by relation ID list. |
 | `create_pipe_relation` | No | Creates a parent-child relation between two pipes; optional `extra_input` (camelCase) for `CreatePipeRelationInput`. |
-| `update_pipe_relation` | No | Updates relation config; `name` required; optional `extra_input` for other `UpdatePipeRelationInput` keys. |
+| `update_pipe_relation` | No | Updates relation config; `name` required; optional `extra_input` for other `UpdatePipeRelationInput` keys. Constraint flags left out keep their current values, and an omitted `ownFieldMaps` keeps the current auto-fill maps. |
 | `delete_pipe_relation` | No | Permanently deletes a pipe relation (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |
 | `create_card_relation` | No | Links a child card to a parent card via `source_id` (pipe relation ID); optional `extra_input` for `CreateCardRelationInput`. Mutations support `debug=true` on errors. |
 | `get_card_relations` | Yes | Lists `child_relations` and `parent_relations` for a card (linked cards and pipes). |

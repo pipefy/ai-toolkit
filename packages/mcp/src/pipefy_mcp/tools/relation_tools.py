@@ -178,7 +178,8 @@ class RelationTools:
             """Update an existing pipe relation (name, auto-fill, connection flags).
 
             ``relation_id`` is the **pipe relation** id from ``get_pipe_relations`` (not a table relation id).
-            Optional ``extra_input`` merges into Pipefy ``UpdatePipeRelationInput`` (camelCase keys), overriding defaults for flags or ``ownFieldMaps``.
+            Optional ``extra_input`` merges into Pipefy ``UpdatePipeRelationInput`` (camelCase keys), e.g. constraint flags or ``ownFieldMaps``.
+            Flags left out keep the relation's current values, and an omitted ``ownFieldMaps`` keeps the current auto-fill maps.
 
             Args:
                 relation_id: Pipe relation ID.
@@ -205,6 +206,8 @@ class RelationTools:
                     name.strip(),
                     extra_input=extra_input,
                 )
+            except ValueError as exc:
+                return build_relation_error_payload(message=str(exc))
             except Exception as exc:  # noqa: BLE001
                 return handle_relation_tool_graphql_error(
                     exc,
