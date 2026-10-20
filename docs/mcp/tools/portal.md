@@ -62,11 +62,15 @@ Each organization has **at most one main portal** (`subType: portal`). Additiona
 | Surface | `published` meaning |
 |---------|---------------------|
 | **Main portal** | Always `true` on `get_portal` (Interfaces invariant). **Public** hub access is **`update_portal(visibility="public")`**, not the `published` flag. |
-| **Sub-portal** | **`get_portal` → `subPortals[].published`** after attach/publish on a main-portal **`forms`** element. |
+| **Sub-portal** | `get_portal` → `subPortals[].published` after attach/publish on a `forms` element in `pages[0]`. |
 
 Do **not** publish via `createElement(type: subPortal)` — live API expects an existing **`forms`** slot wired with **`updateSubPortalElement`** (internal_api). Sub-portals may also appear under **`pages[].elements[]`** with `type: subPortal` while top-level `subPortals[]` is empty.
 
 **`list_portals`** does not return `published` or page detail — call **`get_portal`**.
+
+Attach, publish, and unpublish require an element from the first portal page, `get_portal` → `pages[0].elements`. The API rejects elements on later pages. If the first page has no suitable forms slot, create a forms element on that page. Place the element in the page layout when visitors need a visible tile.
+
+The SDK requires `updateSubPortalElement.success` to be `true`. A false or missing success value raises `PipefyAPIError` with the target IDs and first-page guidance. MCP returns a failure result. CLI prints the error and exits with code 1.
 
 ---
 
@@ -155,7 +159,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 ### Publish workflow
 
 1. `create_sub_portal(main_portal_uuid, name=…)` → sub-portal UUID.
-2. `get_portal(portal_uuid=…)` → pick a **`forms`** element `element_id`.
+2. `get_portal(portal_uuid=…)` → pick a `forms` element from `pages[0].elements`.
 3. `publish_sub_portal` or `update_sub_portal_element` (both set `subPortalUuid` on the element).
 4. `get_portal` → assert **`subPortals[].published`** is `true`.
 
