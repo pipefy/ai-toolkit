@@ -70,10 +70,10 @@ def configure_keychain_backend(choice: Literal["auto", "file"]) -> None:
     Args:
         choice: ``"auto"`` preserves ``keyring``'s built-in backend discovery
             (macOS Keychain, Secret Service) except on Windows, where it swaps
-            to :class:`keyrings.alt.Windows.EncryptedKeyring` writing under
+            to :class:`pipefy_auth.keyring_file.EncryptedKeyring` writing under
             ``pipefy_infra.config.config_dir() / "keyring-dpapi.cfg"``; DPAPI
             encrypts each entry with the Windows user's credentials.
-            ``"file"`` swaps to :class:`keyrings.alt.file.PlaintextKeyring`
+            ``"file"`` swaps to :class:`pipefy_auth.keyring_file.PlaintextKeyring`
             writing under ``config_dir() / "keyring.cfg"``; the file stores
             credentials in plaintext on disk and is intended for headless
             Linux or CI runners where the OS keychain is unavailable.
@@ -87,12 +87,12 @@ def configure_keychain_backend(choice: Literal["auto", "file"]) -> None:
 
     backend: KeyringBackend
     if plan == "dpapi-file":
-        from keyrings.alt.Windows import EncryptedKeyring
+        from pipefy_auth.keyring_file import EncryptedKeyring
 
         backend = EncryptedKeyring()
         backend.file_path = str(config_dir() / _DPAPI_KEYRING_FILENAME)
     else:
-        from keyrings.alt.file import PlaintextKeyring
+        from pipefy_auth.keyring_file import PlaintextKeyring
 
         backend = PlaintextKeyring()
         backend.file_path = str(config_dir() / _KEYRING_FILENAME)
@@ -233,8 +233,9 @@ def session_entry_presence(*, issuer: str, client_id: str) -> SessionEntryPresen
     from keyring.errors import KeyringError
 
     key = keychain_key(issuer, client_id)
-    # File-backed keyrings (keyrings.alt) raise OSError on a failed decrypt and
-    # binascii.Error, a ValueError, on a damaged entry instead of KeyringError.
+    # The file-backed keyrings raise OSError on a failed decrypt or a store they
+    # cannot open, and binascii.Error, a ValueError, on a damaged entry, instead
+    # of KeyringError.
     try:
         blob = keyring.get_password(_SERVICE, key)
     except (KeyringError, OSError, ValueError):

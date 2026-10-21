@@ -118,7 +118,7 @@ Without a receipt the run is in **heuristic mode**, which is permanent rather th
 
 ## Where the stored session lives
 
-`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain on macOS and Linux, or in `%APPDATA%\pipefy\keyring-dpapi.cfg` on Windows (DPAPI-encrypted; `uninstall.sh` does not run on Windows, so delete that file by hand after `pipefy auth logout`, which removes the entry but keeps the file). Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the default store (OS keychain, or `keyring-dpapi.cfg` on Windows) while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep.
+`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain on macOS and Linux, or in `%APPDATA%\pipefy\keyring-dpapi.cfg` on Windows (DPAPI-encrypted; `uninstall.sh` does not run on Windows). For either file, `pipefy auth logout` deletes the file once it holds no session. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the default store (OS keychain, or `keyring-dpapi.cfg` on Windows) while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep.
 
 On a machine with no OS keychain backend (a headless Linux host without Secret Service, for example), Python `keyring` falls back to its own plaintext file, `python_keyring/keyring_pass.cfg` under `$XDG_DATA_HOME` (default `~/.local/share`). Other programs that use `keyring` share that file, so teardown removes only the `[pipefy]` section and keeps no backup copy of the file.
 
@@ -216,7 +216,7 @@ The scan prints this list too, filled in with the names it found, except the Cur
 | credentials | `pipefy auth logout` |
 | hosted OAuth token | `claude mcp logout <name>` |
 | macOS keychain item | `security delete-generic-password -s pipefy` |
-| Windows session file | delete `%APPDATA%\pipefy\keyring-dpapi.cfg` after `pipefy auth logout` |
+| Windows session file | delete `%APPDATA%\pipefy\keyring-dpapi.cfg` if it is still there after `pipefy auth logout` |
 
 Use the names the report printed: a registration can be called anything.
 

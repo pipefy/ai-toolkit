@@ -151,7 +151,8 @@ jobs:
         python3 .github/workflows/scripts/check_roundtrip.py check \
           "$RUNNER_TEMP/before.txt" "$RUNNER_TEMP/installed.txt" "$RUNNER_TEMP/after.txt"
 
-  # DPAPI binds CRYPT32.DLL, so only a Windows runner exercises the real backend.
+  # DPAPI binds CRYPT32.DLL and os.replace has Windows sharing rules, so only a
+  # Windows runner exercises the real file stores.
   auth-windows:
     name: Auth storage on Windows
     runs-on: windows-latest
@@ -167,8 +168,8 @@ jobs:
         enable-cache: true
     - name: Install dependencies
       run: uv sync --locked --dev --package pipefy-auth
-    - name: DPAPI keyring round-trip
-      run: uv run --no-sync pytest packages/auth/tests/test_storage_windows.py
+    - name: Windows file keyring stores
+      run: uv run --no-sync pytest -rs packages/auth/tests/test_storage_windows.py packages/auth/tests/test_keyring_file.py
 
   test:
     runs-on: ubuntu-latest

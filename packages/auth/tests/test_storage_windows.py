@@ -56,7 +56,7 @@ def _production_sized_token() -> TokenResponse:
 
 
 def test_auto_backend_on_windows_is_dpapi_file_under_config_dir(appdata: Path) -> None:
-    from keyrings.alt.Windows import EncryptedKeyring
+    from pipefy_auth.keyring_file import EncryptedKeyring
 
     configure_keychain_backend("auto")
 

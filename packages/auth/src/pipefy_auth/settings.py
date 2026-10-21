@@ -308,7 +308,7 @@ class AuthSettings(BaseSettings):
             "uses the default OS keyring discovery, except on Windows, where it "
             "uses a DPAPI-encrypted file under ``config_dir()/keyring-dpapi.cfg`` "
             "because Credential Manager cannot hold a session; ``file`` swaps to "
-            "``keyrings.alt.file.PlaintextKeyring`` writing under "
+            "``pipefy_auth.keyring_file.PlaintextKeyring`` writing under "
             "``config_dir()/keyring.cfg``. The file backend stores credentials "
             "in plaintext on disk; opt-in only, intended for headless Linux "
             "without Secret Service or for CI runners."
