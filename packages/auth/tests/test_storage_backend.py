@@ -24,6 +24,7 @@ from pipefy_auth.storage import (
     configure_keychain_backend,
     delete_session,
     keychain_key,
+    keychain_store_path,
     load_session,
     plan_keychain_backend,
     session_entry_presence,
@@ -90,6 +91,42 @@ def test_file_backend_is_idempotent(
     assert isinstance(first, PlaintextKeyring)
     assert isinstance(second, PlaintextKeyring)
     assert first.file_path == second.file_path
+
+
+@pytest.mark.unit
+def test_store_path_names_the_installed_file_store(
+    _isolated_keyring: None,
+    config_home: Path,
+) -> None:
+    configure_keychain_backend("file")
+    assert keychain_store_path() == str(config_home / "pipefy" / "keyring.cfg")
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges")
+def test_store_path_names_the_file_a_symlinked_store_points_to(
+    _isolated_keyring: None,
+    config_home: Path,
+) -> None:
+    """Deleting the link would leave the credential in the target."""
+    target = config_home / "dotfiles" / "session.cfg"
+    target.parent.mkdir()
+    target.write_text("[pipefy]\n", encoding="utf-8")
+    link = config_home / "pipefy" / "keyring.cfg"
+    link.parent.mkdir()
+    link.symlink_to(target)
+
+    configure_keychain_backend("file")
+
+    assert keychain_store_path() == str(target)
+
+
+@pytest.mark.unit
+def test_store_path_is_none_for_a_keychain_without_a_file(
+    _isolated_keyring: None,
+) -> None:
+    keyring.set_keyring(InMemoryKeyring())
+    assert keychain_store_path() is None
 
 
 @pytest.mark.unit

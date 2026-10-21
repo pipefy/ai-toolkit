@@ -51,6 +51,21 @@ def clean_pipefy_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def file_store(monkeypatch: pytest.MonkeyPatch, tmp_path, clean_pipefy_env):
+    """Select ``PIPEFY_KEYCHAIN_BACKEND=file`` under ``tmp_path``; yields the store path.
+
+    The CLI installs the file keyring on each invocation; the previous backend
+    is restored afterwards so later tests do not inherit it.
+    """
+    monkeypatch.setenv("PIPEFY_KEYCHAIN_BACKEND", "file")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "xdg"))
+    original = keyring.get_keyring()
+    yield tmp_path / "xdg" / "pipefy" / "keyring.cfg"
+    keyring.set_keyring(original)
+
+
+@pytest.fixture
 def saved_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """Run with cwd under ``tmp_path`` (no repo ``.env`` leakage)."""
 

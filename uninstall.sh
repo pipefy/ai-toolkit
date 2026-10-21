@@ -2084,10 +2084,14 @@ scan_config_dir() {
         fi
         return 0
     fi
+    _temp_char='[abcdefghijklmnopqrstuvwxyz0123456789_]'
+    _temp_random=$_temp_char$_temp_char$_temp_char$_temp_char$_temp_char$_temp_char$_temp_char$_temp_char
     _empty=1
     while IFS= read -r _name; do
         [ -n "$_name" ] || continue
         _empty=0
+        # The random suffix expands as a glob, with eight character classes.
+        # shellcheck disable=SC2254
         case "$_name" in
             config.toml|.env|.env.*)
                 finding "$CONFIG_DIR/$_name (user-authored; never remove without consent)"
@@ -2095,6 +2099,10 @@ scan_config_dir() {
                     "delete your $CONFIG_DIR/$_name" ;;
             keyring.cfg)
                 note "$CONFIG_DIR/$_name (reported under stored credentials)" ;;
+            .keyring.cfg.pipefy-$_temp_random.tmp|.keyring-dpapi.cfg.pipefy-$_temp_random.tmp)
+                finding "$CONFIG_DIR/$_name (a session store left by an interrupted write)"
+                plan_add 2 credential rmpath "$CONFIG_DIR/$_name" - - - - - - \
+                    "delete the interrupted-write copy $CONFIG_DIR/$_name" ;;
             *.bak.*)
                 note "$CONFIG_DIR/$_name (a backup; kept on purpose)" ;;
             refresh.lock)

@@ -16,6 +16,7 @@ pay the ~30-80ms backend-discovery cost on every ``pipefy`` invocation.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from typing import Annotated, Any, Literal
@@ -302,6 +303,29 @@ def keychain_backend_name() -> str:
     return backend.__class__.__name__
 
 
+def keychain_store_path() -> str | None:
+    """Return the file the active backend stores sessions in, or ``None``.
+
+    A path is returned only for the file stores that
+    :func:`configure_keychain_backend` installs; an OS keychain has no file a
+    user can repair or delete. A symlinked store resolves to the file the link
+    points to, since that file holds the session and deleting the link alone
+    leaves it in place.
+    """
+    import keyring
+    from keyring.errors import KeyringError
+
+    from pipefy_auth.keyring_file import EncryptedKeyring, PlaintextKeyring
+
+    try:
+        backend = keyring.get_keyring()
+    except KeyringError:
+        return None
+    if isinstance(backend, (PlaintextKeyring, EncryptedKeyring)):
+        return os.path.realpath(backend.file_path)
+    return None
+
+
 __all__ = [
     "KeychainBackendPlan",
     "SessionDeleteError",
@@ -311,6 +335,7 @@ __all__ = [
     "delete_session",
     "keychain_backend_name",
     "keychain_key",
+    "keychain_store_path",
     "load_session",
     "plan_keychain_backend",
     "session_entry_presence",

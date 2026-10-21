@@ -6,6 +6,7 @@ import base64
 import hashlib
 import http.client
 import platform
+import sys
 import threading
 import time
 
@@ -802,6 +803,77 @@ class TestAuthLoginCommand:
         if require_file_backend:
             assert "PIPEFY_KEYCHAIN_BACKEND=file" in result.stderr
             assert "docs/cli/auth.md" in result.stderr
+
+    def test_store_failure_on_a_corrupt_file_store_says_to_delete_it(
+        self,
+        cli_runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+    ) -> None:
+        """A store that does not parse names the file, not only the directory."""
+        monkeypatch.setenv("PIPEFY_AUTH_URL", "https://x.test/realms/foo")
+        file_store.parent.mkdir(parents=True)
+        # The parser quotes only the first bad line, so the marker sits there.
+        file_store.write_text(
+            "SYNTHETICSTORELINE is not an ini file\n[pipefy\n", encoding="utf-8"
+        )
+
+        from pipefy_cli.commands import auth as auth_module
+
+        monkeypatch.setattr(
+            auth_module,
+            "run_login",
+            lambda **_k: flow.LoginResult(
+                issuer="https://x.test/realms/foo",
+                token=TokenResponse(access_token="A", refresh_token="R"),
+            ),
+        )
+
+        result = cli_runner.invoke(cli_app, ["auth", "login"])
+
+        assert result.exit_code == 1
+        assert "could not be stored in your keychain (PlaintextKeyring)" in (
+            result.stderr
+        )
+        assert (
+            f"If {file_store} exists but cannot be read or parsed, fix its "
+            "permissions or delete the file, then run `pipefy auth login` again."
+        ) in result.stderr
+        assert "SYNTHETICSTORELINE" not in result.stderr
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges")
+    def test_store_failure_on_a_symlinked_file_store_names_the_link_target(
+        self,
+        cli_runner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_store,
+        saved_cwd,
+        tmp_path,
+    ) -> None:
+        monkeypatch.setenv("PIPEFY_AUTH_URL", "https://x.test/realms/foo")
+        target = tmp_path / "dotfiles" / "session.cfg"
+        target.parent.mkdir()
+        target.write_text("not an ini file\n", encoding="utf-8")
+        file_store.parent.mkdir(parents=True)
+        file_store.symlink_to(target)
+
+        from pipefy_cli.commands import auth as auth_module
+
+        monkeypatch.setattr(
+            auth_module,
+            "run_login",
+            lambda **_k: flow.LoginResult(
+                issuer="https://x.test/realms/foo",
+                token=TokenResponse(access_token="A", refresh_token="R"),
+            ),
+        )
+
+        result = cli_runner.invoke(cli_app, ["auth", "login"])
+
+        assert result.exit_code == 1
+        assert f"If {target} exists but cannot be read or parsed" in result.stderr
+        assert f"If {file_store} exists" not in result.stderr
 
     def test_store_failure_file_backend_hints_at_config_dir(
         self,
