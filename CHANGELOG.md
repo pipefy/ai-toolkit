@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stored session errors**: `store_session` raises `KeyringError` when keyring's Windows Credential Manager backend rejects a session; that error used to escape as a raw `pywintypes.error` traceback. `load_session`, `session_entry_presence`, and `delete_session` turn file-backed keyring decrypt, decode, and rewrite failures into their documented results, so `pipefy auth status` reports no usable session for an entry that cannot be decrypted or decoded instead of a traceback, and `pipefy auth logout` can remove that entry.
+
 ## [0.5.4-beta.2] - 2026-10-20
 
 ### Changed

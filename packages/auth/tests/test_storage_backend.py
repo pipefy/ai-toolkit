@@ -4,6 +4,7 @@ and the on-disk blob round-trip for ``StoredSession``.
 
 from __future__ import annotations
 
+import binascii
 import json
 from collections.abc import Iterator
 from pathlib import Path
@@ -17,8 +18,10 @@ from pydantic import ValidationError
 
 from pipefy_auth.responses import TokenResponse
 from pipefy_auth.storage import (
+    SessionDeleteError,
     StoredSession,
     configure_keychain_backend,
+    delete_session,
     keychain_key,
     load_session,
     session_entry_presence,
@@ -132,6 +135,117 @@ def test_store_session_writes_flat_blob_and_round_trips(
 
     loaded = load_session(issuer=_ISSUER, client_id=_CLIENT_ID)
     assert loaded == stored
+
+
+class _WindowsCredentialError(Exception):
+    """Same shape as ``win32ctypes.pywin32.pywintypes.error``: not an ``OSError``."""
+
+    def __init__(self, winerror: int, funcname: str, strerror: str) -> None:
+        super().__init__(winerror, funcname, strerror)
+        self.winerror = winerror
+        self.funcname = funcname
+        self.strerror = strerror
+
+
+@pytest.mark.unit
+def test_store_session_raises_keyring_error_when_windows_credential_write_fails(
+    fake_keyring: InMemoryKeyring,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Credential Manager rejects an oversized blob with a non-``KeyringError``."""
+
+    def _reject(service: str, username: str, password: str) -> None:
+        raise _WindowsCredentialError(1783, "CredWrite", "The stub received bad data.")
+
+    monkeypatch.setattr(keyring, "set_password", _reject)
+
+    with pytest.raises(KeyringError) as excinfo:
+        store_session(issuer=_ISSUER, client_id=_CLIENT_ID, token=_token())
+
+    assert "CredWrite" in str(excinfo.value)
+    assert "1783" in str(excinfo.value)
+    assert "The stub received bad data." in str(excinfo.value)
+
+
+@pytest.mark.unit
+def test_store_session_propagates_non_windows_backend_errors_unchanged(
+    fake_keyring: InMemoryKeyring,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _reject(service: str, username: str, password: str) -> None:
+        raise RuntimeError("unrelated backend bug")
+
+    monkeypatch.setattr(keyring, "set_password", _reject)
+
+    with pytest.raises(RuntimeError, match="unrelated backend bug"):
+        store_session(issuer=_ISSUER, client_id=_CLIENT_ID, token=_token())
+
+
+@pytest.mark.unit
+def test_store_session_propagates_os_errors_with_winerror_unchanged(
+    fake_keyring: InMemoryKeyring,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """On Windows every ``OSError`` carries ``winerror``; a file-backend
+    ``PermissionError`` must not be reported as a Credential Manager rejection."""
+    denied = PermissionError(13, "Access is denied")
+    denied.winerror = 5
+
+    def _reject(service: str, username: str, password: str) -> None:
+        raise denied
+
+    monkeypatch.setattr(keyring, "set_password", _reject)
+
+    with pytest.raises(PermissionError) as excinfo:
+        store_session(issuer=_ISSUER, client_id=_CLIENT_ID, token=_token())
+
+    assert excinfo.value is denied
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "read_error",
+    [OSError("Can't decrypt"), binascii.Error("Incorrect padding")],
+    ids=["decrypt-failure", "corrupt-base64"],
+)
+def test_file_backend_read_failure_is_no_session_and_unknown_presence(
+    fake_keyring: InMemoryKeyring,
+    monkeypatch: pytest.MonkeyPatch,
+    read_error: Exception,
+) -> None:
+    """File backends raise ``OSError`` / ``ValueError`` on an unreadable entry."""
+
+    def _boom(service: str, username: str) -> str | None:
+        raise read_error
+
+    monkeypatch.setattr(keyring, "get_password", _boom)
+
+    assert load_session(issuer=_ISSUER, client_id=_CLIENT_ID) is None
+    assert session_entry_presence(issuer=_ISSUER, client_id=_CLIENT_ID) == "unknown"
+
+
+@pytest.mark.unit
+def test_delete_session_raises_session_delete_error_when_backend_rewrite_fails(
+    fake_keyring: InMemoryKeyring,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _rewrite_denied(service: str, username: str) -> None:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(keyring, "delete_password", _rewrite_denied)
+
+    with pytest.raises(SessionDeleteError, match="Permission denied"):
+        delete_session(issuer=_ISSUER, client_id=_CLIENT_ID)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("read", [load_session, session_entry_presence])
+def test_session_reads_still_reject_an_issuer_without_host(
+    fake_keyring: InMemoryKeyring,
+    read,
+) -> None:
+    with pytest.raises(ValueError, match="Cannot derive host"):
+        read(issuer="not a url", client_id=_CLIENT_ID)
 
 
 @pytest.mark.unit
