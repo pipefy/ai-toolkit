@@ -756,7 +756,7 @@ class TestAuthLoginCommand:
         [
             ("Linux", "Secret Service", "Terminal.app", True),
             ("Darwin", "errSecInvalidOwnerEdit", "Secret Service", True),
-            ("Windows", "Credential Manager", "Secret Service", True),
+            ("Windows", "pipefy auth status", "Credential Manager", False),
         ],
     )
     def test_store_failure_default_backend_hint_matches_platform(

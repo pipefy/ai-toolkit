@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **`pipefy auth login` on Windows**: with the default `PIPEFY_KEYCHAIN_BACKEND=auto`, the session went to Windows Credential Manager, which limits each entry to 2560 bytes; a Pipefy session is larger, so login failed with error 1783 (`CredWrite`). On Windows, `auto` now stores the session in a DPAPI-encrypted file at `%APPDATA%\pipefy\keyring-dpapi.cfg`, which the CLI and the MCP server both read. macOS and Linux keep the OS keychain, and `PIPEFY_KEYCHAIN_BACKEND=file` still selects the plaintext file on every platform.
 - **Stored session errors**: `store_session` raises `KeyringError` when keyring's Windows Credential Manager backend rejects a session; that error used to escape as a raw `pywintypes.error` traceback. `load_session`, `session_entry_presence`, and `delete_session` turn file-backed keyring decrypt, decode, and rewrite failures into their documented results, so `pipefy auth status` reports no usable session for an entry that cannot be decrypted or decoded instead of a traceback, and `pipefy auth logout` can remove that entry.
 
 ## [0.5.4-beta.2] - 2026-10-20

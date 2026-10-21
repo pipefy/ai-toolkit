@@ -44,7 +44,7 @@ uv run pipefy auth login
 
 `PIPEFY_BASE_URL` defaults to `https://app.pipefy.com` (drives the four API endpoints) and `PIPEFY_AUTH_URL` defaults to `https://signin.pipefy.com/realms/pipefy` (the OIDC issuer). Export non-prod values only when targeting a non-prod environment.
 
-This opens your browser, completes an OAuth 2.0 Authorization Code + PKCE flow against the Pipefy identity provider, and writes the resulting session (access token + refresh token + minimal metadata) into your OS keychain.
+This opens your browser, completes an OAuth 2.0 Authorization Code + PKCE flow against the Pipefy identity provider, and writes the resulting session (access token + refresh token + minimal metadata) into the OS keychain (a DPAPI-encrypted file on Windows).
 
 After login, every other `pipefy <cmd>` invocation transparently reuses that session and refreshes the access token on demand.
 
@@ -91,7 +91,7 @@ PIPEFY_TOKEN="$MY_BEARER" uv run pipefy pipe list
 | `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET` | Tier 3 | Service-account client secret. |
 | `PIPEFY_AUTH_CLIENT_ID` | Tier 4 | Public client id registered for the CLI. Defaults to `pipefy-cli`. |
 | `PIPEFY_DISABLE_STORED_SESSION` | Tier 4 | When `1` / `true`, the stored-session tier is skipped end-to-end: tier resolution never probes the keychain, and `pipefy auth login` / `pipefy auth logout` refuse with exit code 2. Use to avoid the keyring backend-discovery cost on cold start (headless Linux, CI) or to opt out of OS-keychain storage entirely. TOML key: `disable_stored_session`. |
-| `PIPEFY_KEYCHAIN_BACKEND` | Tier 4 | Active `keyring` backend. `auto` (default) uses OS-keyring discovery; `file` swaps to a plaintext on-disk keyring under `~/.config/pipefy/keyring.cfg` (POSIX) / `%APPDATA%/pipefy/keyring.cfg` (Windows). TOML key: `keychain_backend`. |
+| `PIPEFY_KEYCHAIN_BACKEND` | Tier 4 | Active `keyring` backend. `auto` (default) uses OS-keyring discovery, except on Windows, where it uses a DPAPI-encrypted file at `%APPDATA%/pipefy/keyring-dpapi.cfg`; `file` swaps to a plaintext on-disk keyring under `~/.config/pipefy/keyring.cfg` (POSIX) / `%APPDATA%/pipefy/keyring.cfg` (Windows). TOML key: `keychain_backend`. |
 
 The service-account OAuth token URL (Tier 3) and the OIDC issuer URL (Tier 4) are **not** interchangeable: the first is `<base>/oauth/token` for client-credentials, the second is the full OIDC discovery root for the user-login flow.
 
@@ -109,7 +109,7 @@ The service-account OAuth token URL (Tier 3) and the OIDC issuer URL (Tier 4) ar
 
 | Command | Status | Notes |
 |---------|--------|-------|
-| `pipefy auth login` | Available | Browser-based PKCE login; persists the session in the OS keychain. |
+| `pipefy auth login` | Available | Browser-based PKCE login; persists the session in the OS keychain (a DPAPI-encrypted file on Windows). |
 | `pipefy auth status` | Available | Print which auth source is active, identity, and session expiry. |
 | `pipefy auth logout` | Available | Revoke the refresh token at the IdP and clear the stored session. |
 
@@ -234,9 +234,9 @@ Stable installs (`uv tool install` / wheel) keep a stable Python binary path acr
 
 **Linux (headless / CI).** Usually no Secret Service daemon — install `gnome-keyring` or `kwallet`, set `PIPEFY_KEYCHAIN_BACKEND=file` for a plaintext file backend under the Pipefy config directory, or use a static `PIPEFY_TOKEN`.
 
-**Windows.** Credential Manager may reject the write (including from non-interactive callers). Run `pipefy auth login` once from an interactive Command Prompt or PowerShell window, or use `PIPEFY_KEYCHAIN_BACKEND=file` / `PIPEFY_TOKEN`.
+**Windows.** The default backend is a DPAPI-encrypted file (`EncryptedKeyring`) at `%APPDATA%/pipefy/keyring-dpapi.cfg`, so a store failure there usually means the config directory is not writable, and the CLI hint says so. A static `PIPEFY_TOKEN` also works.
 
-When `PIPEFY_KEYCHAIN_BACKEND=file` is active the backend reports as `PlaintextKeyring` and the CLI hint switches to a config-directory writability check (the file backend writes to `keyring.cfg` under the resolved config directory).
+When `PIPEFY_KEYCHAIN_BACKEND=file` is active the backend reports as `PlaintextKeyring` (`keyring.cfg`), and the CLI hint switches to a config-directory writability check. The Windows default reports as `EncryptedKeyring` (`keyring-dpapi.cfg`); its hint also asks for DPAPI to be available for the Windows account, since some service accounts have no user profile.
 
 ### `Missing Pipefy authentication. Set PIPEFY_TOKEN, configure PIPEFY_SERVICE_ACCOUNT_*, or run \`pipefy auth login\`.`
 
@@ -265,7 +265,7 @@ The browser came back with a different `state` than the CLI sent. Re-run `pipefy
 3. Bind a loopback socket on `127.0.0.1:<ephemeral>` **before** opening the browser (so no other process can grab the port mid-flight).
 4. Open the browser at the authorization URL with `code_challenge_method=S256` and scopes `openid profile email offline_access` (the last one is what makes the IdP issue a refresh token).
 5. The IdP redirects back to the loopback callback with `?code=...&state=...`.
-6. The CLI verifies `state`, POSTs the code + PKCE verifier to the token endpoint, and persists the response in the OS keychain.
+6. The CLI verifies `state`, POSTs the code + PKCE verifier to the token endpoint, and persists the response in the OS keychain (a DPAPI-encrypted file on Windows).
 
 The stored shape is keyed by `(issuer_host, client_id)` — one active session per (IdP, client) pair, per machine. Re-running `pipefy auth login` against the same issuer replaces the previous entry.
 
@@ -277,7 +277,7 @@ Reactive refresh-on-401 (for tokens revoked mid-session) is not implemented: a t
 
 ### Keychain backends
 
-`keyring` selects an OS backend automatically: macOS Keychain on Darwin, Credential Manager on Windows, Secret Service (gnome-keyring / kwallet) on Linux. `pipefy auth login` prints the resolved backend name on success so you can confirm where the entry landed; `pipefy auth status` reports it as `Keychain: <BackendName>`.
+`keyring` selects an OS backend automatically: macOS Keychain on Darwin, Secret Service (gnome-keyring / kwallet) on Linux. On Windows the CLI and the MCP server use a DPAPI-encrypted file at `%APPDATA%/pipefy/keyring-dpapi.cfg` instead of Credential Manager, because Credential Manager limits each entry to 2560 bytes and a Pipefy session (access, refresh, and ID tokens) is larger. DPAPI encrypts the entry with a key derived from the Windows user's logon credential, so another standard account on the same machine cannot read it. It does not protect the session from code running as the same user, nor from a local administrator or a domain administrator (the domain DPAPI backup key can recover the user's master key), which is the same exposure Credential Manager has. `pipefy auth login` prints the resolved backend name on success so you can confirm where the entry landed; `pipefy auth status` reports it as `Keychain: <BackendName>`.
 
 #### Opting out of the OS keychain
 
@@ -289,4 +289,4 @@ Two env vars (mirrored as TOML keys) override the default behaviour:
 
 These are independent: `PIPEFY_DISABLE_STORED_SESSION=1` takes precedence (the file backend is never read or written). `pipefy auth status` will reflect the active backend name regardless (`Keyring`, `PlaintextKeyring`, etc.).
 
-Removing `PIPEFY_KEYCHAIN_BACKEND=file` **moves** the store rather than clearing it: the next login writes to the OS keychain while whatever is already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. `./uninstall.sh --scan` resolves the effective backend and reads both stores regardless of which one is active — see [`docs/uninstall.md`](../uninstall.md).
+Removing `PIPEFY_KEYCHAIN_BACKEND=file` **moves** the store rather than clearing it: the next login writes to the default store (OS keychain, or `keyring-dpapi.cfg` on Windows) while whatever is already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. `./uninstall.sh --scan` resolves the effective backend and reads both stores regardless of which one is active. See [`docs/uninstall.md`](../uninstall.md).

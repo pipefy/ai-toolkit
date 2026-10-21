@@ -9,8 +9,8 @@ from pipefy_infra.config import config_dir
 from pipefy_cli._docs import DOCS_CLI_AUTH_REF
 
 _ESCAPE_HATCH = (
-    f"Alternatively set PIPEFY_KEYCHAIN_BACKEND=file or use a static "
-    f"PIPEFY_TOKEN. See {DOCS_CLI_AUTH_REF}."
+    f"Alternatively set PIPEFY_KEYCHAIN_BACKEND=file (plaintext on disk) or "
+    f"use a static PIPEFY_TOKEN. See {DOCS_CLI_AUTH_REF}."
 )
 
 _LINUX_HINT = (
@@ -28,13 +28,6 @@ _MACOS_HINT = (
     f"prompted. {_ESCAPE_HATCH}"
 )
 
-_WINDOWS_HINT = (
-    "On Windows, Credential Manager may reject the write. Run "
-    "`pipefy auth login` once from an interactive Command Prompt or "
-    "PowerShell window. "
-    f"{_ESCAPE_HATCH}"
-)
-
 _GENERIC_HINT = (
     f"Run `pipefy auth status` to inspect the active backend, or see "
     f"{DOCS_CLI_AUTH_REF} for keychain troubleshooting."
@@ -48,6 +41,12 @@ def keychain_store_failure_hint(*, backend: str) -> str:
             f"Ensure the config directory is writable ({config_dir()}), "
             f"or use a static PIPEFY_TOKEN. See {DOCS_CLI_AUTH_REF}."
         )
+    if backend == "EncryptedKeyring":
+        return (
+            f"Ensure the config directory is writable ({config_dir()}) and "
+            f"that DPAPI is available for this Windows account (some service "
+            f"accounts have no user profile). {_ESCAPE_HATCH}"
+        )
     return _keychain_hint_for_platform()
 
 
@@ -57,8 +56,6 @@ def _keychain_hint_for_platform() -> str:
         return _MACOS_HINT
     if system == "Linux":
         return _LINUX_HINT
-    if system == "Windows":
-        return _WINDOWS_HINT
     return _GENERIC_HINT
 
 

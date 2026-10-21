@@ -151,6 +151,25 @@ jobs:
         python3 .github/workflows/scripts/check_roundtrip.py check \
           "$RUNNER_TEMP/before.txt" "$RUNNER_TEMP/installed.txt" "$RUNNER_TEMP/after.txt"
 
+  # DPAPI binds CRYPT32.DLL, so only a Windows runner exercises the real backend.
+  auth-windows:
+    name: Auth storage on Windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    - name: Install dependencies
+      run: uv sync --locked --dev --package pipefy-auth
+    - name: DPAPI keyring round-trip
+      run: uv run --no-sync pytest packages/auth/tests/test_storage_windows.py
+
   test:
     runs-on: ubuntu-latest
     env:

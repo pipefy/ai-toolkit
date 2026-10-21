@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import binascii
 import json
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from pipefy_auth.storage import (
     delete_session,
     keychain_key,
     load_session,
+    plan_keychain_backend,
     session_entry_presence,
     store_session,
 )
@@ -62,7 +64,10 @@ def test_file_backend_swaps_to_plaintext_keyring(
 
 
 @pytest.mark.unit
-def test_auto_backend_is_a_noop(
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="auto installs the DPAPI backend on Windows"
+)
+def test_auto_backend_is_a_noop_off_windows(
     _isolated_keyring: None,
 ) -> None:
     """``configure_keychain_backend('auto')`` leaves the active backend untouched."""
@@ -85,6 +90,24 @@ def test_file_backend_is_idempotent(
     assert isinstance(first, PlaintextKeyring)
     assert isinstance(second, PlaintextKeyring)
     assert first.file_path == second.file_path
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("choice", "platform", "expected"),
+    [
+        ("auto", "darwin", "os-keyring"),
+        ("auto", "linux", "os-keyring"),
+        ("auto", "win32", "dpapi-file"),
+        ("file", "darwin", "plaintext-file"),
+        ("file", "linux", "plaintext-file"),
+        ("file", "win32", "plaintext-file"),
+    ],
+)
+def test_plan_keychain_backend(choice: str, platform: str, expected: str) -> None:
+    """``auto`` keeps the OS keyring except on Windows, where Credential
+    Manager cannot hold a session; ``file`` wins on every platform."""
+    assert plan_keychain_backend(choice, platform=platform) == expected
 
 
 @pytest.mark.unit
