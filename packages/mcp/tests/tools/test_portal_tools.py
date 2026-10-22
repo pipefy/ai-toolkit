@@ -62,13 +62,7 @@ _CREATED_PORTAL = {
     "subType": "portal",
 }
 
-_PORTAL_PERMISSION_DENIED_MSG = (
-    "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin. If you already have "
-    "them, writing to an existing portal also needs you to be its admin: join it "
-    "once with the Interfaces `joinAsAdmin` mutation, which the toolkit does not "
-    "expose."
-)
+_PORTAL_PERMISSION_DENIED_MSG = "Permission denied: this token lacks `manage_portals`."
 
 _INTERNAL_API_PERMISSION_DENIED_ERROR = PipefyGraphQLError(
     [
@@ -1303,6 +1297,7 @@ async def test_update_portal_page_layout_permission_denied_returns_actionable_er
     assert payload["success"] is False
     message = tool_error_message(payload).lower()
     assert "create_portal" in message or "manage_portals" in message
+    assert "joinasadmin" in message
 
 
 @pytest.mark.anyio
