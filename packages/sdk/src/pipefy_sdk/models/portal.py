@@ -97,6 +97,18 @@ class CreatePortalInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class CreateInterfaceInput(BaseModel):
+    """Validated input for ``createInterface`` (Interfaces schema, plain creation)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    organization_uuid: str | int = Field(
+        description="Organization UUID or numeric organization id."
+    )
+    name: NonBlankStr
+    data_sources: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class UpdatePortalInput(BaseModel):
     """Partial update payload for ``updateInterface`` (Interfaces schema)."""
 

@@ -2248,6 +2248,25 @@ class PipefyClient:
         """
         return await self._portal_service.get_interface_html_guidelines()
 
+    async def create_interface(
+        self,
+        organization_uuid: str | int,
+        name: str,
+        *,
+        data_sources: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Create an HTML interface (``contentModeHtml``) with one ``customCode`` page.
+
+        Args:
+            organization_uuid: Organization UUID or numeric organization id.
+            name: Interface name; also used as the one page's title.
+            data_sources: Optional source bindings for the page's element
+                (``repoId``, ``fieldKeys``, optional ``id``, ``name``, ``filters``).
+        """
+        return await self._portal_service.create_interface(
+            organization_uuid, name, data_sources=data_sources
+        )
+
     async def create_portal(self, organization_uuid: str | int) -> dict[str, Any]:
         """Create or fetch the organization's main portal (idempotent).
 

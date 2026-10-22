@@ -20,6 +20,7 @@ from pipefy_sdk.graphql_problem import (
     classify_exception,
 )
 from pipefy_sdk.models.portal import (
+    CreateInterfaceInput,
     CreatePortalElementInput,
     CreatePortalInput,
     DeletePortalElementInput,
@@ -38,6 +39,7 @@ from pipefy_sdk.queries.portal_internal_queries import (
 )
 from pipefy_sdk.queries.portal_queries import (
     CREATE_ELEMENT_MUTATION,
+    CREATE_INTERFACE_MUTATION,
     CREATE_PAGE_MUTATION,
     CREATE_SUB_PORTAL_MUTATION,
     DELETE_ELEMENT_MUTATION,
@@ -214,6 +216,56 @@ def _normalize_portal_data_sources(
     return normalized
 
 
+# TODO: delete this once #816/#817 merge; replace its one call site in
+# create_interface with the InterfaceDataSource/InterfaceDataSources model
+# they add, instead of this hand-rolled dict shape.
+def _normalize_html_interface_data_sources(
+    sources: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Map agent-friendly keys to ``DataSourceInput`` for a ``customCode`` element.
+
+    Unlike ``_normalize_portal_data_sources`` (shared with ``create_portal_element``/
+    ``update_portal_element``), this keeps ``id``, ``name`` and ``filters`` when the
+    caller supplies them: a ``customCode`` element always requires ``id``/``name``
+    on every source, so dropping them makes ``create_interface`` reject any non-empty
+    ``data_sources`` outright. This is scoped to ``create_interface`` only; the two
+    older tools keep their existing, unrelated behavior unchanged.
+    """
+    normalized: list[dict[str, Any]] = []
+    for index, source in enumerate(sources):
+        if not isinstance(source, dict):
+            logger.warning(
+                "Skipping html interface data_sources[%s]: expected object, got %s",
+                index,
+                type(source).__name__,
+            )
+            continue
+        repo_id = source.get("repoId")
+        if not isinstance(repo_id, str) or not repo_id.strip():
+            logger.warning(
+                "Skipping html interface data_sources[%s]: missing repo id "
+                "(use repoId); keys=%s",
+                index,
+                sorted(source.keys()),
+            )
+            continue
+        field_keys = source.get("fieldKeys")
+        if not isinstance(field_keys, list):
+            field_keys = []
+        entry: dict[str, Any] = {"repoId": repo_id.strip(), "fieldKeys": field_keys}
+        source_id = source.get("id")
+        if isinstance(source_id, str) and source_id.strip():
+            entry["id"] = source_id.strip()
+        name = source.get("name")
+        if isinstance(name, str) and name.strip():
+            entry["name"] = name
+        filters = source.get("filters")
+        if filters is not None:
+            entry["filters"] = _serialize_interfaces_json(filters)
+        normalized.append(entry)
+    return normalized
+
+
 async def _execute_query_with_portal_errors(
     execute: Any,
     query: Any,
@@ -269,10 +321,39 @@ def _graphql_update_element_input(
     return payload
 
 
+def _with_parsed_data_source_filters(element: dict[str, Any]) -> dict[str, Any]:
+    """Parse each data source's ``filters`` back into a dict when read as a JSON string.
+
+    Writes accept ``filters`` as a dict and serialize it before sending (the
+    Interfaces Json scalar rides the wire as a string); reads otherwise hand
+    that same string straight back, so a value an agent reads is rejected if
+    copied unchanged into a write (``must be a JSON object``).
+    """
+    sources = element.get("dataSources")
+    if not isinstance(sources, list):
+        return element
+    parsed_sources: list[Any] = []
+    for source in sources:
+        if not isinstance(source, dict):
+            parsed_sources.append(source)
+            continue
+        filters = source.get("filters")
+        if isinstance(filters, str):
+            try:
+                source = {**source, "filters": json.loads(filters)}
+            except ValueError:
+                pass
+        parsed_sources.append(source)
+    return {**element, "dataSources": parsed_sources}
+
+
 def _normalize_portal_page(page: dict[str, Any]) -> dict[str, Any]:
     """Normalize a portal page payload with ``uuid`` alias and element ids."""
     page_record = _with_uuid_alias(page)
-    elements = [_with_uuid_alias(element) for element in page.get("elements") or []]
+    elements = [
+        _with_parsed_data_source_filters(_with_uuid_alias(element))
+        for element in page.get("elements") or []
+    ]
     return {**page_record, "elements": elements}
 
 
@@ -741,6 +822,74 @@ class PortalService:
             GET_INTERFACE_HTML_GUIDELINES_QUERY, {}
         )
         return data["interfaceHtmlGuidelines"]
+
+    async def create_interface(
+        self,
+        organization_uuid: str | int,
+        name: str,
+        *,
+        data_sources: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Create an HTML interface (``contentModeHtml``) with one ``customCode`` page.
+
+        One ``createInterface`` call makes the interface, a page titled ``name``,
+        and that page's single ``customCode`` element; ``write_html_document``
+        then writes the page's HTML. ``data_sources`` always rides on the
+        element, empty or not: the API fails the create when it is omitted.
+
+        Args:
+            organization_uuid: Organization UUID or numeric organization id.
+            name: Interface name; also used as the one page's title.
+            data_sources: Optional source bindings for the page's element
+                (``repoId``, ``fieldKeys``, and, since a ``customCode`` element
+                requires them, ``id`` and ``name``; optional ``filters``).
+
+        Returns:
+            Created interface summary with ``uuid`` alias for ``id``.
+        """
+        validated = CreateInterfaceInput.model_validate(
+            {
+                "organization_uuid": organization_uuid,
+                "name": name,
+                "data_sources": data_sources if data_sources is not None else [],
+            }
+        )
+        resolved_org_uuid = await resolve_organization_uuid(
+            self._public_executor.execute_query,
+            validated.organization_uuid,
+        )
+        element = {
+            "type": "customCode",
+            "metadata": _serialize_interfaces_json({}),
+            # Nested under pages[].elements[], this field is dataSources on the wire
+            # (unlike createElement's top-level data_sources, which is snake_case).
+            "dataSources": _normalize_html_interface_data_sources(
+                validated.data_sources
+            ),
+        }
+        page = {
+            "title": validated.name,
+            "layout": _serialize_interfaces_json([]),
+            "elements": [element],
+        }
+        data = await _execute_query_with_portal_errors(
+            self.execute_interfaces_query,
+            CREATE_INTERFACE_MUTATION,
+            {
+                "input": {
+                    "org_uuid": resolved_org_uuid,
+                    "name": validated.name,
+                    "contentModeHtml": True,
+                    "pages": [page],
+                }
+            },
+        )
+        interface = (data.get("createInterface") or {}).get("interface")
+        if not isinstance(interface, dict):
+            msg = "createInterface returned no interface."
+            raise ValueError(msg)
+        pages = [_normalize_portal_page(p) for p in interface.get("pages") or []]
+        return {**_with_uuid_alias(interface), "pages": pages}
 
     async def create_portal(self, organization_uuid: str | int) -> dict[str, Any]:
         """Create or fetch the organization's main portal (idempotent template flow).

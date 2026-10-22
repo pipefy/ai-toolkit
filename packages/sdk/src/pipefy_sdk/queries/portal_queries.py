@@ -246,6 +246,30 @@ GET_INTERFACE_HTML_GUIDELINES_QUERY = gql(
     """
 )
 
+CREATE_INTERFACE_MUTATION = gql(
+    """
+    mutation CreateInterface($input: InterfaceCreateMutationInput!) {
+        createInterface(input: $input) {
+            interface {
+                id
+                name
+                visibility
+                contentModeHtml
+                pages {
+                    id
+                    title
+                    elements {
+                        id
+                        type
+                    }
+                }
+            }
+            success
+        }
+    }
+    """
+)
+
 FIND_OR_CREATE_PORTAL_MUTATION = gql(
     """
     mutation FindOrCreatePortal($input: InterfaceCreateByTemplateMutationInput!) {
@@ -423,6 +447,7 @@ CREATE_SUB_PORTAL_MUTATION = gql(
 
 __all__ = [
     "CREATE_ELEMENT_MUTATION",
+    "CREATE_INTERFACE_MUTATION",
     "CREATE_PAGE_MUTATION",
     "CREATE_SUB_PORTAL_MUTATION",
     "DELETE_ELEMENT_MUTATION",
