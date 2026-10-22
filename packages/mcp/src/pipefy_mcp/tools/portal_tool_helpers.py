@@ -14,6 +14,7 @@ from typing import Any
 
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.exceptions import (
+    PORTAL_PERMISSION_MESSAGE,
     HtmlValidationError,
     HtmlViolation,
     PortalPermissionError,
@@ -34,10 +35,6 @@ from pipefy_mcp.tools.introspection_tool_helpers import (
 )
 from pipefy_mcp.tools.validation_helpers import validate_tool_id
 
-_PORTAL_PERMISSION_GUIDANCE = (
-    "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
-)
 _PORTAL_OPERATION_FAILED = (
     "Portal operation failed. Re-read portal state before retrying; do not blind-retry."
 )
@@ -77,15 +74,16 @@ def map_portal_error_to_message(
             read-domain string.
 
     Returns:
-        User-visible error string; permission failures mention ``create_portal``
-        and ``manage_portals``, and HTML validation failures list every violation.
+        User-visible error string; permission failures return the SDK's
+        ``PORTAL_PERMISSION_MESSAGE`` (organization permission plus the per-portal
+        ``joinAsAdmin``), and HTML validation failures list every violation.
     """
     if isinstance(exc, HtmlValidationError):
         return _html_validation_message(exc)
 
     if isinstance(exc, PortalPermissionError):
         return ensure_non_empty_error_message(
-            str(exc).strip(), _PORTAL_PERMISSION_GUIDANCE
+            str(exc).strip(), PORTAL_PERMISSION_MESSAGE
         )
 
     text = str(exc).strip()
@@ -103,7 +101,7 @@ def map_portal_error_to_message(
                 codes.append(code)
 
     if "PERMISSION_DENIED" in codes or "permission denied" in lowered:
-        return _PORTAL_PERMISSION_GUIDANCE
+        return PORTAL_PERMISSION_MESSAGE
 
     if isinstance(exc, PipefyGraphQLError):
         messages = extract_error_strings(exc)
