@@ -2837,8 +2837,6 @@ async def test_write_html_document_keeps_the_api_error_without_usable_violations
     assert exc_info.value is graphql_error
 
 
-
-
 _HTML_PAGE_ID = "html-page-uuid-1"
 _HTML_ELEMENT_ID = "html-element-uuid-1"
 _HTML_ELEMENT_METADATA = {"name": "Requests board"}
@@ -3094,8 +3092,6 @@ def test_get_html_interface_selects_element_metadata_and_editable():
     )
 
 
-
-
 _CREATE_INTERFACE_RESPONSE = {
     "createInterface": {
         "interface": {
@@ -3204,6 +3200,69 @@ async def test_create_interface_sends_the_full_data_source_shape() -> None:
             "filters": json.dumps(
                 {"status": {"eq": "open"}}, separators=(",", ":"), ensure_ascii=False
             ),
+        }
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_interface_rejects_invalid_data_sources_before_any_call() -> None:
+    """A duplicate id across sources is rejected before resolving the org or calling createInterface."""
+    service, public_executor, interfaces_executor = _make_interfaces_service(
+        _CREATE_INTERFACE_RESPONSE,
+    )
+
+    with pytest.raises(ValidationError, match="own id"):
+        await service.create_interface(
+            EXAMPLE_ORG_UUID,
+            "Open purchase requests",
+            data_sources=[
+                {
+                    "id": "source-1",
+                    "name": "Open requests",
+                    "repoId": EXAMPLE_PIPE_REPO_ID,
+                    "fieldKeys": ["status"],
+                },
+                {
+                    "id": "source-1",
+                    "name": "All suppliers",
+                    "repoId": "repo-uuid-2",
+                    "fieldKeys": ["title"],
+                },
+            ],
+        )
+
+    public_executor.execute_query.assert_not_awaited()
+    interfaces_executor.execute_query.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_interface_takes_parsed_data_sources() -> None:
+    """A caller may pass already-validated InterfaceDataSource instances, not just dicts."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        _CREATE_INTERFACE_RESPONSE,
+    )
+    source = InterfaceDataSource.model_validate(
+        {
+            "id": "source-1",
+            "name": "Purchase requests",
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "fieldKeys": ["status"],
+        }
+    )
+
+    await service.create_interface(
+        EXAMPLE_ORG_UUID, "Open purchase requests", data_sources=[source]
+    )
+
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["input"]["pages"][0]["elements"][0]["dataSources"] == [
+        {
+            "id": "source-1",
+            "name": "Purchase requests",
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "fieldKeys": ["status"],
         }
     ]
 

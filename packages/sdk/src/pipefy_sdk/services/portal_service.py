@@ -216,56 +216,6 @@ def _normalize_portal_data_sources(
     return normalized
 
 
-# TODO: delete this once #816/#817 merge; replace its one call site in
-# create_interface with the InterfaceDataSource/InterfaceDataSources model
-# they add, instead of this hand-rolled dict shape.
-def _normalize_html_interface_data_sources(
-    sources: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Map agent-friendly keys to ``DataSourceInput`` for a ``customCode`` element.
-
-    Unlike ``_normalize_portal_data_sources`` (shared with ``create_portal_element``/
-    ``update_portal_element``), this keeps ``id``, ``name`` and ``filters`` when the
-    caller supplies them: a ``customCode`` element always requires ``id``/``name``
-    on every source, so dropping them makes ``create_interface`` reject any non-empty
-    ``data_sources`` outright. This is scoped to ``create_interface`` only; the two
-    older tools keep their existing, unrelated behavior unchanged.
-    """
-    normalized: list[dict[str, Any]] = []
-    for index, source in enumerate(sources):
-        if not isinstance(source, dict):
-            logger.warning(
-                "Skipping html interface data_sources[%s]: expected object, got %s",
-                index,
-                type(source).__name__,
-            )
-            continue
-        repo_id = source.get("repoId")
-        if not isinstance(repo_id, str) or not repo_id.strip():
-            logger.warning(
-                "Skipping html interface data_sources[%s]: missing repo id "
-                "(use repoId); keys=%s",
-                index,
-                sorted(source.keys()),
-            )
-            continue
-        field_keys = source.get("fieldKeys")
-        if not isinstance(field_keys, list):
-            field_keys = []
-        entry: dict[str, Any] = {"repoId": repo_id.strip(), "fieldKeys": field_keys}
-        source_id = source.get("id")
-        if isinstance(source_id, str) and source_id.strip():
-            entry["id"] = source_id.strip()
-        name = source.get("name")
-        if isinstance(name, str) and name.strip():
-            entry["name"] = name
-        filters = source.get("filters")
-        if filters is not None:
-            entry["filters"] = _serialize_interfaces_json(filters)
-        normalized.append(entry)
-    return normalized
-
-
 async def _execute_query_with_portal_errors(
     execute: Any,
     query: Any,
@@ -828,7 +778,7 @@ class PortalService:
         organization_uuid: str | int,
         name: str,
         *,
-        data_sources: list[dict[str, Any]] | None = None,
+        data_sources: list[InterfaceDataSource | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create an HTML interface (``contentModeHtml``) with one ``customCode`` page.
 
@@ -840,20 +790,22 @@ class PortalService:
         Args:
             organization_uuid: Organization UUID or numeric organization id.
             name: Interface name; also used as the one page's title.
-            data_sources: Optional source bindings for the page's element
-                (``repoId``, ``fieldKeys``, and, since a ``customCode`` element
-                requires them, ``id`` and ``name``; optional ``filters``).
+            data_sources: The page's element's source bindings; ``[]``/``None``
+                for none. Each source has ``id`` (the handle the HTML reads it
+                by), ``name``, ``repoId``, ``fieldKeys`` (1 to 30) and optional
+                ``filters``. At most 10 sources; ``id``/``name`` unique among them.
 
         Returns:
             Created interface summary with ``uuid`` alias for ``id``.
+
+        Raises:
+            pydantic.ValidationError: ``data_sources`` breaks a source rule;
+                nothing is sent.
         """
         validated = CreateInterfaceInput.model_validate(
-            {
-                "organization_uuid": organization_uuid,
-                "name": name,
-                "data_sources": data_sources if data_sources is not None else [],
-            }
+            {"organization_uuid": organization_uuid, "name": name}
         )
+        sources = InterfaceDataSources.model_validate(data_sources or [])
         resolved_org_uuid = await resolve_organization_uuid(
             self._public_executor.execute_query,
             validated.organization_uuid,
@@ -863,9 +815,7 @@ class PortalService:
             "metadata": _serialize_interfaces_json({}),
             # Nested under pages[].elements[], this field is dataSources on the wire
             # (unlike createElement's top-level data_sources, which is snake_case).
-            "dataSources": _normalize_html_interface_data_sources(
-                validated.data_sources
-            ),
+            "dataSources": _data_source_inputs(sources),
         }
         page = {
             "title": validated.name,

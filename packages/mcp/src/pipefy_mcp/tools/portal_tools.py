@@ -490,15 +490,18 @@ class PortalTools:
             this tool again, which would create a second, orphaned interface.
 
             ``data_sources`` binds the page's one element, which is always
-            ``customCode`` (optional; omit for none):
+            ``customCode`` (optional; omit for none): ``{"id", "name", "repoId",
+            "fieldKeys", "filters"}``.
 
-            - ``id``: the handle the page's HTML reads the source by;
-              ``name``: its label. Both required, and unique across sources
-              in the same call.
-            - ``repoId``: required per source.
-            - ``fieldKeys``: must name at least one field.
-            - ``filters``: optional filter tree, in the format
-              ``get_interface_html_guidelines`` describes.
+            - ``id``: the handle the page's HTML reads the source by; ``name``:
+              its label. Both unique within the element.
+            - ``repoId``: a repo ``uuid`` from ``list_interface_repos``.
+            - ``fieldKeys``: 1 to 30 keys, custom field uuids from
+              ``get_interface_repo_fields`` and built-in keys such as ``title``.
+            - ``filters``: optional filter tree in the format
+              ``get_interface_html_guidelines`` describes, or null.
+
+            At most 10 sources.
 
             Args:
                 organization_uuid: Organization UUID, or numeric organization id.
@@ -523,16 +526,27 @@ class PortalTools:
                     "Invalid 'html': must be a non-empty string.",
                     code="INVALID_ARGUMENTS",
                 )
+            try:
+                sources = InterfaceDataSources.model_validate(data_sources or [])
+            except ValidationError as exc:
+                return interface_sources_validation_error(exc)
             await ctx.debug(
                 f"create_html_interface: organization_uuid={organization_uuid}, "
                 f"name={name}"
             )
             try:
                 interface = await client.create_interface(
-                    organization_uuid, name, data_sources=data_sources
+                    organization_uuid, name, data_sources=sources.root
                 )
             except Exception as exc:  # noqa: BLE001
-                return build_error_payload(map_portal_error_to_message(exc))
+                return build_error_payload(
+                    map_interface_source_error_to_message(
+                        exc,
+                        not_found_message=(
+                            "One of the data sources' repoId was not found."
+                        ),
+                    )
+                )
             pages = interface.get("pages") or []
             elements = pages[0].get("elements") if pages else None
             if not pages or not elements:

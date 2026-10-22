@@ -114,6 +114,9 @@ def map_portal_error_to_message(
 
 
 _NOT_FOUND_CODES = frozenset({"RECORD_NOT_FOUND", "RESOURCE_NOT_FOUND"})
+# A source-access refusal carries no code on some paths and this code on others;
+# both are the same refusal, just raised from different parts of the API.
+_SOURCE_ACCESS_DENIED_CODES = frozenset({"PIPEFY_RUNTIME"})
 _SOURCE_ACCESS_DENIED = (
     "Permission denied for a data source: you can bind only the pipes and tables "
     "list_interface_repos returns for this interface."
@@ -130,7 +133,8 @@ def map_interface_source_error_to_message(
 
     The API's text for an unknown repo or interface uuid is not fit to show, so a
     not-found error becomes ``not_found_message``. A ``Permission denied`` with no
-    error code is the API refusing a source's repo, not the interface.
+    error code, or with code ``PIPEFY_RUNTIME``, is the API refusing a source's
+    repo, not the interface.
 
     Args:
         exc: Exception raised by a ``PipefyClient`` interface source method.
@@ -143,7 +147,9 @@ def map_interface_source_error_to_message(
     lowered = str(exc).strip().lower()
     if _NOT_FOUND_CODES.intersection(codes) or lowered.startswith("couldn't find"):
         return not_found_message
-    if not codes and lowered == "permission denied":
+    if (
+        not codes or _SOURCE_ACCESS_DENIED_CODES.issuperset(codes)
+    ) and lowered == "permission denied":
         return _SOURCE_ACCESS_DENIED
     return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
 

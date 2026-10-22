@@ -640,7 +640,7 @@ async def test_create_html_interface_success(
 
     assert result.is_error is False
     mock_portal_client.create_interface.assert_awaited_once_with(
-        "org-abc-123", "Open purchase requests", data_sources=None
+        "org-abc-123", "Open purchase requests", data_sources=[]
     )
     mock_portal_client.write_html_document.assert_awaited_once_with(
         page_id="page-new-1", element_id="el-new-1", content="<div>Hello</div>"
@@ -713,7 +713,14 @@ async def test_create_html_interface_forwards_data_sources(
         return_value=_CREATED_HTML_INTERFACE
     )
     mock_portal_client.write_html_document = AsyncMock(return_value={"success": True})
-    data_sources = [{"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": ["status"]}]
+    data_sources = [
+        {
+            "id": "open-requests",
+            "name": "Open requests",
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "fieldKeys": ["status"],
+        }
+    ]
 
     async with portal_session as session:
         result = await session.call_tool(
@@ -728,8 +735,61 @@ async def test_create_html_interface_forwards_data_sources(
 
     assert result.is_error is False
     mock_portal_client.create_interface.assert_awaited_once_with(
-        "org-abc-123", "Open purchase requests", data_sources=data_sources
+        "org-abc-123",
+        "Open purchase requests",
+        data_sources=[InterfaceDataSource.model_validate(data_sources[0])],
     )
+
+
+@pytest.mark.anyio
+async def test_create_html_interface_invalid_data_source_returns_error_envelope(
+    portal_session, mock_portal_client, extract_payload
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_html_interface",
+            {
+                "organization_uuid": "org-abc-123",
+                "name": "Open purchase requests",
+                "html": "<div>Hello</div>",
+                "data_sources": [{"id": "x", "name": "X"}],
+            },
+        )
+
+    assert result.is_error is False
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert "repoId" in tool_error_message(payload)
+    mock_portal_client.create_interface.assert_not_awaited()
+
+
+@pytest.mark.anyio
+async def test_create_html_interface_rejects_an_eleventh_data_source(
+    portal_session, mock_portal_client
+):
+    data_sources = [
+        {
+            "id": f"source-{i}",
+            "name": f"Source {i}",
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "fieldKeys": ["status"],
+        }
+        for i in range(11)
+    ]
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_html_interface",
+            {
+                "organization_uuid": "org-abc-123",
+                "name": "Open purchase requests",
+                "html": "<div>Hello</div>",
+                "data_sources": data_sources,
+            },
+        )
+
+    assert_invalid_arguments_envelope(result)
+    mock_portal_client.create_interface.assert_not_awaited()
 
 
 @pytest.mark.anyio
@@ -3439,3 +3499,69 @@ async def test_set_interface_sources_maps_api_errors_for_agents(
     payload = extract_payload(result)
     assert payload["success"] is False
     assert payload["error"]["message"] == message
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            PipefyGraphQLError([{"message": "Couldn't find the organization"}]),
+            "One of the data sources' repoId was not found.",
+        ),
+        (PipefyGraphQLError([{"message": "Permission denied"}]), _SOURCE_REFUSED),
+        (
+            PipefyGraphQLError(
+                [
+                    {
+                        "message": "Permission denied",
+                        "extensions": {"code": "PIPEFY_RUNTIME"},
+                    }
+                ]
+            ),
+            _SOURCE_REFUSED,
+        ),
+        (
+            PipefyGraphQLError(
+                [
+                    {
+                        "message": "Permission denied",
+                        "extensions": {"code": "PERMISSION_DENIED"},
+                    }
+                ]
+            ),
+            _PORTAL_PERMISSION_DENIED_MSG,
+        ),
+        (
+            PortalPermissionError(_PORTAL_PERMISSION_DENIED_MSG),
+            _PORTAL_PERMISSION_DENIED_MSG,
+        ),
+    ],
+    ids=[
+        "unknown repo",
+        "source repo refused",
+        "source repo refused, coded",
+        "coded refusal",
+        "portal refused",
+    ],
+)
+async def test_create_html_interface_maps_api_errors_for_agents(
+    portal_session, mock_portal_client, extract_payload, error, message
+):
+    mock_portal_client.create_interface = AsyncMock(side_effect=error)
+
+    async with portal_session as session:
+        result = await session.call_tool(
+            "create_html_interface",
+            {
+                "organization_uuid": "org-abc-123",
+                "name": "Open purchase requests",
+                "html": "<div>Hello</div>",
+            },
+        )
+
+    assert result.is_error is False
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["message"] == message
+    mock_portal_client.write_html_document.assert_not_awaited()

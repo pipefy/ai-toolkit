@@ -98,7 +98,12 @@ class CreatePortalInput(BaseModel):
 
 
 class CreateInterfaceInput(BaseModel):
-    """Validated input for ``createInterface`` (Interfaces schema, plain creation)."""
+    """Validated input for ``createInterface`` (Interfaces schema, plain creation).
+
+    ``data_sources`` is validated separately as ``InterfaceDataSources``, not a
+    field here: it has its own rules (uniqueness, a 10-source cap) independent
+    of ``organization_uuid``/``name``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -106,7 +111,6 @@ class CreateInterfaceInput(BaseModel):
         description="Organization UUID or numeric organization id."
     )
     name: NonBlankStr
-    data_sources: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class UpdatePortalInput(BaseModel):
