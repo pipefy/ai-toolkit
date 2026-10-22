@@ -262,7 +262,7 @@ async def test_validate_ai_automation_prompt_null_pipe_does_not_raise(mock_clien
 async def test_validate_ai_automation_prompt_overlap_prompt_and_output(mock_client):
     from pipefy_sdk.ai_preflight import validate_ai_automation_prompt_sdk
 
-    fid = "429358623"
+    fid = "421234569"
     mock_client.get_pipe_with_preferences = AsyncMock(
         return_value={
             "pipe": {
@@ -302,7 +302,7 @@ async def test_validate_ai_automation_prompt_overlap_prompt_and_output(mock_clie
 async def test_validate_ignores_output_only_phase_key(mock_client):
     """``action_params.phase`` is output-only and rejected on write, so it is not a destination.
 
-    Core exposes ``phase`` only on the read type (derived from ``to_phase_id``); the
+    The API exposes ``phase`` only on the read type (derived from ``to_phase_id``); the
     write input declares only ``to_phase_id``. A payload carrying ``phase`` but no
     ``to_phase_id`` resolves no destination, so preflight is a no-op — the API returns
     its own unknown-argument error at create time.
@@ -348,11 +348,11 @@ def test_extract_field_map_ids_declared_shape():
     ids = extract_field_map_destination_ids(
         {
             "action_params": {
-                "field_map": [{"fieldId": "429659044", "inputMode": "copy_from"}],
+                "field_map": [{"fieldId": "421234574", "inputMode": "copy_from"}],
             },
         },
     )
-    assert ids == ["429659044"]
+    assert ids == ["421234574"]
 
 
 def test_extract_field_map_ids_ignores_camel_wrapper_keys():

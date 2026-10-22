@@ -3,7 +3,7 @@ name: Skills Lint
 on:
   push:
     paths:
-      - "skills/**"
+      - "plugins/pipefy/skills/**"
       - "tests/test_lint_skill_frontmatter.py"
       - "tests/test_lint_skill_refs.py"
       - "packages/sdk/src/pipefy_sdk/skills/**"
@@ -17,7 +17,7 @@ on:
       - ".github/workflows/scripts/**"
   pull_request:
     paths:
-      - "skills/**"
+      - "plugins/pipefy/skills/**"
       - "tests/test_lint_skill_frontmatter.py"
       - "tests/test_lint_skill_refs.py"
       - "packages/sdk/src/pipefy_sdk/skills/**"

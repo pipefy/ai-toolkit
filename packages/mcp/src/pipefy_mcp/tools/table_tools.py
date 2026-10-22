@@ -21,6 +21,7 @@ from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmati
 from pipefy_mcp.tools.graphql_error_helpers import (
     extract_graphql_correlation_id,
     extract_graphql_error_codes,
+    timeout_message_or,
     with_debug_suffix,
 )
 from pipefy_mcp.tools.pagination_helpers import (
@@ -214,6 +215,7 @@ class TableTools:
         ) -> dict[str, Any]:
             """List records in a database table using cursor pagination.
 
+            Not for the cards of a pipe; use ``get_records`` to filter and count those.
             With the unified envelope, use top-level ``pagination.has_more``,
             ``pagination.end_cursor``, and ``pagination.page_size``; pass ``after``
             equal to ``end_cursor`` on the next call. Without the unified envelope,
@@ -325,6 +327,7 @@ class TableTools:
         ) -> dict[str, Any]:
             """Search records in a database table where a field matches a value.
 
+            Not for the cards of a pipe; use ``get_records`` to filter and count those.
             Uses Pipefy `findRecords` (returns card-shaped nodes with `fields`).
             Optional ``first`` / ``after`` mirror ``get_table_records``. With the unified
             envelope, read ``pagination.has_more``, ``pagination.end_cursor``, and
@@ -548,10 +551,13 @@ class TableTools:
             except Exception as exc:  # noqa: BLE001
                 codes = extract_graphql_error_codes(exc)
                 correlation_id = extract_graphql_correlation_id(exc)
-                base = map_delete_table_error_to_message(
-                    table_id=table_id,
-                    table_name=table_name,
-                    codes=codes,
+                base = timeout_message_or(
+                    exc,
+                    map_delete_table_error_to_message(
+                        table_id=table_id,
+                        table_name=table_name,
+                        codes=codes,
+                    ),
                 )
                 return build_delete_table_error_payload(
                     message=with_debug_suffix(
@@ -588,10 +594,13 @@ class TableTools:
             except Exception as exc:  # noqa: BLE001
                 codes = extract_graphql_error_codes(exc)
                 correlation_id = extract_graphql_correlation_id(exc)
-                base = map_delete_table_error_to_message(
-                    table_id=table_id,
-                    table_name=table_name,
-                    codes=codes,
+                base = timeout_message_or(
+                    exc,
+                    map_delete_table_error_to_message(
+                        table_id=table_id,
+                        table_name=table_name,
+                        codes=codes,
+                    ),
                 )
                 return build_delete_table_error_payload(
                     message=with_debug_suffix(

@@ -4,7 +4,7 @@ from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pipefy_sdk import PipefyClient, PipefyId
+from pipefy_sdk import FieldTypeId, PipefyClient, PipefyId
 from pipefy_sdk.phase_inventory import (
     get_phase_not_found_message,
     is_get_phase_not_found_error,
@@ -21,6 +21,7 @@ from pipefy_mcp.tools.graphql_error_helpers import (
     extract_error_strings,
     extract_graphql_correlation_id,
     extract_graphql_error_codes,
+    timeout_message_or,
     with_debug_suffix,
 )
 from pipefy_mcp.tools.pagination_helpers import (
@@ -268,10 +269,13 @@ class PipeConfigTools:
             except Exception as exc:  # noqa: BLE001
                 codes = extract_graphql_error_codes(exc)
                 correlation_id = extract_graphql_correlation_id(exc)
-                base = map_delete_pipe_error_to_message(
-                    pipe_id=pipe_id_str,
-                    pipe_name=pipe_name,
-                    codes=codes,
+                base = timeout_message_or(
+                    exc,
+                    map_delete_pipe_error_to_message(
+                        pipe_id=pipe_id_str,
+                        pipe_name=pipe_name,
+                        codes=codes,
+                    ),
                 )
                 return build_delete_pipe_error_payload(
                     message=with_debug_suffix(
@@ -308,10 +312,13 @@ class PipeConfigTools:
             except Exception as exc:  # noqa: BLE001
                 codes = extract_graphql_error_codes(exc)
                 correlation_id = extract_graphql_correlation_id(exc)
-                base = map_delete_pipe_error_to_message(
-                    pipe_id=pipe_id_str,
-                    pipe_name=pipe_name,
-                    codes=codes,
+                base = timeout_message_or(
+                    exc,
+                    map_delete_pipe_error_to_message(
+                        pipe_id=pipe_id_str,
+                        pipe_name=pipe_name,
+                        codes=codes,
+                    ),
                 )
                 return build_delete_pipe_error_payload(
                     message=with_debug_suffix(
@@ -822,7 +829,7 @@ class PipeConfigTools:
         async def create_phase_field(
             phase_id: PipefyId,
             label: str,
-            field_type: str,
+            field_type: FieldTypeId | str,
             ctx: Context,
             options: list[str] | None = None,
             description: str | None = None,
@@ -832,8 +839,9 @@ class PipeConfigTools:
         ) -> dict[str, Any]:
             """Create a custom field on a phase.
 
-            ``field_type`` is passed through to Pipefy (use schema introspection on
-            ``CreatePhaseFieldInput`` to list valid types).
+            ``field_type`` takes a ``FieldTypeId`` value (lower case, e.g. ``short_text``);
+            other strings pass through and the API validates them. A ``connector`` field
+            also needs ``extra_input.connectedRepoId``: a pipe id, or a table id.
 
             The response includes ``internal_id`` — use that numeric ID (not the slug
             ``id``) for subsequent ``update_phase_field`` or ``delete_phase_field`` calls.
@@ -842,7 +850,7 @@ class PipeConfigTools:
                 phase_id: Phase that will receive the field.
                     Discover via: ``get_pipe(pipe_id).phases[].id``.
                 label: Field label shown in the UI.
-                field_type: Pipefy field type string (API input field ``type``).
+                field_type: A ``FieldTypeId`` value (API input field ``type``).
                 options: Option values for select/radio/checklist fields (e.g. ["Alta", "Média", "Baixa"]).
                 description: Optional field description.
                 required: Whether the field is required.
@@ -882,12 +890,15 @@ class PipeConfigTools:
                     **merged,
                 )
             except Exception as exc:  # noqa: BLE001
+                # The API's RESOURCE_NOT_FOUND names the phase, the field type, or the
+                # connected repo, so skip only the relabel to "Phase not found".
                 return handle_pipe_config_tool_graphql_error(
                     exc,
                     "Create phase field failed.",
                     debug=debug,
                     resource_kind="phase",
                     resource_id=str(phase_id),
+                    not_found_enrichment=False,
                 )
             return build_pipe_mutation_success_payload(
                 label="Phase field created.",

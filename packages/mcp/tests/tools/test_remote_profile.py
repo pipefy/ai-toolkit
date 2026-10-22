@@ -26,6 +26,7 @@ REMOTE_SEED = frozenset(
         "get_pipe",
         "get_card",
         "get_cards",
+        "get_records",
         "find_cards",
         "find_records",
         "get_table",
@@ -116,6 +117,7 @@ REMOTE_SEED = frozenset(
         "get_table_relations",
         "get_webhooks",
         "get_email_templates",
+        "get_interface_html_guidelines",
         "get_portal",
         "list_portals",
         # service-account tools: the first public-GraphQL write mutations on the

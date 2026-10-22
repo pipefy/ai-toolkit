@@ -1,0 +1,191 @@
+# Plugin and skill authoring guide
+
+This guide defines how to maintain the Pipefy plugin in `plugins/pipefy/` and how to author, name and maintain its skills.
+
+---
+
+## The plugin folder
+
+`plugins/pipefy/` is the plugin. The Claude Code and Cursor marketplaces at the repository root (`.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`) point at it with `"source": "./plugins/pipefy"`, and users install only this folder. Put a file here only if the plugin loads it or the directory listing shows it: the two plugin manifests, `.mcp.json`, `assets/`, `commands/`, `skills/` and `README.md`. Everything for contributors, like this guide, stays outside.
+
+`lint_plugin_packaging.py` checks every rule in this section. Run it after you stage your files, because it reads tracked files through `git ls-files`.
+
+- **Manifests.** `.claude-plugin/plugin.json` has no `skills` field: Claude Code loads every folder under `skills/`. `.cursor-plugin/plugin.json` lists every skill folder in `skills` and keeps `"commands": []`, so a new skill needs an entry there.
+- **MCP config.** `.mcp.json` registers only the hosted server, `https://mcp.pipefy.com/mcp`, with type `http`. It carries the client id twice, as `auth.CLIENT_ID` and as `oauth.clientId`, because Cursor reads the first key and Claude Code reads the second.
+- **Directory limits.** The folder holds at most 200 tracked files, no file over 256 KiB unless it is an image, and no symbolic links. The Claude directory validation times out on large plugin folders: on the portal, folders of about 500 files or more timed out, and folders of 62 to 154 files passed.
+- **No download piped into a shell.** No file in the folder writes a command such as `curl ... | sh`, even as an instruction for the agent: the directory flags it as an install-time risk. Link to the doc that holds the command instead, the way the setup skill links to `docs/uninstall.md`.
+- **Versions.** Change versions only with `scripts/bump_version.py`. An installed plugin updates only when its version changes.
+- **License.** The `license` field in `plugin.json` meets the directory requirement, and `README.md` ends with the license and trademark notice. The folder has no copies of `LICENSE` or `NOTICE`.
+
+Before you open a pull request that changes the plugin folder, run these checks:
+
+```bash
+python3 .github/workflows/scripts/lint_plugin_packaging.py
+uv run python .github/workflows/scripts/lint_skill_refs.py
+uv run python .github/workflows/scripts/lint_skill_frontmatter.py
+claude plugin validate plugins/pipefy
+claude --plugin-dir plugins/pipefy plugin details pipefy   # lists every skill and command
+npx skills add . --list                                    # lists every skill and nothing else
+```
+
+---
+
+## What is a skill?
+
+A skill is a directory with a `SKILL.md` entrypoint describing a Pipefy workflow. Its body contains domain rules, payload shapes, steps, and failure modes shared by MCP, CLI, and SDK consumers. Surface-specific instructions live in sibling reference files, loaded only by clients using that surface.
+
+---
+
+## Directory structure
+
+```
+plugins/
+  AGENTS.md               ← this file
+  pipefy/
+    skills/
+      <skill-name>/
+        SKILL.md          ← the skill file
+        references/       ← when the workflow has surface-specific instructions
+          mcp.md          ← MCP controls, profiles, response envelopes
+          cli.md          ← shipped commands and flags
+        COMPLIANCE.md     ← required for regulated-domain / blueprint skills
+    README.md             ← plugin README and skill catalog
+```
+
+The copyable starter lives at [`.github/skill-template/pipefy-skill-template/`](../.github/skill-template/pipefy-skill-template/), outside this catalog.
+
+Each skill folder sits directly under `plugins/pipefy/skills/`, with no domain folder in between. `npx skills add` searches a plugin's `skills/` folder only one level deep; with a deeper layout it falls back to a scan of the whole repository and also installs the skill template.
+
+Regulated domains (`legal`, `human-resources`, `finance`, `compliance`, or any skill involving decisions about natural persons) require substantive Legal review and a filled `COMPLIANCE.md` (start from [`docs/compliance/COMPLIANCE.template.md`](../docs/compliance/COMPLIANCE.template.md)). See [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+To start a new skill, copy [`.github/skill-template/pipefy-skill-template/`](../.github/skill-template/pipefy-skill-template/) (see [`.github/skill-template/README.md`](../.github/skill-template/README.md)). The inline skeleton below matches that file.
+
+---
+
+## SKILL.md template
+
+```markdown
+---
+name: pipefy-<domain>-<action>   # kebab-case, unique
+description: >
+  One-line summary used by agents to choose this skill.
+  Be specific about when to use vs not use.
+tags: [pipefy, <domain>, ...]
+---
+
+# Title
+
+Short intro (1-2 sentences).
+
+[When the workflow has surface-specific guidance, add the relevant links:
+MCP clients: read [references/mcp.md](references/mcp.md).
+CLI users: read [references/cli.md](references/cli.md).
+Omit the links for a router without reference files.]
+
+---
+
+## When to use
+
+The user intent that triggers this skill (examples). State when NOT to use this skill.
+
+## Prerequisites
+
+What must be true before the agent can execute (IDs, access, config).
+
+## Tools needed
+
+| Operation | Read-only | Purpose |
+|-----------|-----------|---------|
+| `tool_name` | Yes/No | Domain outcome |
+
+## Steps
+
+1. **Step name** — description.
+
+   Operation arguments (adapt to the active surface):
+   ```
+   tool_name arg1=value1 arg2=value2
+   ```
+
+2. **Next step** — ...
+
+## Success criteria
+
+How the agent / human knows the workflow completed correctly.
+
+## Failure modes
+
+Common errors and how to recover.
+```
+
+---
+
+## Naming conventions
+
+- **Skill names:** kebab-case, descriptive, start with `pipefy-` (`pipefy-pipes-and-cards`, `pipefy-process-design`).
+- **Stable IDs:** once a skill is published, renames require a CHANGELOG note so agent prompts using old names still resolve.
+
+---
+
+## Frontmatter rules
+
+All fields are **required** unless noted:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Must match the directory name exactly. |
+| `description` | Yes | One-line summary; used by agents to select this skill. |
+| `tags` | No | Optional list of relevant keywords. |
+| `metadata.surfaces` | No | Space-separated string of supported surfaces: `sdk`, `mcp`, `cli`. Omission means all three. |
+
+Declare only the surfaces on which the skill's workflow applies. `sdk` means SDK consumers that build agent tools from `PipefyClient`, `mcp` means MCP clients, and `cli` means the `pipefy` command. This describes applicability, not identical call signatures or availability under every deployment profile; document prerequisites separately.
+
+For a skill limited to MCP and CLI:
+
+```yaml
+metadata:
+  surfaces: "mcp cli"
+```
+
+Use `"mcp"` for MCP-only skills such as iPaaS. Do not use a YAML list, an empty value, duplicate tokens, or other surface names. Unrelated metadata does not change the default. Existing readers may ignore this optional metadata. Duplicate YAML keys are rejected, including repeated `metadata` or `surfaces` keys.
+
+CI (`skills-lint.yml`) validates these fields with `uv run python .github/workflows/scripts/lint_skill_frontmatter.py`.
+
+---
+
+## Body style
+
+- **Action-first headlines.** "Create a pipe" not "Pipe creation."
+- **Surface-neutral body.** Name operations by their shared tool names. Keep domain argument examples in the body; put MCP confirmation tokens, elicitation, profiles, MCP-only parameters and envelopes in `references/mcp.md`, and CLI commands/flags in `references/cli.md`. Link each existing reference from the body. Routers without surface-specific behavior need no reference files.
+- **Code blocks for invocations.** Show concrete MCP and CLI variants in their respective references when both exist; state missing/deferred equivalents rather than inventing commands.
+- **Prefer explicit IDs over names** in examples — Pipefy IDs are stable; names change.
+- **Under 500 lines.** Keep skills focused; use "See also" links to related skills rather than duplicating content.
+- **Progressive disclosure.** Put the common happy path first; edge cases and failure modes last.
+
+---
+
+## Linking to repository docs
+
+When a skill needs stable URLs into this repo’s Markdown:
+
+- **MCP tool semantics** — `docs/mcp/tools/<domain>.md` (cross-cutting rules: `docs/mcp/tools/cross-cutting.md`).
+- **CLI-only flows** — `docs/cli/` (e.g. `docs/cli/self-healing.md`).
+- **SDK usage** — `docs/sdk/README.md`.
+- **Install**: `docs/install.md` (canonical snippets). First-time agent checklist: `plugins/pipefy/skills/pipefy-toolkit-setup/SKILL.md`. **`PIPEFY_*` env vars and `config.toml`**: `docs/config.md`. **MCP ↔ CLI matrix**: `docs/parity.md`.
+
+---
+
+## Intra-repo coupling
+
+Skills and tools live in the same monorepo. When a CLI command or MCP tool is renamed:
+
+1. Update the skill reference in the same PR (or a paired PR opened in the same review window).
+2. The `skills-lint.yml` CI job validates frontmatter on every `skills/**/SKILL.md` and lints operation names against each entrypoint's declared SDK/MCP surfaces. MCP references must name MCP tools and their argument names; a `name=` argument in a `SKILL.md` example must exist on the MCP tool or the `PipefyClient` method. Every `pipefy` invocation written as code (inline code or a fenced block) must resolve to a real subcommand path, with `--` options that exist on that command; `pipefy` in plain prose is checked for the root command only. A rename that doesn't update the skill fails the build.
+
+---
+
+## Best practices
+
+- **Keep skills short.** If a skill exceeds 500 lines, split it by sub-domain.
+- **Refer by name.** Use `See also: the pipefy-automations skill`, optionally naming a section, rather than paths between skills. Consumers may flatten the catalog to `<skill-name>/SKILL.md`. Within a skill, relative links to `references/` remain portable; use repository URLs for external docs.
+- **Test before shipping.** Run the skill end-to-end against a real Pipefy org before opening a PR.

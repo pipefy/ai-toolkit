@@ -42,6 +42,8 @@ app = typer.Typer(
     name="pipefy",
     help="Pipefy CLI (GraphQL via pipefy).",
     no_args_is_help=True,
+    # Login and token-refresh frames hold access and refresh tokens as locals.
+    pretty_exceptions_show_locals=False,
 )
 
 

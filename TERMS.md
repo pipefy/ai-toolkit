@@ -12,7 +12,7 @@ The Toolkit’s source code and documentation are licensed under the Apache Lice
 
 ## 3. Platform terms
 
-The Toolkit is a client of the Pipefy platform. Access to and use of the Pipefy platform — including through the MCP server, the CLI, or any AI assistant — is governed by the [Pipefy Solutions Terms and Conditions](https://www.pipefy.com/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/termos-e-condicoes/)) and, where applicable, the Master Services Agreement between your organization and Pipefy, and the Pipefy AI Additional Terms (to be published and incorporated by reference into those terms). In case of conflict regarding the Pipefy service, those documents prevail over this notice.
+The Toolkit is a client of the Pipefy platform. Access to and use of the Pipefy platform — including through the MCP server, the CLI, or any AI assistant — is governed by the [Pipefy Solution Terms of Use](https://www.pipefy.com/legal-portal/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/portal-juridico/termos-de-uso-da-solucao-pipefy/)) and, where applicable, the Master Services Agreement between your organization and Pipefy, and the Pipefy AI Additional Terms (to be published and incorporated by reference into those terms). In case of conflict regarding the Pipefy service, those documents prevail over this notice.
 
 ## 4. AI features and acceptable use
 

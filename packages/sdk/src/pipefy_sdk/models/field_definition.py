@@ -2,11 +2,43 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from pipefy_sdk.models.validators import NonBlankStr
+
+# Mirrors the API's ``FieldTypeId`` enum. ``CreatePhaseFieldInput.type`` is an ``ID``,
+# so this is a soft enum: write methods take ``FieldTypeId | str`` and the API
+# validates, letting a new server-side type work without an SDK release.
+FieldTypeId = Literal[
+    "assignee_select",
+    "attachment",
+    "checklist_horizontal",
+    "checklist_vertical",
+    "cnpj",
+    "connector",
+    "cpf",
+    "currency",
+    "date",
+    "datetime",
+    "due_date",
+    "dynamic_content",
+    "email",
+    "id",
+    "label_select",
+    "long_text",
+    "number",
+    "phone",
+    "radio_horizontal",
+    "radio_vertical",
+    "select",
+    "short_text",
+    "statement",
+    "time",
+]
+
+FIELD_TYPE_IDS: tuple[str, ...] = get_args(FieldTypeId)
 
 
 class MalformedFieldDefinitionError(ValueError):

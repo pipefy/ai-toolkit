@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md and README MCP totals.
+# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md.
 PIPEFY_TOOL_NAMES = frozenset(
     {
         "add_card_comment",
@@ -141,6 +141,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_card_relations",
         "get_cards",
         "get_email_templates",
+        "get_interface_html_guidelines",
         "get_ipaas_connection_auth_url",
         "get_ipaas_tools",
         "get_labels",
@@ -163,6 +164,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_pipe_report_export",
         "get_pipe_report_filterable_fields",
         "get_pipe_reports",
+        "get_records",
         "get_start_form_fields",
         "get_table",
         "get_table_record",

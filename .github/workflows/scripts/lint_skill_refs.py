@@ -322,14 +322,14 @@ def _lint_file(
 
 
 def main() -> int:
-    """Lint all skills under ``skills/`` for MCP and CLI reference validity.
+    """Lint all skills under ``plugins/pipefy/skills/`` for MCP and CLI reference validity.
 
     Returns:
         0 if no issues, 1 otherwise.
     """
-    skills_root = REPO_ROOT / "skills"
+    skills_root = REPO_ROOT / "plugins" / "pipefy" / "skills"
     if not skills_root.is_dir():
-        print("No skills/ directory found.", file=sys.stderr)
+        print("No plugins/pipefy/skills/ directory found.", file=sys.stderr)
         return 1
 
     catalog = ReferenceCatalog(

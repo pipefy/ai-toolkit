@@ -41,6 +41,7 @@ from pipefy_sdk.models.comment import (
     DeleteCommentInput,
     UpdateCommentInput,
 )
+from pipefy_sdk.models.field_definition import FIELD_TYPE_IDS, FieldTypeId
 from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
 from pipefy_sdk.models.member_invite import MemberInvite
@@ -78,6 +79,8 @@ __all__ = [
     "CreateSendTaskAutomationInput",
     "DataLookupCondition",
     "DeleteCommentInput",
+    "FIELD_TYPE_IDS",
+    "FieldTypeId",
     "InboxEmailDraft",
     "FieldMapInput",
     "MemberInvite",

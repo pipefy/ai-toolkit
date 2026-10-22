@@ -6,6 +6,7 @@ import importlib
 import json
 import logging
 from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import call as mock_call
 
 import pytest
 from _shared.fixture_ids import (
@@ -18,11 +19,22 @@ from _shared.mock_clients import mock_executor
 from gql import gql
 from pydantic import ValidationError
 
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.graphql_executor import PipefyGraphQLError
 from pipefy_sdk.models.portal import parse_portal_page_layout
 from pipefy_sdk.queries.observability_queries import RESOLVE_ORGANIZATION_UUID_QUERY
-from pipefy_sdk.queries.portal_queries import GET_PORTAL_QUERY, LIST_PORTALS_QUERY
+from pipefy_sdk.queries.portal_queries import (
+    GET_HTML_INTERFACE_QUERY,
+    GET_INTERFACE_HTML_GUIDELINES_QUERY,
+    GET_PORTAL_QUERY,
+    LIST_INTERFACES_QUERY,
+    LIST_PORTALS_QUERY,
+    WRITE_HTML_DOCUMENT_MUTATION,
+)
 from pipefy_sdk.services.portal_service import PortalService
 
 
@@ -352,6 +364,327 @@ async def test_get_portal_uses_correct_variables() -> None:
     query_used, variables = interfaces_executor.execute_query.call_args[0]
     assert query_used is GET_PORTAL_QUERY
     assert variables == {"uuid": "uuid-abc"}
+
+
+def _interfaces_page(nodes, *, has_next_page=False, end_cursor=None):
+    """One ``interfaces`` connection page."""
+    return {
+        "interfaces": {
+            "edges": [{"node": node} for node in nodes],
+            "pageInfo": {"hasNextPage": has_next_page, "endCursor": end_cursor},
+        }
+    }
+
+
+_HTML_INTERFACE_NODE = {
+    "id": "html-uuid-1",
+    "name": "Sales dashboard",
+    "visibility": "internal",
+    "contentModeHtml": True,
+}
+
+_SECOND_HTML_INTERFACE_NODE = {**_HTML_INTERFACE_NODE, "id": "html-uuid-2"}
+
+_GRID_INTERFACE_NODE = {
+    "id": "grid-uuid-1",
+    "name": "Team board",
+    "visibility": "internal",
+    "contentModeHtml": False,
+}
+
+_LIST_INTERFACES_VARIABLES = {
+    "org_uuid": EXAMPLE_ORG_UUID,
+    "filterBySubType": "interface",
+    "first": 50,
+}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_returns_only_html_interfaces() -> None:
+    """list_html_interfaces drops grid interfaces and aliases id as uuid."""
+    service, _public, _interfaces_executor = _make_interfaces_service(
+        _interfaces_page([_HTML_INTERFACE_NODE, _GRID_INTERFACE_NODE]),
+    )
+
+    result = await service.list_html_interfaces(EXAMPLE_ORG_UUID)
+
+    assert result == [{**_HTML_INTERFACE_NODE, "uuid": "html-uuid-1"}]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_sends_interface_filter_page_size_and_search_term() -> (
+    None
+):
+    service, _public, interfaces_executor = _make_interfaces_service(
+        _interfaces_page([]),
+    )
+
+    await service.list_html_interfaces(EXAMPLE_ORG_UUID, search_term="sales")
+
+    interfaces_executor.execute_query.assert_awaited_once_with(
+        LIST_INTERFACES_QUERY, {**_LIST_INTERFACES_VARIABLES, "searchTerm": "sales"}
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_returns_html_interfaces_from_a_later_page() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _interfaces_page(
+            [_HTML_INTERFACE_NODE], has_next_page=True, end_cursor="cursor-1"
+        ),
+        _interfaces_page([_GRID_INTERFACE_NODE, _SECOND_HTML_INTERFACE_NODE]),
+    ]
+
+    result = await service.list_html_interfaces(EXAMPLE_ORG_UUID)
+
+    assert result == [
+        {**_HTML_INTERFACE_NODE, "uuid": "html-uuid-1"},
+        {**_SECOND_HTML_INTERFACE_NODE, "uuid": "html-uuid-2"},
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_requests_the_next_page_after_the_end_cursor() -> (
+    None
+):
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _interfaces_page([], has_next_page=True, end_cursor="cursor-1"),
+        _interfaces_page([]),
+    ]
+
+    await service.list_html_interfaces(EXAMPLE_ORG_UUID)
+
+    assert interfaces_executor.execute_query.await_args_list == [
+        mock_call(LIST_INTERFACES_QUERY, _LIST_INTERFACES_VARIABLES),
+        mock_call(
+            LIST_INTERFACES_QUERY, {**_LIST_INTERFACES_VARIABLES, "after": "cursor-1"}
+        ),
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_stops_on_a_last_page_that_still_has_a_cursor() -> (
+    None
+):
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _interfaces_page(
+            [_HTML_INTERFACE_NODE], has_next_page=False, end_cursor="cursor-1"
+        ),
+    ]
+
+    await service.list_html_interfaces(EXAMPLE_ORG_UUID)
+
+    assert interfaces_executor.execute_query.await_count == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_stops_when_a_next_page_has_no_cursor() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _interfaces_page([_HTML_INTERFACE_NODE], has_next_page=True, end_cursor=None),
+    ]
+
+    result = await service.list_html_interfaces(EXAMPLE_ORG_UUID)
+
+    assert result == [{**_HTML_INTERFACE_NODE, "uuid": "html-uuid-1"}]
+    assert interfaces_executor.execute_query.await_count == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_list_html_interfaces_numeric_org_id_resolves_via_main_graphql_client() -> (
+    None
+):
+    """Numeric org ids resolve to the org uuid before the Interfaces query."""
+    service, public_executor, interfaces_executor = _make_interfaces_service(
+        _interfaces_page([]),
+    )
+    public_executor.execute_query = AsyncMock(
+        return_value={"organization": {"uuid": EXAMPLE_ORG_UUID}}
+    )
+
+    await service.list_html_interfaces(EXAMPLE_NUMERIC_ORG_ID)
+
+    public_executor.execute_query.assert_called_once_with(
+        RESOLVE_ORGANIZATION_UUID_QUERY,
+        {"id": EXAMPLE_NUMERIC_ORG_ID},
+    )
+    _, variables = interfaces_executor.execute_query.call_args[0]
+    assert variables["org_uuid"] == EXAMPLE_ORG_UUID
+
+
+_CUSTOM_CODE_ELEMENT = {
+    "id": "el-1",
+    "type": "customCode",
+    "dataSources": [
+        {
+            "id": "open-sales",
+            "name": "Open sales",
+            "filters": None,
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "repoName": "Sales",
+            "repoType": "Pipe",
+            "fieldKeys": ["amount"],
+        }
+    ],
+    "htmlDocument": {
+        "content": "<h1>Sales</h1>",
+        "contentHash": "a1b2c3",
+        "createdAt": "2026-10-20T12:00:00Z",
+    },
+}
+
+_HTML_INTERFACE_DETAIL_GRAPHQL = {
+    "id": "html-uuid-1",
+    "name": "Sales dashboard",
+    "visibility": "internal",
+    "contentModeHtml": True,
+    "pages": [{"id": "page-1", "title": "Page", "elements": [_CUSTOM_CODE_ELEMENT]}],
+}
+
+_HTML_GUIDELINES_GRAPHQL = {
+    "allowedAttributePrefixes": ["data-"],
+    "allowedDataAttributes": ["data-flow-variant"],
+    "allowedDataPfyAttributes": ["data-pfy-source", "data-pfy-field"],
+    "allowedPlainAttributes": ["class", "style"],
+    "allowedTags": ["div", "span", "p"],
+    "authoringNotes": ["No JavaScript."],
+    "cssRules": [
+        {"code": "CSS_IMPORT_FORBIDDEN", "message": "No @import.", "subject": "@import"}
+    ],
+    "designSystem": None,
+    "errorCodes": [
+        {"code": "TAG_NOT_ALLOWED", "description": "A tag outside allowedTags."}
+    ],
+    "filters": {
+        "description": "A filter is a tree.",
+        "example": {"id": "f1", "type": "root", "conjunction": "and", "filterSet": []},
+        "fixedColumnNames": ["title", "created_at"],
+        "knownOperators": [{"filterType": "text", "operators": ["eq", "contains"]}],
+    },
+    "forbiddenAttributes": [
+        {
+            "code": "ID_ATTRIBUTE_FORBIDDEN",
+            "message": "Use data-pfy-id.",
+            "subject": "id",
+        }
+    ],
+    "forbiddenTags": [
+        {"code": "SCRIPT_FORBIDDEN", "message": "No <script>.", "subject": "script"}
+    ],
+    "linkAttributes": ["src", "href"],
+    "maxAttributesPerElement": 400,
+    "maxContentBytes": 200000,
+    "maxNestingDepth": 398,
+    "urlRule": "Relative, data:, or blob: only.",
+}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_html_interface_returns_pages_with_html_documents() -> None:
+    """Each element keeps its HTML document and declared sources, with uuid aliases."""
+    service, _public, _interfaces_executor = _make_interfaces_service(
+        {"interface": _HTML_INTERFACE_DETAIL_GRAPHQL},
+    )
+
+    result = await service.get_html_interface("html-uuid-1")
+
+    assert result == {
+        **_HTML_INTERFACE_DETAIL_GRAPHQL,
+        "uuid": "html-uuid-1",
+        "pages": [
+            {
+                "id": "page-1",
+                "uuid": "page-1",
+                "title": "Page",
+                "elements": [{**_CUSTOM_CODE_ELEMENT, "uuid": "el-1"}],
+            }
+        ],
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_interface_html_guidelines_returns_the_full_shape() -> None:
+    """get_interface_html_guidelines returns the guidelines payload unchanged."""
+    service, _public, _interfaces_executor = _make_interfaces_service(
+        {"interfaceHtmlGuidelines": _HTML_GUIDELINES_GRAPHQL},
+    )
+
+    result = await service.get_interface_html_guidelines()
+
+    assert result == _HTML_GUIDELINES_GRAPHQL
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_html_interface_queries_the_interface_by_uuid() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"interface": _HTML_INTERFACE_DETAIL_GRAPHQL},
+    )
+
+    await service.get_html_interface("html-uuid-1")
+
+    interfaces_executor.execute_query.assert_awaited_once_with(
+        GET_HTML_INTERFACE_QUERY, {"uuid": "html-uuid-1"}
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_html_interface_not_found_raises_value_error() -> None:
+    """A null interface names the uuid that was not found."""
+    service, _public, _interfaces_executor = _make_interfaces_service(
+        {"interface": None},
+    )
+
+    with pytest.raises(ValueError, match="Interface 'html-uuid-missing' was not found"):
+        await service.get_html_interface("html-uuid-missing")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_mode_html", [False, None])
+async def test_get_html_interface_rejects_grid_interface(
+    content_mode_html: bool | None,
+) -> None:
+    """A grid interface has no HTML document; the error points to get_portal."""
+    service, _public, _interfaces_executor = _make_interfaces_service(
+        {
+            "interface": {
+                **_HTML_INTERFACE_DETAIL_GRAPHQL,
+                "contentModeHtml": content_mode_html,
+            }
+        },
+    )
+
+    with pytest.raises(ValueError, match="not an HTML interface.*get_portal"):
+        await service.get_html_interface("html-uuid-1")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_interface_html_guidelines_sends_no_variables() -> None:
+    """get_interface_html_guidelines takes no argument: the rules are org-independent."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"interfaceHtmlGuidelines": _HTML_GUIDELINES_GRAPHQL},
+    )
+
+    await service.get_interface_html_guidelines()
+
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    assert query_used is GET_INTERFACE_HTML_GUIDELINES_QUERY
+    assert variables == {}
 
 
 _portal_queries_module = importlib.import_module("pipefy_sdk.queries.portal_queries")
@@ -1265,6 +1598,7 @@ async def test_update_portal_element_calls_update_element_with_full_metadata() -
         _PAGE_ID,
         type="link",
         metadata=link_metadata,
+        data_sources=[],
     )
 
     interfaces_executor.execute_query.assert_called_once()
@@ -1281,6 +1615,267 @@ async def test_update_portal_element_calls_update_element_with_full_metadata() -
         }
     }
     assert result["metadata"]["linkUrl"] == "https://example.com/pipefy"
+
+
+_PORTAL_UUID = "portal-uuid-1"
+_SIBLING_ELEMENT_ID = "el-uuid-sibling"
+_STORED_DATA_SOURCES = [
+    {
+        "repoId": EXAMPLE_PIPE_REPO_ID,
+        "repoName": "Requests",
+        "repoType": "Pipe",
+        "fieldKeys": ["title"],
+    }
+]
+_SIBLING_DATA_SOURCES = [
+    {
+        "repoId": "sibling-repo-uuid",
+        "repoName": "Other",
+        "repoType": "Pipe",
+        "fieldKeys": [],
+    }
+]
+
+
+def _forms_element(element_id: str, data_sources: list[dict], editable: bool) -> dict:
+    return {
+        "id": element_id,
+        "type": "forms",
+        "metadata": _FORMS_METADATA,
+        "editable": editable,
+        "dataSources": data_sources,
+    }
+
+
+def _portal_with_forms_element(target_editable: bool = True) -> dict:
+    """``portalInterface`` payload: a sibling forms element, then the target.
+
+    The sibling comes first, is bound to another pipe and stores the opposite
+    ``editable``, so a lookup that does not match on ``element_id`` resends the
+    sibling's bindings and flag.
+    """
+    return {
+        "portalInterface": {
+            "id": _PORTAL_UUID,
+            "pages": [
+                {"id": _PAGE_ID_2, "elements": []},
+                {
+                    "id": _PAGE_ID,
+                    "elements": [
+                        _forms_element(
+                            _SIBLING_ELEMENT_ID,
+                            _SIBLING_DATA_SOURCES,
+                            not target_editable,
+                        ),
+                        _forms_element(
+                            _ELEMENT_ID, _STORED_DATA_SOURCES, target_editable
+                        ),
+                    ],
+                },
+            ],
+        }
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_sends_given_data_sources_without_reading() -> None:
+    """Given data_sources replace the element's list; no portal read is needed."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=_FORMS_DATA_SOURCES,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    interfaces_executor.execute_query.assert_called_once()
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": []}
+    ]
+    assert "editable" not in variables["input"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_empty_data_sources_unlink_with_portal_uuid() -> (
+    None
+):
+    """``data_sources=[]`` unlinks even when portal_uuid is given; nothing is read."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=[],
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    interfaces_executor.execute_query.assert_called_once()
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == []
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stored_editable", [True, False])
+async def test_update_portal_element_keeps_current_data_sources_when_omitted(
+    stored_editable: bool,
+) -> None:
+    """Omitted data_sources are read from the portal and sent back, not cleared.
+
+    The element's stored ``editable`` goes back with them, ``False`` included: the
+    API rejects an update whose data source lists fieldKeys when ``editable`` is
+    missing.
+    """
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _portal_with_forms_element(target_editable=stored_editable),
+        {"updateElement": {"success": True}},
+    ]
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+    read_query, read_variables = interfaces_executor.execute_query.call_args_list[0][0]
+    assert read_query is GET_PORTAL_QUERY
+    assert read_variables == {"uuid": _PORTAL_UUID}
+    query_used, variables = interfaces_executor.execute_query.call_args[0]
+    _assert_interfaces_mutation_query(query_used, "UPDATE_ELEMENT_MUTATION")
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": ["title"]}
+    ]
+    assert variables["input"]["editable"] is stored_editable
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_keep_path_sends_given_editable() -> None:
+    """A caller's editable wins over the stored flag; the bindings are still kept."""
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = [
+        _portal_with_forms_element(),
+        {"updateElement": {"success": True}},
+    ]
+
+    await service.update_portal_element(
+        _ELEMENT_ID,
+        _PAGE_ID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+        editable=False,
+    )
+
+    variables = interfaces_executor.execute_query.call_args[0][1]
+    assert variables["input"]["editable"] is False
+    assert variables["input"]["data_sources"] == [
+        {"repoId": EXAMPLE_PIPE_REPO_ID, "fieldKeys": ["title"]}
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_requires_data_sources_or_portal_uuid() -> None:
+    """Without either, the call is rejected before any request."""
+    service, _public, interfaces_executor = _make_interfaces_service(
+        {"updateElement": {"success": True}},
+    )
+
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+        )
+
+    interfaces_executor.execute_query.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_failed_read_sends_no_mutation() -> None:
+    service, _public, interfaces_executor = _make_interfaces_service(None)
+    interfaces_executor.execute_query.side_effect = PipefyGraphQLError(
+        [{"message": "Something went wrong"}]
+    )
+
+    with pytest.raises(PipefyGraphQLError):
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    interfaces_executor.execute_query.assert_called_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_on_another_page_names_that_page() -> None:
+    """The element must sit on page_id; the error names the page that holds it."""
+    portal = _portal_with_forms_element()
+    pages = portal["portalInterface"]["pages"]
+    pages[0]["elements"], pages[1]["elements"] = pages[1]["elements"], []
+    service, _public, interfaces_executor = _make_interfaces_service(portal)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    assert str(excinfo.value) == (
+        f"Element '{_ELEMENT_ID}' is on page '{_PAGE_ID_2}' of portal "
+        f"'{_PORTAL_UUID}', not on page '{_PAGE_ID}'. Pass page_id='{_PAGE_ID_2}'."
+    )
+    interfaces_executor.execute_query.assert_called_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_on_no_page_points_to_data_sources() -> None:
+    portal = _portal_with_forms_element()
+    portal["portalInterface"]["pages"][1]["elements"].pop()
+    service, _public, interfaces_executor = _make_interfaces_service(portal)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.update_portal_element(
+            _ELEMENT_ID,
+            _PAGE_ID,
+            type="forms",
+            metadata=_FORMS_METADATA,
+            portal_uuid=_PORTAL_UUID,
+        )
+
+    assert str(excinfo.value) == (
+        f"Element '{_ELEMENT_ID}' is on no page of portal '{_PORTAL_UUID}'. "
+        "Check portal_uuid and element_id, or pass data_sources to skip the read."
+    )
+    interfaces_executor.execute_query.assert_called_once()
 
 
 @pytest.mark.unit
@@ -1614,6 +2209,124 @@ async def test_sub_portal_internal_api_non_permission_error_propagates() -> None
         )
 
 
+def test_get_html_interface_selects_data_source_id_name_and_filters():
+    interface = GET_HTML_INTERFACE_QUERY.document.definitions[
+        0
+    ].selection_set.selections[0]
+    pages = next(
+        field
+        for field in interface.selection_set.selections
+        if field.name.value == "pages"
+    )
+    elements = next(
+        field
+        for field in pages.selection_set.selections
+        if field.name.value == "elements"
+    )
+    data_sources = next(
+        field
+        for field in elements.selection_set.selections
+        if field.name.value == "dataSources"
+    )
+    assert {field.name.value for field in data_sources.selection_set.selections} >= {
+        "id",
+        "name",
+        "filters",
+    }
+
+
+def _selection_names(selections):
+    return {field.name.value for field in selections}
+
+
+def _selected_field(selections, name):
+    return next(field for field in selections if field.name.value == name)
+
+
+def test_get_interface_html_guidelines_selects_every_guideline_field():
+    """A forgotten or misspelled field here would still pass a mocked-response test."""
+    guidelines = GET_INTERFACE_HTML_GUIDELINES_QUERY.document.definitions[
+        0
+    ].selection_set.selections[0]
+    top_level = _selection_names(guidelines.selection_set.selections)
+
+    assert top_level == {
+        "allowedAttributePrefixes",
+        "allowedDataAttributes",
+        "allowedDataPfyAttributes",
+        "allowedPlainAttributes",
+        "allowedTags",
+        "authoringNotes",
+        "cssRules",
+        "designSystem",
+        "errorCodes",
+        "filters",
+        "forbiddenAttributes",
+        "forbiddenTags",
+        "linkAttributes",
+        "maxAttributesPerElement",
+        "maxContentBytes",
+        "maxNestingDepth",
+        "urlRule",
+    }
+
+    for name in ("cssRules", "forbiddenAttributes", "forbiddenTags"):
+        rule = _selected_field(guidelines.selection_set.selections, name)
+        assert _selection_names(rule.selection_set.selections) == {
+            "code",
+            "message",
+            "subject",
+        }
+
+    error_codes = _selected_field(guidelines.selection_set.selections, "errorCodes")
+    assert _selection_names(error_codes.selection_set.selections) == {
+        "code",
+        "description",
+    }
+
+    filters = _selected_field(guidelines.selection_set.selections, "filters")
+    assert _selection_names(filters.selection_set.selections) == {
+        "description",
+        "example",
+        "fixedColumnNames",
+        "knownOperators",
+    }
+    known_operators = _selected_field(
+        filters.selection_set.selections, "knownOperators"
+    )
+    assert _selection_names(known_operators.selection_set.selections) == {
+        "filterType",
+        "operators",
+    }
+
+
+def test_get_portal_selects_element_data_sources_and_editable():
+    """update_portal_element reads these to keep the bindings a caller omits."""
+    portal = GET_PORTAL_QUERY.document.definitions[0].selection_set.selections[0]
+    pages = next(
+        field
+        for field in portal.selection_set.selections
+        if field.name.value == "pages"
+    )
+    elements = next(
+        field
+        for field in pages.selection_set.selections
+        if field.name.value == "elements"
+    )
+    data_sources = next(
+        field
+        for field in elements.selection_set.selections
+        if field.name.value == "dataSources"
+    )
+    assert {field.name.value for field in data_sources.selection_set.selections} >= {
+        "repoId",
+        "fieldKeys",
+    }
+    assert "editable" in {
+        field.name.value for field in elements.selection_set.selections
+    }
+
+
 def test_get_portal_selects_page_layout():
     from pipefy_sdk.queries.portal_queries import GET_PORTAL_QUERY
 
@@ -1624,3 +2337,190 @@ def test_get_portal_selects_page_layout():
         if field.name.value == "pages"
     )
     assert "layout" in {field.name.value for field in pages.selection_set.selections}
+
+
+_SCRIPT_VIOLATION = {
+    "code": "SCRIPT_FORBIDDEN",
+    "message": "Remove the script tag.",
+    "selector": "script",
+    "attribute": None,
+}
+
+_ONCLICK_VIOLATION = {
+    "code": "EVENT_HANDLER_FORBIDDEN",
+    "message": "Remove the onclick handler.",
+    "selector": "button",
+    "attribute": "onclick",
+}
+
+_WRITE_HTML_DOCUMENT_VARIABLES = {
+    "input": {"page_id": "page-1", "element_id": "el-1", "content": "<h1>Sales</h1>"}
+}
+
+
+def _html_validation_failed_error(
+    violations: object, *, code: str = "HTML_VALIDATION_FAILED"
+) -> PipefyGraphQLError:
+    return PipefyGraphQLError(
+        [
+            {
+                "message": "Invalid HTML",
+                "extensions": {"code": code, "violations": violations},
+            }
+        ]
+    )
+
+
+async def _write_sales_heading(service: PortalService) -> dict:
+    return await service.write_html_document(
+        page_id="page-1", element_id="el-1", content="<h1>Sales</h1>"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_write_html_document_returns_the_mutation_result() -> None:
+    service, _interfaces, _internal = _make_portal_service_with_clients(
+        interfaces_return={"writeHtmlDocument": {"success": True}},
+    )
+
+    result = await _write_sales_heading(service)
+
+    assert result == {"writeHtmlDocument": {"success": True}}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_write_html_document_sends_page_element_and_content_once() -> None:
+    """writeHtmlDocument takes snake_case page_id and element_id under input."""
+    service, interfaces, _internal = _make_portal_service_with_clients(
+        interfaces_return={"writeHtmlDocument": {"success": True}},
+    )
+
+    await _write_sales_heading(service)
+
+    interfaces.execute_query.assert_awaited_once_with(
+        WRITE_HTML_DOCUMENT_MUTATION, _WRITE_HTML_DOCUMENT_VARIABLES
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["HTML_VALIDATION_FAILED", " html_validation_failed "])
+async def test_write_html_document_raises_every_violation(code: str) -> None:
+    """HTML_VALIDATION_FAILED becomes HtmlValidationError carrying each violation."""
+    graphql_error = _html_validation_failed_error(
+        [_SCRIPT_VIOLATION, _ONCLICK_VIOLATION], code=code
+    )
+    service, interfaces, _internal = _make_portal_service_with_clients()
+    interfaces.execute_query.side_effect = graphql_error
+
+    with pytest.raises(HtmlValidationError) as exc_info:
+        await _write_sales_heading(service)
+
+    assert exc_info.value.violations == (
+        HtmlViolation(
+            code="SCRIPT_FORBIDDEN",
+            message="Remove the script tag.",
+            selector="script",
+            attribute=None,
+        ),
+        HtmlViolation(
+            code="EVENT_HANDLER_FORBIDDEN",
+            message="Remove the onclick handler.",
+            selector="button",
+            attribute="onclick",
+        ),
+    )
+    assert exc_info.value.__cause__ is graphql_error
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_write_html_document_skips_entries_that_are_not_violations() -> None:
+    """Non-objects and entries without a code or message are dropped; blanks are absent."""
+    service, interfaces, _internal = _make_portal_service_with_clients()
+    interfaces.execute_query.side_effect = _html_validation_failed_error(
+        [
+            "script",
+            {"message": "Missing its code."},
+            {"code": "NO_MESSAGE"},
+            {
+                "code": "CONTENT_TOO_LARGE",
+                "message": "The document is too large.",
+                "selector": " ",
+                "attribute": "",
+            },
+        ]
+    )
+
+    with pytest.raises(HtmlValidationError) as exc_info:
+        await _write_sales_heading(service)
+
+    assert exc_info.value.violations == (
+        HtmlViolation(
+            code="CONTENT_TOO_LARGE",
+            message="The document is too large.",
+            selector=None,
+            attribute=None,
+        ),
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_write_html_document_permission_denied_raises_portal_permission_error() -> (
+    None
+):
+    service, interfaces, _internal = _make_portal_service_with_clients()
+    interfaces.execute_query.side_effect = _PERMISSION_DENIED_ERROR
+
+    with pytest.raises(PortalPermissionError):
+        await _write_sales_heading(service)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "graphql_error",
+    [
+        PipefyGraphQLError(
+            [
+                {
+                    "message": "AI-generated interfaces are not enabled.",
+                    "extensions": {"code": "FEATURE_BLOCKED"},
+                }
+            ]
+        ),
+        PipefyGraphQLError([{"message": "Element el-1 does not belong to page-1."}]),
+        _html_validation_failed_error([_SCRIPT_VIOLATION], code="RECORD_INVALID"),
+        PipefyGraphQLError(
+            [
+                {
+                    "message": "Invalid HTML",
+                    "extensions": {"code": "HTML_VALIDATION_FAILED"},
+                }
+            ]
+        ),
+        _html_validation_failed_error("script"),
+        _html_validation_failed_error(["script", None, {"code": "NO_MESSAGE"}]),
+    ],
+    ids=[
+        "other-code",
+        "no-code",
+        "other-code-with-violations",
+        "no-violations",
+        "violations-not-a-list",
+        "no-usable-violation",
+    ],
+)
+async def test_write_html_document_keeps_the_api_error_without_usable_violations(
+    graphql_error: PipefyGraphQLError,
+) -> None:
+    service, interfaces, _internal = _make_portal_service_with_clients()
+    interfaces.execute_query.side_effect = graphql_error
+
+    with pytest.raises(PipefyGraphQLError) as exc_info:
+        await _write_sales_heading(service)
+
+    assert exc_info.value is graphql_error

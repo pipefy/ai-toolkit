@@ -116,9 +116,13 @@ A teardown uses the exit codes `--scan` uses, judged by the closing re-scan rath
 
 Without a receipt the run is in **heuristic mode**, which is permanent rather than transitional: every install made before the receipt existed has none, and only a version of `install.sh` that writes one produces one. Heuristic mode removes less. In a config the installer writes, it deletes a registration only where the value is exactly the single command the installer writes, reports everything else for you to judge, and never treats uv as this toolkit's.
 
-## The stored session lives in one of two places
+## Where the stored session lives
 
-`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the keychain while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep. The scan resolves and reports the effective backend and checks both stores regardless of which one is active.
+`PIPEFY_KEYCHAIN_BACKEND=file` puts the session in `~/.config/pipefy/keyring.cfg`; without it, the session is in the OS keychain. Removing that line from a shell rc **moves the store** rather than clearing it: the next login writes to the keychain while anything already in `keyring.cfg` stays there, still signed in and invisible to a keychain-only sweep.
+
+On a machine with no OS keychain backend (a headless Linux host without Secret Service, for example), Python `keyring` falls back to its own plaintext file, `python_keyring/keyring_pass.cfg` under `$XDG_DATA_HOME` (default `~/.local/share`). Other programs that use `keyring` share that file, so teardown removes only the `[pipefy]` section and keeps no backup copy of the file.
+
+The scan resolves and reports the effective backend and checks all three stores regardless of which one is active.
 
 ## Never removed, by design
 
@@ -193,7 +197,7 @@ Remove the hosted or hand-wired registration first, for the same precedence reas
 In Cursor, the Marketplace plugin and any user-config Pipefy MCP entry (including `install.sh --client cursor`) both occupy the MCP list. Keep exactly one. This path has no `/install` or `/pipefy-login` commands (those files belong to Claude Code, where they surface namespaced as `/pipefy:install` and `/pipefy:pipefy-login`). Skills may appear as `/pipefy-*` palette entries.
 
 1. If `~/.cursor/mcp.json` (Windows: `%USERPROFILE%\.cursor\mcp.json`) has a matching server, delete that key and save the file. The name is free text — `./uninstall.sh --scan` prints it.
-2. Install **Pipefy** from the Cursor Marketplace (the listing tracks `main`). Contributors loading a checkout copy the plugin files into `~/.cursor/plugins/local/pipefy` as a real directory and fully restart Cursor. Cursor rejects a symlink whose target is outside `~/.cursor/plugins/local`. The copy commands are in the root README, [Cursor Marketplace plugin](../README.md#6-cursor-marketplace-plugin).
+2. Install **Pipefy** from the Cursor Marketplace (the listing is a reviewed snapshot; Cursor publishes a new version after it approves each resubmission). Contributors loading a checkout copy the plugin files into `~/.cursor/plugins/local/pipefy` as a real directory and fully restart Cursor. Cursor rejects a symlink whose target is outside `~/.cursor/plugins/local`. The copy commands are in the install guide, [Cursor Marketplace plugin](install.md#6-cursor-marketplace-plugin).
 3. Complete Cursor's browser sign-in. Do not run `pipefy auth login` or `/pipefy:pipefy-login` on this path.
 
 `./uninstall.sh --scan` still reports a leftover **user-config** `mcp.pipefy.com` or `pipefy-mcp-server` registration. A Marketplace-only install does not write `~/.cursor/mcp.json`. A clean scan (exit `0`) means no **user-config** registration was found in the sources the scan inspects; it does not mean the machine is free of Pipefy state. The scan does not read `<project>/.cursor/mcp.json`, and it does not clear the Cursor-held OAuth credential (sign out from Cursor's MCP pane, the same one that ran the sign-in; `pipefy auth logout` does not apply on a path with no CLI). Disable or uninstall the plugin itself from Cursor's plugin pane when leaving this path. The two panes are separate: signing out does not remove the plugin, and removing the plugin does not clear the credential.
@@ -217,6 +221,6 @@ Use the names the report printed: a registration can be called anything.
 
 ## Related
 
-- [`../README.md#installation`](../README.md#installation) — the install paths this reverses
+- [`install.md`](install.md): the install paths this reverses
 - [`cli/auth.md`](cli/auth.md) — where credentials live, and `pipefy auth logout` in detail
 - [`config.md`](config.md) — every `PIPEFY_*` variable the scan looks for

@@ -33,6 +33,7 @@ from pipefy_mcp.tools.pagination_helpers import (
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
 from pipefy_mcp.tools.validation_helpers import (
+    format_validation_error_message,
     mutation_error_if_not_optional_dict,
     validate_optional_tool_id,
     validate_tool_id,
@@ -62,7 +63,9 @@ def _parse_condition_arg(
     try:
         parsed = AutomationConditionInput.model_validate(condition)
     except ValidationError as exc:
-        return None, build_automation_error_payload(f"Invalid 'condition': {exc}")
+        return None, build_automation_error_payload(
+            f"Invalid 'condition': {format_validation_error_message(exc)}"
+        )
     if not parsed.expressions:
         # An expressionless condition serializes to an empty payload that would
         # still win over extra_input.condition — almost always a mistake. Omit
@@ -180,7 +183,7 @@ class AutomationTools:
             )
             if size_err is not None:
                 return size_err
-            cursor = after.strip() if isinstance(after, str) and after.strip() else None
+            cursor = after.strip() if after is not None and after.strip() else None
             try:
                 page = await client.get_automations(
                     organization_id=org,
@@ -393,7 +396,7 @@ class AutomationTools:
             )
             if bad is not None:
                 return bad
-            if name is not None and (not isinstance(name, str) or not name.strip()):
+            if name is not None and not name.strip():
                 return build_automation_error_payload(
                     message="Invalid 'name': provide a non-empty string when supplied.",
                 )
@@ -406,7 +409,7 @@ class AutomationTools:
                     event_params=event_params,
                     action_params=action_params,
                     condition=condition,
-                    name=name.strip() if isinstance(name, str) else None,
+                    name=name.strip() if name is not None else None,
                     extra_input=extra_input,
                 )
             except Exception as exc:  # noqa: BLE001
@@ -479,10 +482,10 @@ class AutomationTools:
 
             Common ``value`` tokens when ``inputMode`` is ``copy_from``:
 
-            - ``%{id}`` — triggering card id (use in ``card_id``, not only ``value``)
-            - ``%{created_at}`` — card creation timestamp
-            - ``%{automation_event_execution_datetime}`` — automation run timestamp
-            - ``%{<internal_id>}`` — copy from another field (digits only, e.g. ``%{429659034}``)
+            - ``%{id}``: triggering card id (use in ``card_id``, not only ``value``)
+            - ``%{created_at}``: card creation timestamp
+            - ``%{automation_event_execution_datetime}``: automation run timestamp
+            - ``%{<internal_id>}``: copy from another field (digits only, e.g. ``%{421234567}``)
 
             **Condition** (``condition``) — gate the rule on field tests. It is a
             ``ConditionInput``: ``{"expressions": [...], "expressions_structure": [[...]]}``.
@@ -531,7 +534,7 @@ class AutomationTools:
             aid, aid_err = validate_tool_id(action_id, "action_id")
             if aid_err is not None:
                 return aid_err
-            if not isinstance(name, str) or not name.strip():
+            if not name.strip():
                 return build_automation_error_payload(
                     message="Invalid 'name': provide a non-empty string.",
                 )
@@ -648,7 +651,9 @@ class AutomationTools:
                     condition=condition,
                 )
             except ValidationError as exc:
-                return build_automation_error_payload(str(exc))
+                return build_automation_error_payload(
+                    format_validation_error_message(exc)
+                )
 
             try:
                 raw = await client.create_send_task_automation(

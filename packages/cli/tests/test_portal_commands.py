@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -890,6 +891,8 @@ def test_portal_element_update_json(runner, clean_pipefy_env, saved_cwd, oauth_e
                 "link",
                 "--metadata",
                 json.dumps(link_metadata),
+                "--data-sources",
+                "[]",
                 "--json",
             ],
         )
@@ -901,7 +904,137 @@ def test_portal_element_update_json(runner, clean_pipefy_env, saved_cwd, oauth_e
         type="link",
         metadata=link_metadata,
         data_sources=[],
+        portal_uuid=None,
     )
+
+
+def test_portal_element_update_keeps_data_sources_with_portal_uuid(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Without --data-sources, --portal-uuid lets the SDK keep the current ones."""
+    oauth_env("portal-element-update-keep")
+    mock_client = MagicMock()
+    mock_client.update_portal_element = AsyncMock(
+        return_value={**_CREATED_ELEMENT, "metadata": _FORMS_METADATA}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "update",
+                _ELEMENT_UUID,
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                "--portal-uuid",
+                _PORTAL_UUID,
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.update_portal_element.assert_awaited_once_with(
+        _ELEMENT_UUID,
+        _PAGE_UUID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=None,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _panel_text(stderr: str) -> str:
+    """Flatten a Typer error panel into one line of words, without ANSI styling.
+
+    Rich styles option names when color is forced (CI sets ``FORCE_COLOR``), which
+    splits ``--portal-uuid`` into escape-wrapped pieces.
+    """
+    plain = _ANSI_ESCAPE.sub("", stderr)
+    return " ".join(plain.replace("│", " ").split())
+
+
+def _invoke_element_update(runner, mock_client, *options: str):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "update",
+                _ELEMENT_UUID,
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                *options,
+                "--json",
+            ],
+        )
+
+
+def test_portal_element_update_without_data_sources_or_portal_uuid_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Omitting both is rejected before any call, naming the two flags."""
+    oauth_env("portal-element-update-neither")
+    mock_client = MagicMock()
+    result = _invoke_element_update(runner, mock_client)
+    assert result.exit_code == 2
+    assert (
+        "Pass --portal-uuid to keep the element's current data sources, or "
+        "--data-sources to replace them ('[]' unlinks them all)."
+    ) in _panel_text(result.stderr)
+    mock_client.update_portal_element.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        (("--portal-uuid", "   "), "--portal-uuid, when provided, must be non-empty."),
+        (
+            ("--data-sources", "  ", "--portal-uuid", _PORTAL_UUID),
+            "--data-sources, when provided, must be non-empty.",
+        ),
+    ],
+)
+def test_portal_element_update_rejects_blank_option_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, options, message
+):
+    oauth_env("portal-element-update-blank")
+    mock_client = MagicMock()
+    result = _invoke_element_update(runner, mock_client, *options)
+    assert result.exit_code == 2
+    assert message in _panel_text(result.stderr)
+    mock_client.update_portal_element.assert_not_called()
+
+
+def test_portal_element_update_element_not_on_page_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The SDK's keep-path lookup error reaches stderr as is."""
+    oauth_env("portal-element-update-not-on-page")
+    message = (
+        f"Element '{_ELEMENT_UUID}' is on page '{_PAGE_UUID_2}' of portal "
+        f"'{_PORTAL_UUID}', not on page '{_PAGE_UUID}'. Pass page_id='{_PAGE_UUID_2}'."
+    )
+    mock_client = MagicMock()
+    mock_client.update_portal_element = AsyncMock(side_effect=ValueError(message))
+    result = _invoke_element_update(runner, mock_client, "--portal-uuid", _PORTAL_UUID)
+    assert result.exit_code == 2
+    assert message in result.stderr
 
 
 def test_portal_element_update_rejects_invalid_metadata_exit_2(

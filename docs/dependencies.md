@@ -1,12 +1,12 @@
 # Python runtime dependencies
 
-This document explains **why** the main third-party packages exist across the **uv workspace**. Values and pins live in each package’s `pyproject.toml` (`packages/sdk`, `packages/mcp`, `packages/cli`). Install commands live in the root [`README.md#installation`](../README.md#installation); env-var and `config.toml` reference is at [`docs/config.md`](config.md).
+This document explains **why** the main third-party packages exist across the **uv workspace**. Values and pins live in each package's `pyproject.toml` (`packages/sdk`, `packages/mcp`, `packages/cli`). Install commands live in [`install.md`](install.md); env-var and `config.toml` reference is at [`docs/config.md`](config.md).
 
 ## pipefy (`packages/sdk`)
 
 | Dependency | Role |
 | --- | --- |
-| `gql[httpx]` | Async GraphQL client; `HTTPXAsyncTransport` for Pipefy’s GraphQL endpoints. |
+| `gql[httpx]` | Async GraphQL client; `HTTPXAsyncTransport` for Pipefy’s GraphQL endpoints. Capped below 4.4: from 4.4, the transport builds an `httpx2` client whenever `httpx2` is installed (`mcp` depends on it), and that client rejects the `httpx.Auth` subclasses in `pipefy_auth`. Lifting the cap means moving `pipefy_auth` (including its `httpx-auth` dependency) and the SDK to `httpx2`. |
 | `httpx` | Shared async HTTP for transports and direct calls (timeouts, HTTP/2-capable stack via httpx). |
 | `httpx-auth` | OAuth2 client-credentials (`OAuth2ClientCredentials`) aligned with Pipefy service accounts. |
 | `pydantic` / `pydantic-settings` | Request/response models and typed configuration (`PipefySettings`). |

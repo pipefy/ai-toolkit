@@ -1,7 +1,9 @@
 """Live portal read scenarios for PortalService.
 
 Requires valid Pipefy credentials in repo-root **``.env``** (``PIPEFY_*``). All tests
-require ``PIPEFY_PORTAL_ORG_UUID`` (org where the token has ``manage_portals``).
+require ``PIPEFY_PORTAL_ORG_UUID`` (org where the token has ``manage_portals``), except
+the HTML interface write test, which writes only to the disposable interface named by
+``PIPEFY_HTML_INTERFACE_UUID``.
 Unit tests use fictional ids in ``_shared.fixture_ids`` — never commit real org ids
 into test source. See ``docs/config.md`` and ``.env.example``.
 
@@ -29,7 +31,7 @@ from _shared.live_settings import (
 
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.client import build_executors
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import HtmlValidationError, PortalPermissionError
 from pipefy_sdk.services.portal_service import PortalService
 
 _PORTAL_ORG_SKIP = (
@@ -59,6 +61,17 @@ def _require_portal_org_uuid() -> str:
     if org_uuid is None:
         pytest.skip(_PORTAL_ORG_SKIP)
     return org_uuid
+
+
+def _require_disposable_html_interface_uuid() -> str:
+    """The HTML interface live write tests may write to; skip when unset."""
+    interface_uuid = os.environ.get("PIPEFY_HTML_INTERFACE_UUID", "").strip()
+    if not interface_uuid:
+        pytest.skip(
+            "Set PIPEFY_HTML_INTERFACE_UUID to a disposable HTML interface the token "
+            "can edit."
+        )
+    return interface_uuid
 
 
 def _first_forms_element_id(portal_detail: dict) -> str | None:
@@ -103,6 +116,39 @@ async def test_live_list_portals_returns_list_shape(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_live_get_interface_html_guidelines_returns_the_full_shape(
+    live_portal_service: PortalService,
+) -> None:
+    """Smoke: get_interface_html_guidelines returns every documented field.
+
+    Needs the interfaceHtmlGuidelines query live on the target backend; skips if
+    it is not deployed yet there.
+    """
+    try:
+        guidelines = await live_portal_service.get_interface_html_guidelines()
+    except PipefyGraphQLError as exc:
+        if "interfaceHtmlGuidelines" not in str(exc) or "doesn't exist" not in str(exc):
+            raise
+        pytest.skip(f"interfaceHtmlGuidelines not available on this backend: {exc}")
+
+    for key in (
+        "allowedTags",
+        "forbiddenTags",
+        "forbiddenAttributes",
+        "cssRules",
+        "errorCodes",
+        "filters",
+        "maxContentBytes",
+        "maxNestingDepth",
+        "maxAttributesPerElement",
+    ):
+        assert key in guidelines
+    assert guidelines["filters"]["example"]
+    assert guidelines["filters"]["knownOperators"]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_live_get_portal_round_trip_from_list(
     live_portal_service: PortalService,
 ) -> None:
@@ -119,6 +165,100 @@ async def test_live_get_portal_round_trip_from_list(
     assert detail["uuid"] == portal_uuid
     assert "published" in detail
     assert "pages" in detail
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_live_get_html_interface_round_trip_from_list(
+    live_portal_service: PortalService,
+) -> None:
+    """Smoke: list_html_interfaces keeps HTML interfaces; get_html_interface reads one."""
+    org_uuid = _require_portal_org_uuid()
+
+    interfaces = await live_portal_service.list_html_interfaces(org_uuid)
+    if not interfaces:
+        pytest.skip(f"No HTML interface found for org {org_uuid}")
+    portals = await live_portal_service.list_portals(org_uuid)
+    assert all(interface["contentModeHtml"] is True for interface in interfaces)
+    assert not {i["uuid"] for i in interfaces} & {p["uuid"] for p in portals}
+
+    interface_uuid = interfaces[0]["uuid"]
+    detail = await live_portal_service.get_html_interface(interface_uuid)
+
+    assert detail["uuid"] == interface_uuid
+    assert detail["contentModeHtml"] is True
+    assert all(
+        {"htmlDocument", "dataSources"} <= element.keys()
+        for page in detail["pages"]
+        for element in page["elements"]
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_live_write_html_document_rejects_a_script_and_stores_nothing(
+    live_portal_service: PortalService,
+) -> None:
+    """Smoke: invalid HTML raises its violations and leaves the live document as it was."""
+    interface_uuid = _require_disposable_html_interface_uuid()
+
+    before = await live_portal_service.get_html_interface(interface_uuid)
+    target = next(
+        (
+            (page["id"], element)
+            for page in before["pages"]
+            for element in page["elements"]
+            if element["type"] == "customCode"
+        ),
+        None,
+    )
+    if target is None:
+        pytest.skip(f"HTML interface {interface_uuid} has no customCode element")
+    page_id, element = target
+
+    try:
+        await live_portal_service.write_html_document(
+            page_id=page_id, element_id=element["id"], content="<script></script>"
+        )
+    except HtmlValidationError as exc:
+        violation_codes = {v.code for v in exc.violations}
+    except PortalPermissionError:
+        pytest.skip(f"Token cannot update HTML interface {interface_uuid}")
+    else:
+        pytest.fail("The API stored <script></script> instead of rejecting it")
+
+    assert "SCRIPT_FORBIDDEN" in violation_codes
+    after = await live_portal_service.get_html_interface(interface_uuid)
+    stored = {
+        candidate["id"]: candidate["htmlDocument"]
+        for page in after["pages"]
+        for candidate in page["elements"]
+    }[element["id"]]
+    assert stored == element["htmlDocument"]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_live_get_html_interface_data_sources_carry_id_name_and_filters(
+    live_portal_service: PortalService,
+) -> None:
+    """Smoke: every declared source of an HTML interface carries its handle fields."""
+    org_uuid = _require_portal_org_uuid()
+
+    interfaces = await live_portal_service.list_html_interfaces(org_uuid)
+    if not interfaces:
+        pytest.skip(f"No HTML interface found for org {org_uuid}")
+    detail = await live_portal_service.get_html_interface(interfaces[0]["uuid"])
+    sources = [
+        source
+        for page in detail["pages"]
+        for element in page["elements"]
+        for source in element["dataSources"]
+    ]
+    if not sources:
+        pytest.skip("First HTML interface declares no data sources")
+
+    assert [s for s in sources if not {"id", "name", "filters"} <= s.keys()] == []
 
 
 @pytest.mark.integration
@@ -217,6 +357,7 @@ async def test_live_update_portal_element_on_bootstrapped_page(
             page_id,
             type="link",
             metadata=metadata,
+            portal_uuid=portal_uuid,
         )
     except PipefyGraphQLError as exc:
         pytest.skip(

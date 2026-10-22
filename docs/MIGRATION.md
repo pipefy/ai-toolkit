@@ -75,7 +75,7 @@ These are new additions — all optional to adopt:
 uvx --from pipefy-cli pipefy card get 12345
 ```
 
-**`skills/` catalog** — Anthropic Skills-format playbooks for common Pipefy workflows, consumable by any LLM agent. Install via [`skills.sh`](https://github.com/vercel-labs/skills):
+**Skill catalog** — Anthropic Skills-format playbooks for common Pipefy workflows, consumable by any LLM agent. Install via [`skills.sh`](https://github.com/vercel-labs/skills):
 
 ```sh
 npx skills add pipefy/ai-toolkit                           # all skills

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 from pipefy_sdk import PipefyGraphQLError
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.models.portal import DeletePortalElementInput
 
 from pipefy_mcp.tools.portal_tool_helpers import (
@@ -217,3 +221,69 @@ def test_delete_confirmation_binds_the_exact_layout_rows() -> None:
         plan.resource_identity for plan in (no_layout, empty, ordered, reordered)
     ]
     assert len({tuple(sorted(identity.items())) for identity in identities}) == 4
+
+
+@pytest.mark.unit
+def test_map_portal_error_lists_every_html_violation() -> None:
+    """The agent gets each violation's code, message, selector and attribute."""
+    exc = HtmlValidationError(
+        (
+            HtmlViolation(
+                code="SCRIPT_FORBIDDEN",
+                message="Remove the script tag.",
+                selector="script",
+                attribute=None,
+            ),
+            HtmlViolation(
+                code="EVENT_HANDLER_FORBIDDEN",
+                message="Remove the onclick handler.",
+                selector="button",
+                attribute="onclick",
+            ),
+        )
+    )
+
+    assert map_portal_error_to_message(exc) == (
+        "The HTML was not saved: it has 2 violations. "
+        "Fix every one, then write the whole document again.\n"
+        "- SCRIPT_FORBIDDEN at script: Remove the script tag.\n"
+        "- EVENT_HANDLER_FORBIDDEN at button[onclick]: Remove the onclick handler."
+    )
+
+
+@pytest.mark.unit
+def test_map_portal_error_html_violation_without_selector_omits_the_location() -> None:
+    exc = HtmlValidationError(
+        (
+            HtmlViolation(
+                code="CONTENT_TOO_LARGE",
+                message="The document is too large.",
+                selector=None,
+                attribute=None,
+            ),
+        )
+    )
+
+    assert map_portal_error_to_message(exc) == (
+        "The HTML was not saved: it has 1 violation. "
+        "Fix every one, then write the whole document again.\n"
+        "- CONTENT_TOO_LARGE: The document is too large."
+    )
+
+
+@pytest.mark.unit
+def test_map_portal_error_html_violation_with_only_an_attribute_names_it() -> None:
+    exc = HtmlValidationError(
+        (
+            HtmlViolation(
+                code="EVENT_HANDLER_FORBIDDEN",
+                message="Remove the onclick handler.",
+                selector=None,
+                attribute="onclick",
+            ),
+        )
+    )
+
+    assert map_portal_error_to_message(exc).endswith(
+        "\n- EVENT_HANDLER_FORBIDDEN at [onclick]: Remove the onclick handler."
+    )

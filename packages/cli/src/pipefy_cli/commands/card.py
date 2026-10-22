@@ -6,12 +6,15 @@ from typing import Any
 
 import typer
 from pipefy_sdk import (
+    RECORDS_MAX_PAGE_SIZE,
     CardSearch,
     CommentInput,
     DeleteCommentInput,
     PipefyClient,
     UpdateCommentInput,
     copy_card_search,
+    parse_record_filter,
+    parse_record_order,
 )
 from pydantic import ValidationError
 
@@ -177,6 +180,86 @@ def card_list(
             pipe_id,
             effective_search,
             include_fields=include_fields,
+            first=first_validated,
+            after=after,
+        )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@card_app.command("records")
+def card_records(
+    ctx: typer.Context,
+    pipe_id: str = typer.Option(..., "--pipe", help="Pipe id whose cards to load."),
+    where_json: str | None = typer.Option(
+        None,
+        "--where",
+        help='JSON filter object, e.g. {"attribute": "ASSIGNEES", "in": ["<user id>"]}; and/or take a list of filters. field must be the custom field uuid (lowercase, hyphenated). like/ilike ignore case and match each word of the value as a substring, in any order; % and _ are literal.',
+    ),
+    search_term: str | None = typer.Option(
+        None,
+        "--search-term",
+        help='Match title and subtitle fields; for a card id use --where \'{"attribute": "ID", "eq": "<id>"}\'.',
+    ),
+    phase_id: str | None = typer.Option(
+        None, "--phase", help="Only cards currently in this phase."
+    ),
+    order_by_json: str | None = typer.Option(
+        None,
+        "--order-by",
+        help='JSON list, e.g. [{"attribute": "CREATED_AT", "direction": "DESC"}]; field takes the custom field uuid.',
+    ),
+    include_fields: bool = typer.Option(
+        False,
+        "--include-fields",
+        help="Include each card's custom fields.",
+    ),
+    first: int | None = typer.Option(
+        None,
+        "--first",
+        help=f"Max cards per page ({_CARDS_PAGE_SIZE_MIN}-{RECORDS_MAX_PAGE_SIZE}).",
+    ),
+    after: str | None = typer.Option(
+        None,
+        "--after",
+        help="Pagination cursor (pageInfo.endCursor), passed back exactly.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List, count and filter the cards of a pipe (records query).
+
+    totalCount counts the whole result. On ASSIGNEES and LABELS, in matches any
+    and contains matches all; like and ilike ignore case and match each word of
+    the value, in any order, with no wildcards; dates are ISO 8601, with an offset
+    on date-time attributes (CREATED_AT, FINISHED_AT) and as a bare date
+    (2026-07-03) on a date field. With --where or
+    --search-term, paging stops at 10,000 cards. Page with --after set to
+    pageInfo.endCursor until hasNextPage is false. For a count, pass --first 1
+    and read totalCount.
+    """
+    where_raw = parse_json_value(where_json, "--where")
+    order_by_raw = parse_json_value(order_by_json, "--order-by")
+    try:
+        where = None if where_raw is None else parse_record_filter(where_raw)
+        order_by = None if order_by_raw is None else parse_record_order(order_by_raw)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    first_validated = validate_cards_page_size(first, max_size=RECORDS_MAX_PAGE_SIZE)
+    phase_id = validate_optional_resource_id(phase_id, "phase_id")
+
+    async def factory(client: PipefyClient):
+        return await client.get_records(
+            pipe_id,
+            where,
+            search_term,
+            phase_id,
+            order_by,
+            include_fields,
             first=first_validated,
             after=after,
         )

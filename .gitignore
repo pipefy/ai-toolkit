@@ -42,11 +42,11 @@ RALPH_TASK.md
 .cursor/
 .claude/
 # Cursor MCP workspace config (machine-specific paths or local server entries).
-# Carve-out: repo-root .mcp.json is the hosted MCP config shared by the Claude
-# Code plugin (auto-discovered) and the Cursor plugin (`mcpServers`) and is
-# intentionally tracked.
+# Carve-out: plugins/pipefy/.mcp.json is the hosted MCP config shared by the
+# Claude Code plugin (auto-discovered) and the Cursor plugin (`mcpServers`) and
+# is intentionally tracked.
 .mcp.json
-!/.mcp.json
+!/plugins/pipefy/.mcp.json
 
 # Tracked release tooling only (ignore ad-hoc local scripts and smoke artifacts)
 scripts/*

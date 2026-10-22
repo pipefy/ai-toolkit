@@ -26,6 +26,7 @@ from enum import Enum
 from typing import Any
 
 __all__ = [
+    "HTML_VALIDATION_FAILED_CODE",
     "GraphQLProblem",
     "GraphQLProblemKind",
     "classify_graphql_error_dicts",
@@ -55,11 +56,25 @@ class GraphQLProblemKind(str, Enum):
 # more generic GraphQL spellings.
 _PERMISSION_CODES = frozenset({"PERMISSION_DENIED", "FORBIDDEN", "UNAUTHORIZED"})
 _NOT_FOUND_CODES = frozenset({"NOT_FOUND", "RESOURCE_NOT_FOUND", "RECORD_NOT_FOUND"})
+# The API rejects HTML that breaks its interface HTML rules with this code.
+HTML_VALIDATION_FAILED_CODE = "HTML_VALIDATION_FAILED"
+
 _INVALID_ARGUMENT_CODES = frozenset(
-    {"INVALID_ARGUMENTS", "BAD_USER_INPUT", "RECORD_INVALID", "ARGUMENT_ERROR"}
+    {
+        "INVALID_ARGUMENTS",
+        "BAD_USER_INPUT",
+        "RECORD_INVALID",
+        "ARGUMENT_ERROR",
+        HTML_VALIDATION_FAILED_CODE,
+    }
 )
 _FEATURE_CODES = frozenset(
-    {"FEATURE_NOT_ENABLED", "FEATURE_DISABLED", "FEATURE_UNAVAILABLE"}
+    {
+        "FEATURE_BLOCKED",
+        "FEATURE_NOT_ENABLED",
+        "FEATURE_DISABLED",
+        "FEATURE_UNAVAILABLE",
+    }
 )
 
 _NOT_FOUND_MESSAGE_MARKERS = (

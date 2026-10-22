@@ -82,7 +82,7 @@ Also set `action_params.card_id` to `"%{id}"` for the triggering card. `fields_m
 | `%{labels}` | Card labels |
 | `%{created_by}` | Card creator |
 | `%{automation_event_execution_datetime}` | Automation run timestamp (only token in `get_automation_event_attributes`) |
-| `%{<internal_id>}` | Copy value from another field on the card (digits only, e.g. `%{429659034}`) |
+| `%{<internal_id>}` | Copy value from another field on the card (digits only, e.g. `%{421234567}`) |
 
 Relative date ops (e.g. `%{created_at|plus:86400}`) are supported at runtime; see Pipefy's automation docs.
 

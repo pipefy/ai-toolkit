@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from pipefy_sdk.models.field_definition import (
+    FIELD_TYPE_IDS,
     MalformedFieldDefinitionError,
     parse_field_definitions,
 )
@@ -55,3 +56,33 @@ def test_parse_field_definitions_raises_with_action():
 def test_malformed_field_definition_error_rejects_blank_message(message: str):
     with pytest.raises(ValueError, match="non-blank message"):
         MalformedFieldDefinitionError(message)
+
+
+@pytest.mark.unit
+def test_field_type_ids_pin_the_api_field_type_id_enum():
+    assert FIELD_TYPE_IDS == (
+        "assignee_select",
+        "attachment",
+        "checklist_horizontal",
+        "checklist_vertical",
+        "cnpj",
+        "connector",
+        "cpf",
+        "currency",
+        "date",
+        "datetime",
+        "due_date",
+        "dynamic_content",
+        "email",
+        "id",
+        "label_select",
+        "long_text",
+        "number",
+        "phone",
+        "radio_horizontal",
+        "radio_vertical",
+        "select",
+        "short_text",
+        "statement",
+        "time",
+    )

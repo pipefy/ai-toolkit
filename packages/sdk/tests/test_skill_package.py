@@ -12,13 +12,13 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-CATALOG = ROOT / "skills"
+CATALOG = ROOT / "plugins" / "pipefy" / "skills"
 
 
 def catalog_files() -> set[str]:
     return {
         f"pipefy_sdk/skills/{skill.name}/{path.relative_to(skill).as_posix()}"
-        for skill in CATALOG.glob("*/*")
+        for skill in CATALOG.glob("*")
         if (skill / "SKILL.md").is_file()
         for path in [skill / "SKILL.md", *(skill / "references").glob("**/*")]
         if path.is_file()

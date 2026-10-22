@@ -69,6 +69,10 @@ def test_agent_validate_behaviors_json(
     assert r.exit_code == 0
     body = json.loads(r.stdout)
     assert body.get("success") is True
+    # The pipe has no phases, so the move_card target "2" must be reported.
+    assert body.get("valid") is False
+    problems = body.get("problems") or []
+    assert any('destinationPhaseId "2"' in problem for problem in problems), problems
 
 
 def _behavior_with_ai_params(**ai_behavior_params) -> dict:

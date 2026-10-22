@@ -42,11 +42,17 @@ from pipefy_mcp.tools.graphql_error_helpers import (
 )
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
+from pipefy_mcp.tools.validation_helpers import format_validation_error_message
 
 VALIDATE_FETCH_TIMEOUT_SECONDS = 30
 
 
 _RECORD_NOT_SAVED_PATTERN = "RECORD_NOT_SAVED"
+
+_ROLLBACK_RECOVERY_NOTE = (
+    "A rejected update is not rolled back. "
+    "Call get_ai_agent to see what is left, fix the payload, and send the full list again."
+)
 
 _PAYLOAD_OK_SUFFIX = (
     "\n\nNote: Pre-flight found no field, phase, relation, or actionType problems. "
@@ -55,8 +61,7 @@ _PAYLOAD_OK_SUFFIX = (
     "a human_validation action without emails and title, "
     "and other payload errors. "
     "Rule those out before you conclude the pipe does not support AI agent behaviors. "
-    "A rejected update is not rolled back. "
-    "Call get_ai_agent to see what is left, fix the payload, and send the full list again."
+    + _ROLLBACK_RECOVERY_NOTE
 )
 
 
@@ -123,6 +128,7 @@ class AiAgentTools:
                     field_ids,
                     phase_ids,
                     related_pipe_ids,
+                    pipe_event_ids,
                     _fetch_warnings,
                 ) = await fetch_pipe_validation_context(
                     client,
@@ -136,6 +142,7 @@ class AiAgentTools:
                     pipe_field_ids=field_ids,
                     pipe_phase_ids=phase_ids,
                     related_pipe_ids=related_pipe_ids,
+                    pipe_event_ids=pipe_event_ids,
                     unknown_action_types="error",
                 )
                 transition_problems = (
@@ -151,6 +158,8 @@ class AiAgentTools:
                     enriched
                     + "\n\nValidation found problems:\n"
                     + "\n".join(f"  - {p}" for p in all_problems)
+                    + "\n\n"
+                    + _ROLLBACK_RECOVERY_NOTE
                 )
             except Exception:  # noqa: BLE001
                 return enriched
@@ -344,7 +353,7 @@ class AiAgentTools:
                     disabled_at=disabled_at,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.create_ai_agent(validated)
@@ -485,7 +494,7 @@ class AiAgentTools:
                     disabled_at=disabled_at,
                 )
             except ValidationError as exc:
-                return build_ai_tool_error(str(exc))
+                return build_ai_tool_error(format_validation_error_message(exc))
 
             try:
                 result = await client.update_ai_agent(validated)

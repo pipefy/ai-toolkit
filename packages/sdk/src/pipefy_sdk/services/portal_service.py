@@ -8,9 +8,17 @@ from typing import Any
 
 from graphql import DocumentNode
 
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.graphql_executor import GraphQLExecutor, PipefyGraphQLError
-from pipefy_sdk.graphql_problem import GraphQLProblemKind, classify_exception
+from pipefy_sdk.graphql_problem import (
+    HTML_VALIDATION_FAILED_CODE,
+    GraphQLProblemKind,
+    classify_exception,
+)
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
     CreatePortalInput,
@@ -35,13 +43,17 @@ from pipefy_sdk.queries.portal_queries import (
     DELETE_PAGE_MUTATION,
     DUPLICATE_ELEMENT_MUTATION,
     FIND_OR_CREATE_PORTAL_MUTATION,
+    GET_HTML_INTERFACE_QUERY,
+    GET_INTERFACE_HTML_GUIDELINES_QUERY,
     GET_PORTAL_QUERY,
+    LIST_INTERFACES_QUERY,
     LIST_PORTALS_QUERY,
     SORT_PAGES_MUTATION,
     UPDATE_ELEMENT_MUTATION,
     UPDATE_INTERFACE_MUTATION,
     UPDATE_PAGE_LAYOUT_MUTATION,
     UPDATE_PAGE_MUTATION,
+    WRITE_HTML_DOCUMENT_MUTATION,
 )
 from pipefy_sdk.utils.organization_identifiers import resolve_organization_uuid
 from pipefy_sdk.utils.relay import unwrap_relay_connection_nodes
@@ -64,6 +76,9 @@ _PORTAL_PERMISSION_MESSAGE = (
     "expose."
 )
 
+# Largest page the Interfaces API returns per request.
+_INTERFACES_PER_REQUEST = 50
+
 
 def _map_portal_permission_error(
     exc: PipefyGraphQLError,
@@ -82,6 +97,36 @@ def _map_portal_permission_error(
     if problem is not None and problem.kind is GraphQLProblemKind.PERMISSION_DENIED:
         return PortalPermissionError(_PORTAL_PERMISSION_MESSAGE)
     return None
+
+
+def _map_html_validation_error(
+    exc: PipefyGraphQLError,
+) -> HtmlValidationError | None:
+    """Return an ``HtmlValidationError`` for an ``HTML_VALIDATION_FAILED`` error; else ``None``.
+
+    The API puts each violation on ``extensions.violations`` of the first error.
+    Entries that cannot form an ``HtmlViolation`` are skipped; an error with none
+    left stays a plain ``PipefyGraphQLError``, whose message still says what failed.
+    """
+    first = exc.errors[0] if exc.errors else None
+    if not isinstance(first, dict):
+        return None
+    extensions = first.get("extensions")
+    if not isinstance(extensions, dict):
+        return None
+    code = extensions.get("code")
+    if not isinstance(code, str) or code.strip().upper() != HTML_VALIDATION_FAILED_CODE:
+        return None
+    raw_violations = extensions.get("violations")
+    if not isinstance(raw_violations, list):
+        return None
+    parsed = (
+        HtmlViolation.from_extension(raw)
+        for raw in raw_violations
+        if isinstance(raw, dict)
+    )
+    violations = tuple(violation for violation in parsed if violation is not None)
+    return HtmlValidationError(violations) if violations else None
 
 
 def _serialize_interfaces_json(value: dict[str, Any] | list[Any]) -> str:
@@ -158,8 +203,7 @@ def _graphql_create_element_input(
         "type": validated.type,
         "metadata": _serialize_interfaces_json(validated.metadata),
     }
-    # Always send data_sources (even []). Omitting it makes Pipefy pass nil and crash
-    # in UpdateElement#authorized? / CreateDependencies (pipefy-core).
+    # Always send data_sources (even []): the API fails the create when it is omitted.
     payload["data_sources"] = _normalize_portal_data_sources(validated.data_sources)
     if validated.element_id is not None:
         payload["id"] = validated.element_id
@@ -208,6 +252,39 @@ def _normalize_portal_detail(portal: dict[str, Any]) -> dict[str, Any]:
         "pages": normalized_pages,
         "subPortals": sub_portals,
     }
+
+
+def _normalize_html_interface_detail(interface: dict[str, Any]) -> dict[str, Any]:
+    """Normalize an HTML interface payload with ``uuid`` aliases on pages and elements."""
+    pages = [_normalize_portal_page(page) for page in interface.get("pages") or []]
+    return {**_with_uuid_alias(interface), "pages": pages}
+
+
+def _stored_element(
+    portal: dict[str, Any], *, portal_uuid: str, page_id: str, element_id: str
+) -> dict[str, Any]:
+    """Return element ``element_id`` from page ``page_id`` of a ``get_portal`` payload.
+
+    Raises:
+        ValueError: The element is on another page, or on no page of the portal.
+    """
+    for page in portal["pages"]:
+        for element in page["elements"]:
+            if element["id"] != element_id:
+                continue
+            if page["id"] == page_id:
+                return element
+            msg = (
+                f"Element '{element_id}' is on page '{page['id']}' of portal "
+                f"'{portal_uuid}', not on page '{page_id}'. "
+                f"Pass page_id='{page['id']}'."
+            )
+            raise ValueError(msg)
+    msg = (
+        f"Element '{element_id}' is on no page of portal '{portal_uuid}'. "
+        "Check portal_uuid and element_id, or pass data_sources to skip the read."
+    )
+    raise ValueError(msg)
 
 
 class PortalService:
@@ -306,6 +383,129 @@ class PortalService:
             msg = f"Portal '{portal_uuid}' was not found."
             raise ValueError(msg)
         return _normalize_portal_detail(portal)
+
+    async def list_html_interfaces(
+        self,
+        organization_uuid: str | int,
+        search_term: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List an organization's HTML interfaces via the Interfaces schema.
+
+        Queries plain interfaces (no sub type, so never portals) page by page and
+        keeps the ones with ``contentModeHtml``; grid interfaces are dropped.
+
+        Args:
+            organization_uuid: Organization UUID, or numeric organization id.
+            search_term: Optional name filter forwarded as ``searchTerm``.
+        """
+        resolved_org_uuid = await resolve_organization_uuid(
+            self._public_executor.execute_query,
+            organization_uuid,
+        )
+        variables: dict[str, Any] = {
+            "org_uuid": resolved_org_uuid,
+            "filterBySubType": "interface",
+            "first": _INTERFACES_PER_REQUEST,
+        }
+        if search_term is not None:
+            variables["searchTerm"] = search_term
+        nodes = await self._all_interface_nodes(variables)
+        return [_with_uuid_alias(node) for node in nodes if node.get("contentModeHtml")]
+
+    async def _all_interface_nodes(
+        self, variables: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Run ``LIST_INTERFACES_QUERY`` page by page and return every node."""
+        nodes: list[dict[str, Any]] = []
+        while True:
+            data = await self.execute_interfaces_query(LIST_INTERFACES_QUERY, variables)
+            connection = data.get("interfaces") or {}
+            nodes.extend(unwrap_relay_connection_nodes(connection))
+            page_info = connection.get("pageInfo") or {}
+            end_cursor = page_info.get("endCursor")
+            if not page_info.get("hasNextPage") or not end_cursor:
+                return nodes
+            variables = {**variables, "after": end_cursor}
+
+    async def get_html_interface(self, interface_uuid: str) -> dict[str, Any]:
+        """Fetch an HTML interface with each page's elements and live HTML documents.
+
+        Each element carries ``dataSources`` (``id``, ``name``, ``filters``, ``repoId``,
+        ``repoName``, ``repoType``, ``fieldKeys``) and ``htmlDocument`` (``content``,
+        ``contentHash``, ``createdAt``); ``htmlDocument`` is null for an element that
+        is not ``customCode`` or has no stored HTML yet.
+
+        Args:
+            interface_uuid: HTML interface UUID.
+
+        Raises:
+            PipefyGraphQLError: No interface has this uuid; the API answers a
+                missing uuid with an error.
+            ValueError: The interface is a grid interface, or the response has no
+                interface.
+        """
+        data = await self.execute_interfaces_query(
+            GET_HTML_INTERFACE_QUERY, {"uuid": interface_uuid}
+        )
+        interface = data.get("interface")
+        if interface is None:
+            msg = f"Interface '{interface_uuid}' was not found."
+            raise ValueError(msg)
+        if not interface.get("contentModeHtml"):
+            msg = (
+                f"Interface '{interface_uuid}' is not an HTML interface; "
+                "use get_portal to read its elements."
+            )
+            raise ValueError(msg)
+        return _normalize_html_interface_detail(interface)
+
+    async def write_html_document(
+        self, *, page_id: str, element_id: str, content: str
+    ) -> dict[str, Any]:
+        """Write and publish the HTML of an HTML interface's ``customCode`` element.
+
+        Writing publishes: the new document goes live as soon as it is stored.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            content: The whole HTML document; it replaces the live one.
+
+        Raises:
+            HtmlValidationError: The HTML broke the API's HTML rules; nothing was
+                stored, and ``violations`` lists every rule it broke.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: No page has this id, or the element is not on the
+                page; the API answers a missing target with an error.
+        """
+        try:
+            return await _execute_query_with_portal_errors(
+                self.execute_interfaces_query,
+                WRITE_HTML_DOCUMENT_MUTATION,
+                {
+                    "input": {
+                        "page_id": page_id,
+                        "element_id": element_id,
+                        "content": content,
+                    }
+                },
+            )
+        except PipefyGraphQLError as exc:
+            validation_error = _map_html_validation_error(exc)
+            if validation_error is not None:
+                raise validation_error from exc
+            raise
+
+    async def get_interface_html_guidelines(self) -> dict[str, Any]:
+        """Fetch the HTML/CSS rules and data-source filter format for ``customCode`` content.
+
+        The rules are the same for every organization, so the query takes no
+        argument.
+        """
+        data = await self.execute_interfaces_query(
+            GET_INTERFACE_HTML_GUIDELINES_QUERY, {}
+        )
+        return data["interfaceHtmlGuidelines"]
 
     async def create_portal(self, organization_uuid: str | int) -> dict[str, Any]:
         """Create or fetch the organization's main portal (idempotent template flow).
@@ -579,6 +779,7 @@ class PortalService:
         type: PortalElementType,
         metadata: dict[str, Any],
         data_sources: list[dict[str, Any]] | None = None,
+        portal_uuid: str | None = None,
         editable: bool | None = None,
     ) -> dict[str, Any]:
         """Update a portal page element (full ``metadata`` replace).
@@ -592,8 +793,23 @@ class PortalService:
             page_id: Parent page UUID.
             type: Element type for client-side metadata validation only.
             metadata: Complete metadata blob (Pipefy replaces the whole object).
-            data_sources: Optional data source bindings.
-            editable: Optional editable flag.
+            data_sources: Data source bindings that replace the element's list;
+                ``[]`` unlinks them all. Omit, with ``portal_uuid``, to keep the
+                current ones. A caller already holding the element from
+                ``get_portal`` can pass its ``dataSources`` here (and its
+                ``editable``) to skip the second read.
+            portal_uuid: Portal holding the element. Required when ``data_sources``
+                is omitted: the element's ``dataSources`` (``repoId`` and
+                ``fieldKeys``) and, unless ``editable`` is given, its ``editable``
+                flag are read from ``get_portal`` and sent back.
+            editable: Editable flag. The API rejects an update whose data sources
+                list ``fieldKeys`` without it; the keep path sends the stored one.
+
+        Raises:
+            ValueError: ``data_sources`` and ``portal_uuid`` are both omitted, or
+                the element is not on page ``page_id`` of the portal.
+            PipefyGraphQLError: Reading the portal failed (no update is sent).
+            PortalPermissionError: The caller may not update the element.
         """
         validated = UpdatePortalElementInput.model_validate(
             {
@@ -601,10 +817,22 @@ class PortalService:
                 "page_id": page_id,
                 "type": type,
                 "metadata": metadata,
-                "data_sources": data_sources if data_sources is not None else [],
+                "data_sources": data_sources,
+                "portal_uuid": portal_uuid,
                 "editable": editable,
             }
         )
+        if validated.data_sources is None:
+            stored = _stored_element(
+                await self.get_portal(validated.portal_uuid),
+                portal_uuid=validated.portal_uuid,
+                page_id=validated.page_id,
+                element_id=validated.element_id,
+            )
+            kept: dict[str, Any] = {"data_sources": stored["dataSources"]}
+            if validated.editable is None:
+                kept["editable"] = stored["editable"]
+            validated = validated.model_copy(update=kept)
         data = await _execute_query_with_portal_errors(
             self.execute_interfaces_query,
             UPDATE_ELEMENT_MUTATION,

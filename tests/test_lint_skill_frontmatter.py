@@ -110,7 +110,7 @@ def test_catalog_surface_exceptions():
         "pipefy-attachments": {"mcp", "cli"},
         "pipefy-ipaas": {"mcp"},
     }
-    paths = list((ROOT / "skills").rglob("SKILL.md"))
+    paths = list((ROOT / "plugins" / "pipefy" / "skills").rglob("SKILL.md"))
     assert exceptions.keys() <= {path.parent.name for path in paths}
     for path in paths:
         assert lint.parse_skill_surfaces(
@@ -155,7 +155,7 @@ def test_folded_surfaces_and_body_delimiters(newline):
 
 def test_command_checks_copied_catalog_and_reports_all_errors(tmp_path):
     catalog = tmp_path / "skills"
-    shutil.copytree(ROOT / "skills", catalog)
+    shutil.copytree(ROOT / "plugins" / "pipefy" / "skills", catalog)
     command = [sys.executable, str(SCRIPT), str(catalog)]
     assert subprocess.run(command, capture_output=True, text=True).returncode == 0
     paths = sorted(catalog.rglob("SKILL.md"))[:3]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from pipefy_cli.main import app
@@ -90,6 +91,107 @@ def test_card_list_first_out_of_range_exit_2(
         )
     assert result.exit_code == 2
     mock_client.get_cards.assert_not_called()
+
+
+def _invoke_card_records(runner, mock_client, *args):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(app, ["card", "records", *args])
+
+
+def test_card_records_minimal_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("records-cards")
+    payload = {"records": {"totalCount": 0, "pageInfo": {}, "edges": []}}
+    mock_client = MagicMock()
+    mock_client.get_records = AsyncMock(return_value=payload)
+
+    result = _invoke_card_records(runner, mock_client, "--pipe", "303", "--json")
+
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == payload
+    mock_client.get_records.assert_awaited_once_with(
+        "303",
+        None,
+        None,
+        None,
+        None,
+        False,
+        first=None,
+        after=None,
+    )
+
+
+def test_card_records_forwards_where(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("records-cards-2")
+    payload = {"records": {"totalCount": 1, "pageInfo": {}, "edges": []}}
+    mock_client = MagicMock()
+    mock_client.get_records = AsyncMock(return_value=payload)
+    where = {"attribute": "ASSIGNEES", "in": ["900000001"]}
+    order_by = [{"attribute": "CREATED_AT", "direction": "DESC"}]
+
+    result = _invoke_card_records(
+        runner,
+        mock_client,
+        "--pipe",
+        "9",
+        "--where",
+        json.dumps(where),
+        "--search-term",
+        "acme",
+        "--phase",
+        "900000201",
+        "--order-by",
+        json.dumps(order_by),
+        "--include-fields",
+        "--json",
+    )
+
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == payload
+    mock_client.get_records.assert_awaited_once_with(
+        "9",
+        where,
+        "acme",
+        "900000201",
+        order_by,
+        True,
+        first=None,
+        after=None,
+    )
+
+
+def test_card_records_out_of_range_options_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("records-bad-args")
+    mock_client = MagicMock()
+
+    for args in (
+        ("--first", "51"),
+        ("--where", "[]"),
+        ("--phase", ""),
+        ("--phase", "   "),
+    ):
+        result = _invoke_card_records(runner, mock_client, "--pipe", "1", *args)
+        assert result.exit_code == 2, args
+    mock_client.get_records.assert_not_called()
+
+
+def test_card_records_sdk_value_error_exits_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("records-slug")
+    mock_client = MagicMock()
+    mock_client.get_records = AsyncMock(side_effect=ValueError("rejected by the SDK"))
+
+    result = _invoke_card_records(
+        runner, mock_client, "--pipe", "1", "--where", '{"attribute": "TITLE", "eq": 1}'
+    )
+
+    assert result.exit_code == 2
+    mock_client.get_records.assert_awaited_once()
 
 
 def test_card_find_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
@@ -674,3 +776,39 @@ def test_card_get_include_fields(runner, clean_pipefy_env, saved_cwd, oauth_env)
         )
     assert result.exit_code == 0
     mock_client.get_card.assert_awaited_once_with("1", include_fields=True)
+
+
+def test_card_records_rejects_bad_filter_shapes_before_calling(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("records-bad-shapes")
+    mock_client = MagicMock()
+    cases = (
+        ("--where", '{"attribute": "TITLE", "bogus_op": "x"}', "bogus_op"),
+        ("--where", '{"attribute": "created_at", "eq": 1}', "attribute"),
+        ("--order-by", '[{"attribute": "TITLE", "direction": "asc"}]', "direction"),
+        ("--order-by", '[{"field": "total_value"}]', "uuid"),
+    )
+    for option, value, needle in cases:
+        result = _invoke_card_records(runner, mock_client, "--pipe", "1", option, value)
+        assert result.exit_code == 2, (option, value)
+        assert needle in re.sub(r"\x1b\[[0-9;]*m", "", result.stderr), (option, value)
+    mock_client.get_records.assert_not_called()
+
+
+def test_card_records_forwards_first_and_after(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("records-paging")
+    mock_client = MagicMock()
+    mock_client.get_records = AsyncMock(
+        return_value={"records": {"totalCount": 0, "pageInfo": {}, "edges": []}}
+    )
+
+    result = _invoke_card_records(
+        runner, mock_client, "--pipe", "1", "--first", "50", "--after", "c1==", "--json"
+    )
+
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    _, kwargs = mock_client.get_records.await_args
+    assert kwargs == {"first": 50, "after": "c1=="}

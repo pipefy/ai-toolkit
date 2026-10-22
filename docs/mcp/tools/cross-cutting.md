@@ -1,6 +1,6 @@
 # Cross-cutting tool behavior
 
-Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides linked from the [main README](../../../README.md#mcp-server).
+Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides listed in the [MCP docs index](../README.md).
 
 ## Pagination
 
@@ -8,7 +8,7 @@ List-style tools accept `first` and `after`. Continue with `pageInfo.endCursor` 
 
 ## IDs
 
-Pipefy GraphQL uses string IDs. Pass IDs as strings (e.g. `"301234"`). Some parameters also accept JSON integers; the server normalizes to string before calling the API. Success payloads return string IDs. Empty, zero, or otherwise invalid IDs fail validation before any network call.
+Pipefy GraphQL uses string IDs. Pass IDs as strings (e.g. `"301234567"`). Some parameters also accept JSON integers; the server normalizes to string before calling the API. Success payloads return string IDs. Empty, zero, or otherwise invalid IDs fail validation before any network call.
 
 Which **form** each tool expects (slug vs `internal_id` vs uuid vs numeric id) is the canonical [Identifiers map](identifiers.md#the-four-forms). Type-safety and coercion detail: [Pipefy IDs and type safety](pipes-and-cards.md#pipefy-ids-type-safety).
 
@@ -54,7 +54,7 @@ Pipefy often returns **`PERMISSION_DENIED`** for `card(id: …)` when the card w
 
 ## Pre-flight validation for AI features
 
-Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read-delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
+Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read--delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
 
 ## Introspection
 

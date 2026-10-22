@@ -45,6 +45,13 @@ GET_PORTAL_QUERY = gql(
                     id
                     type
                     metadata
+                    editable
+                    dataSources {
+                        repoId
+                        repoName
+                        repoType
+                        fieldKeys
+                    }
                 }
             }
             subPortals {
@@ -52,6 +59,123 @@ GET_PORTAL_QUERY = gql(
                 name
                 published
             }
+        }
+    }
+    """
+)
+
+LIST_INTERFACES_QUERY = gql(
+    """
+    query ListInterfaces(
+        $org_uuid: ID!
+        $filterBySubType: InterfaceSubTypeFilter!
+        $searchTerm: String
+        $first: Int
+        $after: String
+    ) {
+        interfaces(
+            org_uuid: $org_uuid
+            filterBySubType: $filterBySubType
+            searchTerm: $searchTerm
+            first: $first
+            after: $after
+        ) {
+            edges {
+                node {
+                    id
+                    name
+                    visibility
+                    contentModeHtml
+                }
+            }
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+        }
+    }
+    """
+)
+
+GET_HTML_INTERFACE_QUERY = gql(
+    """
+    query GetHtmlInterface($uuid: ID!) {
+        interface(uuid: $uuid) {
+            id
+            name
+            visibility
+            contentModeHtml
+            pages {
+                id
+                title
+                elements {
+                    id
+                    type
+                    dataSources {
+                        id
+                        name
+                        filters
+                        repoId
+                        repoName
+                        repoType
+                        fieldKeys
+                    }
+                    htmlDocument {
+                        content
+                        contentHash
+                        createdAt
+                    }
+                }
+            }
+        }
+    }
+    """
+)
+
+GET_INTERFACE_HTML_GUIDELINES_QUERY = gql(
+    """
+    query GetInterfaceHtmlGuidelines {
+        interfaceHtmlGuidelines {
+            allowedAttributePrefixes
+            allowedDataAttributes
+            allowedDataPfyAttributes
+            allowedPlainAttributes
+            allowedTags
+            authoringNotes
+            cssRules {
+                code
+                message
+                subject
+            }
+            designSystem
+            errorCodes {
+                code
+                description
+            }
+            filters {
+                description
+                example
+                fixedColumnNames
+                knownOperators {
+                    filterType
+                    operators
+                }
+            }
+            forbiddenAttributes {
+                code
+                message
+                subject
+            }
+            forbiddenTags {
+                code
+                message
+                subject
+            }
+            linkAttributes
+            maxAttributesPerElement
+            maxContentBytes
+            maxNestingDepth
+            urlRule
         }
     }
     """
@@ -195,6 +319,16 @@ DELETE_ELEMENT_MUTATION = gql(
     """
 )
 
+WRITE_HTML_DOCUMENT_MUTATION = gql(
+    """
+    mutation WriteHtmlDocument($input: InterfacePageElementWriteHtmlDocumentInput!) {
+        writeHtmlDocument(input: $input) {
+            success
+        }
+    }
+    """
+)
+
 DUPLICATE_ELEMENT_MUTATION = gql(
     """
     mutation DuplicatePortalElement($input: DuplicateInterfaceElementInput!) {
@@ -231,11 +365,15 @@ __all__ = [
     "DELETE_PAGE_MUTATION",
     "DUPLICATE_ELEMENT_MUTATION",
     "FIND_OR_CREATE_PORTAL_MUTATION",
+    "GET_HTML_INTERFACE_QUERY",
+    "GET_INTERFACE_HTML_GUIDELINES_QUERY",
     "GET_PORTAL_QUERY",
+    "LIST_INTERFACES_QUERY",
     "LIST_PORTALS_QUERY",
     "SORT_PAGES_MUTATION",
     "UPDATE_ELEMENT_MUTATION",
     "UPDATE_INTERFACE_MUTATION",
     "UPDATE_PAGE_LAYOUT_MUTATION",
     "UPDATE_PAGE_MUTATION",
+    "WRITE_HTML_DOCUMENT_MUTATION",
 ]

@@ -45,7 +45,7 @@ def catalog(tmp_path, monkeypatch):
         "_load_pipefy_client_method_params",
         lambda: {"get_pipe": frozenset({"pipe_id"}), "sdk_only": frozenset({"key"})},
     )
-    skill = tmp_path / "skills/pipes/pipefy-pipes"
+    skill = tmp_path / "plugins/pipefy/skills/pipefy-pipes"
     skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text(
         "---\nname: pipefy-pipes\ndescription: Read pipes.\n---\n"
@@ -276,7 +276,7 @@ def test_tool_params_come_from_tool_signatures(tmp_path, monkeypatch):
 def test_missing_catalog_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(_lint, "REPO_ROOT", tmp_path)
     assert _lint.main() == 1
-    assert "No skills/ directory found" in capsys.readouterr().err
+    assert "No plugins/pipefy/skills/ directory found" in capsys.readouterr().err
 
 
 def test_client_method_names_come_from_pipefy_client(tmp_path, monkeypatch):

@@ -9,6 +9,7 @@ from pipefy_infra.coerce import optional_str
 
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.label_color import normalize_label_color
+from pipefy_sdk.models.field_definition import FieldTypeId
 from pipefy_sdk.queries.pipe_config_queries import (
     CLONE_PIPE_MUTATION,
     CREATE_FIELD_CONDITION_MUTATION,
@@ -133,7 +134,7 @@ class PipeConfigService:
         self,
         phase_id: str | int,
         label: str,
-        field_type: str,
+        field_type: FieldTypeId | str,
         **attrs: Any,
     ) -> dict:
         """Create a field on a phase.
@@ -141,7 +142,7 @@ class PipeConfigService:
         Args:
             phase_id: Phase that will receive the field.
             label: Field label shown in the UI.
-            field_type: Pipefy field type string (maps to `type` on `CreatePhaseFieldInput`; not validated here).
+            field_type: A `FieldTypeId` value (maps to `type` on `CreatePhaseFieldInput`); other strings pass through and the API validates them.
             **attrs: Additional `CreatePhaseFieldInput` fields (e.g. description, required), when not None.
         """
         input_obj: dict[str, Any] = {

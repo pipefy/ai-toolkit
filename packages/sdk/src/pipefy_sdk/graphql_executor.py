@@ -11,7 +11,7 @@ from gql.transport.httpx import HTTPXAsyncTransport
 from graphql import DocumentNode, GraphQLSchema
 from httpx import Auth, Timeout
 
-from pipefy_sdk.exceptions import PipefyAPIError
+from pipefy_sdk.exceptions import PipefyAPIError, PipefyRequestTimeoutError
 
 
 @dataclass(frozen=True)
@@ -124,6 +124,7 @@ class GraphQLEndpoint:
     transport state (avoids ``TransportAlreadyConnected``).
     """
 
+    # Bounds both the httpx transport and gql's per-execute timer (gql defaults to 10 s).
     GRAPHQL_REQUEST_TIMEOUT_SECONDS: ClassVar[int] = 30
 
     def __init__(
@@ -172,6 +173,7 @@ class GraphQLEndpoint:
                         client = Client(
                             transport=transport,
                             fetch_schema_from_transport=True,
+                            execute_timeout=self.GRAPHQL_REQUEST_TIMEOUT_SECONDS,
                         )
                         async with client as session:
                             result = await session.execute(request)
@@ -182,12 +184,15 @@ class GraphQLEndpoint:
                 transport=transport,
                 schema=self._fetched_gql_schema,
                 fetch_schema_from_transport=False,
+                execute_timeout=self.GRAPHQL_REQUEST_TIMEOUT_SECONDS,
             )
             async with reuse_client as session:
                 return await session.execute(request)
 
         async with Client(
-            transport=transport, fetch_schema_from_transport=False
+            transport=transport,
+            fetch_schema_from_transport=False,
+            execute_timeout=self.GRAPHQL_REQUEST_TIMEOUT_SECONDS,
         ) as session:
             return await session.execute(request)
 
@@ -201,12 +206,20 @@ class GraphQLEndpoint:
         and the raw error dicts to the exception; this rebuilds them into a
         :class:`GraphQLResult`. A fully null response yields ``data={}`` with its
         errors preserved. Genuine transport/network failures (timeouts, non-2xx)
-        still raise.
+        still raise; a timeout raises :class:`PipefyRequestTimeoutError` so the
+        failure carries a message instead of gql's bare, empty ``TimeoutError``.
         """
         try:
             data = await self._execute_request(query, variables, auth=auth)
         except TransportQueryError as exc:
             return GraphQLResult(data=exc.data or {}, errors=list(exc.errors or []))
+        except TimeoutError as exc:
+            # gql's fail_after(execute_timeout) raises a bare TimeoutError (== asyncio
+            # .TimeoutError on 3.11+) with no message. Translate it so callers and the
+            # MCP error layer can tell it was a timeout and after how long.
+            raise PipefyRequestTimeoutError(
+                self.GRAPHQL_REQUEST_TIMEOUT_SECONDS
+            ) from exc
         return GraphQLResult(data=data, errors=[])
 
     async def execute_query(

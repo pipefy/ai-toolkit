@@ -1,6 +1,6 @@
 # Contributing to ai-toolkit
 
-Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`AGENTS.md`](AGENTS.md) and the [Development](README.md#development) section in the root README (TDD, parity with [`docs/parity.md`](docs/parity.md), `ruff`, `pytest`).
+Thanks for helping improve the monorepo. This guide covers **skills** (Markdown playbooks). For **MCP tools, CLI commands, and SDK** work, follow [`AGENTS.md`](AGENTS.md): [Build, test, and development](AGENTS.md#build-test-and-development) for `uv`, `ruff`, and `pytest`, and [Adding a New Capability](AGENTS.md#adding-a-new-capability) for TDD and parity with [`docs/parity.md`](docs/parity.md).
 
 ---
 
@@ -11,29 +11,28 @@ Skills are Markdown-only — no Python, no `uv`, no test infrastructure required
 ### Quick start
 
 1. Fork and clone the repo.
-2. Choose or create a domain folder under `skills/`.
-3. Copy the starter skill and rename it:
+2. Copy the starter skill into the plugin's skills folder and rename it:
 
    ```bash
    cp -R .github/skill-template/pipefy-skill-template \
-     skills/<domain>/pipefy-<domain>-<action>
+     plugins/pipefy/skills/pipefy-<domain>-<action>
    ```
 
-   Fill in [`SKILL.md`](.github/skill-template/pipefy-skill-template/SKILL.md) using the rules in [`skills/AGENTS.md`](skills/AGENTS.md) (and [`.github/skill-template/README.md`](.github/skill-template/README.md)).
-4. Run the reference linters locally (optional; CI runs the same checks). Stage new
+   Fill in [`SKILL.md`](.github/skill-template/pipefy-skill-template/SKILL.md) using the rules in [`plugins/AGENTS.md`](plugins/AGENTS.md) (and [`.github/skill-template/README.md`](.github/skill-template/README.md)).
+3. Run the reference linters locally (optional; CI runs the same checks). Stage new
    skill files first (`git add`); `lint_plugin_packaging.py` reads tracked files via `git ls-files`, so an unstaged skill makes the packaging lint print `passed` while CI will fail after you push.
 
    ```bash
-   git add skills/<domain>/pipefy-<domain>-<action>
+   git add plugins/pipefy/skills/pipefy-<domain>-<action>
    uv run python .github/workflows/scripts/lint_skill_refs.py
    python3 .github/workflows/scripts/lint_plugin_packaging.py
    ```
 
-   Adding or removing a published skill also requires an edit to the `skills` array in both `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json`. The packaging lint hard-fails in both directions for each file.
+   Adding or removing a published skill also requires an edit to the `skills` array in `plugins/pipefy/.cursor-plugin/plugin.json`. Claude Code finds skills without a list. The packaging lint hard-fails in both directions.
 
-5. Open a PR. CI validates SKILL.md frontmatter, MCP tool names, and `pipefy` CLI subcommands (`skills-lint.yml`), and that `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json` each list every published skill (`lint_plugin_packaging.py` in the `test` job).
+4. Open a PR. CI validates SKILL.md frontmatter, MCP tool names, and `pipefy` CLI subcommands (`skills-lint.yml`), and that `plugins/pipefy/.cursor-plugin/plugin.json` lists every published skill (`lint_plugin_packaging.py` in the `test` job).
 
-> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live — see [Test the Claude Code plugin from a local checkout](README.md#test-the-claude-code-plugin-from-a-local-checkout).
+> **Try your skill in Claude Code before opening the PR.** Point the plugin marketplace at your local clone so your branch loads live. See [Test the Claude Code plugin from a local checkout](docs/install.md#test-the-claude-code-plugin-from-a-local-checkout).
 
 ### Frontmatter requirements
 
@@ -53,7 +52,6 @@ Missing or mismatched `name` fails CI.
 ### Naming rules
 
 - **Skill folder names:** kebab-case, prefixed with `pipefy-` (e.g., `pipefy-process-design`).
-- **Domain folders:** match the existing domains in `skills/`. Open an issue before creating a new domain.
 - **Stable IDs:** once merged, renames need a CHANGELOG note and skill-lint allowlist update.
 
 ### Style guide
@@ -107,7 +105,7 @@ Contributions are licensed to Pipefy and to all recipients under the Apache Lice
 
 ## Content review for regulated domains
 
-Skills and blueprints under `skills/legal/`, `skills/human-resources/`, `skills/finance/`, `skills/compliance/` (and any domain involving decisions about natural persons) undergo **substantive review by Pipefy’s Privacy, Legal & Compliance team** before merge, in addition to the standard CI lint. Expect additional review time and possible content changes. Community-contributed skills are published as templates and do not constitute professional advice; Pipefy may decline, edit, or remove any contribution at its discretion.
+Skills and blueprints in the legal, human resources, finance, and compliance domains (and any domain involving decisions about natural persons) undergo **substantive review by Pipefy’s Privacy, Legal & Compliance team** before merge, in addition to the standard CI lint. Expect additional review time and possible content changes. Community-contributed skills are published as templates and do not constitute professional advice; Pipefy may decline, edit, or remove any contribution at its discretion.
 
 Published blueprints in regulated domains must include a `COMPLIANCE.md` beside the skill (start from [`docs/compliance/COMPLIANCE.template.md`](docs/compliance/COMPLIANCE.template.md)).
 

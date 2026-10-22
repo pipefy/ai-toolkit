@@ -13,7 +13,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from pipefy_sdk import PipefyGraphQLError
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.models.portal import DeletePortalElementInput
 from pydantic import ValidationError
 
@@ -42,6 +46,26 @@ _PORTAL_OPERATION_FAILED = (
 )
 
 
+def _html_violation_line(violation: HtmlViolation) -> str:
+    """One violation as ``- CODE at selector[attribute]: message``."""
+    location = violation.selector or ""
+    if violation.attribute:
+        location += f"[{violation.attribute}]"
+    location_clause = f" at {location}" if location else ""
+    return f"- {violation.code}{location_clause}: {violation.message}"
+
+
+def _html_validation_message(exc: HtmlValidationError) -> str:
+    count = len(exc.violations)
+    noun = "violation" if count == 1 else "violations"
+    lines = [
+        f"The HTML was not saved: it has {count} {noun}. "
+        "Fix every one, then write the whole document again.",
+        *(_html_violation_line(violation) for violation in exc.violations),
+    ]
+    return "\n".join(lines)
+
+
 def map_portal_error_to_message(
     exc: BaseException,
     *,
@@ -57,8 +81,12 @@ def map_portal_error_to_message(
 
     Returns:
         User-visible error string; permission failures mention ``create_portal``,
-        ``manage_portals`` and the per-portal ``joinAsAdmin``.
+        ``manage_portals`` and the per-portal ``joinAsAdmin``, and HTML validation
+        failures list every violation.
     """
+    if isinstance(exc, HtmlValidationError):
+        return _html_validation_message(exc)
+
     if isinstance(exc, PortalPermissionError):
         return ensure_non_empty_error_message(
             str(exc).strip(), _PORTAL_PERMISSION_GUIDANCE

@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **187** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **189** tools).
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -149,8 +149,10 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_pipe_report_columns` | `pipefy report-pipe columns` | shipped | Reports domain. |
 | `get_pipe_report_export` | (poll via `pipefy report-pipe export --format json`) | shipped | Reports + exports. |
 | `get_pipe_report_filterable_fields` | `pipefy report-pipe filterable-fields` | shipped | Reports domain. |
+| `get_interface_html_guidelines` | — | deferred | Interfaces schema; read-only, no argument; HTML/CSS authoring rules and data-source filter format for `customCode` content, the same for every organization. MCP-first; CLI twin considered alongside `write_interface_html`. |
 | `get_pipe_reports` | `pipefy report-pipe list` | shipped | Reports domain. |
 | `get_portal` | `pipefy portal get` | shipped | Interfaces schema; read-only; includes `published`. |
+| `get_records` | `pipefy card records` | shipped | Lists, counts and filters the cards of a pipe (``--pipe``, ``--where`` JSON filter, ``--search-term``, ``--phase``, ``--order-by`` JSON, ``--include-fields``, ``--first`` 1 to 50 / ``--after``). For a count, pass ``--first 1`` and read ``totalCount``. |
 | `get_start_form_fields` | `pipefy pipe start-form` | shipped | optional ``--required-only``. |
 | `get_table` | `pipefy table get` | shipped | — |
 | `get_table_record` | `pipefy record get` | shipped | — |
@@ -202,7 +204,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `update_portal` | `pipefy portal update` | shipped | (`--name`, `--visibility`, optional `--color`, `--icon`, header flags). |
 | `update_portal_page` | `pipefy portal page update` | shipped | positional portal + page UUIDs; at least one of `--title`, `--description`, `--index`. |
 | `update_portal_page_layout` | `pipefy portal page layout update` | shipped | `--page-id` + `--layout` JSON only (no portal UUID on the wire). Each row needs a non-empty id, type "row", and children as non-empty strings; `[]` is an empty page. Incomplete rows are rejected before the call. |
-| `update_portal_element` | `pipefy portal element update` | shipped | positional element + page UUIDs; `--type` + full `--metadata` JSON (API replace-all). |
+| `update_portal_element` | `pipefy portal element update` | shipped | positional element + page UUIDs; `--type` + full `--metadata` JSON (API replace-all); one of `--data-sources` (replace-all, `'[]'` unlinks) or `--portal-uuid` (keep current bindings). |
 | `update_sub_portal_element` | `pipefy portal sub-portal attach` | shipped | positional portal, element, and sub-portal UUIDs; internal_api `updateSubPortalElement`. |
 | `update_table` | `pipefy table update` | shipped | — |
 | `update_table_field` | `pipefy table field update` | shipped | `--table` recommended; `--label`/`--description`/`--required`/`--options` or `--extra`. |
@@ -226,6 +228,6 @@ for n in m.body:
             print(len(v.args[0].elts))"
 ```
 
-Expect **187** tool names in `PIPEFY_TOOL_NAMES` and **187** data rows in the parity table (excluding the header rows).
+Expect **189** tool names in `PIPEFY_TOOL_NAMES` and **189** data rows in the parity table (excluding the header rows).
 
 When adding or removing an MCP tool, update **this file** and `PIPEFY_TOOL_NAMES` in the same change set.

@@ -49,6 +49,7 @@ from pipefy_sdk.models.attachment import (
     AttachmentUploadResult,
     PresignedUploadTarget,
 )
+from pipefy_sdk.models.field_definition import FieldTypeId
 from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
 from pipefy_sdk.models.portal import PortalPageLayoutRow
@@ -114,6 +115,8 @@ from pipefy_sdk.services.types import (
     MePayload,
     ProviderAccessProbeResult,
     ProviderDependenciesResult,
+    RecordFilter,
+    RecordOrder,
     ToggleAgentStatusResult,
 )
 from pipefy_sdk.services.user_service import UserService
@@ -414,10 +417,10 @@ class PipefyClient:
         self,
         phase_id: str | int,
         label: str,
-        field_type: str,
+        field_type: FieldTypeId | str,
         **attrs: Any,
     ) -> dict:
-        """Create a field on a phase (`field_type` is passed through to the API)."""
+        """Create a field on a phase (`field_type`: a `FieldTypeId` value, passed through)."""
         return await self._pipe_config_service.create_phase_field(
             phase_id,
             label,
@@ -1661,6 +1664,37 @@ class PipefyClient:
             pipe_id, search, include_fields=include_fields, first=first, after=after
         )
 
+    async def get_records(
+        self,
+        pipe_id: str | int,
+        where: RecordFilter | None = None,
+        search_term: str | None = None,
+        phase_id: str | int | None = None,
+        order_by: list[RecordOrder] | None = None,
+        include_fields: bool = False,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> dict:
+        """List, count and filter the cards of a pipe (the ``records`` GraphQL query).
+
+        Returns camelCase ``{"records": {totalCount, pageInfo, edges}}``; ``totalCount`` is the whole result.
+        ``field`` (in ``where`` and ``order_by``) takes the lowercase, hyphenated field uuid, else ``ValueError``.
+        ``in`` matches any and ``contains`` all; ``like``/``ilike`` match each word, any case (``%`` is literal).
+        Dates take an offset, but a ``date`` field the bare date. ``first`` is 1 to 50 (larger is capped); with ``where`` or
+        ``search_term`` pages stop at 10,000. Page by passing ``endCursor`` back as ``after``.
+        """
+        return await self._card_service.get_records(
+            pipe_id,
+            where,
+            search_term,
+            phase_id,
+            order_by,
+            include_fields,
+            first=first,
+            after=after,
+        )
+
     async def find_cards(
         self,
         pipe_id: str | int,
@@ -2070,6 +2104,69 @@ class PipefyClient:
         """
         return await self._portal_service.get_portal(portal_uuid)
 
+    async def list_html_interfaces(
+        self,
+        organization_uuid: str | int,
+        search_term: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List an organization's HTML interfaces (``contentModeHtml``).
+
+        Args:
+            organization_uuid: Organization UUID, or numeric organization id.
+            search_term: Optional name filter.
+        """
+        return await self._portal_service.list_html_interfaces(
+            organization_uuid, search_term=search_term
+        )
+
+    async def get_html_interface(self, interface_uuid: str) -> dict[str, Any]:
+        """Fetch an HTML interface with each element's live HTML document.
+
+        Args:
+            interface_uuid: HTML interface UUID.
+
+        Raises:
+            PipefyGraphQLError: No interface has this uuid; the API answers a
+                missing uuid with an error.
+            ValueError: The interface is a grid interface, or the response has no
+                interface.
+        """
+        return await self._portal_service.get_html_interface(interface_uuid)
+
+    async def write_html_document(
+        self, *, page_id: str, element_id: str, content: str
+    ) -> dict[str, Any]:
+        """Write and publish the HTML of an HTML interface's ``customCode`` element.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            content: The whole HTML document; it replaces the live one.
+
+        Raises:
+            HtmlValidationError: The HTML broke the API's HTML rules; nothing was
+                stored, and ``violations`` lists every rule it broke.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: No page has this id, or the element is not on the
+                page; the API answers a missing target with an error.
+        """
+        return await self._portal_service.write_html_document(
+            page_id=page_id, element_id=element_id, content=content
+        )
+
+    async def get_interface_html_guidelines(self) -> dict[str, Any]:
+        """Fetch the HTML/CSS rules and data-source filter format for ``customCode`` content.
+
+        Returns the allowed tags and attributes, every forbidden tag/attribute/CSS
+        construct with its violation code, the full error-code list, the
+        filter-tree format (a worked example plus the operators each field type
+        supports), content-size and nesting limits, and a ``designSystem``
+        snapshot: a component catalog (tokens, icons and components with usage
+        examples) to style generated content consistently. The rules are the
+        same for every organization.
+        """
+        return await self._portal_service.get_interface_html_guidelines()
+
     async def create_portal(self, organization_uuid: str | int) -> dict[str, Any]:
         """Create or fetch the organization's main portal (idempotent).
 
@@ -2244,6 +2341,7 @@ class PipefyClient:
         type: str,
         metadata: dict[str, Any],
         data_sources: list[dict[str, Any]] | None = None,
+        portal_uuid: str | None = None,
         editable: bool | None = None,
     ) -> dict[str, Any]:
         """Update a portal page element (full metadata replace).
@@ -2257,8 +2355,16 @@ class PipefyClient:
             page_id: Parent page UUID.
             type: Element type for metadata validation.
             metadata: Complete metadata blob.
-            data_sources: Optional data source bindings.
-            editable: Optional editable flag.
+            data_sources: Data source bindings that replace the element's list;
+                ``[]`` unlinks them all. Omit, with ``portal_uuid``, to keep the
+                current ones; passing the ``dataSources`` and ``editable`` already
+                read from ``get_portal`` skips the second read.
+            portal_uuid: Portal holding the element; required when
+                ``data_sources`` is omitted. The keep path resends the element's
+                ``dataSources`` (``repoId`` and ``fieldKeys``) and, unless
+                ``editable`` is given, its ``editable`` flag.
+            editable: Editable flag; the API requires it when a data source lists
+                ``fieldKeys``.
         """
         return await self._portal_service.update_portal_element(
             element_id,
@@ -2266,6 +2372,7 @@ class PipefyClient:
             type=type,
             metadata=metadata,
             data_sources=data_sources,
+            portal_uuid=portal_uuid,
             editable=editable,
         )
 

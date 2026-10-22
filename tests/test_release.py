@@ -555,7 +555,7 @@ def test_the_confirmation_states_the_artifacts_passed(monkeypatch) -> None:
     _release._tag_and_publish("dev", "0.5.0-alpha.1", assume_yes=True)
 
     assert len(prompts) == 1
-    assert "install and launch" in prompts[0]
+    assert "install, launch, and make an authenticated call" in prompts[0]
 
 
 def test_smoke_build_and_install_runs_the_shared_script_from_a_temp_dir(

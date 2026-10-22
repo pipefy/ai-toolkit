@@ -34,6 +34,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pipefy_sdk import PipefyClient
 
+from pipefy_sdk import PipefyRequestTimeoutError
+
 import pipefy_mcp.settings as _settings_mod
 from pipefy_mcp.core.tool_error_envelope import tool_error
 
@@ -48,6 +50,25 @@ def ensure_non_empty_error_message(text: str, fallback: str) -> str:
         fallback: Stable non-empty message used when ``text`` is blank.
     """
     return text if text.strip() else fallback
+
+
+def timeout_message_or(exc: BaseException, otherwise: str) -> str:
+    """Surface a request timeout's own message, else ``otherwise``.
+
+    The code-based delete mappers (``map_delete_card_error_to_message`` and its
+    siblings) key off GraphQL error codes, of which a timeout has none, so they
+    fold a timed-out delete into a generic "Please try again" message. That invites
+    a retry of a write the API may already have committed. ``PipefyRequestTimeoutError``
+    carries a descriptive message that names the limit and warns the mutation may
+    have applied; return it verbatim ahead of the code-based text.
+
+    Args:
+        exc: The caught exception from a tool's transport/GraphQL call.
+        otherwise: The code-based message to use when ``exc`` is not a timeout.
+    """
+    if isinstance(exc, PipefyRequestTimeoutError):
+        return str(exc)
+    return otherwise
 
 
 def _try_extract_message_from_dict_repr(raw: str) -> str | None:
@@ -372,6 +393,7 @@ def try_enrich_graphql_error(
     resource_kind: str | None,
     resource_id: str | None,
     invalid_args_hint: str | None,
+    not_found_enrichment: bool = True,
 ) -> tuple[str, str] | None:
     """Run enrichment tiers. Returns ``(message, code)`` or ``None``.
 
@@ -388,13 +410,15 @@ def try_enrich_graphql_error(
         resource_kind: Optional canonical kind; opts into NOT_FOUND enrichment.
         resource_id: Optional resource id; surfaced in the enriched message.
         invalid_args_hint: Optional tool-specific hint for BAD_USER_INPUT errors.
+        not_found_enrichment: When False, skip the NOT_FOUND relabel but keep the
+            other tiers, for a mutation whose not-found errors name several resources.
     """
     first_code = codes[0] if codes else None
     enrichment_opted_in = resource_kind is not None or invalid_args_hint is not None
     if not enrichment_opted_in:
         return None
 
-    if resource_kind is not None:
+    if resource_kind is not None and not_found_enrichment:
         enriched = enrich_not_found_error(
             exc, resource_kind=resource_kind, resource_id=resource_id
         )
@@ -432,6 +456,7 @@ def handle_tool_graphql_error(
     resource_kind: str | None = None,
     resource_id: str | None = None,
     invalid_args_hint: str | None = None,
+    not_found_enrichment: bool = True,
 ) -> dict[str, Any]:
     """Turn transport/GraphQL failures into a structured :func:`tool_error` payload.
 
@@ -464,6 +489,7 @@ def handle_tool_graphql_error(
         resource_id: Optional resource id; surfaced in the enriched message.
         invalid_args_hint: Optional tool-specific hint for BAD_USER_INPUT
             errors; opts this call site into invalid-arguments enrichment.
+        not_found_enrichment: When False, skip only the NOT_FOUND relabel.
     """
     codes = extract_graphql_error_codes(exc)
     first_code = codes[0] if codes else None
@@ -477,6 +503,7 @@ def handle_tool_graphql_error(
         resource_kind=resource_kind,
         resource_id=resource_id,
         invalid_args_hint=invalid_args_hint,
+        not_found_enrichment=not_found_enrichment,
     )
     if enriched_result is not None:
         message, code = enriched_result
@@ -560,6 +587,7 @@ __all__ = [
     "extract_graphql_correlation_id",
     "extract_graphql_error_codes",
     "handle_tool_graphql_error",
+    "timeout_message_or",
     "try_enrich_graphql_error",
     "with_debug_suffix",
 ]

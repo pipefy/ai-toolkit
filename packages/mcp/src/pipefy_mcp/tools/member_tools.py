@@ -48,15 +48,11 @@ class MemberTools:
             pipe_id, err = validate_tool_id(pipe_id, "pipe_id")
             if err is not None:
                 return err
-            if not isinstance(members, list) or not members:
+            if not members:
                 return build_member_error_payload(
                     message="Invalid 'members': provide a non-empty list of dicts with 'email' and 'role_name'.",
                 )
             for i, m in enumerate(members):
-                if not isinstance(m, dict):
-                    return build_member_error_payload(
-                        message=f"Invalid 'members': item {i} must be a dict with 'email' and 'role_name'.",
-                    )
                 if "email" not in m or "role_name" not in m:
                     return build_member_error_payload(
                         message=f"Invalid 'members': item {i} must have 'email' and 'role_name'.",
@@ -119,11 +115,11 @@ class MemberTools:
             pipe_id, err = validate_tool_id(pipe_id, "pipe_id")
             if err is not None:
                 return err
-            if not isinstance(email, str) or not email.strip():
+            if not email.strip():
                 return build_member_error_payload(
                     message="Invalid 'email': provide the service account's email address.",
                 )
-            if not isinstance(role_name, str) or not role_name.strip():
+            if not role_name.strip():
                 return build_member_error_payload(
                     message="Invalid 'role_name': provide a non-empty pipe role.",
                 )
@@ -199,13 +195,9 @@ class MemberTools:
             pipe_id, err = validate_tool_id(pipe_id, "pipe_id")
             if err is not None:
                 return err
-            if not isinstance(user_ids, list) or not user_ids:
+            if not user_ids:
                 return build_member_error_payload(
                     message="Invalid 'user_ids': provide a non-empty list of user IDs.",
-                )
-            if not all(uid.strip() for uid in user_ids):
-                return build_member_error_payload(
-                    message="Invalid 'user_ids': each ID must be a non-empty string.",
                 )
 
             guard = await check_destructive_confirmation(
@@ -274,7 +266,7 @@ class MemberTools:
             member_id, err = validate_tool_id(member_id, "member_id")
             if err is not None:
                 return err
-            if not isinstance(role_name, str) or not role_name.strip():
+            if not role_name.strip():
                 return build_member_error_payload(
                     message="Invalid 'role_name': provide a non-empty string.",
                 )

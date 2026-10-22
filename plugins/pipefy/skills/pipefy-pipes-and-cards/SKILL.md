@@ -1,0 +1,239 @@
+---
+name: pipefy-pipes-and-cards
+description: >
+  Use this skill when the user wants to read, create, update, or delete
+  pipes, phases, phase fields, labels, cards, comments, or field conditions.
+  Use the
+  seed-pipe-across-phases workflow when populating empty phases for demos or QA.
+tags: [pipefy, pipes, cards, phases, fields, labels, comments, field-conditions]
+---
+
+# Pipes & Cards
+
+Read only the reference for your active surface: [MCP](references/mcp.md) or [CLI](references/cli.md). The workflows below use shared operation names and arguments.
+
+Read, create, update, and delete pipes, phases, phase fields, labels, cards, attachments, and field conditions.
+
+---
+
+## Cross-cutting patterns
+
+- **Field types** for `create_phase_field` are the API's `FieldTypeId` enum values (lower case, e.g. `short_text`, not `SHORT_TEXT`). The tool's input schema lists them.
+
+- `extra_input` merges extra API keys (camelCase); keys that duplicate primary arguments are ignored.
+- **Phase connections are UI-only.** Creating or reordering phases does not wire Phase Connections / `allowed_phases`. Configure edges in the Pipefy UI; use `get_phase_allowed_move_targets` before moves. The API cannot add transition edges.
+- **Verify-after-write.** After create/update, re-read with the matching get tool (`get_pipe`, `get_card`, `get_phase_fields`, etc.) before reporting success. Do not treat the write response alone as proof.
+
+---
+
+## Pipe operations
+
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_pipe` | Yes | Fetch pipe metadata including phases and fields. |
+| `search_pipes` | Yes | Search by name pattern. |
+| `create_pipe` | No | Create a new pipe in the org. |
+| `update_pipe` | No | Rename or change pipe settings. |
+| `delete_pipe` | No | **Destructive; review and approve first.** |
+| `clone_pipe` | No | Clone an existing pipe. |
+| `get_pipe_members` | Yes | List members of a pipe. |
+
+### Steps — create a pipe with phases
+
+1. **Create the pipe:**
+
+   `create_pipe name="Customer Onboarding" organization_id=300123456`
+
+2. **Shape the phases.** `create_pipe` already adds Inbox, Doing and Done at keys 1, 2 and 3. Do not call `create_phase` once for every requested name on top of those three.
+
+   When the pipe needs three or more phases and the last one is final, rename Inbox, Doing and Done with `update_phase`. Leave `done` unset on Done so it stays the final phase. Create only the phases that sit between the second and the last, at `2.01`, `2.02`, and so on. When the pipe needs fewer than three phases, delete each empty default you will not keep. `delete_phase` is destructive; review and approve first.
+
+   `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. Between 2 and 3, use two decimal places (`2.01`, `2.02`, ..., `2.99`): `2.10` is the same float as `2.1`, so the tenth value ties with the first. `index` does not wire Phase Connections / `allowed_phases` (configure those in the Pipefy UI; use `get_phase_allowed_move_targets` before moves).
+
+   Call `get_pipe` and confirm the phase names are in the intended order.
+
+3. **Add start form fields** — call `create_phase_field` on the start form phase.
+
+---
+
+## Phase operations
+
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_pipe` | Yes | Read phase metadata from the pipe response. |
+| `create_phase` | No | Add a phase to a pipe. |
+| `update_phase` | No | Rename, set the done flag. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. |
+| `delete_phase` | No | **Destructive; review and approve first.** |
+| `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase` (UI-configured edges only). |
+| `get_phase_cards_count` | Yes | Native per-phase card count via `get_phase`. |
+| `get_phase_cards` | Yes | Paginated cards in a phase. |
+
+---
+
+## Seed pipe across phases
+
+Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. Transition edges must already exist in the Pipefy UI.
+
+### Tools needed
+
+| Operation | Read-only |
+| ------------ | ----------- |
+| `get_pipe` | Yes |
+| `get_phase_cards_count` | Yes |
+| `create_card` | No |
+| `get_phase_cards` | Yes |
+| `get_phase_allowed_move_targets` | Yes |
+| `move_card_to_phase` | No |
+
+Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required empty fields may prevent a move.
+
+### Steps
+
+1. **Load phase IDs** — `get_pipe(pipe_id)` → collect `phases[].id` for workflow phases. Omit `phase_id` on `create_card` for start-form intake.
+
+   `get_pipe pipe_id="301234567"`
+
+2. **Find empty phases** — for each candidate `phase_id`, call `get_phase_cards_count`. Target phases where `cards_count` is 0 (if the start form shows 0 but you suspect cards, call `get_phase_cards` before creating duplicates).
+
+   `get_phase_cards_count phase_id="341234567"`
+
+3. **Create cards in empty phases** — loop `create_card` with `phase_id`. When `fields` is non-empty, keys are filtered via `get_phase_fields(phase_id)` and `get_start_form_fields(pipe_id)`.
+
+   ```
+   create_card pipe_id="301234567" phase_id="341234567" title="Seeded" fields={}
+   ```
+
+4. **Verify inventory** — `get_phase_cards(phase_id, first=50)` and confirm expected card IDs/titles.
+
+5. **Before moves** — on the card's current phase, `get_phase_allowed_move_targets` then `move_card_to_phase` only to an `allowed_phases[].id`.
+
+   `get_phase_allowed_move_targets phase_id="<current_phase_id>"`
+
+### Success criteria
+
+- Every targeted phase reports `cards_count >= 1` (or `get_phase_cards` lists the seeded cards).
+- Moves use only phases returned in `allowed_phases`.
+
+### Failure modes
+
+- **Empty `allowed_phases`:** configure **Phase → Connections** in the Pipefy UI; the API cannot add edges.
+- **Unexpected empty count:** use `get_phase_cards` to list cards before creating duplicates.
+
+---
+
+## Phase field operations
+
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_phase_fields` | Yes | List fields on a phase. |
+| `get_start_form_fields` | Yes | List start-form fields for card creation. |
+| `create_phase_field` | No | Add field to a phase. |
+| `update_phase_field` | No | Rename, reorder, change required flag. |
+| `delete_phase_field` | No | **Destructive; review and approve first.** |
+
+**Field types:** `field_type` takes a `FieldTypeId` value, which the `create_phase_field` input schema lists (or `introspect_type type_name="FieldTypeId"`). Set `options` for select, radio, and checklist types. A `connector` field also needs `extra_input.connectedRepoId`: a pipe id, or a table id.
+
+---
+
+## Card operations
+
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_card` | Yes | Title, phase, pipe, optional fields. Does not return labels or assignees. |
+| `get_cards` | Yes | Paginated card list by pipe. |
+| `get_records` | Yes | List, count and filter the cards of a pipe by dates, phase, labels, assignees, creator, title or custom fields; exact `totalCount`. |
+| `find_cards` | Yes | Filter by a single field value. |
+| `create_card` | No | Default: start form. Optional `phase_id` creates in that phase. |
+| `fill_card_phase_fields` | No | Fill phase fields; filters to editable IDs. |
+| `update_card` | No | Update title, assignees, labels, due date, or fields. For list-valued **fields** (connections, attachments, checklists), prefer `field_updates` with `operation` ADD/REMOVE. Pipe labels and assignees are card attributes (`label_ids` / `assignee_ids`, replace-all), not fields — see Label operations. If `field_updates` is set, attribute args are discarded. For connectors, send related **card ids**. |
+| `update_card_field` | No | Single-field `updateCardField`; list-valued fields are **replace-all**. For connectors, values are related **card ids** (not display titles). Do not rebuild from `get_card` `value` (titles only); read ids via `get_card_relations`. Prefer `update_card` + ADD/REMOVE for fields. Pipe labels use `label_ids`, not this tool. |
+| `move_card_to_phase` | No | Call `get_phase_allowed_move_targets` first; required empty fields may block the move. |
+| `delete_card` | No | **Destructive; review and approve first.** |
+| `add_card_comment` | No | Add a text comment to a card. |
+| `update_comment` | No | Update an existing card comment. |
+| `delete_comment` | No | **Destructive; review and approve first.** |
+
+### Steps — create a card
+
+1. **Get start form fields** (required — never skip):
+
+   `get_start_form_fields pipe_id=301234567`
+
+2. **Create the card with fields:**
+
+   ```
+   create_card pipe_id=301234567 title="My Card" fields={"field_slug":"value"}
+   ```
+
+3. **Report result** with card ID and link: `https://app.pipefy.com/open-cards/<CARD_ID>`
+
+### Count and filter cards
+
+`get_records` answers "how many" in one call: set `first=1` and read `records.totalCount`, not the length of a page. A count per group (per assignee, per label) is one call per group.
+In `where` and `order_by`, `field` must be the custom field uuid from `get_phase_fields` (for a start-form field, call `get_phase_fields` with `phase_id` set to `get_pipe`'s `startFormPhaseId`); a slug is rejected.
+Dates are ISO 8601: date-time attributes such as `CREATED_AT` and `FINISHED_AT` take an offset, but a `date` custom field takes the bare date (`"2026-07-03"`), because a non-UTC offset makes `eq` return 0 and shifts a `between` window. `between` takes `{"min": ..., "max": ...}`.
+`like` and `ilike` both ignore case and match each word of the value as a substring, in any order: `%` and `_` are literal, so `ilike: "acme"`, not `"%acme%"`. To find a card by id, use `where={"attribute": "ID", "eq": "<id>"}`.
+With `where` or `search_term`, pages stop at 10,000 cards.
+To list every card, page with `after` set to the previous `pageInfo.endCursor` until `hasNextPage` is false, and check that the rows add up to `totalCount`.
+
+```
+get_records pipe_id=67890 where={"attribute":"FINISHED_AT","between":{"min":"2026-01-01T00:00:00-03:00","max":"2026-01-31T23:59:59-03:00"}}
+```
+
+### Pagination for get_cards
+
+```
+get_cards pipe_id=301234567 first=50 after=<endCursor>
+```
+
+Read `pageInfo.hasNextPage` and `pageInfo.endCursor` from the response; set `after=<endCursor>` for the next page.
+
+---
+
+## Label operations
+
+| Operation | Read-only | Purpose |
+| ------------ | ----------- | --------- |
+| `get_pipe` | Yes | List pipe labels from `labels` in the pipe response. |
+| `create_label` | No | Create a label with a color. |
+| `update_label` | No | Rename or recolor. |
+| `delete_label` | No | **Destructive; review and approve first.** |
+
+These tools manage label definitions on the pipe. Applying a pipe label to a card is `update_card(label_ids=[...])`, which **replaces** the card's whole label list: include every id that should remain; do not send only the new one. `get_card` does not return labels — read current ids via `execute_graphql` (`card(id: ...) { labels { id } }`), merge, then write. `field_updates` with `operation` ADD/REMOVE is for list-valued **fields**, not for card-attribute labels. When the user wants a label applied **automatically** ("mark it late when it goes past the due date"), stop and read `pipefy-automations` (applying a label has no automation action): no automation action does it, and driving `update_card` over a set of cards makes the agent the runtime instead of the process.
+
+---
+
+## Field condition operations
+
+| Operation | Purpose |
+| ------------ | --------- |
+| `get_field_conditions` | List all field conditions on a phase. |
+| `get_field_condition` | Load one field condition by ID. |
+| `create_field_condition` | Create show/hide rule. Verify that the rule is on the requested phase before reporting success. |
+| `update_field_condition` | Update condition action or rule. |
+| `delete_field_condition` | **Destructive; review and approve first.** |
+
+Do not hide a required field; clear `required` first.
+
+---
+
+## Success criteria
+
+- Pipe and phases visible in Pipefy UI.
+- `get_pipe` returns the new pipe ID and phases.
+- Cards created via `create_card` appear in the pipe's first phase.
+
+## Failure modes
+
+- **`create_field_condition` fails with missing/wrong phase:** delete the returned condition before recreating; do not blind-retry create on the same requested phase.
+- **`create_card` fails with missing required fields:** call `get_start_form_fields` first to discover required `field_id` values.
+- **`create_card` / write reports failure (empty or unclear message):** do not blind-retry. Re-read `get_cards` / `get_phase_cards_count` (or pipe `cards_count`) before any retry — see `pipefy-api-fallback` (ambiguous write failure re read before retry).
+- **Connections missing after a connector field update:** `update_card_field` is replace-all — writing one related card id drops the rest (same replace-all applies to other list-valued fields: attachments, checklists). Prefer `update_card` with `operation` ADD/REMOVE and related **card ids**. Do not rebuild a full list from `get_card` `value` (display titles only); for REMOVE or a safe full rewrite, get current related-card ids from `get_card_relations` (or GraphQL `array_value`). For *writes* via a pipe relation (not a connector field), use `create_card_relation` / `delete_card_relation` — see `pipefy-relations`. Pipe labels and assignees are not fields: use `update_card(label_ids=)` / `assignee_ids` (replace-all); `field_updates` ADD cannot address them.
+- **`create_phase_field` rejects type** (`Field type not found with id: ...`): use a `FieldTypeId` value, in lower case (`short_text`, not `SHORT_TEXT`). `introspect_type type_name="FieldTypeId"` lists them.
+
+## See also
+
+- `pipefy-relations` — link pipes and cards across workflows.
+- `pipefy-automations` — add automation rules to a pipe.
+- `pipefy-introspection` — discover field types and mutation signatures.
+- [docs/mcp/tools/identifiers.md#field-references-slug-vs-internal_id](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/identifiers.md#field-references-slug-vs-internal_id) — canonical map of which tool/argument expects slug vs `internal_id` vs uuid vs numeric id (e.g. `update_card_field` uses a field slug).

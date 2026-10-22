@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
 from _shared.fixture_ids import EXAMPLE_PIPE_REPO_ID
 from pydantic import ValidationError
@@ -9,6 +11,7 @@ from pydantic import ValidationError
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
     DeletePortalElementInput,
+    PortalElementType,
     UpdatePortalElementInput,
     UpdatePortalInput,
 )
@@ -92,21 +95,45 @@ def test_create_portal_element_input_accepts_link_metadata_with_name_only() -> N
         "button",
         "divider",
         "pages",
+        "subPortal",
         "automationButton",
         "contentBlock",
         "document",
+        "customCode",
     ],
 )
 def test_create_portal_element_input_accepts_all_interface_page_element_types(
     element_type: str,
 ) -> None:
-    """InterfacePageElementType Literal must allow all 15 enum values."""
+    """Every element type that accepts empty metadata validates."""
     element_input = CreatePortalElementInput(
         page_id=_PAGE_ID,
         type=element_type,  # type: ignore[arg-type]
         metadata={},
     )
     assert element_input.type == element_type
+
+
+@pytest.mark.unit
+def test_portal_element_type_lists_every_interface_page_element_type() -> None:
+    assert set(get_args(PortalElementType)) == {
+        "text",
+        "table",
+        "field",
+        "embedLink",
+        "embedVideo",
+        "embedImage",
+        "button",
+        "divider",
+        "link",
+        "forms",
+        "pages",
+        "subPortal",
+        "automationButton",
+        "contentBlock",
+        "document",
+        "customCode",
+    }
 
 
 @pytest.mark.unit
@@ -201,8 +228,49 @@ def test_update_portal_element_input_accepts_link_metadata() -> None:
         page_id=_PAGE_ID,
         type="link",
         metadata=_VALID_LINK_METADATA,
+        data_sources=[],
     )
     assert element_input.metadata["linkUrl"] == "https://example.com/pipefy"
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_accepts_portal_uuid_without_data_sources() -> None:
+    """Omitted data_sources with portal_uuid means: keep the element's current ones."""
+    element_input = UpdatePortalElementInput(
+        element_id=_ELEMENT_ID,
+        page_id=_PAGE_ID,
+        type="forms",
+        metadata=_VALID_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+    )
+    assert element_input.data_sources is None
+    assert element_input.portal_uuid == _PORTAL_UUID
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_rejects_missing_data_sources_and_portal_uuid() -> (
+    None
+):
+    """Without either one, an update would unlink the element's data sources."""
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        UpdatePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            type="forms",
+            metadata=_VALID_FORMS_METADATA,
+        )
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_rejects_blank_portal_uuid() -> None:
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        UpdatePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            type="forms",
+            metadata=_VALID_FORMS_METADATA,
+            portal_uuid="   ",
+        )
 
 
 @pytest.mark.unit

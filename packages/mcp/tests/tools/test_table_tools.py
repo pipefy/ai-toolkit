@@ -8,7 +8,7 @@ from _mcp_compat import (
     create_connected_server_and_client_session as create_client_session,
 )
 from _shared.pagination_test_defaults import DEFAULT_FIRST
-from pipefy_sdk import PipefyClient, PipefyGraphQLError
+from pipefy_sdk import PipefyClient, PipefyGraphQLError, PipefyRequestTimeoutError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.table_tools import TableTools
@@ -581,6 +581,28 @@ async def test_delete_table_graphql_error_on_confirm(table_session, mock_table_c
         payload = await confirm_after_preview(session, "delete_table", {"table_id": 1})
 
     assert payload["success"] is False
+
+
+@pytest.mark.anyio
+async def test_delete_table_surfaces_request_timeout(table_session, mock_table_client):
+    """A timed-out delete_table names the timeout, not the generic retry message.
+
+    A timeout carries no GraphQL error code, so before the fix it folded into the
+    "Please try again" reply, which invites a retry of a delete the API may already
+    have committed.
+    """
+    mock_table_client.get_table.return_value = {"table": {"id": "1", "name": "X"}}
+    mock_table_client.delete_table.side_effect = PipefyRequestTimeoutError(30)
+
+    async with table_session as session:
+        payload = await confirm_after_preview(session, "delete_table", {"table_id": 1})
+
+    mock_table_client.delete_table.assert_awaited_once_with("1")
+    message = tool_error_message(payload)
+    assert payload["success"] is False
+    assert "timed out" in message.lower()
+    assert "30" in message
+    assert "try again" not in message.lower()
 
 
 @pytest.mark.anyio
