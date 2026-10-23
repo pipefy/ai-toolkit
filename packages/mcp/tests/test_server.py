@@ -177,6 +177,29 @@ def test_build_server_remote_mode_exposes_only_the_remote_safe_seed(mocked_runti
 
 
 @pytest.mark.unit
+def test_build_server_remote_mode_exposes_the_html_interface_tools(mocked_runtime):
+    """The 7 HTML interface tools are actually served under the built remote app.
+
+    The REMOTE_SEED drift guard (test_remote_profile.py) only checks that the
+    ``meta=REMOTE`` markers and the seed list agree with each other in the
+    abstract; it never builds a server. This asks the real
+    ``build_pipefy_mcp_server`` pipeline, under remote-profile settings, which
+    tools it actually registers.
+    """
+    app = build_pipefy_mcp_server(_REMOTE_PROFILE_SETTINGS)
+    exposed = {t.name for t in app._tool_manager.list_tools()}
+    assert {
+        "list_interface_repos",
+        "get_interface_repo_fields",
+        "set_interface_sources",
+        "list_interfaces",
+        "get_interface_html",
+        "write_interface_html",
+        "create_html_interface",
+    } <= exposed
+
+
+@pytest.mark.unit
 def test_build_server_applies_toolset_selection(mocked_runtime):
     """A ``toolsets`` selection narrows the registered surface to the named domains."""
     settings = _MINIMAL_PIPEFY_SETTINGS.model_copy(

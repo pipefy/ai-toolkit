@@ -104,6 +104,10 @@ Sixteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | Tool | Read-only | Role |
 |------|-----------|------|
 | `list_portals` | Yes | Flat list: `uuid`, `name`, `visibility`, `subType`. Optional `search_term`. |
+| `list_interfaces` | Yes | An organization's HTML interfaces (`contentModeHtml`). Optional `search_term`. Grid portals and sub-portals are not returned here (use `list_portals`). |
+| `get_interface_html` | Yes | HTML interface with each `customCode` element's live document. Raises on a grid-layout interface (use `get_portal`). |
+| `create_html_interface` | No | Creates an interface with one `customCode` page and writes its HTML in one call; optional `data_sources`, `color` (defaults to `blue`). |
+| `write_interface_html` | No | Writes and publishes a `customCode` element's whole HTML document; raises on invalid HTML (every violation listed), stores nothing. |
 | `get_interface_html_guidelines` | Yes | No argument; HTML/CSS authoring rules and data-source filter format for `customCode` content, the same for every organization. |
 | `list_interface_repos` | Yes | Numeric `organization_id`, optional `interface_uuid` and `repo_name`; the pipes and tables an HTML interface can take as data sources. |
 | `get_interface_repo_fields` | Yes | `repo_uuid`, optional `interface_uuid`; the repo's custom fields, each keyed by `uuid`. |
@@ -127,6 +131,8 @@ Sixteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `unpublish_sub_portal` | No | `updateSubPortalElement(subPortalUuid: null)`. |
 | `delete_sub_portal_element` | No | Detach wiring (`deleteSubPortalElement`). |
 | `delete_sub_portal` | No | Delete interface (`deleteSubPortalInterface`). |
+
+**`create_html_interface`:** runs `createInterface` then `writeHtmlDocument` under one call. A write failure after a successful create returns the new interface's `uuid`, `page_id` and `element_id`, so retry with `write_interface_html` using those ids instead of calling `create_html_interface` again, which would create a second, orphaned interface. `color` is optional (defaults to `blue`); pick one of the 12 accepted values for a specific one.
 
 **HTML interface data sources:** declare sources before writing the HTML that reads them. `list_interface_repos` lists the repos the interface can read: for an interface that is not a portal, the published pipes and tables you administer. A successful listing does not show that the interface exists: an unknown `interface_uuid` is listed like an interface that is not a portal, and an organization you cannot see lists nothing, both without an error, so confirm the interface with `get_interface_html`. `get_interface_repo_fields` lists a repo's custom fields; a field's key is its `uuid`, and built-in keys such as `title` come from `get_interface_html_guidelines` (`filters.fixedColumnNames`). `set_interface_sources` replaces the element's sources and returns them as sent, once the update reports success; they are not read back, so call `get_interface_html` for the stored sources. Each source needs a unique `id` (the handle the HTML reads it by) and `name`, a `repoId` from `list_interface_repos`, 1 to 30 `fieldKeys`, and `filters` as a filter tree or null; at most 10 sources. The tool reads the element and sends its `metadata` and `editable` back, so they are kept. A source on a repo you cannot bind returns "Permission denied for a data source".
 

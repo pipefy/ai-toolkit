@@ -172,7 +172,7 @@ class PortalTools:
                 )
             return build_success_payload(guidelines, include_parsed=True)
 
-        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), meta=REMOTE)
         async def list_interface_repos(
             ctx: Context,
             organization_id: PipefyId,
@@ -234,7 +234,7 @@ class PortalTools:
                 )
             return build_success_payload({"repos": repos}, include_parsed=True)
 
-        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), meta=REMOTE)
         async def get_interface_repo_fields(
             ctx: Context,
             repo_uuid: str,
@@ -280,7 +280,7 @@ class PortalTools:
                 )
             return build_success_payload({"fields": fields}, include_parsed=True)
 
-        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False), meta=REMOTE)
         async def set_interface_sources(
             ctx: Context,
             interface_uuid: str,
@@ -348,6 +348,7 @@ class PortalTools:
 
         @mcp.tool(
             annotations=ToolAnnotations(readOnlyHint=True),
+            meta=REMOTE,
         )
         async def list_interfaces(
             ctx: Context,
@@ -390,6 +391,7 @@ class PortalTools:
 
         @mcp.tool(
             annotations=ToolAnnotations(readOnlyHint=True),
+            meta=REMOTE,
         )
         async def get_interface_html(
             ctx: Context,
@@ -427,6 +429,7 @@ class PortalTools:
 
         @mcp.tool(
             annotations=ToolAnnotations(readOnlyHint=False),
+            meta=REMOTE,
         )
         async def write_interface_html(
             ctx: Context,
@@ -476,6 +479,7 @@ class PortalTools:
 
         @mcp.tool(
             annotations=ToolAnnotations(readOnlyHint=False),
+            meta=REMOTE,
         )
         async def create_html_interface(
             ctx: Context,

@@ -2871,14 +2871,17 @@ Usage: pipefy portal [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ list         List portals for an organization.                               │
-│ get          Fetch a portal by UUID.                                         │
-│ create       Create or fetch the organization's main portal (idempotent).    │
-│ update       Update portal metadata (pass at least one attribute).           │
-│ delete       Delete a portal permanently.                                    │
-│ page         Portal page operations.                                         │
-│ element      Portal page elements (widgets / tools in the Pipefy UI).        │
-│ sub-portal   Sub-portal create, attach, publish, and delete.                 │
+│ list             List portals for an organization.                           │
+│ get              Fetch a portal by UUID.                                     │
+│ create           Create or fetch the organization's main portal              │
+│                  (idempotent).                                               │
+│ update           Update portal metadata (pass at least one attribute).       │
+│ delete           Delete a portal permanently.                                │
+│ page             Portal page operations.                                     │
+│ element          Portal page elements (widgets / tools in the Pipefy UI).    │
+│ sub-portal       Sub-portal create, attach, publish, and delete.             │
+│ html-interface   HTML interfaces (contentModeHtml): create, read, and        │
+│                  rewrite customCode pages.                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/create
@@ -3027,6 +3030,141 @@ Usage: pipefy portal get [OPTIONS] PORTAL_UUID
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json  -j        Print machine-readable JSON to stdout.                     │
 │ --help            Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface
+Usage: pipefy portal html-interface [OPTIONS] COMMAND [ARGS]...
+
+ HTML interfaces (contentModeHtml): create, read, and rewrite customCode pages.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ list          List an organization's HTML interfaces (grid portals are not   │
+│               returned here).                                                │
+│ get           Fetch an HTML interface with each customCode element's live    │
+│               HTML.                                                          │
+│ write         Write and publish the HTML of an HTML interface's customCode   │
+│               element.                                                       │
+│ create        Create an HTML interface and write its first page in one call. │
+│ repos         List the pipes and tables an interface element can take as a   │
+│               data source.                                                   │
+│ repo-fields   List a pipe's or table's custom fields, for an interface data  │
+│               source.                                                        │
+│ set-sources   Replace the data sources of an HTML interface's customCode     │
+│               element.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/create
+Usage: pipefy portal html-interface create [OPTIONS]
+
+ Create an HTML interface and write its first page in one call.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-uuid          TEXT  Organization UUID, or numeric          │
+│                                       organization id.                       │
+│                                       [required]                             │
+│ *  --name                       TEXT  Interface name; also used as the one   │
+│                                       page's title.                          │
+│                                       [required]                             │
+│ *  --html                       TEXT  The page's whole HTML document.        │
+│                                       [required]                             │
+│    --data-sources               TEXT  Optional JSON array of source bindings │
+│                                       (id, name, repoId, fieldKeys, optional │
+│                                       filters); at most 10, id/name unique   │
+│                                       among them.                            │
+│    --json               -j            Print machine-readable JSON to stdout. │
+│    --help                             Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/get
+Usage: pipefy portal html-interface get [OPTIONS] INTERFACE_UUID
+
+ Fetch an HTML interface with each customCode element's live HTML.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    interface_uuid      TEXT  HTML interface UUID. [required]               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --json  -j        Print machine-readable JSON to stdout.                     │
+│ --help            Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/list
+Usage: pipefy portal html-interface list [OPTIONS]
+
+ List an organization's HTML interfaces (grid portals are not returned here).
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-uuid          TEXT  Organization UUID, or numeric          │
+│                                       organization id.                       │
+│                                       [required]                             │
+│    --search-term                TEXT  Optional interface name filter.        │
+│    --json               -j            Print machine-readable JSON to stdout. │
+│    --help                             Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/repo-fields
+Usage: pipefy portal html-interface repo-fields [OPTIONS]
+
+ List a pipe's or table's custom fields, for an interface data source.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --repo-uuid               TEXT  The repo's uuid, as 'repos' returns it.   │
+│                                    [required]                                │
+│    --interface-uuid          TEXT  Interface the source is for.              │
+│    --json            -j            Print machine-readable JSON to stdout.    │
+│    --help                          Show this message and exit.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/repos
+Usage: pipefy portal html-interface repos [OPTIONS]
+
+ List the pipes and tables an interface element can take as a data source.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-id          TEXT  Numeric organization id; a uuid is       │
+│                                     rejected.                                │
+│                                     [required]                               │
+│    --interface-uuid           TEXT  Interface the source is for; narrows to  │
+│                                     repos it can bind.                       │
+│    --repo-name                TEXT  Case-insensitive part of the repo name.  │
+│    --json             -j            Print machine-readable JSON to stdout.   │
+│    --help                           Show this message and exit.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/set-sources
+Usage: pipefy portal html-interface set-sources [OPTIONS]
+
+ Replace the data sources of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --interface-uuid          TEXT  HTML interface holding the page.          │
+│                                    [required]                                │
+│ *  --page-id                 TEXT  Page holding the element. [required]      │
+│ *  --element-id              TEXT  The page's customCode element. [required] │
+│ *  --data-sources            TEXT  JSON array, the element's complete source │
+│                                    list (id, name, repoId, fieldKeys,        │
+│                                    optional filters); '[]' removes them all. │
+│                                    [required]                                │
+│    --json            -j            Print machine-readable JSON to stdout.    │
+│    --help                          Show this message and exit.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/write
+Usage: pipefy portal html-interface write [OPTIONS]
+
+ Write and publish the HTML of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --page-id             TEXT  Page holding the element. [required]          │
+│ *  --element-id          TEXT  The page's customCode element. [required]     │
+│ *  --content             TEXT  The whole HTML document; it replaces the live │
+│                                one.                                          │
+│                                [required]                                    │
+│    --json        -j            Print machine-readable JSON to stdout.        │
+│    --help                      Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/list

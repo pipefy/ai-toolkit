@@ -12,6 +12,7 @@ from pipefy_sdk import (
 )
 from pipefy_sdk.models.portal import (
     DeletePortalElementInput,
+    InterfaceDataSources,
     PortalPageLayoutRow,
     parse_portal_page_layout,
 )
@@ -35,6 +36,10 @@ element_app = typer.Typer(
 )
 sub_portal_app = typer.Typer(
     help="Sub-portal create, attach, publish, and delete.",
+    no_args_is_help=True,
+)
+html_interface_app = typer.Typer(
+    help="HTML interfaces (contentModeHtml): create, read, and rewrite customCode pages.",
     no_args_is_help=True,
 )
 
@@ -949,7 +954,275 @@ def portal_sub_portal_delete(
     run_cli_command(ctx, json_out, factory)
 
 
+@html_interface_app.command("list")
+def html_interface_list(
+    ctx: typer.Context,
+    organization_uuid: str = typer.Option(
+        ...,
+        "--organization-uuid",
+        help="Organization UUID, or numeric organization id.",
+    ),
+    search_term: str | None = typer.Option(
+        None,
+        "--search-term",
+        help="Optional interface name filter.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List an organization's HTML interfaces (grid portals are not returned here)."""
+
+    async def factory(client: PipefyClient):
+        return await client.list_html_interfaces(
+            organization_uuid, search_term=search_term
+        )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("get", context_settings=ID_POSITIONAL_CONTEXT_SETTINGS)
+def html_interface_get(
+    ctx: typer.Context,
+    interface_uuid: str = resource_id_argument(help="HTML interface UUID."),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Fetch an HTML interface with each customCode element's live HTML."""
+
+    interface_uuid = _require_non_empty_portal_uuid(interface_uuid)
+
+    async def factory(client: PipefyClient):
+        return await client.get_html_interface(interface_uuid)
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("write")
+def html_interface_write(
+    ctx: typer.Context,
+    page_id: str = typer.Option(..., "--page-id", help="Page holding the element."),
+    element_id: str = typer.Option(
+        ..., "--element-id", help="The page's customCode element."
+    ),
+    content: str = typer.Option(
+        ..., "--content", help="The whole HTML document; it replaces the live one."
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Write and publish the HTML of an HTML interface's customCode element."""
+
+    page_id = _require_non_empty_portal_uuid(page_id)
+    element_id = _require_non_empty_portal_uuid(element_id)
+    if not content.strip():
+        raise typer.BadParameter("--content must be non-empty.")
+
+    async def factory(client: PipefyClient):
+        return await client.write_html_document(
+            page_id=page_id, element_id=element_id, content=content
+        )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("create")
+def html_interface_create(
+    ctx: typer.Context,
+    organization_uuid: str = typer.Option(
+        ...,
+        "--organization-uuid",
+        help="Organization UUID, or numeric organization id.",
+    ),
+    name: str = typer.Option(
+        ..., "--name", help="Interface name; also used as the one page's title."
+    ),
+    html: str = typer.Option(..., "--html", help="The page's whole HTML document."),
+    data_sources: str | None = typer.Option(
+        None,
+        "--data-sources",
+        help=(
+            "Optional JSON array of source bindings (id, name, repoId, fieldKeys, "
+            "optional filters); at most 10, id/name unique among them."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Create an HTML interface and write its first page in one call."""
+
+    if not name.strip():
+        raise typer.BadParameter("--name must be non-empty.")
+    name = name.strip()
+    if not html.strip():
+        raise typer.BadParameter("--html must be non-empty.")
+    data_sources_list = _parse_optional_data_sources_json(data_sources)
+
+    async def factory(client: PipefyClient):
+        interface = await client.create_interface(
+            organization_uuid, name, data_sources=data_sources_list
+        )
+        pages = interface.get("pages") or []
+        elements = pages[0].get("elements") if pages else None
+        if not pages or not elements:
+            msg = (
+                "createInterface returned no page to write HTML into. The "
+                f"interface ({interface.get('uuid')}) may already exist; check "
+                "with 'pipefy portal html-interface get' before retrying, "
+                "instead of running create again, which would create a second, "
+                "orphaned interface."
+            )
+            raise ValueError(msg)
+        page_id = pages[0]["uuid"]
+        element_id = elements[0]["uuid"]
+        try:
+            await client.write_html_document(
+                page_id=page_id, element_id=element_id, content=html
+            )
+        except Exception as exc:
+            interface_uuid = interface.get("uuid")
+            msg = (
+                f"{exc}\n\nThe interface ({interface_uuid}) was already created "
+                "with a blank page. Resolve the error above, then write with "
+                f"page_id={page_id!r} and element_id={element_id!r}; do not run "
+                "create again, which would create a second, orphaned interface."
+            )
+            raise ValueError(msg) from exc
+        return interface
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("repos")
+def html_interface_repos(
+    ctx: typer.Context,
+    organization_id: str = typer.Option(
+        ...,
+        "--organization-id",
+        help="Numeric organization id; a uuid is rejected.",
+    ),
+    interface_uuid: str | None = typer.Option(
+        None,
+        "--interface-uuid",
+        help="Interface the source is for; narrows to repos it can bind.",
+    ),
+    repo_name: str | None = typer.Option(
+        None,
+        "--repo-name",
+        help="Case-insensitive part of the repo name.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List the pipes and tables an interface element can take as a data source."""
+
+    async def factory(client: PipefyClient):
+        repos = await client.list_interface_repos(
+            organization_id, interface_uuid=interface_uuid, repo_name=repo_name
+        )
+        return {"repos": repos}
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("repo-fields")
+def html_interface_repo_fields(
+    ctx: typer.Context,
+    repo_uuid: str = typer.Option(
+        ..., "--repo-uuid", help="The repo's uuid, as 'repos' returns it."
+    ),
+    interface_uuid: str | None = typer.Option(
+        None,
+        "--interface-uuid",
+        help="Interface the source is for.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List a pipe's or table's custom fields, for an interface data source."""
+
+    repo_uuid = _require_non_empty_portal_uuid(repo_uuid)
+
+    async def factory(client: PipefyClient):
+        fields = await client.get_interface_repo_fields(
+            repo_uuid, interface_uuid=interface_uuid
+        )
+        return {"fields": fields}
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("set-sources")
+def html_interface_set_sources(
+    ctx: typer.Context,
+    interface_uuid: str = typer.Option(
+        ..., "--interface-uuid", help="HTML interface holding the page."
+    ),
+    page_id: str = typer.Option(..., "--page-id", help="Page holding the element."),
+    element_id: str = typer.Option(
+        ..., "--element-id", help="The page's customCode element."
+    ),
+    data_sources: str = typer.Option(
+        ...,
+        "--data-sources",
+        help=(
+            "JSON array, the element's complete source list (id, name, repoId, "
+            "fieldKeys, optional filters); '[]' removes them all."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Replace the data sources of an HTML interface's customCode element."""
+
+    interface_uuid = _require_non_empty_portal_uuid(interface_uuid)
+    page_id = _require_non_empty_portal_uuid(page_id)
+    element_id = _require_non_empty_portal_uuid(element_id)
+    parsed = parse_json_value(data_sources, "--data-sources")
+    if not isinstance(parsed, list):
+        raise typer.BadParameter("--data-sources must be a JSON array.")
+    try:
+        sources = InterfaceDataSources.model_validate(parsed)
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    async def factory(client: PipefyClient):
+        return await client.set_interface_sources(
+            page_id, element_id, sources.root, interface_uuid=interface_uuid
+        )
+
+    run_cli_command(ctx, json_out, factory)
+
+
 page_app.add_typer(layout_app, name="layout")
 portal_app.add_typer(page_app, name="page")
 portal_app.add_typer(element_app, name="element")
 portal_app.add_typer(sub_portal_app, name="sub-portal")
+portal_app.add_typer(html_interface_app, name="html-interface")
