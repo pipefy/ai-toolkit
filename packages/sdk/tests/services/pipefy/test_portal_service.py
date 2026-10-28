@@ -24,6 +24,7 @@ from gql import gql
 from pydantic import ValidationError
 
 from pipefy_sdk.exceptions import (
+    PORTAL_PERMISSION_MESSAGE,
     HtmlValidationError,
     HtmlViolation,
     PortalPermissionError,
@@ -1241,14 +1242,25 @@ async def test_create_portal_permission_denied_surfaces_actionable_message() -> 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_portal_permission_denied_surfaces_actionable_message() -> None:
-    """PERMISSION_DENIED on update maps to portal permission guidance."""
+    """PERMISSION_DENIED on update names both grants a portal write needs.
+
+    An org admin with ``manage_portals`` is still denied on a portal they have not
+    joined, so the message must point past the organization permission to
+    ``joinAsAdmin`` and say the toolkit cannot run it.
+    """
     service, _public, interfaces_executor = _make_interfaces_service(
         {"updateInterface": {"interface": _CREATE_PORTAL_GRAPHQL_INTERFACE}},
     )
     interfaces_executor.execute_query = AsyncMock(side_effect=_PERMISSION_DENIED_ERROR)
 
-    with pytest.raises(PortalPermissionError, match=r"(create_portal|manage_portals)"):
+    with pytest.raises(PortalPermissionError) as excinfo:
         await service.update_portal("portal-created-uuid", name="Renamed")
+
+    message = str(excinfo.value)
+    assert message == PORTAL_PERMISSION_MESSAGE
+    assert "manage_portals" in message
+    assert "joinAsAdmin" in message
+    assert "does not expose" in message
 
 
 @pytest.mark.unit

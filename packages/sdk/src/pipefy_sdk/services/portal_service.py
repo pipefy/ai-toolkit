@@ -78,11 +78,6 @@ def _with_uuid_alias(record: dict[str, Any]) -> dict[str, Any]:
     return record
 
 
-_PORTAL_PERMISSION_MESSAGE = (
-    "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
-)
-
 # Largest page the Interfaces API returns per request.
 _INTERFACES_PER_REQUEST = 50
 
@@ -102,7 +97,7 @@ def _map_portal_permission_error(
     """
     problem = classify_exception(exc)
     if problem is not None and problem.kind is GraphQLProblemKind.PERMISSION_DENIED:
-        return PortalPermissionError(_PORTAL_PERMISSION_MESSAGE)
+        return PortalPermissionError()
     return None
 
 

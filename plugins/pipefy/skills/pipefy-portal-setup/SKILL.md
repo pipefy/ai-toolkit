@@ -36,7 +36,7 @@ Do **not** use for:
 ## Prerequisites
 
 - **Organization id:** UUID or **numeric org id** from the organization lookup or the Pipefy URL (examples below use fictional `123456789` per [`fixture_ids.py`](https://github.com/pipefy/ai-toolkit/blob/main/packages/sdk/tests/_shared/fixture_ids.py)). SDK resolves numeric ids before Interfaces calls. The org you pass to **`list_portals`** / **`create_portal`** must be the same org your token can write on.
-- **Portal writes:** token needs **`create_portal`** and/or **`manage_portals`** on that org. Many service accounts only have pipe/card scope on their default org → `PERMISSION_DENIED` on portal mutations even when reads succeed elsewhere.
+- **Portal writes:** the account the toolkit signs in as needs two grants: **`create_portal`** and/or **`manage_portals`** on that org, and, for any write to an existing portal, the admin role on that portal (see below). Many service accounts only have pipe/card scope on their default org → `PERMISSION_DENIED` on portal mutations even when reads succeed elsewhere.
 - **One main portal per org** — `create_portal` is idempotent (second call returns the same portal UUID).
 
 ### Confirm access before writes
@@ -47,7 +47,7 @@ Reads on the wrong org can succeed while Interfaces writes fail. Before page/ele
 2. Ensure the token is meant for that org (service account email vs human user on a different org is a common mismatch).
 3. Prefer an org where the account has **`manage_portals`** and portal admin in Pipefy (not only `canManagePortals` on a read query from another org).
 
-If **`update_portal`** or **`delete_portal`** returns `PERMISSION_DENIED` but the user insists the org role is correct: Pipefy may require **`joinAsAdmin`** on that portal interface for service accounts (Interfaces mutation, not shipped as MCP/CLI). The user must join as portal admin once in the UI (or via GraphQL) per portal UUID before SA writes succeed.
+If a portal write (`update_portal`, `delete_portal`, page or element changes) returns `PERMISSION_DENIED` but the org role is correct: the account must also hold the admin role on that portal. Pipefy grants it through **`joinAsAdmin`** on that portal interface, once per portal UUID, for users and service accounts alike, even an org admin who created the portal. A sub-portal is a separate interface and needs its own join. `joinAsAdmin` is an Interfaces mutation, not shipped as MCP/CLI, and `execute_graphql` cannot reach it. It grants the role to the account that runs it, so tell the user which account the toolkit signs in as (session user or service account) and ask them to make that account the portal's admin before retrying; a human joining in the web app does not cover a service account. Do not retry the write until they confirm.
 
 ---
 

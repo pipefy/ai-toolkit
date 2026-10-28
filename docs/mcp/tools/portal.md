@@ -20,14 +20,19 @@ Set **`PIPEFY_BASE_URL`** once for non-prod hosts; all three paths above follow.
 
 ## Permissions
 
-Portal **write** tools require Pipefy permissions on the target organization:
+Portal **write** tools need two separate grants for the account the toolkit signs in as (the CLI or MCP session user, or the service account behind the token):
 
-| Permission | Typical use |
-|------------|-------------|
-| **`create_portal`** | Bootstrap the org main portal (`create_portal`), read paths when the token can manage portals |
-| **`manage_portals`** | Page/element CRUD, sub-portal publish/unpublish, destructive deletes |
+| Grant | Scope | Typical use |
+|-------|-------|-------------|
+| **`create_portal`** | Organization permission | Bootstrap the org main portal (`create_portal`), read paths when the token can manage portals |
+| **`manage_portals`** | Organization permission | Page/element CRUD, sub-portal publish/unpublish, destructive deletes |
+| **Portal admin role** | Membership on one portal | Every write to an existing portal: metadata, pages, elements, sub-portals, delete |
 
-`PERMISSION_DENIED` on Interfaces or internal_api returns MCP `{ success: false }` with a message naming **`create_portal`** or **`manage_portals`**. Tokens scoped only to pipes/cards (default org on many service accounts) often fail portal writes — use an org where the token has portal admin scope.
+`PERMISSION_DENIED` on Interfaces or internal_api returns MCP `{ success: false }` with a message naming **`create_portal`**, **`manage_portals`**, and **`joinAsAdmin`**. Tokens scoped only to pipes/cards (default org on many service accounts) often fail portal writes — use an org where the token has portal admin scope.
+
+The organization permission is not enough to write to an existing portal: the account must also hold the admin role on that portal. An org admin with `manage_portals` gets `PERMISSION_DENIED` on every update and delete of a portal they have not joined, including one they created through `create_portal`. Joining is the Interfaces `joinAsAdmin(input: { interfaceUuid })` mutation, once per portal, and it grants the role to the account that runs it; the toolkit exposes it neither as a tool nor through `execute_graphql`, which runs on the public schema. A human joining in the web app does not give the role to a service account the toolkit runs as.
+
+A sub-portal is its own interface with its own role: after the account joins the main portal, the Interfaces `portalInterface` query still reports `userRole: null` and `canEdit: false` on each of its sub-portals.
 
 Integration tests (`pytest -m integration -k portal`) need **`PIPEFY_PORTAL_ORG_UUID`** pointing at such an org; see [Testing](#testing).
 
