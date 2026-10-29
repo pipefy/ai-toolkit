@@ -10,12 +10,12 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 class CustomBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict) -> None:
         root = Path(self.root)
-        catalog = root.parent.parent / "skills"
+        catalog = root.parent.parent / "plugins" / "pipefy" / "skills"
         if not catalog.is_dir():
             catalog = root / "skills"
 
         skills = sorted(
-            path for path in catalog.glob("*/*") if (path / "SKILL.md").is_file()
+            path for path in catalog.glob("*") if (path / "SKILL.md").is_file()
         )
         if not skills:
             raise RuntimeError("Skill catalog is missing from the SDK build source")

@@ -126,6 +126,22 @@ def test_field_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     )
 
 
+def test_field_create_type_completion_offers_field_type_ids(runner):
+    result = runner.invoke(
+        app,
+        [],
+        prog_name="pipefy",
+        env={
+            "_PIPEFY_COMPLETE": "complete_zsh",
+            "_TYPER_COMPLETE_ARGS": "pipefy field create --type checklist",
+        },
+    )
+    assert result.exit_code == 0
+    assert '"checklist_horizontal"' in result.output
+    assert '"checklist_vertical"' in result.output
+    assert "short_text" not in result.output
+
+
 def test_field_update_forwards_extra_phase_id_for_slug_resolution(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):

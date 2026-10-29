@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 import typer
-from pipefy_sdk import PipefyClient
+from pipefy_sdk import InboxEmailDraft, PipefyClient
 
 from pipefy_cli.commands._common import parse_json_object, run_cli_command
+from pipefy_cli.output import render_json, render_rich
 
 email_app = typer.Typer(help="Inbox emails and email templates.", no_args_is_help=True)
 inbox_app = typer.Typer(help="Card inbox (sent/received).", no_args_is_help=True)
 template_app = typer.Typer(
     help="Email templates bound to a pipe or table (repo).", no_args_is_help=True
 )
+
+
+def _refuse_unconfirmed_send() -> NoReturn:
+    """Stop after the preview: a sent email cannot be recalled."""
+    typer.echo(
+        "Nothing was sent: a sent email cannot be recalled. Review the email "
+        "above, then re-run with --yes to send it.",
+        err=True,
+    )
+    raise typer.Exit(2)
 
 
 @inbox_app.command("list")
@@ -59,6 +72,12 @@ def email_inbox_send(
         "--extra",
         help="Optional JSON object: extra CreateAndSendInboxEmailInput fields.",
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Send the email. Without it, print the email and send nothing.",
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -66,21 +85,34 @@ def email_inbox_send(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """Send an inbox email from a card (``send_inbox_email``)."""
+    """Send an inbox email from a card (``send_inbox_email``).
+
+    Without ``--yes``, prints the email and exits 2 without sending.
+    """
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     if not recipients:
         raise typer.BadParameter("--to must list at least one email.")
-    extra_obj = parse_json_object(extra, "--extra") or {}
+    try:
+        draft = InboxEmailDraft(
+            card_id=card_id,
+            to=recipients,
+            subject=subject,
+            body=body,
+            from_=from_email,
+            extra=parse_json_object(extra, "--extra") or {},
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if not yes:
+        preview = draft.model_dump(mode="json")
+        if json_out:
+            render_json(preview)
+        else:
+            render_rich(preview)
+        _refuse_unconfirmed_send()
 
     async def factory(client: PipefyClient):
-        return await client.send_inbox_email(
-            card_id,
-            recipients,
-            subject,
-            body,
-            from_=from_email,
-            **extra_obj,
-        )
+        return await client.send_inbox_email_draft(draft)
 
     run_cli_command(ctx, json_out, factory)
 
@@ -145,6 +177,12 @@ def email_template_send(
         "--extra",
         help="Optional JSON object: extra send fields (cc, bcc, repoId, etc.).",
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Send the email. Without it, print the resolved email and send nothing.",
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -154,6 +192,9 @@ def email_template_send(
 ) -> None:
     """Send using an email template (``send_email_with_template``).
 
+    Without ``--yes``, prints the email the template resolves to for the
+    card (recipients, subject, body) and exits 2 without sending.
+
     Hard stop: there is no API, MCP or CLI path to create or change an
     email template. A new or edited template is a manual step in the
     Pipefy UI; the template must exist before sending.
@@ -162,6 +203,20 @@ def email_template_send(
     if to is not None and to.strip():
         to_list = [e.strip() for e in to.split(",") if e.strip()]
     extra_obj = parse_json_object(extra, "--extra") or {}
+    if not yes:
+
+        async def draft_factory(client: PipefyClient):
+            draft = await client.draft_email_from_template(
+                card_id,
+                template_id,
+                to=to_list,
+                from_=from_email,
+                **extra_obj,
+            )
+            return draft.model_dump(mode="json")
+
+        run_cli_command(ctx, json_out, draft_factory)
+        _refuse_unconfirmed_send()
 
     async def factory(client: PipefyClient):
         return await client.send_email_with_template(

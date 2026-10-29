@@ -15,7 +15,7 @@
 ## Docs / skills
 
 - [ ] `docs/parity.md` updated when MCP ↔ CLI coverage changed
-- [ ] Affected `skills/` updated in this PR (or a paired PR)
+- [ ] Affected skills in `plugins/pipefy/skills/` updated in this PR (or a paired PR)
 - [ ] No docs/skills update needed
 
 ## Legal / contributions

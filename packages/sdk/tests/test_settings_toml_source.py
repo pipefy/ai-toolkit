@@ -29,13 +29,13 @@ def test_field_name_keys_load_from_toml(tmp_path: Path) -> None:
     _write(
         tmp_path / "config.toml",
         """
-        base_url = "https://staging.pipefy.com"
+        base_url = "https://staging.example.com"
         org_id = "300123"
         default_webhook_name = "Test Hook"
         """,
     )
     settings = PipefySettings()
-    assert settings.base_url == "https://staging.pipefy.com"
+    assert settings.base_url == "https://staging.example.com"
     assert settings.org_id == "300123"
     assert settings.default_webhook_name == "Test Hook"
 
@@ -82,12 +82,12 @@ def test_unknown_keys_ignored(tmp_path: Path) -> None:
     _write(
         tmp_path / "config.toml",
         """
-        base_url = "https://staging.pipefy.com"
-        auth_url = "https://signin-staging.pipefy.com/realms/pipefy"
+        base_url = "https://staging.example.com"
+        auth_url = "https://signin.example.com/realms/pipefy"
         completely_unrelated = 42
         """,
     )
-    assert PipefySettings().base_url == "https://staging.pipefy.com"
+    assert PipefySettings().base_url == "https://staging.example.com"
 
 
 def test_shared_base_url_loads_into_both_models(tmp_path: Path) -> None:

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
+import re
+import uuid
 
 import pytest
 from _shared.live_settings import require_live_creds
@@ -135,3 +138,66 @@ def test_cli_live_record_find_skips_without_table_id():
         ["record", "find", "--table", table_id, "--first", "1", "--json"],
     )
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
+
+
+@pytest.mark.integration
+def test_cli_live_html_interface_create_round_trips():
+    """The new html-interface sub-app, exercised against a real backend.
+
+    Unit tests mock the client, so they cannot see whether the create/get/delete
+    chain actually works end to end over the real Interfaces API.
+    """
+    require_live_creds()
+    org_uuid = os.environ.get("PIPEFY_PORTAL_ORG_UUID")
+    if not org_uuid:
+        pytest.skip("Set PIPEFY_PORTAL_ORG_UUID for html-interface create live smoke.")
+    runner = CliRunner(mix_stderr=False)
+    name = f"cli-html-create-smoke-{uuid.uuid4().hex[:8]}"
+    create_result = runner.invoke(
+        app,
+        [
+            "portal",
+            "html-interface",
+            "create",
+            "--organization-uuid",
+            org_uuid,
+            "--name",
+            name,
+            "--html",
+            "<div>cli smoke</div>",
+            "--json",
+        ],
+    )
+    if create_result.exit_code == 2 and "Permission denied" in (
+        create_result.stderr or ""
+    ):
+        pytest.skip(f"Token lacks manage_portals on org {org_uuid}")
+    # Even when create's second call (write_html_document) fails, the interface
+    # itself was already created with a blank page; the CLI's own guidance names
+    # its uuid in stderr. Capture it either way so a write-phase failure still
+    # gets cleaned up, instead of only running the finally on a full success.
+    interface_uuid: str | None = None
+    if create_result.exit_code == 0:
+        interface_uuid = json.loads(create_result.stdout)["uuid"]
+    else:
+        match = re.search(
+            r"The interface \(([^)]+)\) was already created",
+            create_result.stderr or "",
+        )
+        if match is not None:
+            interface_uuid = match.group(1)
+    try:
+        assert create_result.exit_code == 0, create_result.stdout + (
+            create_result.stderr or ""
+        )
+        get_result = runner.invoke(
+            app, ["portal", "html-interface", "get", interface_uuid, "--json"]
+        )
+        assert get_result.exit_code == 0, get_result.stdout + (get_result.stderr or "")
+        interface = json.loads(get_result.stdout)
+        assert interface["uuid"] == interface_uuid
+        content = interface["pages"][0]["elements"][0]["htmlDocument"]["content"]
+        assert content == "<div>cli smoke</div>"
+    finally:
+        if interface_uuid is not None:
+            runner.invoke(app, ["portal", "delete", interface_uuid, "--yes"])

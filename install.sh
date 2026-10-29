@@ -380,6 +380,25 @@ pick_system_python() {
     warn "No system python3 >= 3.11 found on PATH. uv will use its managed Python; $keychain_hint"
 }
 
+# GET a GitHub REST URL. Prefer GH_TOKEN (gh CLI), then GITHUB_TOKEN (Actions).
+# Without a token, shared CI runner IPs often hit the unauthenticated 60/hr
+# limit and get HTTP 403 from api.github.com.
+github_api_get() {
+    url="$1"
+    token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    if [ -n "$token" ]; then
+        curl -fsSL \
+            -H "Authorization: Bearer $token" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$url"
+    else
+        curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            "$url"
+    fi
+}
+
 resolve_release() {
     if [ -n "$TAG" ]; then
         say "Using --version: $TAG"
@@ -391,7 +410,7 @@ resolve_release() {
         # while the whole line is still pre-1.0 betas, which must stay
         # installable.
         list_url="https://api.github.com/repos/$REPO/releases?per_page=30"
-        list=$(curl -fsSL "$list_url") \
+        list=$(github_api_get "$list_url") \
             || err "Failed to reach GitHub API: $list_url"
         # -i so the spelling agrees with the release tooling's own classifier
         # (scripts/bump_version.py prerelease_track), which is case-insensitive.
@@ -406,7 +425,7 @@ resolve_release() {
     # Fetch the chosen release on its own so the wheel URLs below come from that
     # tag only, never from a neighbour in the list above.
     api_url="https://api.github.com/repos/$REPO/releases/tags/$TAG"
-    body=$(curl -fsSL "$api_url") || err "Failed to reach GitHub API: $api_url"
+    body=$(github_api_get "$api_url") || err "Failed to reach GitHub API: $api_url"
     WHEEL_URLS=$(printf '%s' "$body" \
         | grep '"browser_download_url"' \
         | grep -oE 'https://[^"]+\.whl' \
@@ -642,7 +661,7 @@ print_next_steps() {
     say ""
     say "Next: authenticate with Pipefy."
     say "  Default (browser):   pipefy auth login"
-    say "  Headless (device):   pipefy auth login --device"
+    say "  Headless:            use a service account (PIPEFY_SERVICE_ACCOUNT_*)"
     if [ "$CLIENT" = "claude-code" ]; then
         say "  Via Claude Code:     /pipefy:pipefy-login"
     fi

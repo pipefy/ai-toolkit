@@ -13,6 +13,7 @@ GET_PIPE_QUERY = gql(
             phases {
                 id
                 name
+                index
                 cards_count
                 fields {
                     id

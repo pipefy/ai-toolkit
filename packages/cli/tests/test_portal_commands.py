@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _shared.fixture_ids import EXAMPLE_PIPE_REPO_ID
 from pipefy_sdk import PipefyGraphQLError
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.models.portal import parse_portal_page_layout
 
 from pipefy_cli.main import app
@@ -890,6 +895,8 @@ def test_portal_element_update_json(runner, clean_pipefy_env, saved_cwd, oauth_e
                 "link",
                 "--metadata",
                 json.dumps(link_metadata),
+                "--data-sources",
+                "[]",
                 "--json",
             ],
         )
@@ -901,7 +908,137 @@ def test_portal_element_update_json(runner, clean_pipefy_env, saved_cwd, oauth_e
         type="link",
         metadata=link_metadata,
         data_sources=[],
+        portal_uuid=None,
     )
+
+
+def test_portal_element_update_keeps_data_sources_with_portal_uuid(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Without --data-sources, --portal-uuid lets the SDK keep the current ones."""
+    oauth_env("portal-element-update-keep")
+    mock_client = MagicMock()
+    mock_client.update_portal_element = AsyncMock(
+        return_value={**_CREATED_ELEMENT, "metadata": _FORMS_METADATA}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "update",
+                _ELEMENT_UUID,
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                "--portal-uuid",
+                _PORTAL_UUID,
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.update_portal_element.assert_awaited_once_with(
+        _ELEMENT_UUID,
+        _PAGE_UUID,
+        type="forms",
+        metadata=_FORMS_METADATA,
+        data_sources=None,
+        portal_uuid=_PORTAL_UUID,
+    )
+
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _panel_text(stderr: str) -> str:
+    """Flatten a Typer error panel into one line of words, without ANSI styling.
+
+    Rich styles option names when color is forced (CI sets ``FORCE_COLOR``), which
+    splits ``--portal-uuid`` into escape-wrapped pieces.
+    """
+    plain = _ANSI_ESCAPE.sub("", stderr)
+    return " ".join(plain.replace("│", " ").split())
+
+
+def _invoke_element_update(runner, mock_client, *options: str):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(
+            app,
+            [
+                "portal",
+                "element",
+                "update",
+                _ELEMENT_UUID,
+                _PAGE_UUID,
+                "--type",
+                "forms",
+                "--metadata",
+                json.dumps(_FORMS_METADATA),
+                *options,
+                "--json",
+            ],
+        )
+
+
+def test_portal_element_update_without_data_sources_or_portal_uuid_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Omitting both is rejected before any call, naming the two flags."""
+    oauth_env("portal-element-update-neither")
+    mock_client = MagicMock()
+    result = _invoke_element_update(runner, mock_client)
+    assert result.exit_code == 2
+    assert (
+        "Pass --portal-uuid to keep the element's current data sources, or "
+        "--data-sources to replace them ('[]' unlinks them all)."
+    ) in _panel_text(result.stderr)
+    mock_client.update_portal_element.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        (("--portal-uuid", "   "), "--portal-uuid, when provided, must be non-empty."),
+        (
+            ("--data-sources", "  ", "--portal-uuid", _PORTAL_UUID),
+            "--data-sources, when provided, must be non-empty.",
+        ),
+    ],
+)
+def test_portal_element_update_rejects_blank_option_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, options, message
+):
+    oauth_env("portal-element-update-blank")
+    mock_client = MagicMock()
+    result = _invoke_element_update(runner, mock_client, *options)
+    assert result.exit_code == 2
+    assert message in _panel_text(result.stderr)
+    mock_client.update_portal_element.assert_not_called()
+
+
+def test_portal_element_update_element_not_on_page_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The SDK's keep-path lookup error reaches stderr as is."""
+    oauth_env("portal-element-update-not-on-page")
+    message = (
+        f"Element '{_ELEMENT_UUID}' is on page '{_PAGE_UUID_2}' of portal "
+        f"'{_PORTAL_UUID}', not on page '{_PAGE_UUID}'. Pass page_id='{_PAGE_UUID_2}'."
+    )
+    mock_client = MagicMock()
+    mock_client.update_portal_element = AsyncMock(side_effect=ValueError(message))
+    result = _invoke_element_update(runner, mock_client, "--portal-uuid", _PORTAL_UUID)
+    assert result.exit_code == 2
+    assert message in result.stderr
 
 
 def test_portal_element_update_rejects_invalid_metadata_exit_2(
@@ -1940,3 +2077,1801 @@ def test_portal_element_create_rejects_unplaceable_layout_exit_2(
     assert result.exit_code == 2
     assert expected in result.stderr
     mock_client.create_portal_element.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# portal html-interface
+# ---------------------------------------------------------------------------
+
+_HTML_INTERFACE_LIST_NODE = {
+    "id": "html-uuid-1",
+    "uuid": "html-uuid-1",
+    "name": "Open purchase requests",
+    "visibility": "internal",
+    "contentModeHtml": True,
+}
+
+_HTML_INTERFACE_DETAIL = {
+    "id": "html-uuid-1",
+    "uuid": "html-uuid-1",
+    "name": "Open purchase requests",
+    "pages": [
+        {
+            "id": "page-1",
+            "uuid": "page-1",
+            "title": "Open purchase requests",
+            "elements": [
+                {
+                    "id": "el-1",
+                    "uuid": "el-1",
+                    "type": "customCode",
+                    "htmlDocument": {"content": "<div>Hello</div>"},
+                }
+            ],
+        }
+    ],
+}
+
+_CREATED_HTML_INTERFACE = {
+    "id": "html-uuid-new",
+    "uuid": "html-uuid-new",
+    "name": "Open purchase requests",
+    "pages": [
+        {
+            "id": "page-new-1",
+            "uuid": "page-new-1",
+            "title": "Open purchase requests",
+            "elements": [{"id": "el-new-1", "uuid": "el-new-1", "type": "customCode"}],
+        }
+    ],
+}
+
+
+def test_html_interface_list_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-list")
+    mock_client = MagicMock()
+    mock_client.list_html_interfaces = AsyncMock(
+        return_value=[_HTML_INTERFACE_LIST_NODE]
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "list",
+                "--organization-uuid",
+                "org-123",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == [_HTML_INTERFACE_LIST_NODE]
+    mock_client.list_html_interfaces.assert_awaited_once_with(
+        "org-123", search_term=None
+    )
+
+
+def test_html_interface_get_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-get")
+    mock_client = MagicMock()
+    mock_client.get_html_interface = AsyncMock(return_value=_HTML_INTERFACE_DETAIL)
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app, ["portal", "html-interface", "get", "html-uuid-1", "--json"]
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == _HTML_INTERFACE_DETAIL
+    mock_client.get_html_interface.assert_awaited_once_with("html-uuid-1")
+
+
+def test_html_interface_write_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-write")
+    mock_client = MagicMock()
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "<div>Hello</div>",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {"success": True}
+    mock_client.write_html_document.assert_awaited_once_with(
+        page_id="page-1", element_id="el-1", content="<div>Hello</div>"
+    )
+
+
+def test_html_interface_write_rejects_blank_content_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-write-blank")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "   ",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-create")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == _CREATED_HTML_INTERFACE
+    mock_client.create_interface.assert_awaited_once_with(
+        "org-123", "Open purchase requests", color="blue", data_sources=None
+    )
+    mock_client.write_html_document.assert_awaited_once_with(
+        page_id="page-new-1", element_id="el-new-1", content="<div>Hello</div>"
+    )
+
+
+def test_html_interface_create_write_failure_names_retry_ids_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A failed second call must not be retried as a second create."""
+    oauth_env("html-interface-create-write-fails")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(
+        side_effect=ValueError("Page does not have this element.")
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 2
+    assert "--page-id page-new-1" in result.stderr
+    assert "--element-id el-new-1" in result.stderr
+    assert "Do not run create again" in result.stderr
+    assert "Page does not have this element." in result.stderr
+
+
+def test_html_interface_create_write_failure_preserves_exit_code_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A write-phase failure keeps its own exception type, not a wrapping ValueError.
+
+    HtmlValidationError is a PipefyError subclass (exit 1), unlike the plain
+    ValueError case above (exit 2) -- the retry guidance must not collapse the
+    two into the same exit code.
+    """
+    oauth_env("html-interface-create-write-fails-html-validation")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(
+        side_effect=HtmlValidationError(
+            (
+                HtmlViolation(
+                    code="SCRIPT_FORBIDDEN",
+                    message="<script> is not allowed.",
+                    selector="script",
+                    attribute=None,
+                ),
+            )
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 1
+    assert "--page-id page-new-1" in result.stderr
+    assert "--element-id el-new-1" in result.stderr
+    assert "- SCRIPT_FORBIDDEN at script: <script> is not allowed." in result.stderr
+
+
+def test_html_interface_repos_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-repos")
+    mock_client = MagicMock()
+    mock_client.list_interface_repos = AsyncMock(
+        return_value=[{"uuid": EXAMPLE_PIPE_REPO_ID, "name": "Sales", "type": "Pipe"}]
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repos",
+                "--organization-id",
+                "123",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {
+        "repos": [{"uuid": EXAMPLE_PIPE_REPO_ID, "name": "Sales", "type": "Pipe"}]
+    }
+    mock_client.list_interface_repos.assert_awaited_once_with(
+        "123", interface_uuid=None, repo_name=None
+    )
+
+
+def test_html_interface_repo_fields_json(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repo-fields")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock(
+        return_value=[{"uuid": "field-1", "name": "Amount"}]
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                EXAMPLE_PIPE_REPO_ID,
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {
+        "fields": [{"uuid": "field-1", "name": "Amount"}]
+    }
+    mock_client.get_interface_repo_fields.assert_awaited_once_with(
+        EXAMPLE_PIPE_REPO_ID, interface_uuid=None
+    )
+
+
+def test_html_interface_set_sources_json(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-sources")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock(
+        return_value={"id": "el-1", "uuid": "el-1", "dataSources": []}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                "[]",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {
+        "id": "el-1",
+        "uuid": "el-1",
+        "dataSources": [],
+    }
+    mock_client.set_interface_sources.assert_awaited_once_with(
+        "page-1", "el-1", [], interface_uuid="html-uuid-1"
+    )
+
+
+def test_html_interface_set_sources_rejects_invalid_source_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-sources-invalid")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                json.dumps([{"id": "x", "name": "X"}]),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 2
+    assert "repoId" in result.stderr
+    mock_client.set_interface_sources.assert_not_called()
+
+
+def test_html_interface_guidelines_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("html-interface-guidelines")
+    mock_client = MagicMock()
+    mock_client.get_interface_html_guidelines = AsyncMock(
+        return_value={"allowedTags": ["div", "p"]}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app, ["portal", "html-interface", "guidelines", "--json"]
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {"allowedTags": ["div", "p"]}
+    mock_client.get_interface_html_guidelines.assert_awaited_once_with(
+        include_design_system=False
+    )
+
+
+def test_html_interface_guidelines_include_design_system(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-guidelines-design-system")
+    mock_client = MagicMock()
+    mock_client.get_interface_html_guidelines = AsyncMock(
+        return_value={"allowedTags": ["div"], "designSystem": {"tokens": {}}}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "guidelines",
+                "--include-design-system",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == {
+        "allowedTags": ["div"],
+        "designSystem": {"tokens": {}},
+    }
+    mock_client.get_interface_html_guidelines.assert_awaited_once_with(
+        include_design_system=True
+    )
+
+
+def test_html_interface_guidelines_permission_denied_shows_guidance_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A raw PERMISSION_DENIED is re-raised as PortalPermissionError (exit 2),
+
+    the same exit code as a denial the SDK already wraps on a write, so a
+    caller scripting against this sub-app sees one exit code for a denial.
+    """
+    oauth_env("html-interface-guidelines-permission-denied")
+    mock_client = MagicMock()
+    mock_client.get_interface_html_guidelines = AsyncMock(
+        side_effect=PipefyGraphQLError(
+            [
+                {
+                    "message": "Permission denied",
+                    "extensions": {"code": "PERMISSION_DENIED"},
+                }
+            ]
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(app, ["portal", "html-interface", "guidelines"])
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied. Request organization permissions such as "
+        "`create_portal` or `manage_portals` from your admin."
+    )
+
+
+def test_html_interface_list_forwards_search_term(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-list-search")
+    mock_client = MagicMock()
+    mock_client.list_html_interfaces = AsyncMock(return_value=[])
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "list",
+                "--organization-uuid",
+                "org-123",
+                "--search-term",
+                "purchase",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.list_html_interfaces.assert_awaited_once_with(
+        "org-123", search_term="purchase"
+    )
+
+
+def test_html_interface_list_permission_denied_shows_guidance_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A raw PERMISSION_DENIED GraphQL error becomes the standard guidance text,
+
+    re-raised as PortalPermissionError (exit 2). list_html_interfaces never
+    wraps a failure in PortalPermissionError itself (it calls
+    execute_interfaces_query directly), so this is the real raw failure shape
+    reaching the CLI mapping, not the SDK's own wrapping.
+    """
+    oauth_env("html-interface-list-permission-denied")
+    mock_client = MagicMock()
+    mock_client.list_html_interfaces = AsyncMock(
+        side_effect=PipefyGraphQLError(
+            [
+                {
+                    "message": "Permission denied",
+                    "extensions": {"code": "PERMISSION_DENIED"},
+                }
+            ]
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            ["portal", "html-interface", "list", "--organization-uuid", "org-123"],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied. Request organization permissions such as "
+        "`create_portal` or `manage_portals` from your admin."
+    )
+
+
+def test_html_interface_get_unknown_uuid_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-get-not-found")
+    mock_client = MagicMock()
+    mock_client.get_html_interface = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the interface"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(app, ["portal", "html-interface", "get", "html-missing"])
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "No HTML interface has uuid 'html-missing'."
+
+
+def test_html_interface_get_grid_interface_names_cli_command_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """get_html_interface's grid-interface error names pipefy portal get,
+
+    not get_portal, the SDK/MCP method name it raises.
+    """
+    oauth_env("html-interface-get-grid-interface")
+    mock_client = MagicMock()
+    mock_client.get_html_interface = AsyncMock(
+        side_effect=ValueError(
+            "Interface 'grid-1' is not an HTML interface; "
+            "use get_portal to read its elements."
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(app, ["portal", "html-interface", "get", "grid-1"])
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Interface 'grid-1' is not an HTML interface; "
+        "use `pipefy portal get` to read its elements."
+    )
+
+
+def test_html_interface_set_sources_grid_interface_names_cli_command_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """set_interface_sources reads the interface first; its grid-interface
+
+    error gets the same CLI-command rewrite as the standalone get command.
+    """
+    oauth_env("html-interface-set-sources-grid-interface")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock(
+        side_effect=ValueError(
+            "Interface 'grid-1' is not an HTML interface; "
+            "use get_portal to read its elements."
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "grid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                "[]",
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Interface 'grid-1' is not an HTML interface; "
+        "use `pipefy portal get` to read its elements."
+    )
+
+
+def test_html_interface_get_permission_denied_shows_guidance_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A raw PERMISSION_DENIED GraphQL error becomes the standard guidance text,
+
+    re-raised as PortalPermissionError (exit 2). get_html_interface never
+    wraps a failure in PortalPermissionError itself (it calls
+    execute_interfaces_query directly), so this is the real raw failure shape
+    reaching the CLI mapping, not the SDK's own wrapping.
+    """
+    oauth_env("html-interface-get-permission-denied")
+    mock_client = MagicMock()
+    mock_client.get_html_interface = AsyncMock(
+        side_effect=PipefyGraphQLError(
+            [
+                {
+                    "message": "Permission denied",
+                    "extensions": {"code": "PERMISSION_DENIED"},
+                }
+            ]
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(app, ["portal", "html-interface", "get", "html-uuid-1"])
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied. Request organization permissions such as "
+        "`create_portal` or `manage_portals` from your admin."
+    )
+
+
+def test_html_interface_write_permission_denied_shows_guidance_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """PortalPermissionError's own message is already the guidance text.
+
+    write_html_document wraps PERMISSION_DENIED into PortalPermissionError (a
+    ValueError subclass), so this stays exit 2, unlike the raw-PipefyGraphQLError
+    cases elsewhere in this sub-app that map to exit 1.
+    """
+    oauth_env("html-interface-write-permission-denied")
+    mock_client = MagicMock()
+    mock_client.write_html_document = AsyncMock(
+        side_effect=PortalPermissionError(
+            "Permission denied. Request organization permissions such as "
+            "`create_portal` or `manage_portals` from your admin."
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "<div>Hello</div>",
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied. Request organization permissions such as "
+        "`create_portal` or `manage_portals` from your admin."
+    )
+
+
+def test_html_interface_write_html_validation_error_lists_violations_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-write-validation")
+    mock_client = MagicMock()
+    mock_client.write_html_document = AsyncMock(
+        side_effect=HtmlValidationError(
+            (
+                HtmlViolation(
+                    code="SCRIPT_FORBIDDEN",
+                    message="<script> is not allowed.",
+                    selector="script",
+                    attribute=None,
+                ),
+                HtmlViolation(
+                    code="EVENT_HANDLER_FORBIDDEN",
+                    message="onclick is not allowed.",
+                    selector="button",
+                    attribute="onclick",
+                ),
+            )
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "<script>bad</script>",
+            ],
+        )
+    assert result.exit_code == 1
+    assert "it has 2 violations" in result.stderr
+    assert "- SCRIPT_FORBIDDEN at script: <script> is not allowed." in result.stderr
+    assert (
+        "- EVENT_HANDLER_FORBIDDEN at button[onclick]: onclick is not allowed."
+        in result.stderr
+    )
+
+
+def test_html_interface_write_html_validation_error_single_violation_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """The singular ``violation`` noun is used when there is exactly one."""
+    oauth_env("html-interface-write-validation-single")
+    mock_client = MagicMock()
+    mock_client.write_html_document = AsyncMock(
+        side_effect=HtmlValidationError(
+            (
+                HtmlViolation(
+                    code="SCRIPT_FORBIDDEN",
+                    message="<script> is not allowed.",
+                    selector="script",
+                    attribute=None,
+                ),
+            )
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "<script>bad</script>",
+            ],
+        )
+    assert result.exit_code == 1
+    assert "it has 1 violation." in result.stderr
+    assert "- SCRIPT_FORBIDDEN at script: <script> is not allowed." in result.stderr
+
+
+def test_html_interface_write_uses_content_file(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-write-content-file")
+    content_path = saved_cwd / "page.html"
+    content_path.write_text("<div>from file</div>", encoding="utf-8")
+    mock_client = MagicMock()
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content-file",
+                str(content_path),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.write_html_document.assert_awaited_once_with(
+        page_id="page-1", element_id="el-1", content="<div>from file</div>"
+    )
+
+
+def test_html_interface_write_rejects_non_utf8_content_file_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A read failure (bad encoding, missing file) is a clean BadParameter, not a crash."""
+    oauth_env("html-interface-write-bad-encoding")
+    content_path = saved_cwd / "page.html"
+    content_path.write_bytes(b"\xff\xfe not valid utf-8")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content-file",
+                str(content_path),
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "is not valid UTF-8 text" in result.stderr
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_write_rejects_oversized_content_file_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A --content-file over the size cap is rejected before any read into memory."""
+    oauth_env("html-interface-write-oversized-file")
+    content_path = saved_cwd / "page.html"
+    content_path.write_bytes(b"x" * (2 * 1024 * 1024 + 1))
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content-file",
+                str(content_path),
+            ],
+        )
+    assert result.exit_code == 2
+    assert "exceeds 2097152 bytes" in result.stderr
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_write_rejects_nonexistent_content_file_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A --content-file that cannot be read gets a clean message, not a traceback."""
+    oauth_env("html-interface-write-nonexistent-file")
+    missing_path = saved_cwd / "does-not-exist.html"
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content-file",
+                str(missing_path),
+            ],
+        )
+    assert result.exit_code == 2
+    assert "No such file or directory" in result.stderr
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_write_rejects_content_and_content_file_together_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-write-both-content")
+    content_path = saved_cwd / "page.html"
+    content_path.write_text("<div>from file</div>", encoding="utf-8")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--content",
+                "<div>inline</div>",
+                "--content-file",
+                str(content_path),
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_write_rejects_neither_content_nor_content_file_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-write-no-content")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "write",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.write_html_document.assert_not_called()
+
+
+def test_html_interface_create_uses_html_file(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-html-file")
+    html_path = saved_cwd / "page.html"
+    html_path.write_text("<div>from file</div>", encoding="utf-8")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html-file",
+                str(html_path),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.write_html_document.assert_awaited_once_with(
+        page_id="page-new-1", element_id="el-new-1", content="<div>from file</div>"
+    )
+
+
+def test_html_interface_create_with_color(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-color")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--color",
+                "purple",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.create_interface.assert_awaited_once_with(
+        "org-123", "Open purchase requests", color="purple", data_sources=None
+    )
+
+
+def test_html_interface_create_rejects_unknown_color_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-bad-color")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--color",
+                "chartreuse",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.create_interface.assert_not_called()
+
+
+def test_html_interface_create_rejects_blank_name_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-blank-name")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "   ",
+                "--html",
+                "<div>Hello</div>",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.create_interface.assert_not_called()
+
+
+def test_html_interface_create_rejects_blank_html_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-blank-html")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "   ",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.create_interface.assert_not_called()
+
+
+def test_html_interface_create_rejects_invalid_data_sources_exit_2_before_any_call(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A source missing repoId/fieldKeys is rejected client-side, not by a raw
+
+    pydantic traceback surfacing from inside the SDK call.
+    """
+    oauth_env("html-interface-create-invalid-sources")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--data-sources",
+                json.dumps([{"id": "x", "name": "X"}]),
+            ],
+        )
+    assert result.exit_code == 2
+    assert "repoId" in result.stderr
+    mock_client.create_interface.assert_not_called()
+
+
+def test_html_interface_create_rejects_non_array_data_sources_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A --data-sources value that parses as JSON but isn't an array is rejected."""
+    oauth_env("html-interface-create-non-array-sources")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--data-sources",
+                "{}",
+            ],
+        )
+    assert result.exit_code == 2
+    assert "must be a JSON array" in result.stderr
+    mock_client.create_interface.assert_not_called()
+
+
+def test_html_interface_create_forwards_valid_data_sources(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-valid-sources")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(return_value=_CREATED_HTML_INTERFACE)
+    mock_client.write_html_document = AsyncMock(return_value={"success": True})
+    sources = [
+        {
+            "id": "source-1",
+            "name": "Purchase requests",
+            "repoId": EXAMPLE_PIPE_REPO_ID,
+            "fieldKeys": ["status"],
+        }
+    ]
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--data-sources",
+                json.dumps(sources),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.create_interface.assert_awaited_once_with(
+        "org-123", "Open purchase requests", color="blue", data_sources=sources
+    )
+
+
+def test_html_interface_create_no_page_raises_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-no-page")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(
+        return_value={"id": "html-uuid-new", "uuid": "html-uuid-new", "pages": []}
+    )
+    mock_client.write_html_document = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+            ],
+        )
+    assert result.exit_code == 2
+    assert "returned no page" in result.stderr
+    mock_client.write_html_document.assert_not_awaited()
+
+
+def test_html_interface_create_unknown_repo_id_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-create-unknown-repo")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the repo"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--data-sources",
+                json.dumps(
+                    [
+                        {
+                            "id": "source-1",
+                            "name": "Source",
+                            "repoId": "repo-missing",
+                            "fieldKeys": ["status"],
+                        }
+                    ]
+                ),
+            ],
+        )
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "One of the data sources' repoId was not found."
+
+
+def test_html_interface_create_source_access_denied_shows_clean_message_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A bare, code-less 'Permission denied' is the data-source-access refusal,
+
+    distinct from the general PERMISSION_DENIED-coded portal guidance, but
+    both are a permission denial and so share the same exit code (2).
+    """
+    oauth_env("html-interface-create-source-denied")
+    mock_client = MagicMock()
+    mock_client.create_interface = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Permission denied"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "create",
+                "--organization-uuid",
+                "org-123",
+                "--name",
+                "Open purchase requests",
+                "--html",
+                "<div>Hello</div>",
+                "--data-sources",
+                json.dumps(
+                    [
+                        {
+                            "id": "source-1",
+                            "name": "Source",
+                            "repoId": EXAMPLE_PIPE_REPO_ID,
+                            "fieldKeys": ["status"],
+                        }
+                    ]
+                ),
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied for a data source: you can bind only the pipes and "
+        "tables 'portal html-interface repos' returns for this interface."
+    )
+
+
+def test_html_interface_repos_forwards_interface_uuid_and_repo_name(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repos-forward")
+    mock_client = MagicMock()
+    mock_client.list_interface_repos = AsyncMock(return_value=[])
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repos",
+                "--organization-id",
+                "123",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--repo-name",
+                "sales",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.list_interface_repos.assert_awaited_once_with(
+        "123", interface_uuid="html-uuid-1", repo_name="sales"
+    )
+
+
+def test_html_interface_repos_rejects_blank_interface_uuid_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repos-blank-interface-uuid")
+    mock_client = MagicMock()
+    mock_client.list_interface_repos = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repos",
+                "--organization-id",
+                "123",
+                "--interface-uuid",
+                "   ",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.list_interface_repos.assert_not_called()
+
+
+def test_html_interface_repos_unknown_org_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repos-not-found")
+    mock_client = MagicMock()
+    mock_client.list_interface_repos = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the organization"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repos",
+                "--organization-id",
+                "999999",
+            ],
+        )
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "No organization has id '999999'."
+
+
+def test_html_interface_repos_source_access_denied_shows_clean_message_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A bare, code-less 'Permission denied' is the data-source-access refusal,
+
+    distinct from the general PERMISSION_DENIED-coded portal guidance, but
+    both are a permission denial and so share the same exit code (2).
+    """
+    oauth_env("html-interface-repos-source-denied")
+    mock_client = MagicMock()
+    mock_client.list_interface_repos = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Permission denied"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repos",
+                "--organization-id",
+                "123",
+                "--interface-uuid",
+                "html-uuid-1",
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied for a data source: you can bind only the pipes and "
+        "tables 'portal html-interface repos' returns for this interface."
+    )
+
+
+def test_html_interface_repo_fields_forwards_interface_uuid(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repo-fields-forward")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock(return_value=[])
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                EXAMPLE_PIPE_REPO_ID,
+                "--interface-uuid",
+                "html-uuid-1",
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.get_interface_repo_fields.assert_awaited_once_with(
+        EXAMPLE_PIPE_REPO_ID, interface_uuid="html-uuid-1"
+    )
+
+
+def test_html_interface_repo_fields_rejects_blank_interface_uuid_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-repo-fields-blank-interface-uuid")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                EXAMPLE_PIPE_REPO_ID,
+                "--interface-uuid",
+                "   ",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.get_interface_repo_fields.assert_not_called()
+
+
+def test_html_interface_repo_fields_unknown_repo_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """Without --interface-uuid, the not-found message names only the repo."""
+    oauth_env("html-interface-repo-fields-unknown-repo")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the repo"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                "repo-missing",
+            ],
+        )
+    assert result.exit_code == 1
+    assert result.stderr.strip() == (
+        "No repo has uuid 'repo-missing'. 'pipefy portal html-interface repos' "
+        "lists the repos an interface can read."
+    )
+
+
+def test_html_interface_repo_fields_unknown_interface_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """With --interface-uuid, the not-found message names both candidates."""
+    oauth_env("html-interface-repo-fields-unknown-interface")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the repo"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                "repo-missing",
+                "--interface-uuid",
+                "html-missing",
+            ],
+        )
+    assert result.exit_code == 1
+    assert result.stderr.strip() == (
+        "No repo has uuid 'repo-missing', or no interface has uuid "
+        "'html-missing'. 'pipefy portal html-interface repos' lists the repos "
+        "an interface can read."
+    )
+
+
+def test_html_interface_repo_fields_source_access_denied_shows_clean_message_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A bare, code-less 'Permission denied' is the data-source-access refusal,
+
+    distinct from the general PERMISSION_DENIED-coded portal guidance, but
+    both are a permission denial and so share the same exit code (2).
+    """
+    oauth_env("html-interface-repo-fields-source-denied")
+    mock_client = MagicMock()
+    mock_client.get_interface_repo_fields = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Permission denied"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "repo-fields",
+                "--repo-uuid",
+                EXAMPLE_PIPE_REPO_ID,
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied for a data source: you can bind only the pipes and "
+        "tables 'portal html-interface repos' returns for this interface."
+    )
+
+
+def test_html_interface_set_sources_forwards_parsed_source_attributes(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A non-empty source must reach the SDK as parsed, not as the raw dict.
+
+    The ``[]`` case above cannot tell ``sources.root`` apart from the raw
+    ``parsed`` list, since both are the same empty list.
+    """
+    oauth_env("html-interface-set-sources-valid")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock(
+        return_value={"id": "el-1", "uuid": "el-1", "dataSources": []}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                json.dumps(
+                    [
+                        {
+                            "id": "source-1",
+                            "name": "Source",
+                            "repoId": EXAMPLE_PIPE_REPO_ID,
+                            "fieldKeys": ["status"],
+                        }
+                    ]
+                ),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    mock_client.set_interface_sources.assert_awaited_once()
+    sent_sources = mock_client.set_interface_sources.await_args.args[2]
+    assert len(sent_sources) == 1
+    assert sent_sources[0].id == "source-1"
+    assert sent_sources[0].repo_id == EXAMPLE_PIPE_REPO_ID
+    assert sent_sources[0].field_keys == ["status"]
+
+
+def test_html_interface_set_sources_rejects_non_array_data_sources_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-sources-non-array")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                "{}",
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.set_interface_sources.assert_not_called()
+
+
+def test_html_interface_set_sources_unknown_interface_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-sources-not-found")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the interface"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-missing",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                "[]",
+            ],
+        )
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "No HTML interface has uuid 'html-missing'."
+
+
+def test_html_interface_set_sources_source_access_denied_shows_clean_message_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A bare, code-less 'Permission denied' is the data-source-access refusal,
+
+    distinct from the general PERMISSION_DENIED-coded portal guidance, but
+    both are a permission denial and so share the same exit code (2). The SDK
+    documents this exact shape for set_interface_sources: the caller cannot
+    manage a repo that a new or widened source reads.
+    """
+    oauth_env("html-interface-set-sources-source-denied")
+    mock_client = MagicMock()
+    mock_client.set_interface_sources = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Permission denied"}])
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "portal",
+                "html-interface",
+                "set-sources",
+                "--interface-uuid",
+                "html-uuid-1",
+                "--page-id",
+                "page-1",
+                "--element-id",
+                "el-1",
+                "--data-sources",
+                "[]",
+            ],
+        )
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Permission denied for a data source: you can bind only the pipes and "
+        "tables 'portal html-interface repos' returns for this interface."
+    )

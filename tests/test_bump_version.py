@@ -187,7 +187,12 @@ def test_json_manifests_cover_every_versioned_plugin_manifest() -> None:
     # future one can silently unwire it.
     versioned = {
         path
-        for directory in (".claude-plugin", ".cursor-plugin")
+        for directory in (
+            ".claude-plugin",
+            ".cursor-plugin",
+            "plugins/pipefy/.claude-plugin",
+            "plugins/pipefy/.cursor-plugin",
+        )
         for path in (_bump.REPO_ROOT / directory).glob("*.json")
         if _bump.JSON_VERSION_RE.search(path.read_text(encoding="utf-8"))
     }

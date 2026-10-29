@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
 from pipefy_sdk.graphql_document import inspect_graphql_document
 
+from pipefy_mcp.tools.destructive_confirmation_token import digest_identity_value
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
 from pipefy_mcp.tools.graphql_error_helpers import ensure_non_empty_error_message
 from pipefy_mcp.tools.introspection_tool_helpers import (
@@ -226,13 +226,7 @@ class IntrospectionTools:
                     ),
                     resource_identity={
                         "document": hashlib.sha256(query.encode("utf-8")).hexdigest(),
-                        "variables": hashlib.sha256(
-                            json.dumps(
-                                variables or {},
-                                sort_keys=True,
-                                separators=(",", ":"),
-                            ).encode("utf-8")
-                        ).hexdigest(),
+                        "variables": digest_identity_value(variables or {}),
                     },
                     tool_name="execute_graphql",
                     confirmation_token=confirmation_token,

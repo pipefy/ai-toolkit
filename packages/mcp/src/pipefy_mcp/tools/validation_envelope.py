@@ -28,6 +28,7 @@ from mcp.server.mcpserver.tools.tool_manager import ToolManager
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error
+from pipefy_mcp.tools.validation_helpers import format_validation_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,23 +53,11 @@ def _format_validation_errors(exc: ValidationError, tool_name: str) -> str:
     """Render a ``ValidationError`` as a single agent-friendly line.
 
     The output never contains ``pydantic.dev`` URLs nor SDK-internal
-    ``Arguments`` model names. Each error becomes a short clause; clauses are
-    joined with ``"; "`` and prefixed with the offending tool name.
+    ``Arguments`` model names. Clause rendering is delegated to the shared
+    :func:`~pipefy_mcp.tools.validation_helpers.format_validation_error_message`;
+    this wrapper prefixes the offending tool name.
     """
-    clauses: list[str] = []
-    for err in exc.errors():
-        loc = ".".join(str(part) for part in err.get("loc", ()))
-        err_type = err.get("type", "")
-        msg = err.get("msg", "")
-        if err_type == "missing":
-            clauses.append(f"missing required argument '{loc}'")
-        elif err_type == "extra_forbidden":
-            clauses.append(f"unknown argument '{loc}'")
-        elif loc:
-            clauses.append(f"{loc}: {msg}")
-        else:
-            clauses.append(msg)
-    joined = "; ".join(clause for clause in clauses if clause)
+    joined = format_validation_error_message(exc)
     return f"Tool '{tool_name}' received invalid arguments: {joined}"
 
 

@@ -10,6 +10,21 @@ CREATE_PIPE_MUTATION = gql(
                 id
                 name
                 startFormPhaseId
+                phases {
+                    id
+                    name
+                    done
+                }
+                start_form_fields {
+                    id
+                    internal_id
+                    label
+                }
+                labels {
+                    id
+                    name
+                    color
+                }
             }
         }
     }

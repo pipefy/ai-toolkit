@@ -18,7 +18,9 @@ no arguments
     Launches every console entry point. It reads installed distribution metadata
     rather than the checkout's ``pyproject.toml`` files, so it reports what an
     install actually exposes: a wheel that ships without its entry point, or a
-    member missing from the install, fails here.
+    member missing from the install, fails here. Then it makes one authenticated
+    GraphQL call through the installed SDK against a local stub endpoint, so a
+    break between the auth classes and the resolved HTTP stack fails here too.
 
 Three workflows share this script -- ``ci.yml``, ``release.yml``, and
 ``packaging-smoke.yml`` -- as does ``release.py``, which runs both modes before
@@ -29,13 +31,19 @@ each job, where a newly added script would have to be remembered four times.
 
 from __future__ import annotations
 
+import asyncio
+import json
+import os
 import re
 import subprocess
 import sys
 import sysconfig
+import threading
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.metadata import Distribution, distributions
 from pathlib import Path
+from unittest.mock import patch
 
 # The workspace members published to PyPI. Explicit rather than discovered so
 # that adding a member forces a decision here; release.yml guards the same list
@@ -50,6 +58,10 @@ PUBLISHED_DISTRIBUTIONS = frozenset(
 REQUIRED_SCRIPTS = frozenset({"pipefy", "pipefy-mcp-server"})
 
 LAUNCH_TIMEOUT_SECONDS = 120
+
+# The bearer the stub endpoint accepts, and the ``me`` payload it answers with.
+SMOKE_BEARER_TOKEN = "packaging-smoke-token"
+SMOKE_ME = {"email": "smoke@example.com", "name": "Packaging Smoke"}
 
 USAGE = "usage: smoke_entry_points.py [--check-wheels <directory>]"
 
@@ -187,6 +199,71 @@ def launch(
         print(f"  {script} --help -> ok")
 
 
+class _StubGraphQLHandler(BaseHTTPRequestHandler):
+    """Answer a POST carrying the smoke bearer with ``me``; answer anything else 401."""
+
+    def do_POST(self) -> None:
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        if self.headers.get("Authorization") != f"Bearer {SMOKE_BEARER_TOKEN}":
+            self._reply(401, b"Unauthorized", "text/plain")
+            return
+        body = json.dumps({"data": {"me": SMOKE_ME}}).encode()
+        self._reply(200, body, "application/json")
+
+    def _reply(self, status: int, body: bytes, content_type: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:
+        pass
+
+
+def authenticated_call(token: str = SMOKE_BEARER_TOKEN) -> None:
+    """Run one ``get_me`` through the installed SDK against a local stub endpoint.
+
+    ``--help`` never builds an HTTP client, so it cannot see a break between the
+    ``httpx.Auth`` classes in ``pipefy_auth`` and the HTTP stack gql resolves at
+    install time. gql 4.4 builds an ``httpx2`` client whenever ``httpx2`` is
+    installed, and that client rejects those classes on every call. This builds
+    ``PipefyClient`` with a bearer, as the CLI and MCP server do, and sends a real
+    request over loopback.
+    """
+    # Imported here: --check-wheels runs under an interpreter without the SDK.
+    from pipefy_auth import StaticBearerAuth
+    from pipefy_sdk import PipefyClient, PipefySettings
+
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", 0), _StubGraphQLHandler)
+    except OSError as exc:
+        raise SmokeError(
+            f"could not start the stub endpoint on loopback: {exc}"
+        ) from exc
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        # model_construct skips the env, .env and config.toml sources and
+        # validation, so the operator's own settings cannot change the request.
+        settings = PipefySettings.model_construct(
+            base_url=f"http://127.0.0.1:{server.server_port}"
+        )
+        client = PipefyClient(settings, auth=StaticBearerAuth(token))
+        with patch.dict(os.environ, {"NO_PROXY": "*", "no_proxy": "*"}):
+            me = asyncio.run(client.get_me())
+    except Exception as exc:
+        raise SmokeError(
+            "an authenticated GraphQL call through the installed SDK failed: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
+    finally:
+        server.shutdown()
+        server.server_close()
+    if me != SMOKE_ME:
+        raise SmokeError(f"get_me returned {me!r}, expected {SMOKE_ME!r}.")
+    print("  authenticated get_me through the SDK -> ok")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     # sys.argv is read at the entry point below, never here: a default that
     # reached for it would pick up the arguments of whatever runs this module.
@@ -207,10 +284,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         scripts = resolve_scripts(index_published(distributions()))
         print(f"Launching {len(scripts)} console entry point(s) from {script_dir}")
         launch(scripts, script_dir)
+        authenticated_call()
     except SmokeError as exc:
         print(f"packaging smoke failed: {exc}", file=sys.stderr)
         return 1
-    print("Every published console entry point launched.")
+    print(
+        "Every published console entry point launched, and an authenticated call went through."
+    )
     return 0
 
 

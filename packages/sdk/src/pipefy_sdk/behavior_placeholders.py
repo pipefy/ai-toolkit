@@ -22,8 +22,8 @@ _PIPEFY_ACTION_UUID = re.compile(
 _PIPEFY_PREFIXED_NUMERIC_FIELD = re.compile(r"%\{(\d+)\}")
 _PIPEFY_UNPREFIXED_NUMERIC_FIELD = re.compile(r"(?<!\%)\{(\d+)\}")
 # Numeric `%{field:<digits>}` references in a (post-normalization) behavior
-# instruction. Used to populate `aiBehaviorParams.referencedFieldIds` so
-# pipefy-core forwards the referenced fields' values in the BehaviorRequest.
+# instruction. Used to populate `aiBehaviorParams.referencedFieldIds`, the list
+# Pipefy reads to pick which card field values the behavior receives at run time.
 _PIPEFY_NUMERIC_FIELD_REF = re.compile(r"%\{field:(\d+)\}")
 
 _TEMPLATE_PARAM_SOURCE_KEYS = (
@@ -113,12 +113,10 @@ def extract_referenced_field_ids(instruction: str | None) -> list[str]:
     and post-slug-resolution). Slug-form references like ``%{field:my_slug}`` are
     intentionally skipped — they should be resolved to numeric ids before this runs.
 
-    The regex deliberately matches bare digits only, mirroring pipefy-core's
-    runtime parser in ``start_behavior_execution.rb`` which forwards card fields
-    based on this same shape. Dotted connected-pipe references like
-    ``%{field:136.135}`` (handled by pipefy-core's importer for clone-time static
-    analysis) are not picked up at runtime, so populating them here would not
-    change what arrives in ``BehaviorRequest.card.fields[]``.
+    The regex deliberately matches bare digits only, the same shape Pipefy uses
+    at run time to pick which card field values the behavior receives. Dotted
+    connected-pipe references like ``%{field:136.135}`` are not picked up at run
+    time, so populating them here would not change what the behavior receives.
 
     Args:
         instruction: Behavior instruction text, or None / empty (returns no ids).
@@ -145,10 +143,10 @@ def populate_referenced_field_ids(behavior: dict[str, Any]) -> None:
     list (caller-supplied), leaves it alone. Otherwise overwrites with the
     extracted ids — including the empty list when no tokens are present.
 
-    pipefy-core uses this stored list to decide which card fields to forward in
-    the ``BehaviorRequest.card.fields[]`` array at trigger time. When it is null,
-    the array arrives empty and pipefy-ai's placeholder resolver has nothing to
-    substitute.
+    Pipefy reads this stored list to pick which card field values the behavior
+    receives when it triggers. When it is null or empty, the behavior receives
+    only the field values its actions use, so an instruction placeholder for any
+    other field has no value to substitute.
 
     Should run **after** slug resolution so that slug-form refs already became
     numeric. Running it before slug resolution would capture only the numeric

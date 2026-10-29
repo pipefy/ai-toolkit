@@ -1,0 +1,3 @@
+# CLI reference
+
+For investigation calls (`get_pipe`, `get_cards`), use the CLI reference in `pipefy-pipes-and-cards`. The timed card read is `pipefy graphql exec -q '<document>' --vars '{"pipeId": "<PIPE_ID>"}' --json` with the document from `pipefy-process-impact`; it is a query, so no `--yes`. For `get_automations`, `get_automation_events`, and `create_automation`, use `pipefy-automations`; for `get_ai_agents` and `get_ai_agent`, use `pipefy-ai-agents`. Field-condition creation belongs to `pipefy-pipes-and-cards`. Apply the workflow’s shared arguments through the selected command’s supported options.

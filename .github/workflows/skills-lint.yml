@@ -3,27 +3,29 @@ name: Skills Lint
 on:
   push:
     paths:
-      - "skills/**"
+      - "plugins/pipefy/skills/**"
       - "tests/test_lint_skill_frontmatter.py"
       - "tests/test_lint_skill_refs.py"
       - "packages/sdk/src/pipefy_sdk/skills/**"
       - "packages/sdk/pyproject.toml"
       - "pyproject.toml"
       - "uv.lock"
-      - "packages/mcp/src/pipefy_mcp/tools/registry.py"
+      - "packages/mcp/src/pipefy_mcp/tools/**"
+      - "packages/cli/src/pipefy_cli/**"
       - "packages/sdk/src/pipefy_sdk/client.py"
       - ".github/workflows/skills-lint.yml"
       - ".github/workflows/scripts/**"
   pull_request:
     paths:
-      - "skills/**"
+      - "plugins/pipefy/skills/**"
       - "tests/test_lint_skill_frontmatter.py"
       - "tests/test_lint_skill_refs.py"
       - "packages/sdk/src/pipefy_sdk/skills/**"
       - "packages/sdk/pyproject.toml"
       - "pyproject.toml"
       - "uv.lock"
-      - "packages/mcp/src/pipefy_mcp/tools/registry.py"
+      - "packages/mcp/src/pipefy_mcp/tools/**"
+      - "packages/cli/src/pipefy_cli/**"
       - "packages/sdk/src/pipefy_sdk/client.py"
       - ".github/workflows/skills-lint.yml"
       - ".github/workflows/scripts/**"

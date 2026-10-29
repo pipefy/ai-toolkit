@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from typing import get_args
+
 import pytest
 from _shared.fixture_ids import EXAMPLE_PIPE_REPO_ID
 from pydantic import ValidationError
@@ -9,6 +12,9 @@ from pydantic import ValidationError
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
     DeletePortalElementInput,
+    InterfaceDataSource,
+    InterfaceDataSources,
+    PortalElementType,
     UpdatePortalElementInput,
     UpdatePortalInput,
 )
@@ -92,21 +98,45 @@ def test_create_portal_element_input_accepts_link_metadata_with_name_only() -> N
         "button",
         "divider",
         "pages",
+        "subPortal",
         "automationButton",
         "contentBlock",
         "document",
+        "customCode",
     ],
 )
 def test_create_portal_element_input_accepts_all_interface_page_element_types(
     element_type: str,
 ) -> None:
-    """InterfacePageElementType Literal must allow all 15 enum values."""
+    """Every element type that accepts empty metadata validates."""
     element_input = CreatePortalElementInput(
         page_id=_PAGE_ID,
         type=element_type,  # type: ignore[arg-type]
         metadata={},
     )
     assert element_input.type == element_type
+
+
+@pytest.mark.unit
+def test_portal_element_type_lists_every_interface_page_element_type() -> None:
+    assert set(get_args(PortalElementType)) == {
+        "text",
+        "table",
+        "field",
+        "embedLink",
+        "embedVideo",
+        "embedImage",
+        "button",
+        "divider",
+        "link",
+        "forms",
+        "pages",
+        "subPortal",
+        "automationButton",
+        "contentBlock",
+        "document",
+        "customCode",
+    }
 
 
 @pytest.mark.unit
@@ -201,8 +231,49 @@ def test_update_portal_element_input_accepts_link_metadata() -> None:
         page_id=_PAGE_ID,
         type="link",
         metadata=_VALID_LINK_METADATA,
+        data_sources=[],
     )
     assert element_input.metadata["linkUrl"] == "https://example.com/pipefy"
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_accepts_portal_uuid_without_data_sources() -> None:
+    """Omitted data_sources with portal_uuid means: keep the element's current ones."""
+    element_input = UpdatePortalElementInput(
+        element_id=_ELEMENT_ID,
+        page_id=_PAGE_ID,
+        type="forms",
+        metadata=_VALID_FORMS_METADATA,
+        portal_uuid=_PORTAL_UUID,
+    )
+    assert element_input.data_sources is None
+    assert element_input.portal_uuid == _PORTAL_UUID
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_rejects_missing_data_sources_and_portal_uuid() -> (
+    None
+):
+    """Without either one, an update would unlink the element's data sources."""
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        UpdatePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            type="forms",
+            metadata=_VALID_FORMS_METADATA,
+        )
+
+
+@pytest.mark.unit
+def test_update_portal_element_input_rejects_blank_portal_uuid() -> None:
+    with pytest.raises(ValidationError, match="portal_uuid"):
+        UpdatePortalElementInput(
+            element_id=_ELEMENT_ID,
+            page_id=_PAGE_ID,
+            type="forms",
+            metadata=_VALID_FORMS_METADATA,
+            portal_uuid="   ",
+        )
 
 
 @pytest.mark.unit
@@ -471,3 +542,140 @@ def test_delete_portal_element_input_rejects_object_layout() -> None:
             page_id=_PAGE_ID,
             layout={"rows": _PRUNED_LAYOUT},
         )
+
+
+_FIELD_UUID = "6a850d1c-0000-4000-8000-000000000016"
+_OPEN_FILTER = {
+    "id": "root",
+    "type": "root",
+    "conjunction": "and",
+    "filterSet": [
+        {"id": "leaf", "columnName": "title", "operator": "not_empty", "value": None}
+    ],
+}
+
+
+def _source(**overrides: object) -> dict[str, object]:
+    return {
+        "id": "open-requests",
+        "name": "Open requests",
+        "repoId": EXAMPLE_PIPE_REPO_ID,
+        "fieldKeys": ["title", _FIELD_UUID],
+        **overrides,
+    }
+
+
+@pytest.mark.unit
+def test_interface_data_source_reads_api_keys_and_snake_case_keys() -> None:
+    camel = InterfaceDataSource.model_validate(_source())
+    snake = InterfaceDataSource.model_validate(
+        {
+            "id": "open-requests",
+            "name": "Open requests",
+            "repo_id": EXAMPLE_PIPE_REPO_ID,
+            "field_keys": ["title", _FIELD_UUID],
+        }
+    )
+
+    assert camel == snake
+    assert camel.repo_id == EXAMPLE_PIPE_REPO_ID
+    assert camel.field_keys == ["title", _FIELD_UUID]
+    assert camel.filters is None
+
+
+@pytest.mark.unit
+def test_interface_data_source_decodes_filters_read_back_as_json() -> None:
+    """A source read from the API carries its filter tree as a JSON string."""
+    source = InterfaceDataSource.model_validate(
+        _source(filters=json.dumps(_OPEN_FILTER))
+    )
+
+    assert source.filters == _OPEN_FILTER
+
+
+@pytest.mark.unit
+def test_interface_data_source_drops_the_read_only_repo_name_and_type() -> None:
+    """A source from get_html_interface can be sent back as it was read."""
+    source = InterfaceDataSource.model_validate(
+        _source(repoName="Requests", repoType="Pipe")
+    )
+
+    assert source == InterfaceDataSource.model_validate(_source())
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"id": "  "},
+        {"name": ""},
+        {"repoId": ""},
+        {"fieldKeys": []},
+        {"fieldKeys": [" "]},
+        {"fieldKeys": [f"key-{index}" for index in range(31)]},
+        {"filters": ["not", "an", "object"]},
+        {"filters": "not json"},
+        {"filter": _OPEN_FILTER},
+    ],
+)
+def test_interface_data_source_rejects_what_the_api_would_reject(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        InterfaceDataSource.model_validate(_source(**overrides))
+
+
+@pytest.mark.unit
+def test_interface_data_source_takes_thirty_field_keys() -> None:
+    keys = [f"key-{index}" for index in range(30)]
+
+    assert (
+        InterfaceDataSource.model_validate(_source(fieldKeys=keys)).field_keys == keys
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("missing", ["id", "name", "repoId", "fieldKeys"])
+def test_interface_data_source_requires_handle_label_repo_and_keys(
+    missing: str,
+) -> None:
+    source = _source()
+    del source[missing]
+
+    with pytest.raises(ValidationError):
+        InterfaceDataSource.model_validate(source)
+
+
+@pytest.mark.unit
+def test_interface_data_sources_takes_ten_sources() -> None:
+    sources = [_source(id=f"s{index}", name=f"S {index}") for index in range(10)]
+
+    assert len(InterfaceDataSources.model_validate(sources).root) == 10
+
+
+@pytest.mark.unit
+def test_interface_data_sources_takes_an_empty_list() -> None:
+    assert InterfaceDataSources.model_validate([]).root == []
+
+
+@pytest.mark.unit
+def test_interface_data_sources_rejects_an_eleventh_source() -> None:
+    sources = [_source(id=f"s{index}", name=f"S {index}") for index in range(11)]
+
+    with pytest.raises(ValidationError, match="at most 10"):
+        InterfaceDataSources.model_validate(sources)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("second", "message"),
+    [
+        ({"name": "Closed requests"}, "own id; repeated: open-requests"),
+        ({"id": "closed-requests"}, "own name; repeated: Open requests"),
+    ],
+)
+def test_interface_data_sources_rejects_a_repeated_id_or_name(
+    second: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        InterfaceDataSources.model_validate([_source(), _source(**second)])

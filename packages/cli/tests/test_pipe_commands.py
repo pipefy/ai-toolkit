@@ -138,7 +138,7 @@ def test_pipe_list_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
 
 def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("pipe-create")
-    payload = {"createPipe": {"pipe": {"id": "99"}}}
+    payload = {"createPipe": {"pipe": {"id": "301234567"}}}
     mock_client = MagicMock()
     mock_client.create_pipe = AsyncMock(return_value=payload)
     with patch(
@@ -150,6 +150,7 @@ def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
             ["pipe", "create", "My Pipe", "--org", "555", "--json"],
         )
     assert result.exit_code == 0
+    assert json.loads(result.stdout) == {"createPipe": {"pipe": {"id": "301234567"}}}
     mock_client.create_pipe.assert_awaited_once_with("My Pipe", "555")
 
 

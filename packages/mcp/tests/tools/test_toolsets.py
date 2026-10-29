@@ -217,6 +217,10 @@ class TestProfiles:
         reserved = set(DOMAINS) | {"all", "default", "power", "architect"}
         assert set(PROFILES).isdisjoint(reserved)
 
+    def test_auditor_includes_the_html_interface_reads(self):
+        """The auditor contract is every read tool; these were missing a server start."""
+        assert {"get_interface_html", "list_interfaces"} <= PROFILES["auditor"]
+
     def test_operator_is_contained_in_manager(self):
         """Manager is the operator surface plus oversight, so it must be a superset."""
         assert PROFILES["operator"] <= PROFILES["manager"]

@@ -57,7 +57,7 @@ jobs:
           enable-cache: true
       - name: Build workspace wheels
         run: uv build --all-packages --wheel -o dist-packaging-smoke
-      - name: Install into a clean venv and launch every entry point
+      - name: Install into a clean venv, launch every entry point, make an authenticated call
         run: |
           set -euo pipefail
           # Membership is checked before the install, not after: an incomplete set
@@ -100,7 +100,7 @@ jobs:
           # than being quietly skipped as somebody else's transitive.
           .venv-published-smoke/bin/pip install \
             pipefy pipefy-auth pipefy-cli pipefy-infra pipefy-mcp-server
-      - name: Launch every entry point
+      - name: Launch every entry point and make an authenticated call
         run: .venv-published-smoke/bin/python scripts/smoke_entry_points.py
 
   # A red run nobody watches is not a control. A failure opens one labelled

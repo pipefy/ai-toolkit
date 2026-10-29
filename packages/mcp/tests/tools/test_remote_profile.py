@@ -26,6 +26,7 @@ REMOTE_SEED = frozenset(
         "get_pipe",
         "get_card",
         "get_cards",
+        "get_records",
         "find_cards",
         "find_records",
         "get_table",
@@ -116,8 +117,15 @@ REMOTE_SEED = frozenset(
         "get_table_relations",
         "get_webhooks",
         "get_email_templates",
+        "get_interface_html_guidelines",
         "get_portal",
         "list_portals",
+        # HTML interface reads: same reasoning as the portal reads above, over
+        # the same Interfaces schema and the same request-scoped bearer.
+        "get_interface_html",
+        "get_interface_repo_fields",
+        "list_interface_repos",
+        "list_interfaces",
         # service-account tools: the first public-GraphQL write mutations on the
         # seed (the iPaaS meta-tools are also writes, but reach the iPaaS host, not
         # the public API). Each reaches the API with the request-scoped bearer and
@@ -232,6 +240,13 @@ REMOTE_SEED = frozenset(
         "unpublish_sub_portal",
         "update_sub_portal_element",
         "delete_sub_portal_element",
+        # HTML interface writes: same reasoning as the portal writes above.
+        # set_interface_sources and create_html_interface validate data_sources
+        # client-side before any call, which narrows input, not authorization;
+        # the API still governs whether the caller can bind each source's repo.
+        "create_html_interface",
+        "set_interface_sources",
+        "write_interface_html",
         # webhook / member / email writes: create/update/delete, membership
         # ops, and inbox/template email sends that reach the public API with the
         # request-scoped bearer and are governed by API permissions (pipe-admin to

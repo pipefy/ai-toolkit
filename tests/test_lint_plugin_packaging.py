@@ -19,7 +19,8 @@ assert _spec and _spec.loader
 _lint = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_lint)
 
-_SKILL = "skills/onboarding/pipefy-toolkit-setup"
+_PLUGIN = "plugins/pipefy"
+_SKILL = "skills/pipefy-toolkit-setup"
 _SKILL_MD = f"{_SKILL}/SKILL.md"
 _HOSTED_MCP = {
     "mcpServers": {
@@ -41,8 +42,22 @@ def _assert_redacted_field_failure(errors, field_token):
     assert _SENTINEL not in blob, errors
 
 
+def _write_marketplace(root, tool, source="./plugins/pipefy"):
+    (root / tool).mkdir(exist_ok=True)
+    (root / tool / "marketplace.json").write_text(
+        json.dumps(
+            {
+                "name": "pipefy",
+                "owner": {"name": "Pipefy"},
+                "plugins": [{"name": "pipefy", "source": source}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def _write_plugin(
-    root,
+    repo,
     *,
     skills=None,
     claude_skills=None,
@@ -51,7 +66,8 @@ def _write_plugin(
     manifest_update=None,
     omit=(),
 ):
-    (root / ".cursor-plugin").mkdir()
+    root = repo / _PLUGIN
+    (root / ".cursor-plugin").mkdir(parents=True)
     (root / "assets").mkdir()
     (root / "assets" / "logo.svg").write_text("<svg/>", encoding="utf-8")
     skill_dir = root / _SKILL
@@ -76,25 +92,12 @@ def _write_plugin(
     )
     claude = root / ".claude-plugin"
     claude.mkdir()
-    (claude / "plugin.json").write_text(
-        json.dumps(
-            {
-                "name": "pipefy",
-                "skills": written_skills if claude_skills is None else claude_skills,
-            }
-        ),
-        encoding="utf-8",
-    )
-    (root / ".cursor-plugin" / "marketplace.json").write_text(
-        json.dumps(
-            {
-                "name": "pipefy",
-                "owner": {"name": "Pipefy"},
-                "plugins": [{"name": "pipefy", "source": "./"}],
-            }
-        ),
-        encoding="utf-8",
-    )
+    claude_body = {"name": "pipefy"}
+    if claude_skills is not None:
+        claude_body["skills"] = claude_skills
+    (claude / "plugin.json").write_text(json.dumps(claude_body), encoding="utf-8")
+    _write_marketplace(repo, ".claude-plugin")
+    _write_marketplace(repo, ".cursor-plugin")
     (root / ".mcp.json").write_text(
         json.dumps(mcp if mcp is not None else _HOSTED_MCP),
         encoding="utf-8",
@@ -107,55 +110,36 @@ def test_aligned_tree_passes(tmp_path):
 
 
 def test_unlisted_skill_is_named(tmp_path):
-    extra = "skills/observability/pipefy-observability"
+    extra = "skills/pipefy-observability"
     _write_plugin(tmp_path)
-    extra_dir = tmp_path / extra
+    extra_dir = tmp_path / _PLUGIN / extra
     extra_dir.mkdir(parents=True)
     (extra_dir / "SKILL.md").write_text("# extra\n", encoding="utf-8")
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD, f"{extra}/SKILL.md"])
-    for manifest in (".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"):
-        assert any(
-            manifest in err and extra in err and "missing" in err for err in errors
-        ), errors
+    assert any(
+        ".cursor-plugin/plugin.json" in err and extra in err and "missing" in err
+        for err in errors
+    ), errors
+    assert not any(".claude-plugin/plugin.json" in err for err in errors), errors
 
 
 def test_stale_manifest_entry_is_named(tmp_path):
-    stale = "skills/does-not-exist/fake-skill"
+    stale = "skills/fake-skill"
     _write_plugin(tmp_path, skills=[f"./{_SKILL}", f"./{stale}"])
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
-    for manifest in (".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"):
-        assert any(
-            manifest in err and stale in err and "which is not a tracked skill" in err
-            for err in errors
-        ), errors
-
-
-def test_claude_manifest_missing_skill_names_that_file(tmp_path):
-    extra = "skills/observability/pipefy-observability"
-    _write_plugin(
-        tmp_path,
-        skills=[f"./{_SKILL}", f"./{extra}"],
-        claude_skills=[f"./{_SKILL}"],
-    )
-    extra_dir = tmp_path / extra
-    extra_dir.mkdir(parents=True)
-    (extra_dir / "SKILL.md").write_text("# extra\n", encoding="utf-8")
-    errors = _lint.collect_errors(tmp_path, [_SKILL_MD, f"{extra}/SKILL.md"])
     assert any(
-        ".claude-plugin/plugin.json" in err and extra in err and "missing" in err
-        for err in errors
-    ), errors
-    assert not any(".cursor-plugin/plugin.json" in err for err in errors), errors
-
-
-def test_claude_manifest_stale_skill_names_that_file(tmp_path):
-    stale = "skills/does-not-exist/fake-skill"
-    _write_plugin(tmp_path, claude_skills=[f"./{_SKILL}", f"./{stale}"])
-    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
-    assert any(
-        ".claude-plugin/plugin.json" in err
+        ".cursor-plugin/plugin.json" in err
         and stale in err
         and "which is not a tracked skill" in err
+        for err in errors
+    ), errors
+
+
+def test_claude_manifest_skill_list_is_rejected(tmp_path):
+    _write_plugin(tmp_path, claude_skills=[f"./{_SKILL}"])
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any(
+        ".claude-plugin/plugin.json" in err and "declares skills" in err
         for err in errors
     ), errors
     assert not any(".cursor-plugin/plugin.json" in err for err in errors), errors
@@ -163,7 +147,7 @@ def test_claude_manifest_stale_skill_names_that_file(tmp_path):
 
 def test_missing_claude_manifest_is_named(tmp_path):
     _write_plugin(tmp_path)
-    (tmp_path / ".claude-plugin" / "plugin.json").unlink()
+    (tmp_path / _PLUGIN / ".claude-plugin" / "plugin.json").unlink()
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     assert any(
         ".claude-plugin/plugin.json" in err and "could not read" in err
@@ -551,7 +535,7 @@ def test_inline_manifest_mcp_servers_are_rejected_without_echoing_value(tmp_path
 
 def test_sibling_mcp_json_is_rejected(tmp_path):
     _write_plugin(tmp_path)
-    (tmp_path / "mcp.json").write_text("{}", encoding="utf-8")
+    (tmp_path / _PLUGIN / "mcp.json").write_text("{}", encoding="utf-8")
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     assert any("mcp.json exists" in err for err in errors), errors
     assert any("expected only .mcp.json" in err for err in errors), errors
@@ -582,6 +566,27 @@ def test_missing_marketplace_is_rejected(tmp_path):
     assert any("marketplace.json" in err for err in errors), errors
 
 
+def test_marketplace_source_must_be_the_plugin_folder(tmp_path):
+    _write_plugin(tmp_path)
+    _write_marketplace(tmp_path, ".claude-plugin", source="./")
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any(
+        ".claude-plugin/marketplace.json" in err and "'./plugins/pipefy'" in err
+        for err in errors
+    ), errors
+    assert not any(".cursor-plugin/marketplace.json" in err for err in errors), errors
+
+
+def test_missing_claude_marketplace_is_rejected(tmp_path):
+    _write_plugin(tmp_path)
+    (tmp_path / ".claude-plugin" / "marketplace.json").unlink()
+    errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
+    assert any(
+        ".claude-plugin/marketplace.json" in err and "could not read" in err
+        for err in errors
+    ), errors
+
+
 def test_missing_commands_key_is_rejected(tmp_path):
     _write_plugin(tmp_path, omit=("commands",))
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
@@ -589,7 +594,7 @@ def test_missing_commands_key_is_rejected(tmp_path):
 
 
 def test_nonempty_commands_are_rejected(tmp_path):
-    (tmp_path / "commands").mkdir()
+    (tmp_path / _PLUGIN / "commands").mkdir(parents=True)
     _write_plugin(tmp_path, manifest_update={"commands": ["./commands"]})
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     assert any("expected an empty list" in err for err in errors), errors
@@ -627,9 +632,65 @@ def test_missing_logo_is_rejected(tmp_path):
 
 def test_non_utf8_manifest_is_named(tmp_path):
     _write_plugin(tmp_path)
-    (tmp_path / ".cursor-plugin" / "plugin.json").write_bytes(b"\xff\xfe{")
+    (tmp_path / _PLUGIN / ".cursor-plugin" / "plugin.json").write_bytes(b"\xff\xfe{")
     errors = _lint.collect_errors(tmp_path, [_SKILL_MD])
     assert any("not valid UTF-8" in err for err in errors), errors
+
+
+def _plugin_files(count, **overrides):
+    files = [
+        _lint.PluginFile(path=f"skills/s{index}/SKILL.md", size=10, is_symlink=False)
+        for index in range(count)
+    ]
+    return files + [
+        _lint.PluginFile(path=path, size=size, is_symlink=link)
+        for path, (size, link) in overrides.items()
+    ]
+
+
+def test_plugin_folder_within_limits_passes():
+    assert _lint.lint_directory_limits(_plugin_files(_lint.MAX_PLUGIN_FILES)) == []
+
+
+def test_plugin_folder_over_the_file_cap_is_rejected():
+    errors = _lint.lint_directory_limits(_plugin_files(_lint.MAX_PLUGIN_FILES + 1))
+    assert any(f"has {_lint.MAX_PLUGIN_FILES + 1} tracked files" in e for e in errors)
+
+
+def test_large_text_file_is_rejected():
+    limit = _lint.MAX_NON_IMAGE_BYTES
+    errors = _lint.lint_directory_limits(
+        _plugin_files(1, **{"README.md": (limit + 1, False)})
+    )
+    assert any("README.md" in e and f"{limit + 1} bytes" in e for e in errors), errors
+
+
+def test_large_image_is_allowed():
+    big = _lint.MAX_NON_IMAGE_BYTES + 1
+    files = _plugin_files(1, **{"assets/logo.PNG": (big, False)})
+    assert _lint.lint_directory_limits(files) == []
+
+
+def test_symbolic_link_is_rejected():
+    errors = _lint.lint_directory_limits(_plugin_files(1, **{"LICENSE": (10, True)}))
+    assert any("LICENSE is a symbolic link" in e for e in errors), errors
+
+
+def test_download_piped_into_a_shell_is_rejected():
+    texts = {
+        "a.md": "curl -LsSf https://example.com/x.sh | sh -s -- --scan",
+        "b.md": "curl -LsSf https://example.com/x.sh |bash",
+        "c.md": 'sh -c "$(curl -fsSL https://example.com/x.sh)"',
+    }
+    errors = _lint.lint_no_download_into_a_shell(texts)
+    assert [e.split(" ", 1)[0] for e in errors] == [
+        str(_lint.PLUGIN_DIR / name) for name in texts
+    ]
+
+
+def test_table_cell_is_not_a_shell_pipe():
+    texts = {"README.md": "| short names | yes |"}
+    assert _lint.lint_no_download_into_a_shell(texts) == []
 
 
 def test_main_exits_zero_on_this_repository():

@@ -1259,6 +1259,7 @@ Usage: pipefy card [OPTIONS] COMMAND [ARGS]...
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ get       Fetch a card by id (title, phase, pipe; not labels or assignees).  │
 │ list      List cards in a pipe (get_cards): browse, filter, and paginate.    │
+│ records   List, count and filter the cards of a pipe (records query).        │
 │ find      Find cards in a pipe where a custom field equals a value.          │
 │ create    Create a card in a pipe (start-form or phase fields via --fields   │
 │           JSON when required).                                               │
@@ -1459,6 +1460,46 @@ Usage: pipefy card move [OPTIONS] CARD_ID
 │    --help                 Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
+### HELP card/records
+Usage: pipefy card records [OPTIONS]
+
+ List, count and filter the cards of a pipe (records query).
+
+ totalCount counts the whole result. On ASSIGNEES and LABELS, in matches any
+ and contains matches all; like and ilike ignore case and match each word of
+ the value, in any order, with no wildcards; dates are ISO 8601, with an offset
+ on date-time attributes (CREATED_AT, FINISHED_AT) and as a bare date
+ (2026-07-03) on a date field. With --where or --search-term, paging stops at
+ 10,000 cards. Page with --after set to pageInfo.endCursor until hasNextPage is
+ false. For a count, pass --first 1 and read totalCount.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --pipe                    TEXT     Pipe id whose cards to load.           │
+│                                       [required]                             │
+│    --where                   TEXT     JSON filter object, e.g. {"attribute": │
+│                                       "ASSIGNEES", "in": ["<user id>"]};     │
+│                                       and/or take a list of filters. field   │
+│                                       must be the custom field uuid          │
+│                                       (lowercase, hyphenated). like/ilike    │
+│                                       ignore case and match each word of the │
+│                                       value as a substring, in any order; %  │
+│                                       and _ are literal.                     │
+│    --search-term             TEXT     Match title and subtitle fields; for a │
+│                                       card id use --where '{"attribute":     │
+│                                       "ID", "eq": "<id>"}'.                  │
+│    --phase                   TEXT     Only cards currently in this phase.    │
+│    --order-by                TEXT     JSON list, e.g. [{"attribute":         │
+│                                       "CREATED_AT", "direction": "DESC"}];   │
+│                                       field takes the custom field uuid.     │
+│    --include-fields                   Include each card's custom fields.     │
+│    --first                   INTEGER  Max cards per page (1-50).             │
+│    --after                   TEXT     Pagination cursor                      │
+│                                       (pageInfo.endCursor), passed back      │
+│                                       exactly.                               │
+│    --json            -j               Print machine-readable JSON to stdout. │
+│    --help                             Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
 ### HELP card/update
 Usage: pipefy card update [OPTIONS] CARD_ID
 
@@ -1538,6 +1579,8 @@ Usage: pipefy email inbox send [OPTIONS]
 
  Send an inbox email from a card (``send_inbox_email``).
 
+ Without ``--yes``, prints the email and exits 2 without sending.
+
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --card                TEXT  Card id. [required]                           │
 │ *  --to                  TEXT  Recipient emails (comma-separated).           │
@@ -1548,6 +1591,8 @@ Usage: pipefy email inbox send [OPTIONS]
 │                                [required]                                    │
 │    --extra               TEXT  Optional JSON object: extra                   │
 │                                CreateAndSendInboxEmailInput fields.          │
+│    --yes         -y            Send the email. Without it, print the email   │
+│                                and send nothing.                             │
 │    --json        -j            Print machine-readable JSON to stdout.        │
 │    --help                      Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1588,6 +1633,8 @@ Usage: pipefy email template send [OPTIONS]
 
  Send using an email template (``send_email_with_template``).
 
+ Without ``--yes``, prints the email the template resolves to for the card
+ (recipients, subject, body) and exits 2 without sending.
  Hard stop: there is no API, MCP or CLI path to create or change an email
  template. A new or edited template is a manual step in the Pipefy UI; the
  template must exist before sending.
@@ -1599,6 +1646,8 @@ Usage: pipefy email template send [OPTIONS]
 │    --from-email          TEXT  Optional sender override.                     │
 │    --extra               TEXT  Optional JSON object: extra send fields (cc,  │
 │                                bcc, repoId, etc.).                           │
+│    --yes         -y            Send the email. Without it, print the         │
+│                                resolved email and send nothing.              │
 │    --json        -j            Print machine-readable JSON to stdout.        │
 │    --help                      Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1765,7 +1814,15 @@ Usage: pipefy field create [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --phase          TEXT  Phase id. [required]                               │
 │ *  --label  -l      TEXT  Field label in the UI. [required]                  │
-│ *  --type   -t      TEXT  Pipefy field type (e.g. short_text, number).       │
+│ *  --type   -t      TEXT  Field type, a FieldTypeId value: assignee_select,  │
+│                           attachment, checklist_horizontal,                  │
+│                           checklist_vertical, cnpj, connector, cpf,          │
+│                           currency, date, datetime, due_date,                │
+│                           dynamic_content, email, id, label_select,          │
+│                           long_text, number, phone, radio_horizontal,        │
+│                           radio_vertical, select, short_text, statement,     │
+│                           time. A connector also needs connectedRepoId in    │
+│                           --extra.                                           │
 │                           [required]                                         │
 │    --extra          TEXT  JSON object of extra CreatePhaseFieldInput fields. │
 │    --json   -j                                                               │
@@ -2599,7 +2656,8 @@ Usage: pipefy phase create [OPTIONS]
 │                                  no other phase has. A new pipe's Inbox,     │
 │                                  Doing and Done keys are 1, 2 and 3, and 0   │
 │                                  omits the phase from get_pipe phases.       │
-│                                  get_pipe does not return this key.          │
+│                                  get_pipe returns each key as                │
+│                                  phases[].index, in ascending order.         │
 │    --description  -d      TEXT                                               │
 │    --json         -j                                                         │
 │    --help                        Show this message and exit.                 │
@@ -2813,14 +2871,17 @@ Usage: pipefy portal [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ list         List portals for an organization.                               │
-│ get          Fetch a portal by UUID.                                         │
-│ create       Create or fetch the organization's main portal (idempotent).    │
-│ update       Update portal metadata (pass at least one attribute).           │
-│ delete       Delete a portal permanently.                                    │
-│ page         Portal page operations.                                         │
-│ element      Portal page elements (widgets / tools in the Pipefy UI).        │
-│ sub-portal   Sub-portal create, attach, publish, and delete.                 │
+│ list             List portals for an organization.                           │
+│ get              Fetch a portal by UUID.                                     │
+│ create           Create or fetch the organization's main portal              │
+│                  (idempotent).                                               │
+│ update           Update portal metadata (pass at least one attribute).       │
+│ delete           Delete a portal permanently.                                │
+│ page             Portal page operations.                                     │
+│ element          Portal page elements (widgets / tools in the Pipefy UI).    │
+│ sub-portal       Sub-portal create, attach, publish, and delete.             │
+│ html-interface   HTML interfaces (contentModeHtml): create, read, and        │
+│                  rewrite customCode pages.                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/create
@@ -2944,8 +3005,16 @@ Usage: pipefy portal element update [OPTIONS] ELEMENT_ID PAGE_ID
 │                                  [required]                                  │
 │    --metadata              TEXT  Complete element metadata JSON (Pipefy      │
 │                                  replaces the whole blob).                   │
-│    --data-sources          TEXT  Optional JSON array of data source          │
-│                                  bindings.                                   │
+│    --data-sources          TEXT  JSON array of {"repoId": ..., "fieldKeys":  │
+│                                  [...]} bindings; replaces the element's     │
+│                                  list, so '[]' unlinks them all. The API     │
+│                                  also needs editable when an entry lists     │
+│                                  fieldKeys, which this command does not      │
+│                                  send. Omit with --portal-uuid to keep the   │
+│                                  current ones.                               │
+│    --portal-uuid           TEXT  Portal holding the element; required when   │
+│                                  --data-sources is omitted. Its data sources │
+│                                  and editable flag are read and sent back.   │
 │    --json          -j            Print machine-readable JSON to stdout.      │
 │    --help                        Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2961,6 +3030,180 @@ Usage: pipefy portal get [OPTIONS] PORTAL_UUID
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json  -j        Print machine-readable JSON to stdout.                     │
 │ --help            Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface
+Usage: pipefy portal html-interface [OPTIONS] COMMAND [ARGS]...
+
+ HTML interfaces (contentModeHtml): create, read, and rewrite customCode pages.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ list          List an organization's HTML interfaces (grid portals are not   │
+│               returned here).                                                │
+│ guidelines    Fetch the HTML/CSS authoring rules and data-source filter      │
+│               format.                                                        │
+│ get           Fetch an HTML interface with each customCode element's live    │
+│               HTML.                                                          │
+│ write         Write and publish the HTML of an HTML interface's customCode   │
+│               element.                                                       │
+│ create        Create an HTML interface and write its first page in one call. │
+│ repos         List the pipes and tables an interface element can take as a   │
+│               data source.                                                   │
+│ repo-fields   List a pipe's or table's custom fields, for an interface data  │
+│               source.                                                        │
+│ set-sources   Replace the data sources of an HTML interface's customCode     │
+│               element.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/create
+Usage: pipefy portal html-interface create [OPTIONS]
+
+ Create an HTML interface and write its first page in one call.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-uuid          TEXT                  Organization UUID, or  │
+│                                                       numeric organization   │
+│                                                       id.                    │
+│                                                       [required]             │
+│ *  --name                       TEXT                  Interface name; also   │
+│                                                       used as the one page's │
+│                                                       title.                 │
+│                                                       [required]             │
+│    --html                       TEXT                  The page's whole HTML  │
+│                                                       document. Mutually     │
+│                                                       exclusive with         │
+│                                                       --html-file.           │
+│    --html-file                  PATH                  Read the page's whole  │
+│                                                       HTML document from     │
+│                                                       this file instead of   │
+│                                                       --html.                │
+│    --color                      [blue|cyan|gray|gree  One of: blue, cyan,    │
+│                                 n|indigo|lime|pink|p  gray, green, indigo,   │
+│                                 urple|orange|red|sky  lime, pink, purple,    │
+│                                 |yellow]              orange, red, sky,      │
+│                                                       yellow.                │
+│                                                       [default: blue]        │
+│    --data-sources               TEXT                  Optional JSON array of │
+│                                                       source bindings (id,   │
+│                                                       name, repoId,          │
+│                                                       fieldKeys, optional    │
+│                                                       filters); at most 10,  │
+│                                                       id/name unique among   │
+│                                                       them.                  │
+│    --json               -j                            Print machine-readable │
+│                                                       JSON to stdout.        │
+│    --help                                             Show this message and  │
+│                                                       exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/get
+Usage: pipefy portal html-interface get [OPTIONS] INTERFACE_UUID
+
+ Fetch an HTML interface with each customCode element's live HTML.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    interface_uuid      TEXT  HTML interface UUID. [required]               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --json  -j        Print machine-readable JSON to stdout.                     │
+│ --help            Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/guidelines
+Usage: pipefy portal html-interface guidelines [OPTIONS]
+
+ Fetch the HTML/CSS authoring rules and data-source filter format.
+
+ The rules are the same for every organization; this takes no required
+ argument.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --include-design-system            Also return the designSystem component    │
+│                                    catalog. It is most of the response;      │
+│                                    request it only when styling a page.      │
+│ --json                   -j        Print machine-readable JSON to stdout.    │
+│ --help                             Show this message and exit.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/list
+Usage: pipefy portal html-interface list [OPTIONS]
+
+ List an organization's HTML interfaces (grid portals are not returned here).
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-uuid          TEXT  Organization UUID, or numeric          │
+│                                       organization id.                       │
+│                                       [required]                             │
+│    --search-term                TEXT  Optional interface name filter.        │
+│    --json               -j            Print machine-readable JSON to stdout. │
+│    --help                             Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/repo-fields
+Usage: pipefy portal html-interface repo-fields [OPTIONS]
+
+ List a pipe's or table's custom fields, for an interface data source.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --repo-uuid               TEXT  The repo's uuid, as 'repos' returns it.   │
+│                                    [required]                                │
+│    --interface-uuid          TEXT  Interface the source is for.              │
+│    --json            -j            Print machine-readable JSON to stdout.    │
+│    --help                          Show this message and exit.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/repos
+Usage: pipefy portal html-interface repos [OPTIONS]
+
+ List the pipes and tables an interface element can take as a data source.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --organization-id          TEXT  Numeric organization id; a uuid is       │
+│                                     rejected.                                │
+│                                     [required]                               │
+│    --interface-uuid           TEXT  Interface the source is for; narrows to  │
+│                                     repos it can bind.                       │
+│    --repo-name                TEXT  Case-insensitive part of the repo name.  │
+│    --json             -j            Print machine-readable JSON to stdout.   │
+│    --help                           Show this message and exit.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/set-sources
+Usage: pipefy portal html-interface set-sources [OPTIONS]
+
+ Replace the data sources of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --interface-uuid          TEXT  HTML interface holding the page.          │
+│                                    [required]                                │
+│ *  --page-id                 TEXT  Page holding the element. [required]      │
+│ *  --element-id              TEXT  The page's customCode element. [required] │
+│ *  --data-sources            TEXT  JSON array, the element's complete source │
+│                                    list (id, name, repoId, fieldKeys,        │
+│                                    optional filters); '[]' removes them all. │
+│                                    [required]                                │
+│    --json            -j            Print machine-readable JSON to stdout.    │
+│    --help                          Show this message and exit.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/write
+Usage: pipefy portal html-interface write [OPTIONS]
+
+ Write and publish the HTML of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --page-id               TEXT  Page holding the element. [required]        │
+│ *  --element-id            TEXT  The page's customCode element. [required]   │
+│    --content               TEXT  The whole HTML document; it replaces the    │
+│                                  live one. Mutually exclusive with           │
+│                                  --content-file.                             │
+│    --content-file          PATH  Read the HTML document from this file       │
+│                                  instead of --content.                       │
+│    --json          -j            Print machine-readable JSON to stdout.      │
+│    --help                        Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/list
@@ -3678,7 +3921,9 @@ Usage: pipefy report-pipe export [OPTIONS]
 │                                   [default: json]                            │
 │    --sort-by               TEXT   JSON ReportSortDirectionInput.             │
 │    --filter                TEXT                                              │
-│    --columns               TEXT   JSON array of column ids.                  │
+│    --columns               TEXT   JSON array of column names from            │
+│                                   report-pipe columns; date columns appear   │
+│                                   only when named here.                      │
 │    --poll-timeout          FLOAT  Seconds to poll export status before       │
 │                                   failing (CSV only).                        │
 │                                   [default: 90.0]                            │
@@ -4153,7 +4398,9 @@ Usage: pipefy webhook update [OPTIONS] WEBHOOK_ID
 │ --url              TEXT                                                      │
 │ --actions          TEXT  JSON array of event action strings (non-empty when  │
 │                          provided).                                          │
-│ --headers          TEXT  JSON object of custom HTTP headers.                 │
+│ --headers          TEXT  JSON object of custom HTTP headers; replaces the    │
+│                          whole set, so include every header to keep.         │
+│                          Omitting --headers deletes every header.            │
 │ --json     -j                                                                │
 │ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯

@@ -45,13 +45,13 @@ def _minimal_behavior():
 def test_normalize_pipefy_tokens_adds_percent_prefix():
     text = (
         "Read {field:created_by} then %{field:already_ok} "
-        "and {action:78164d3e-8b69-47dd-9dcc-56014f8a55c6} "
+        "and {action:550e8400-e29b-41d4-a716-446655440105} "
         "or %{action:11111111-1111-4111-8111-111111111111}"
     )
     out = normalize_pipefy_ai_instruction_tokens(text)
     assert "%{field:created_by}" in out
     assert "%{field:already_ok}" in out
-    assert "%{action:78164d3e-8b69-47dd-9dcc-56014f8a55c6}" in out
+    assert "%{action:550e8400-e29b-41d4-a716-446655440105}" in out
     assert "%{action:11111111-1111-4111-8111-111111111111}" in out
 
 
@@ -61,17 +61,17 @@ def test_normalize_promotes_bare_numeric_ids_to_field_namespace():
     namespaces. Callers often borrow the ``create_ai_automation`` style
     (bare ``%{<internal_id>}``) which stores fine via the API but the UI
     displays as plain text. We rewrite those variants to the canonical form."""
-    text = "Read %{427911984} and {427911985} and %{field:427911986} and %{action:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+    text = "Read %{421234575} and {421234576} and %{field:421234577} and %{action:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
     out = normalize_pipefy_ai_instruction_tokens(text)
     # Bare numeric variants promoted to %{field:<id>}
-    assert "%{field:427911984}" in out
-    assert "%{field:427911985}" in out
+    assert "%{field:421234575}" in out
+    assert "%{field:421234576}" in out
     # Already-canonical tokens left alone
-    assert out.count("%{field:427911986}") == 1
+    assert out.count("%{field:421234577}") == 1
     assert "%{action:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}" in out
     # And the rewritten variants must not leak their old form
-    assert "%{427911984}" not in out.replace("%{field:427911984}", "")
-    assert "{427911985}" not in out.replace("%{field:427911985}", "")
+    assert "%{421234575}" not in out.replace("%{field:421234575}", "")
+    assert "{421234576}" not in out.replace("%{field:421234576}", "")
 
 
 @pytest.mark.unit
@@ -93,12 +93,12 @@ def test_normalize_empty_and_none_safe():
 def test_expand_normalizes_instruction_tokens_without_template_params():
     b = _minimal_behavior()
     b["actionParams"]["aiBehaviorParams"]["instruction"] = (
-        "Use {field:my_slug} with {action:a81bdbec-0b0a-4ba9-b695-f4fe3f4f1f08}."
+        "Use {field:my_slug} with {action:550e8400-e29b-41d4-a716-446655440106}."
     )
     out = expand_behavior_placeholders(b)
     instr = out["actionParams"]["aiBehaviorParams"]["instruction"]
     assert "%{field:my_slug}" in instr
-    assert "%{action:a81bdbec-0b0a-4ba9-b695-f4fe3f4f1f08}" in instr
+    assert "%{action:550e8400-e29b-41d4-a716-446655440106}" in instr
 
 
 @pytest.mark.unit
@@ -226,8 +226,8 @@ def test_extract_referenced_field_ids_deduplicates():
 
 @pytest.mark.unit
 def test_extract_referenced_field_ids_skips_slug_refs():
-    """Pipefy-core's ``referencedFieldIds`` is a list of numeric ids; slug-form
-    references should be resolved upstream before this runs."""
+    """``referencedFieldIds`` is a list of numeric ids; slug-form references
+    should be resolved upstream before this runs."""
     text = "Numeric %{field:159} and slug %{field:my_slug_field}"
     assert extract_referenced_field_ids(text) == ["159"]
 
@@ -239,18 +239,16 @@ def test_extract_referenced_field_ids_no_tokens():
 
 @pytest.mark.unit
 def test_extract_referenced_field_ids_skips_dotted_connected_refs():
-    """Dotted connected-pipe refs like ``%{field:136.135}`` are handled by
-    pipefy-core's importer for clone-time static analysis but are not picked up
-    by pipefy-core's runtime ``start_behavior_execution.rb`` parser. Mirroring
-    runtime here keeps populated ids aligned with what actually arrives in
-    ``BehaviorRequest.card.fields[]``."""
+    """Dotted connected-pipe refs like ``%{field:136.135}`` are not picked up
+    when the behavior runs. Skipping them keeps populated ids aligned with the
+    field values the behavior actually receives."""
     text = "Bare %{field:159} and dotted %{field:136.135}"
     assert extract_referenced_field_ids(text) == ["159"]
 
 
 @pytest.mark.unit
 def test_extract_referenced_field_ids_ignores_action_tokens():
-    text = "%{action:78164d3e-8b69-47dd-9dcc-56014f8a55c6} and %{field:159}"
+    text = "%{action:550e8400-e29b-41d4-a716-446655440105} and %{field:159}"
     assert extract_referenced_field_ids(text) == ["159"]
 
 

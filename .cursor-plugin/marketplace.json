@@ -7,9 +7,9 @@
   "plugins": [
     {
       "name": "pipefy",
-      "source": "./",
+      "source": "./plugins/pipefy",
       "description": "Hosted Pipefy MCP tools for pipes, cards, and automations, plus the Pipefy skill catalog, with browser sign-in and no local Python.",
-      "version": "0.5.2-beta.1",
+      "version": "0.5.5-beta.1",
       "homepage": "https://github.com/pipefy/ai-toolkit",
       "repository": "https://github.com/pipefy/ai-toolkit"
     }

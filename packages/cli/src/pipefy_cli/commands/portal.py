@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import Any, NoReturn
 
 import typer
 from pipefy_sdk import (
     CreatePortalElementInput,
     PipefyClient,
+    PipefyGraphQLError,
     UpdatePortalElementInput,
+)
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    PipefyError,
+    PortalPermissionError,
 )
 from pipefy_sdk.models.portal import (
     DeletePortalElementInput,
+    InterfaceDataSources,
+    PortalColor,
     PortalPageLayoutRow,
     parse_portal_page_layout,
 )
@@ -24,6 +33,7 @@ from pipefy_cli.commands._common import (
     parse_json_value,
     resource_id_argument,
     run_cli_command,
+    validate_optional_resource_id,
 )
 
 portal_app = typer.Typer(help="Portal operations.", no_args_is_help=True)
@@ -37,6 +47,10 @@ sub_portal_app = typer.Typer(
     help="Sub-portal create, attach, publish, and delete.",
     no_args_is_help=True,
 )
+html_interface_app = typer.Typer(
+    help="HTML interfaces (contentModeHtml): create, read, and rewrite customCode pages.",
+    no_args_is_help=True,
+)
 
 
 def _require_non_empty_portal_uuid(portal_uuid: str) -> str:
@@ -44,6 +58,55 @@ def _require_non_empty_portal_uuid(portal_uuid: str) -> str:
     if not portal_uuid.strip():
         raise typer.BadParameter("Portal UUID must be non-empty.")
     return portal_uuid.strip()
+
+
+_MAX_TEXT_OPTION_FILE_BYTES = 2 * 1024 * 1024
+
+
+def _resolve_text_option(
+    value: str | None,
+    file_path: Path | None,
+    *,
+    option: str,
+    file_option: str,
+) -> str:
+    """Resolve a required text value from ``option`` or read it from ``file_option``.
+
+    A real HTML document is hard to quote in a shell and Linux caps a single
+    argument's size, so this sub-app's text-document options each come as a pair
+    (``--content``/``--content-file`` on ``write``, ``--html``/``--html-file`` on
+    ``create``); exactly one of the two must be given.
+    """
+    if file_path is not None and value is not None:
+        raise typer.BadParameter(f"Pass only one of {option} or {file_option}.")
+    if file_path is None:
+        if value is None:
+            raise typer.BadParameter(f"Provide {option} or {file_option}.")
+        text = value
+    else:
+        display = str(file_path)
+        path = file_path.expanduser()
+        try:
+            if path.stat().st_size > _MAX_TEXT_OPTION_FILE_BYTES:
+                raise typer.BadParameter(
+                    f"{file_option} {display!r} exceeds "
+                    f"{_MAX_TEXT_OPTION_FILE_BYTES} bytes."
+                )
+            raw = path.read_bytes()
+        except OSError as exc:
+            reason = exc.strerror or exc.__class__.__name__
+            raise typer.BadParameter(
+                f"Could not read {file_option} {display!r}: {reason}."
+            ) from exc
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise typer.BadParameter(
+                f"{file_option} {display!r} is not valid UTF-8 text."
+            ) from exc
+    if not text.strip():
+        raise typer.BadParameter(f"{option}/{file_option} must be non-empty.")
+    return text
 
 
 def _reject_blank_optional_string(value: str | None, flag: str) -> None:
@@ -170,6 +233,7 @@ def _portal_element_update_kwargs(
         "type": validated.type,
         "metadata": validated.metadata,
         "data_sources": validated.data_sources,
+        "portal_uuid": validated.portal_uuid,
     }
     if validated.editable is not None:
         kwargs["editable"] = validated.editable
@@ -621,7 +685,20 @@ def portal_element_update(
     data_sources: str | None = typer.Option(
         None,
         "--data-sources",
-        help="Optional JSON array of data source bindings.",
+        help=(
+            'JSON array of {"repoId": ..., "fieldKeys": [...]} bindings; replaces '
+            "the element's list, so '[]' unlinks them all. The API also needs "
+            "editable when an entry lists fieldKeys, which this command does not "
+            "send. Omit with --portal-uuid to keep the current ones."
+        ),
+    ),
+    portal_uuid: str | None = typer.Option(
+        None,
+        "--portal-uuid",
+        help=(
+            "Portal holding the element; required when --data-sources is omitted. "
+            "Its data sources and editable flag are read and sent back."
+        ),
     ),
     json_out: bool = typer.Option(
         False,
@@ -635,6 +712,13 @@ def portal_element_update(
     element_id = _require_non_empty_portal_uuid(element_id)
     page_id = _require_non_empty_portal_uuid(page_id)
     metadata_obj = _parse_required_metadata_json(metadata, "--metadata")
+    _reject_blank_optional_string(data_sources, "--data-sources")
+    _reject_blank_optional_string(portal_uuid, "--portal-uuid")
+    if data_sources is None and portal_uuid is None:
+        raise typer.BadParameter(
+            "Pass --portal-uuid to keep the element's current data sources, or "
+            "--data-sources to replace them ('[]' unlinks them all)."
+        )
     data_sources_list = _parse_optional_data_sources_json(data_sources)
 
     try:
@@ -644,7 +728,8 @@ def portal_element_update(
                 "page_id": page_id,
                 "type": type,
                 "metadata": metadata_obj,
-                "data_sources": data_sources_list or [],
+                "data_sources": data_sources_list,
+                "portal_uuid": portal_uuid,
             }
         )
     except ValidationError as exc:
@@ -927,7 +1012,540 @@ def portal_sub_portal_delete(
     run_cli_command(ctx, json_out, factory)
 
 
+_HTML_INTERFACE_PERMISSION_GUIDANCE = (
+    "Permission denied. Request organization permissions such as "
+    "`create_portal` or `manage_portals` from your admin."
+)
+_HTML_INTERFACE_SOURCE_ACCESS_DENIED = (
+    "Permission denied for a data source: you can bind only the pipes and "
+    "tables 'portal html-interface repos' returns for this interface."
+)
+_NOT_FOUND_ERROR_CODES = frozenset({"RECORD_NOT_FOUND", "RESOURCE_NOT_FOUND"})
+_GRID_INTERFACE_ERROR_MARKER = "use get_portal to read its elements"
+
+
+def _rewrite_grid_interface_error(exc: ValueError) -> ValueError:
+    """Rewrite get_html_interface's grid-interface error to name the CLI command.
+
+    ``get_html_interface`` raises this ``ValueError`` (not a ``PipefyGraphQLError``,
+    so ``_html_interface_error_text`` never sees it) pointing a caller at
+    ``get_portal``, its own SDK/MCP method name. A CLI user needs
+    ``pipefy portal get`` instead. Any other ``ValueError`` (e.g. a plain
+    not-found) passes through unchanged, keeping its own exit code (2).
+    """
+    text = str(exc)
+    if _GRID_INTERFACE_ERROR_MARKER not in text:
+        return exc
+    return ValueError(
+        text.replace(
+            _GRID_INTERFACE_ERROR_MARKER, "use `pipefy portal get` to read its elements"
+        )
+    )
+
+
+def _graphql_error_codes(exc: BaseException) -> list[str]:
+    """Extract GraphQL ``extensions.code`` values from a Pipefy GraphQL error."""
+    codes: list[str] = []
+    errors = getattr(exc, "errors", None)
+    if isinstance(errors, list):
+        for item in errors:
+            if not isinstance(item, dict):
+                continue
+            extensions = item.get("extensions")
+            if isinstance(extensions, dict):
+                code = extensions.get("code")
+                if isinstance(code, str) and code:
+                    codes.append(code)
+    return codes
+
+
+def _html_validation_error_text(exc: HtmlValidationError) -> str:
+    """One line per violation, matching the MCP tools' own formatting."""
+    count = len(exc.violations)
+    noun = "violation" if count == 1 else "violations"
+    lines = [
+        f"The HTML was not saved: it has {count} {noun}. "
+        "Fix every one, then write the whole document again."
+    ]
+    for violation in exc.violations:
+        location = violation.selector or ""
+        if violation.attribute:
+            location += f"[{violation.attribute}]"
+        location_clause = f" at {location}" if location else ""
+        lines.append(f"- {violation.code}{location_clause}: {violation.message}")
+    return "\n".join(lines)
+
+
+def _html_interface_error_text(
+    exc: BaseException,
+    *,
+    not_found_message: str | None = None,
+    source_access_denied: bool = False,
+) -> str | None:
+    """CLI-side twin of the MCP html-interface tools' error mapping.
+
+    Returns ``None`` when this doesn't recognize the error, so the caller
+    (``_reraise_mapped_html_interface_error``) knows to leave it unmapped.
+    """
+    if isinstance(exc, HtmlValidationError):
+        return _html_validation_error_text(exc)
+
+    if not isinstance(exc, PipefyGraphQLError):
+        return None
+
+    text = str(exc).strip()
+    lowered = text.lower()
+    codes = _graphql_error_codes(exc)
+
+    if not_found_message is not None and (
+        _NOT_FOUND_ERROR_CODES.intersection(codes)
+        or lowered.startswith("couldn't find")
+    ):
+        return not_found_message
+
+    if source_access_denied and not codes and lowered == "permission denied":
+        return _HTML_INTERFACE_SOURCE_ACCESS_DENIED
+
+    if "PERMISSION_DENIED" in codes or "permission denied" in lowered:
+        return _HTML_INTERFACE_PERMISSION_GUIDANCE
+
+    return None
+
+
+def _reraise_mapped_html_interface_error(
+    exc: Exception,
+    *,
+    not_found_message: str | None = None,
+    source_access_denied: bool = False,
+) -> NoReturn:
+    """Re-raise ``exc`` with the MCP twins' clean text in place of the raw API text.
+
+    Keeps ``exc``'s own exception type (and so ``run_cli_command``'s exit code
+    for it) wherever possible, by reconstructing the same type with the clean
+    text rather than wrapping it in a different one. This needs no change to
+    the shared ``run_cli_command``: every command here calls this from its own
+    ``except`` block instead.
+
+    ``PortalPermissionError`` is left untouched on purpose: its own message is
+    already the clean guidance text, and it is already the CLI-wide exit-2
+    pattern for a denial. A permission denial that instead reaches here as a
+    raw ``PipefyGraphQLError`` (a read, which the SDK does not wrap into
+    ``PortalPermissionError``) is re-raised as ``PortalPermissionError`` too,
+    for the same reason: both ``_HTML_INTERFACE_PERMISSION_GUIDANCE`` and
+    ``_HTML_INTERFACE_SOURCE_ACCESS_DENIED`` are a permission denial, and a
+    caller scripting against this sub-app should see one exit code for that
+    cause regardless of which internal call (read or write) was refused.
+    """
+    if isinstance(exc, PortalPermissionError):
+        raise exc
+    text = _html_interface_error_text(
+        exc,
+        not_found_message=not_found_message,
+        source_access_denied=source_access_denied,
+    )
+    if text is None:
+        raise exc
+    if text in (
+        _HTML_INTERFACE_PERMISSION_GUIDANCE,
+        _HTML_INTERFACE_SOURCE_ACCESS_DENIED,
+    ):
+        raise PortalPermissionError(text) from exc
+    if isinstance(exc, PipefyGraphQLError):
+        raise PipefyGraphQLError([{"message": text}]) from exc
+    raise PipefyError(text) from exc
+
+
+@html_interface_app.command("list")
+def html_interface_list(
+    ctx: typer.Context,
+    organization_uuid: str = typer.Option(
+        ...,
+        "--organization-uuid",
+        help="Organization UUID, or numeric organization id.",
+    ),
+    search_term: str | None = typer.Option(
+        None,
+        "--search-term",
+        help="Optional interface name filter.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List an organization's HTML interfaces (grid portals are not returned here)."""
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.list_html_interfaces(
+                organization_uuid, search_term=search_term
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(exc)
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("guidelines")
+def html_interface_guidelines(
+    ctx: typer.Context,
+    include_design_system: bool = typer.Option(
+        False,
+        "--include-design-system",
+        help="Also return the designSystem component catalog. It is most of "
+        "the response; request it only when styling a page.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Fetch the HTML/CSS authoring rules and data-source filter format.
+
+    The rules are the same for every organization; this takes no required
+    argument.
+    """
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.get_interface_html_guidelines(
+                include_design_system=include_design_system
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(exc)
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("get", context_settings=ID_POSITIONAL_CONTEXT_SETTINGS)
+def html_interface_get(
+    ctx: typer.Context,
+    interface_uuid: str = resource_id_argument(help="HTML interface UUID."),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Fetch an HTML interface with each customCode element's live HTML."""
+
+    interface_uuid = _require_non_empty_portal_uuid(interface_uuid)
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.get_html_interface(interface_uuid)
+        except ValueError as exc:
+            raise _rewrite_grid_interface_error(exc) from exc
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc, not_found_message=f"No HTML interface has uuid '{interface_uuid}'."
+            )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("write")
+def html_interface_write(
+    ctx: typer.Context,
+    page_id: str = typer.Option(..., "--page-id", help="Page holding the element."),
+    element_id: str = typer.Option(
+        ..., "--element-id", help="The page's customCode element."
+    ),
+    content: str | None = typer.Option(
+        None,
+        "--content",
+        help="The whole HTML document; it replaces the live one. "
+        "Mutually exclusive with --content-file.",
+    ),
+    content_file: Path | None = typer.Option(
+        None,
+        "--content-file",
+        help="Read the HTML document from this file instead of --content.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Write and publish the HTML of an HTML interface's customCode element."""
+
+    page_id = _require_non_empty_portal_uuid(page_id)
+    element_id = _require_non_empty_portal_uuid(element_id)
+    content = _resolve_text_option(
+        content, content_file, option="--content", file_option="--content-file"
+    )
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.write_html_document(
+                page_id=page_id, element_id=element_id, content=content
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(exc)
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("create")
+def html_interface_create(
+    ctx: typer.Context,
+    organization_uuid: str = typer.Option(
+        ...,
+        "--organization-uuid",
+        help="Organization UUID, or numeric organization id.",
+    ),
+    name: str = typer.Option(
+        ..., "--name", help="Interface name; also used as the one page's title."
+    ),
+    html: str | None = typer.Option(
+        None,
+        "--html",
+        help="The page's whole HTML document. Mutually exclusive with --html-file.",
+    ),
+    html_file: Path | None = typer.Option(
+        None,
+        "--html-file",
+        help="Read the page's whole HTML document from this file instead of --html.",
+    ),
+    color: PortalColor = typer.Option(
+        "blue",
+        "--color",
+        help=(
+            "One of: blue, cyan, gray, green, indigo, lime, pink, purple, "
+            "orange, red, sky, yellow."
+        ),
+    ),
+    data_sources: str | None = typer.Option(
+        None,
+        "--data-sources",
+        help=(
+            "Optional JSON array of source bindings (id, name, repoId, fieldKeys, "
+            "optional filters); at most 10, id/name unique among them."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Create an HTML interface and write its first page in one call."""
+
+    if not name.strip():
+        raise typer.BadParameter("--name must be non-empty.")
+    name = name.strip()
+    html = _resolve_text_option(
+        html, html_file, option="--html", file_option="--html-file"
+    )
+    data_sources_list = _parse_optional_data_sources_json(data_sources)
+    if data_sources_list is not None:
+        try:
+            InterfaceDataSources.model_validate(data_sources_list)
+        except ValidationError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+
+    async def factory(client: PipefyClient):
+        try:
+            interface = await client.create_interface(
+                organization_uuid, name, color=color, data_sources=data_sources_list
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc,
+                not_found_message="One of the data sources' repoId was not found.",
+                source_access_denied=True,
+            )
+        pages = interface.get("pages") or []
+        elements = pages[0].get("elements") if pages else None
+        if not pages or not elements:
+            msg = (
+                "createInterface returned no page to write HTML into. The "
+                f"interface ({interface.get('uuid')}) may already exist; check "
+                "with 'pipefy portal html-interface get' before retrying, "
+                "instead of running create again, which would create a second, "
+                "orphaned interface."
+            )
+            raise ValueError(msg)
+        page_id = pages[0]["uuid"]
+        element_id = elements[0]["uuid"]
+        try:
+            await client.write_html_document(
+                page_id=page_id, element_id=element_id, content=html
+            )
+        except Exception as exc:
+            interface_uuid = interface.get("uuid")
+            typer.echo(
+                f"The interface ({interface_uuid}) was already created with a "
+                "blank page. Resolve the error below, then write with:\n"
+                f"  pipefy portal html-interface write --page-id {page_id} "
+                f"--element-id {element_id} --content ...\n"
+                "Do not run create again; it would create a second, orphaned "
+                "interface.",
+                err=True,
+            )
+            # No not_found_message here: create_html_interface's own write-phase
+            # handling (portal_tools.py) doesn't map one either for this exact
+            # failure, so this stays a twin of that, not an invented improvement.
+            _reraise_mapped_html_interface_error(exc)
+        return interface
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("repos")
+def html_interface_repos(
+    ctx: typer.Context,
+    organization_id: str = typer.Option(
+        ...,
+        "--organization-id",
+        help="Numeric organization id; a uuid is rejected.",
+    ),
+    interface_uuid: str | None = typer.Option(
+        None,
+        "--interface-uuid",
+        help="Interface the source is for; narrows to repos it can bind.",
+    ),
+    repo_name: str | None = typer.Option(
+        None,
+        "--repo-name",
+        help="Case-insensitive part of the repo name.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List the pipes and tables an interface element can take as a data source."""
+
+    interface_uuid = validate_optional_resource_id(interface_uuid, "interface_uuid")
+
+    async def factory(client: PipefyClient):
+        try:
+            repos = await client.list_interface_repos(
+                organization_id, interface_uuid=interface_uuid, repo_name=repo_name
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc,
+                not_found_message=f"No organization has id '{organization_id}'.",
+                source_access_denied=True,
+            )
+        return {"repos": repos}
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("repo-fields")
+def html_interface_repo_fields(
+    ctx: typer.Context,
+    repo_uuid: str = typer.Option(
+        ..., "--repo-uuid", help="The repo's uuid, as 'repos' returns it."
+    ),
+    interface_uuid: str | None = typer.Option(
+        None,
+        "--interface-uuid",
+        help="Interface the source is for.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """List a pipe's or table's custom fields, for an interface data source."""
+
+    repo_uuid = _require_non_empty_portal_uuid(repo_uuid)
+    interface_uuid = validate_optional_resource_id(interface_uuid, "interface_uuid")
+
+    async def factory(client: PipefyClient):
+        missing = f"No repo has uuid '{repo_uuid}'"
+        if interface_uuid is not None:
+            missing += f", or no interface has uuid '{interface_uuid}'"
+        not_found_message = (
+            f"{missing}. 'pipefy portal html-interface repos' lists the repos "
+            "an interface can read."
+        )
+        try:
+            fields = await client.get_interface_repo_fields(
+                repo_uuid, interface_uuid=interface_uuid
+            )
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc, not_found_message=not_found_message, source_access_denied=True
+            )
+        return {"fields": fields}
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("set-sources")
+def html_interface_set_sources(
+    ctx: typer.Context,
+    interface_uuid: str = typer.Option(
+        ..., "--interface-uuid", help="HTML interface holding the page."
+    ),
+    page_id: str = typer.Option(..., "--page-id", help="Page holding the element."),
+    element_id: str = typer.Option(
+        ..., "--element-id", help="The page's customCode element."
+    ),
+    data_sources: str = typer.Option(
+        ...,
+        "--data-sources",
+        help=(
+            "JSON array, the element's complete source list (id, name, repoId, "
+            "fieldKeys, optional filters); '[]' removes them all."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Replace the data sources of an HTML interface's customCode element."""
+
+    interface_uuid = _require_non_empty_portal_uuid(interface_uuid)
+    page_id = _require_non_empty_portal_uuid(page_id)
+    element_id = _require_non_empty_portal_uuid(element_id)
+    parsed = parse_json_value(data_sources, "--data-sources")
+    if not isinstance(parsed, list):
+        raise typer.BadParameter("--data-sources must be a JSON array.")
+    try:
+        sources = InterfaceDataSources.model_validate(parsed)
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.set_interface_sources(
+                page_id, element_id, sources.root, interface_uuid=interface_uuid
+            )
+        except ValueError as exc:
+            raise _rewrite_grid_interface_error(exc) from exc
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc,
+                not_found_message=f"No HTML interface has uuid '{interface_uuid}'.",
+                source_access_denied=True,
+            )
+
+    run_cli_command(ctx, json_out, factory)
+
+
 page_app.add_typer(layout_app, name="layout")
 portal_app.add_typer(page_app, name="page")
 portal_app.add_typer(element_app, name="element")
 portal_app.add_typer(sub_portal_app, name="sub-portal")
+portal_app.add_typer(html_interface_app, name="html-interface")

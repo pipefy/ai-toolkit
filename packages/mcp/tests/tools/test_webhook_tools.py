@@ -8,7 +8,7 @@ from _mcp_compat import (
     create_connected_server_and_client_session as create_client_session,
 )
 from _shared.pagination_test_defaults import DEFAULT_FIRST
-from pipefy_sdk import PipefyClient, PipefyGraphQLError
+from pipefy_sdk import InboxEmailDraft, PipefyClient, PipefyGraphQLError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.webhook_tools import WebhookTools
@@ -20,8 +20,8 @@ from tools.destructive_confirm_test_support import confirm_after_preview
 def mock_webhook_client():
     client = MagicMock(PipefyClient)
     client.get_email_templates = AsyncMock()
-    client.send_inbox_email = AsyncMock()
-    client.send_email_with_template = AsyncMock()
+    client.send_inbox_email_draft = AsyncMock()
+    client.draft_email_from_template = AsyncMock()
     client.get_card_inbox_emails = AsyncMock()
     client.create_webhook = AsyncMock()
     client.get_webhooks = AsyncMock()
@@ -48,67 +48,142 @@ def webhook_session(webhook_mcp_server, request):
     )
 
 
+INBOX_ARGS = {
+    "card_id": "card-1",
+    "to": ["a@x.com"],
+    "subject": "Hello",
+    "body": "Hi there",
+    "from_": "sender@pipefy.com",
+}
+EMAIL_SENT = {
+    "createAndSendInboxEmail": {
+        "emailSent": True,
+        "errors": [],
+        "inboxEmail": {"id": "e1"},
+    }
+}
+
+
 @pytest.mark.anyio
-async def test_send_inbox_email_success(
+async def test_send_inbox_email_preview_shows_the_email_without_sending(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_inbox_email.return_value = {
-        "createAndSendInboxEmail": {
-            "emailSent": True,
-            "errors": [],
-            "inboxEmail": {"id": "e1"},
-        }
-    }
-
     async with webhook_session as session:
         result = await session.call_tool(
             "send_inbox_email",
-            {
-                "card_id": "card-1",
-                "to": ["a@x.com"],
-                "subject": "Hello",
-                "body": "Hi there",
-                "from_": "sender@pipefy.com",
-            },
+            {**INBOX_ARGS, "extra_input": {"cc": ["c@x.com"]}},
         )
 
     assert result.is_error is False
-    mock_webhook_client.send_inbox_email.assert_awaited_once_with(
-        "card-1",
-        ["a@x.com"],
-        "Hello",
-        "Hi there",
-        from_="sender@pipefy.com",
-    )
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["requires_confirmation"] is True
+    assert payload["confirmation_token"]
+    assert "cannot be recalled" in payload["message"]
+    assert "confirm=True" in payload["message"]
+    assert payload["email"] == {
+        "card_id": "card-1",
+        "to": ["a@x.com"],
+        "subject": "Hello",
+        "body": "Hi there",
+        "from_": "sender@pipefy.com",
+        "extra": {"cc": ["c@x.com"]},
+    }
+
+
+@pytest.mark.anyio
+async def test_send_inbox_email_sends_after_confirmation(
+    webhook_session, mock_webhook_client
+):
+    mock_webhook_client.send_inbox_email_draft.return_value = EMAIL_SENT
+
+    async with webhook_session as session:
+        payload = await confirm_after_preview(session, "send_inbox_email", INBOX_ARGS)
+
+    mock_webhook_client.send_inbox_email_draft.assert_awaited_once_with(
+        InboxEmailDraft(
+            card_id="card-1",
+            to=["a@x.com"],
+            subject="Hello",
+            body="Hi there",
+            from_="sender@pipefy.com",
+        )
+    )
     assert payload["success"] is True
     assert payload["result"]["createAndSendInboxEmail"]["emailSent"] is True
 
 
 @pytest.mark.anyio
-async def test_send_inbox_email_graphql_error(
+async def test_send_inbox_email_confirm_without_token_does_not_send(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_inbox_email.side_effect = PipefyGraphQLError(
+    async with webhook_session as session:
+        result = await session.call_tool(
+            "send_inbox_email", {**INBOX_ARGS, "confirm": True}
+        )
+
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert "token is missing" in payload["message"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"body": "Something else"},
+        {"subject": "Other subject"},
+        {"to": ["other@x.com"]},
+        {"from_": "other-sender@pipefy.com"},
+        {"card_id": "card-2"},
+        {"extra_input": {"bcc": ["hidden@x.com"]}},
+    ],
+)
+async def test_send_inbox_email_token_does_not_cover_a_changed_email(
+    webhook_session, mock_webhook_client, extract_payload, changed
+):
+    async with webhook_session as session:
+        preview = extract_payload(
+            await session.call_tool("send_inbox_email", INBOX_ARGS)
+        )
+        result = await session.call_tool(
+            "send_inbox_email",
+            {
+                **INBOX_ARGS,
+                **changed,
+                "confirm": True,
+                "confirmation_token": preview["confirmation_token"],
+            },
+        )
+
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert "does not match" in payload["message"]
+
+
+@pytest.mark.anyio
+async def test_send_inbox_email_graphql_error(webhook_session, mock_webhook_client):
+    mock_webhook_client.send_inbox_email_draft.side_effect = PipefyGraphQLError(
         [{"message": "inbox not enabled"}]
     )
 
     async with webhook_session as session:
-        result = await session.call_tool(
-            "send_inbox_email",
-            {
-                "card_id": "card-1",
-                "to": ["a@x.com"],
-                "subject": "Hello",
-                "body": "Hi",
-                "from_": "sender@pipefy.com",
-            },
-        )
+        payload = await confirm_after_preview(session, "send_inbox_email", INBOX_ARGS)
 
-    assert result.is_error is False
-    payload = extract_payload(result)
     assert payload["success"] is False
     assert "inbox not enabled" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+async def test_send_tools_are_not_read_only(webhook_session):
+    async with webhook_session as session:
+        listed = await session.list_tools()
+    tools = {t.name: t for t in listed.tools}
+    for name in ("send_inbox_email", "send_email_with_template"):
+        assert tools[name].annotations.read_only_hint is False
 
 
 @pytest.mark.anyio
@@ -145,56 +220,113 @@ async def test_get_email_templates_success(
     assert payload["success"] is True
 
 
+TEMPLATE_ARGS = {"card_id": "1320616225", "email_template_id": "42"}
+TEMPLATE_DRAFT = InboxEmailDraft(
+    card_id="1320616225",
+    to=["margaret@example.com"],
+    subject="Your request",
+    body="",
+    from_="pipe1@inbox.example.com",
+    extra={"repoId": "307061640"},
+)
+
+
 @pytest.mark.anyio
-async def test_send_email_with_template_success(
+async def test_send_email_with_template_preview_shows_the_resolved_email(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_email_with_template.return_value = {
-        "createAndSendInboxEmail": {
-            "emailSent": True,
-            "errors": [],
-            "inboxEmail": {"id": "e1"},
-        }
-    }
+    mock_webhook_client.draft_email_from_template.return_value = TEMPLATE_DRAFT
 
     async with webhook_session as session:
         result = await session.call_tool(
             "send_email_with_template",
+            {**TEMPLATE_ARGS, "extra_input": {"cc": ["c@x.com"]}},
+        )
+
+    assert result.is_error is False
+    mock_webhook_client.draft_email_from_template.assert_awaited_once_with(
+        "1320616225", "42", to=None, from_=None, cc=["c@x.com"]
+    )
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert "margaret@example.com" in payload["resource"]
+    assert "cannot be recalled" in payload["message"]
+    assert payload["email_template_id"] == "42"
+    assert payload["email"]["to"] == ["margaret@example.com"]
+    assert payload["email"]["body"] == ""
+
+
+@pytest.mark.anyio
+async def test_send_email_with_template_sends_the_previewed_draft(
+    webhook_session, mock_webhook_client
+):
+    mock_webhook_client.draft_email_from_template.return_value = TEMPLATE_DRAFT
+    mock_webhook_client.send_inbox_email_draft.return_value = EMAIL_SENT
+
+    async with webhook_session as session:
+        payload = await confirm_after_preview(
+            session,
+            "send_email_with_template",
             {
-                "card_id": "1320616225",
-                "email_template_id": "42",
+                **TEMPLATE_ARGS,
                 "to": ["recipient@example.com"],
                 "from_": "sender@pipefy.com",
             },
         )
 
-    assert result.is_error is False
-    mock_webhook_client.send_email_with_template.assert_awaited_once_with(
+    mock_webhook_client.draft_email_from_template.assert_awaited_with(
         "1320616225",
         "42",
         to=["recipient@example.com"],
         from_="sender@pipefy.com",
     )
-    payload = extract_payload(result)
+    mock_webhook_client.send_inbox_email_draft.assert_awaited_once_with(TEMPLATE_DRAFT)
     assert payload["success"] is True
     assert payload["result"]["createAndSendInboxEmail"]["emailSent"] is True
 
 
 @pytest.mark.anyio
-async def test_send_email_with_template_graphql_error(
+async def test_send_email_with_template_token_does_not_cover_a_changed_resolution(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_email_with_template.side_effect = PipefyGraphQLError(
+    """The card changed between preview and confirm: the approved email is gone."""
+    mock_webhook_client.draft_email_from_template.return_value = TEMPLATE_DRAFT
+
+    async with webhook_session as session:
+        preview = extract_payload(
+            await session.call_tool("send_email_with_template", TEMPLATE_ARGS)
+        )
+        mock_webhook_client.draft_email_from_template.return_value = (
+            TEMPLATE_DRAFT.model_copy(update={"to": ("someone-else@example.com",)})
+        )
+        result = await session.call_tool(
+            "send_email_with_template",
+            {
+                **TEMPLATE_ARGS,
+                "confirm": True,
+                "confirmation_token": preview["confirmation_token"],
+            },
+        )
+
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
+    payload = extract_payload(result)
+    assert payload["requires_confirmation"] is True
+    assert payload["email"]["to"] == ["someone-else@example.com"]
+
+
+@pytest.mark.anyio
+async def test_send_email_with_template_graphql_error_on_resolve(
+    webhook_session, mock_webhook_client, extract_payload
+):
+    mock_webhook_client.draft_email_from_template.side_effect = PipefyGraphQLError(
         [{"message": "template not found"}]
     )
 
     async with webhook_session as session:
         result = await session.call_tool(
             "send_email_with_template",
-            {
-                "card_id": "1320616225",
-                "email_template_id": "999",
-            },
+            {"card_id": "1320616225", "email_template_id": "999"},
         )
 
     assert result.is_error is False
@@ -204,10 +336,28 @@ async def test_send_email_with_template_graphql_error(
 
 
 @pytest.mark.anyio
+async def test_send_email_with_template_graphql_error_on_send(
+    webhook_session, mock_webhook_client
+):
+    mock_webhook_client.draft_email_from_template.return_value = TEMPLATE_DRAFT
+    mock_webhook_client.send_inbox_email_draft.side_effect = PipefyGraphQLError(
+        [{"message": "inbox not enabled"}]
+    )
+
+    async with webhook_session as session:
+        payload = await confirm_after_preview(
+            session, "send_email_with_template", TEMPLATE_ARGS
+        )
+
+    assert payload["success"] is False
+    assert "inbox not enabled" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
 async def test_send_email_with_template_rejects_non_numeric_card_id(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_email_with_template.side_effect = ValueError(
+    mock_webhook_client.draft_email_from_template.side_effect = ValueError(
         "card_id must be a numeric card ID, got '550e8400-e29b-41d4-a716-446655440000'."
     )
 
@@ -671,51 +821,29 @@ async def test_get_card_inbox_emails_coerces_int_card_id(
 
 @pytest.mark.anyio
 async def test_send_inbox_email_coerces_int_card_id(
-    webhook_session, mock_webhook_client, extract_payload
+    webhook_session, mock_webhook_client
 ):
-    mock_webhook_client.send_inbox_email.return_value = {
-        "createAndSendInboxEmail": {
-            "emailSent": True,
-            "errors": [],
-            "inboxEmail": {"id": "e1"},
-        }
-    }
+    mock_webhook_client.send_inbox_email_draft.return_value = EMAIL_SENT
     async with webhook_session as session:
-        result = await session.call_tool(
-            "send_inbox_email",
-            {
-                "card_id": 100,
-                "to": ["a@x.com"],
-                "subject": "Hi",
-                "body": "Body",
-                "from_": "s@x.com",
-            },
+        payload = await confirm_after_preview(
+            session, "send_inbox_email", {**INBOX_ARGS, "card_id": 100}
         )
-    assert result.is_error is False
-    mock_webhook_client.send_inbox_email.assert_awaited_once()
-    call_args = mock_webhook_client.send_inbox_email.call_args
-    assert call_args[0][0] == "100"
+    assert payload["success"] is True
+    sent_draft = mock_webhook_client.send_inbox_email_draft.call_args[0][0]
+    assert sent_draft.card_id == "100"
 
 
 @pytest.mark.anyio
 async def test_send_email_with_template_coerces_int_ids(
-    webhook_session, mock_webhook_client, extract_payload
+    webhook_session, mock_webhook_client
 ):
-    mock_webhook_client.send_email_with_template.return_value = {
-        "createAndSendInboxEmail": {
-            "emailSent": True,
-            "errors": [],
-            "inboxEmail": {"id": "e2"},
-        }
-    }
+    mock_webhook_client.draft_email_from_template.return_value = TEMPLATE_DRAFT
     async with webhook_session as session:
-        result = await session.call_tool(
+        await session.call_tool(
             "send_email_with_template",
             {"card_id": 200, "email_template_id": 55},
         )
-    assert result.is_error is False
-    mock_webhook_client.send_email_with_template.assert_awaited_once()
-    call_args = mock_webhook_client.send_email_with_template.call_args
+    call_args = mock_webhook_client.draft_email_from_template.call_args
     assert call_args[0][0] == "200"
     assert call_args[0][1] == "55"
 
@@ -763,7 +891,7 @@ async def test_send_inbox_email_rejects_empty_to_list(
             },
         )
 
-    mock_webhook_client.send_inbox_email.assert_not_called()
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     p = extract_payload(result)
     assert p["success"] is False
     assert "'to'" in tool_error_message(p)
@@ -785,7 +913,7 @@ async def test_send_inbox_email_rejects_to_with_blank_items(
             },
         )
 
-    mock_webhook_client.send_inbox_email.assert_not_called()
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     p = extract_payload(result)
     assert p["success"] is False
     assert "each recipient" in tool_error_message(p)
@@ -807,7 +935,7 @@ async def test_send_inbox_email_rejects_blank_subject(
             },
         )
 
-    mock_webhook_client.send_inbox_email.assert_not_called()
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     p = extract_payload(result)
     assert p["success"] is False
     assert "'subject'" in tool_error_message(p)
@@ -829,7 +957,7 @@ async def test_send_inbox_email_rejects_blank_from(
             },
         )
 
-    mock_webhook_client.send_inbox_email.assert_not_called()
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     p = extract_payload(result)
     assert p["success"] is False
     assert "'from_'" in tool_error_message(p)
@@ -851,7 +979,7 @@ async def test_send_inbox_email_rejects_invalid_card_id(
             },
         )
 
-    mock_webhook_client.send_inbox_email.assert_not_called()
+    mock_webhook_client.send_inbox_email_draft.assert_not_called()
     assert_invalid_arguments_envelope(result)
 
 
@@ -870,7 +998,7 @@ async def test_send_email_with_template_rejects_blank_template_id(
             {"card_id": "card-1", "email_template_id": "   "},
         )
 
-    mock_webhook_client.send_email_with_template.assert_not_called()
+    mock_webhook_client.draft_email_from_template.assert_not_called()
     assert_invalid_arguments_envelope(result)
 
 
@@ -878,7 +1006,7 @@ async def test_send_email_with_template_rejects_blank_template_id(
 async def test_send_email_with_template_value_error_from_client(
     webhook_session, mock_webhook_client, extract_payload
 ):
-    mock_webhook_client.send_email_with_template.side_effect = ValueError(
+    mock_webhook_client.draft_email_from_template.side_effect = ValueError(
         "Template has no subject or body."
     )
 
@@ -1021,7 +1149,7 @@ async def test_send_email_with_template_rejects_invalid_card_id(
             {"card_id": "", "email_template_id": "42"},
         )
 
-    mock_webhook_client.send_email_with_template.assert_not_called()
+    mock_webhook_client.draft_email_from_template.assert_not_called()
     assert_invalid_arguments_envelope(result)
 
 

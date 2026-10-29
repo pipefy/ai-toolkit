@@ -43,6 +43,12 @@ def mock_pipefy_client():
     client.get_pipe_members = AsyncMock(return_value={"pipe": {"members": []}})
     client.get_phase_allowed_move_targets = AsyncMock()
     client.get_phase_fields = AsyncMock(return_value={"fields": []})
+    # Behaviors in these tests fire on "card_created"/"card_moved"; return both so the
+    # eventId check resolves cleanly. Tests that exercise a fetch miss or an unknown
+    # eventId override this with a side_effect or a narrower return value.
+    client.get_automation_events = AsyncMock(
+        return_value=[{"id": "card_created"}, {"id": "card_moved"}]
+    )
     client.validate_ai_agent_behaviors = MethodType(
         PipefyClient.validate_ai_agent_behaviors, client
     )
@@ -639,7 +645,7 @@ class TestUpdateAiAgent:
         mock_pipefy_client,
         extract_payload,
     ):
-        """Empty human_validation metadata must not tell the caller to stop and blame the pipe."""
+        """Empty human_validation metadata is now named by the pre-flight, and still never blames the pipe."""
         mock_pipefy_client.update_ai_agent.side_effect = PipefyGraphQLError(
             [{"message": "RECORD_NOT_SAVED"}]
         )
@@ -671,9 +677,15 @@ class TestUpdateAiAgent:
                     "behaviors": [behavior],
                 },
             )
-        _assert_record_not_saved_does_not_blame_the_pipe(
-            tool_error_message(extract_payload(result))
-        )
+        message = tool_error_message(extract_payload(result))
+        assert "RECORD_NOT_SAVED" in message
+        # The pre-flight now names the empty-metadata cause instead of leaving it
+        # unexplained, while still never blaming the pipe.
+        assert "human_validation" in message
+        assert "emails" in message or "title" in message
+        assert "does not name the cause" not in message
+        assert "Do NOT retry" not in message
+        assert "issue is the pipe" not in message
 
     async def test_record_not_saved_with_invalid_payload_shows_problems(
         self,
@@ -1089,6 +1101,46 @@ class TestValidateAiAgentBehaviors:
         assert payload["problems"] == []
         assert len(payload["warnings"]) == 1
         assert "relations" in payload["warnings"][0].lower()
+
+    async def test_event_catalog_unavailable_warns_instead_of_clean_pass(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        # When the automation-event catalog cannot be loaded, a behavior that carries an
+        # eventId must not read as a clean pass: the tool stays valid (no fail-closed) but
+        # warns that the eventId was not verified, so a model does not send an unchecked
+        # eventId into update_ai_agent (a rejected update is not rolled back).
+        pipe_id = make_pipe_id()
+        field_id = make_field_id()
+        mock_pipefy_client.get_pipe.return_value = _pipe_graph_with_field(
+            field_id=field_id
+        )
+        mock_pipefy_client.get_pipe_relations.return_value = {
+            "pipe": {"childrenRelations": [], "parentsRelations": []}
+        }
+        mock_pipefy_client.get_automation_events.side_effect = PipefyGraphQLError(
+            [{"message": "denied"}]
+        )
+        async with client_session as session:
+            result = await session.call_tool(
+                "validate_ai_agent_behaviors",
+                {
+                    "pipe_id": pipe_id,
+                    "behaviors": [
+                        _behavior_update_card_on_pipe(
+                            pipe_id=pipe_id, field_id=field_id
+                        )
+                    ],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is True
+        assert payload["valid"] is True
+        assert payload["problems"] == []
+        assert any("could not be verified" in w for w in payload["warnings"])
+        assert payload["message"] != "All behaviors passed validation."
 
     async def test_invalid_field_id_blocking(
         self,
@@ -2463,6 +2515,7 @@ class TestFetchPipeValidationContext:
             field_ids,
             phase_ids,
             related_pipe_ids,
+            _pipe_event_ids,
             fetch_warnings,
         ) = await fetch_pipe_validation_context(mock_pipefy_client, "42")
 
@@ -2495,6 +2548,7 @@ class TestFetchPipeValidationContext:
             field_ids,
             phase_ids,
             related_pipe_ids,
+            _pipe_event_ids,
             fetch_warnings,
         ) = await fetch_pipe_validation_context(mock_pipefy_client, "99")
 
@@ -2534,6 +2588,7 @@ class TestFetchPipeValidationContext:
             field_ids,
             phase_ids,
             related_pipe_ids,
+            _pipe_event_ids,
             fetch_warnings,
         ) = await fetch_pipe_validation_context(mock_pipefy_client, "1")
 
@@ -2581,3 +2636,49 @@ class TestCreateAiAgentPermissionEnrichment:
         # Enrichment message is prepended to the error
         assert "invite_members" in tool_error_message(payload)
         assert "forbidden" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+class TestAiAgentValidationMessageHygiene:
+    """The inner SDK-model ValidationError must not leak pydantic noise."""
+
+    async def test_create_ai_agent_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_agent",
+                {
+                    "name": "My Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.create_ai_agent.assert_not_called()
+
+    async def test_update_ai_agent_validation_error_has_no_pydantic_noise(
+        self, client_session, mock_pipefy_client, extract_payload
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_ai_agent",
+                {
+                    "uuid": "agent-1",
+                    "name": "My Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        message = tool_error_message(payload)
+        assert "input_value=" not in message
+        assert "pydantic.dev" not in message
+        mock_pipefy_client.update_ai_agent.assert_not_called()

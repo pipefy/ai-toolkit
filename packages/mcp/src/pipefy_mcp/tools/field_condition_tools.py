@@ -335,17 +335,17 @@ class FieldConditionTools:
             ``internal_id``, ``id``, or ``uuid``. Clear ``required`` first or do
             not use ``hide``.
 
-            **Working example** — hide field ``425848637`` when field ``425848636``
+            **Working example**: hide field ``421234568`` when field ``421234567``
             equals ``"Option A"``::
 
                 create_field_condition(
-                    phase_id="342182326",
+                    phase_id="341234567",
                     name="Hide brief when campaign is Option A",
                     condition={
                         "expressions": [
                             {
                                 "structure_id": 0,
-                                "field_address": "425848636",
+                                "field_address": "421234567",
                                 "operation": "equals",
                                 "value": "Option A"
                             }
@@ -354,7 +354,7 @@ class FieldConditionTools:
                     },
                     actions=[
                         {
-                            "phaseFieldId": "425848637",
+                            "phaseFieldId": "421234568",
                             "actionId": "hide"
                         }
                     ]
@@ -397,11 +397,6 @@ class FieldConditionTools:
             pid, err = validate_tool_id(phase_id, "phase_id")
             if err is not None:
                 return err
-            if not isinstance(condition, dict):
-                return build_pipe_tool_error_payload(
-                    message="Invalid 'condition': provide an object/dict.",
-                    code="INVALID_ARGUMENTS",
-                )
             if not condition:
                 return build_pipe_tool_error_payload(
                     message="Invalid 'condition': provide a non-empty object (e.g. expressions).",
@@ -416,11 +411,6 @@ class FieldConditionTools:
                     ),
                     code="INVALID_ARGUMENTS",
                 )
-            if extra_input is not None and not isinstance(extra_input, dict):
-                return build_pipe_tool_error_payload(
-                    message="Invalid 'extra_input': provide an object/dict or omit.",
-                    code="INVALID_ARGUMENTS",
-                )
             act_err = field_condition_actions_error_message(actions)
             if act_err:
                 return build_pipe_tool_error_payload(
@@ -432,7 +422,7 @@ class FieldConditionTools:
                 if k not in _CREATE_FIELD_CONDITION_EXTRA_RESERVED
             }
             if name is not None:
-                if not isinstance(name, str) or not name.strip():
+                if not name.strip():
                     return build_pipe_tool_error_payload(
                         message="Invalid 'name': provide a non-empty string or omit.",
                         code="INVALID_ARGUMENTS",
@@ -530,22 +520,12 @@ class FieldConditionTools:
             cid_str, err = validate_tool_id(condition_id, "condition_id")
             if err is not None:
                 return err
-            if extra_input is not None and not isinstance(extra_input, dict):
-                return build_pipe_tool_error_payload(
-                    message="Invalid 'extra_input': provide an object/dict or omit.",
-                    code="INVALID_ARGUMENTS",
-                )
             if extra_input is not None and "actions" in extra_input:
                 return build_pipe_tool_error_payload(
                     message=(
                         "Invalid 'extra_input': do not pass 'actions' here; use the "
                         "top-level 'actions' argument."
                     ),
-                    code="INVALID_ARGUMENTS",
-                )
-            if condition is not None and not isinstance(condition, dict):
-                return build_pipe_tool_error_payload(
-                    message="Invalid 'condition': provide an object/dict or omit.",
                     code="INVALID_ARGUMENTS",
                 )
             if condition is not None:
@@ -571,7 +551,7 @@ class FieldConditionTools:
                 if k not in _UPDATE_FIELD_CONDITION_EXTRA_RESERVED
             }
             if name is not None:
-                if not isinstance(name, str) or not name.strip():
+                if not name.strip():
                     return build_pipe_tool_error_payload(
                         message="Invalid 'name': provide a non-empty string or omit.",
                         code="INVALID_ARGUMENTS",

@@ -130,9 +130,6 @@ class ReportTools:
             err = _blank_field_error(pipe_uuid, "pipe_uuid")
             if err is not None:
                 return err
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.get_pipe_reports(
                     pipe_uuid,
@@ -251,9 +248,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.get_organization_report(report_id)
             except Exception as exc:  # noqa: BLE001
@@ -289,9 +283,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(organization_id, "organization_id")
-            if err is not None:
-                return err
             nfirst, page_err = validate_page_size(first)
             if page_err is not None:
                 return page_err
@@ -337,9 +328,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(export_id, "export_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.get_pipe_report_export(export_id)
             except Exception as exc:  # noqa: BLE001
@@ -371,9 +359,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(export_id, "export_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.get_organization_report_export(export_id)
             except Exception as exc:  # noqa: BLE001
@@ -417,9 +402,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(pipe_id, "pipe_id")
-            if err is not None:
-                return err
             err = _blank_field_error(name, "name")
             if err is not None:
                 return err
@@ -473,9 +455,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.update_pipe_report(
                     report_id,
@@ -527,9 +506,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
 
             guard = await check_destructive_confirmation(
                 ctx,
@@ -580,18 +556,15 @@ class ReportTools:
                 organization_id: Organization ID.
                 name: Report name.
                 pipe_ids: List of pipe IDs to include.
-                fields: Column field IDs.
+                fields: Column ``name`` values (internal names, not labels).
                 filter: Report filter (ReportCardsFilter shape).
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(organization_id, "organization_id")
-            if err is not None:
-                return err
             err = _blank_field_error(name, "name")
             if err is not None:
                 return err
-            if not pipe_ids or not isinstance(pipe_ids, list):
+            if not pipe_ids:
                 return build_report_error_payload(
                     message="'pipe_ids' must be a non-empty list.",
                 )
@@ -638,15 +611,12 @@ class ReportTools:
                 report_id: Organization report ID.
                 name: New report name.
                 color: Report color.
-                fields: Column field IDs.
+                fields: Column ``name`` values (internal names, not labels).
                 filter: Report filter (ReportCardsFilter shape).
                 pipe_ids: Pipe IDs to include.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.update_organization_report(
                     report_id,
@@ -697,9 +667,6 @@ class ReportTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(report_id, "report_id")
-            if err is not None:
-                return err
 
             guard = await check_destructive_confirmation(
                 ctx,
@@ -751,16 +718,10 @@ class ReportTools:
                 pipe_report_id: Pipe report ID to export.
                 sort_by: ReportSortDirectionInput (direction, field).
                 filter: ReportCardsFilter shape.
-                columns: Column field IDs for the export file.
+                columns: Column ``name`` values from ``get_pipe_report_columns`` to include in the file; date columns appear only when named here.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            err = _blank_field_error(pipe_id, "pipe_id")
-            if err is not None:
-                return err
-            err = _blank_field_error(pipe_report_id, "pipe_report_id")
-            if err is not None:
-                return err
             try:
                 raw = await client.export_pipe_report(
                     pipe_id,
@@ -811,7 +772,7 @@ class ReportTools:
                 pipe_ids: Pipe IDs to scope the export.
                 sort_by: ReportSortDirectionInput.
                 filter: ReportCardsFilter shape.
-                columns: Column field IDs for the export file.
+                columns: Column ``name`` values (internal names, not labels) to include in the file; date columns appear only when named here.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)

@@ -6,6 +6,7 @@ from typing import Any, Literal, cast
 from pipefy_sdk import (
     CardSearch,
     PipefyClient,
+    PipefyRequestTimeoutError,
 )
 from pipefy_sdk import (
     filter_fields_by_definitions as _filter_fields_by_definitions,
@@ -265,6 +266,12 @@ def _map_comment_like_error(
     invalid_markers: list[str] | None = None,
 ) -> str:
     """Map exception to a friendly message using shared not-found/permission/invalid markers."""
+    if isinstance(exc, PipefyRequestTimeoutError):
+        # A timeout carries no not-found/permission/invalid marker, so without this
+        # it folds into ``fallback_msg`` ("Please try again"), which invites a retry
+        # of a write the API may already have applied. Surface the descriptive
+        # message, which names the limit and warns the mutation may have committed.
+        return str(exc)
     messages = extract_error_strings(exc)
     haystack = " ".join(messages).lower()
     markers = invalid_markers if invalid_markers is not None else _INVALID_INPUT_MARKERS

@@ -16,6 +16,12 @@ _B64URL_SEGMENT_RE = re.compile(r"[A-Za-z0-9_-]*")
 ConfirmationTokenFailure = Literal["missing", "invalid_or_expired", "identity_mismatch"]
 
 
+def digest_identity_value(value: Any) -> str:
+    """Return SHA-256 hex of ``value`` as sorted compact JSON."""
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def mint_confirmation_token(
     *,
     tool_name: str,

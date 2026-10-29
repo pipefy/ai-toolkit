@@ -8,7 +8,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pipefy_sdk import CommentInput
+from pipefy_sdk import CommentInput, PipefyRequestTimeoutError
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error
@@ -30,6 +30,8 @@ from pipefy_mcp.tools.pipe_tool_helpers import (
     find_label_dependents,
     map_add_card_comment_error_to_message,
     map_delete_card_error_to_message,
+    map_delete_comment_error_to_message,
+    map_update_comment_error_to_message,
     message_for_add_card_comment_validation_error,
 )
 
@@ -343,6 +345,29 @@ def test_map_add_card_comment_error_uses_errors_attribute():
     exc = Exception("")
     exc.errors = [{"message": "Not authorized"}]
     assert "permission" in map_add_card_comment_error_to_message(exc).lower()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "mapper",
+    [
+        map_add_card_comment_error_to_message,
+        map_update_comment_error_to_message,
+        map_delete_comment_error_to_message,
+    ],
+)
+def test_comment_mappers_surface_request_timeout(mapper):
+    """A timeout surfaces its descriptive message, not the generic retry fallback.
+
+    ``PipefyRequestTimeoutError`` carries no not-found/permission/invalid marker, so
+    without the short-circuit in ``_map_comment_like_error`` it would fold into the
+    "Please try again" fallback and invite a retry of a comment the API may already
+    have written.
+    """
+    message = mapper(PipefyRequestTimeoutError(30))
+    assert "timed out" in message.lower()
+    assert "30" in message
+    assert "try again" not in message.lower()
 
 
 # =============================================================================

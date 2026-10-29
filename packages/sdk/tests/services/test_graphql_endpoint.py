@@ -1,3 +1,5 @@
+import asyncio
+import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,6 +11,7 @@ from gql.transport.httpx import HTTPXAsyncTransport
 from pipefy_auth import StaticBearerAuth
 
 from pipefy_sdk import __version__
+from pipefy_sdk.exceptions import PipefyRequestTimeoutError
 from pipefy_sdk.graphql_executor import (
     GraphQLEndpoint,
     GraphQLResult,
@@ -90,6 +93,19 @@ async def test_execute_binds_the_passed_auth_on_the_transport():
         await endpoint.execute(query, variables, auth=auth)
 
     assert mock_transport_cls.call_args.kwargs["auth"] is auth
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_gql_transport_accepts_pipefy_auth_credentials():
+    """The client gql builds must accept the ``httpx.Auth`` subclasses in ``pipefy_auth``.
+
+    gql 4.4 builds an ``httpx2`` client whenever ``httpx2`` is installed (``mcp``
+    depends on it), and that client rejects every ``httpx.Auth`` subclass.
+    """
+    transport = HTTPXAsyncTransport(url=GRAPHQL_URL, auth=_bearer())
+    await transport.connect()
+    await transport.close()
 
 
 @pytest.mark.unit
@@ -176,6 +192,64 @@ async def test_execute_reuse_fetches_once_then_passes_cached_schema():
         False
     )
     assert mock_client_cls.call_args_list[1].kwargs["schema"] is cached_schema
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cache_schema", [False, True])
+async def test_every_client_uses_the_endpoint_request_timeout(cache_schema):
+    """Each gql Client gets the endpoint's timeout, not gql's 10 s execute default."""
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(return_value={"ok": True})
+
+    with patch("pipefy_sdk.graphql_executor.Client") as mock_client_cls:
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value.schema = object()
+
+        endpoint = GraphQLEndpoint(url=GRAPHQL_URL, cache_schema=cache_schema)
+        # With cache_schema, the first call introspects and the second reuses.
+        await endpoint.execute(_sample_query(), {}, auth=_bearer())
+        await endpoint.execute(_sample_query(), {}, auth=_bearer())
+
+    assert mock_client_cls.call_count == 2
+    for call in mock_client_cls.call_args_list:
+        assert (
+            call.kwargs["execute_timeout"]
+            == GraphQLEndpoint.GRAPHQL_REQUEST_TIMEOUT_SECONDS
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_execute_times_out_at_the_endpoint_request_timeout(monkeypatch):
+    """A slow answer fails at the endpoint's timeout on the real gql stack.
+
+    ``httpx.MockTransport`` enforces no httpx timeout, so the only timer that can
+    fire is gql's execute timeout. The test shrinks the constant to stay fast.
+
+    The failure is a :class:`PipefyRequestTimeoutError` carrying a message that
+    names the limit and its value, not gql's bare, empty ``TimeoutError``. It is
+    still a ``TimeoutError`` so existing ``except TimeoutError`` handlers hold.
+    """
+    monkeypatch.setattr(GraphQLEndpoint, "GRAPHQL_REQUEST_TIMEOUT_SECONDS", 0.05)
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(5)
+        return httpx.Response(200, json={"data": {"__typename": "Query"}})
+
+    with _patched_transport(handler):
+        endpoint = GraphQLEndpoint(url=GRAPHQL_URL)
+        start = time.monotonic()
+        with pytest.raises(PipefyRequestTimeoutError) as excinfo:
+            await endpoint.execute(_sample_query(), {}, auth=_bearer())
+
+    assert time.monotonic() - start < 1
+    assert isinstance(excinfo.value, TimeoutError)
+    message = str(excinfo.value)
+    assert message.strip()
+    assert "0.05" in message
+    assert "timed out" in message.lower()
 
 
 @pytest.mark.unit

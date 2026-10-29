@@ -22,9 +22,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOT_PYPROJECT = REPO_ROOT / "pyproject.toml"
-PLUGIN_MANIFEST = REPO_ROOT / ".claude-plugin/plugin.json"
+PLUGIN_MANIFEST = REPO_ROOT / "plugins/pipefy/.claude-plugin/plugin.json"
 MARKETPLACE_MANIFEST = REPO_ROOT / ".claude-plugin/marketplace.json"
-CURSOR_PLUGIN_MANIFEST = REPO_ROOT / ".cursor-plugin/plugin.json"
+CURSOR_PLUGIN_MANIFEST = REPO_ROOT / "plugins/pipefy/.cursor-plugin/plugin.json"
 CURSOR_MARKETPLACE_MANIFEST = REPO_ROOT / ".cursor-plugin/marketplace.json"
 
 # Claude and Cursor manifests carry the release version, so they move with every bump.

@@ -1,10 +1,10 @@
 # Pipes & Cards
 
-Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **41 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
+Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **42 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
 
 ## Cross-cutting patterns
 
-- **Field types** are not validated locally — use `introspect_type` (e.g. on `CreatePhaseFieldInput`) for allowed values.
+- **Field types** for `create_phase_field` are the API's `FieldTypeId` enum values (lower case, e.g. `short_text`). The tool's input schema lists them, and other strings pass through for the API to validate. A `connector` field also needs `extra_input.connectedRepoId`: a pipe id, or a table id.
 - Successful mutations return a structured `result` (GraphQL payload).
 - Most write tools support optional `debug=true` on errors (GraphQL codes + `correlation_id`).
 - `extra_input` merges extra API keys (camelCase); keys that would duplicate primary arguments are ignored.
@@ -16,8 +16,8 @@ Which **form** each tool wants (slug vs `internal_id` vs uuid vs numeric id) is 
 
 Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most other nodes.
 
-- **Prefer string arguments** when calling tools (e.g. `card_id: "1332881010"`, `pipe_id: "306996634"`). This matches API responses (`get_pipe`, `get_card`, `create_card`, etc.).
-- **Integer JSON values** (e.g. `1332881010` without quotes) are still accepted on many tools: they are **coerced to strings** before variables are sent to GraphQL, so behavior matches the API.
+- **Prefer string arguments** when calling tools (e.g. `card_id: "1312345678"`, `pipe_id: "301234567"`). This matches API responses (`get_pipe`, `get_card`, `create_card`, etc.).
+- **Integer JSON values** (e.g. `1312345678` without quotes) are still accepted on many tools: they are **coerced to strings** before variables are sent to GraphQL, so behavior matches the API.
 - **Validation:** empty strings, whitespace-only IDs, and non-positive numeric IDs are rejected with a clear tool error (no spurious `ValueError` from type mixing).
 - **`delete_card`:** `card_id` follows the same rule — use a **string** (recommended) or a positive integer; the tool normalizes to a string for `getCard` / `deleteCard`. On success, `card_id` in the payload is a **string**.
 
@@ -27,7 +27,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 
 | Tool | Role |
 |------|------|
-| `get_pipe` | Load pipe metadata (phases, fields, settings). Workflow `phases[]` include `cards_count`; start-form intake is via `start_form_fields` (start form is not in `phases[]`). |
+| `get_pipe` | Load pipe metadata (phases, fields, settings). Workflow `phases[]` include `index` and `cards_count`; start-form intake is via `start_form_fields` (start form is not in `phases[]`). |
 | `get_start_form_fields` | Start-form fields for a pipe. |
 | `get_phase_fields` | Fields for a phase — each includes `id`, `internal_id`, `uuid`. |
 | `get_pipe_members` | List pipe members. |
@@ -41,6 +41,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 | Tool | Role |
 |------|------|
 | `get_cards` | List cards in a pipe. Use `include_fields` for custom field name/value on each card. |
+| `get_records` | List, count and filter the cards of a pipe on the server: `where` filters by dates, phase, labels, assignees, creator, title and custom fields (`field`, in `where` and `order_by`, takes the field uuid; `like`/`ilike` ignore case and match each word of the value, in any order, with no wildcards; a `date` field takes the bare date), `totalCount` is exact, and pages hold up to 50 cards. |
 | `get_card` | Load a single card by ID (title, phase, pipe; not labels or assignees). |
 | `find_cards` | Search cards by title or field values. |
 
@@ -49,7 +50,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 | Group | Tools | Notes |
 |-------|-------|-------|
 | Pipe | `create_pipe`, `update_pipe`, `delete_pipe`, `clone_pipe` | `delete_pipe`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
-| Phase | `create_phase`, `update_phase`, `delete_phase` | `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` does not return this key. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. `delete_phase`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
+| Phase | `create_phase`, `update_phase`, `delete_phase` | `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. `delete_phase`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
 | Phase transitions | `get_phase_allowed_move_targets` | Read-only; mirrors **Phase → Connections** (`cards_can_be_moved_to_phases`). Call before `move_card_to_phase`. Edges are configured in the Pipefy UI only. |
 | Phase field | `create_phase_field`, `update_phase_field`, `delete_phase_field` | `field_type` maps to API `type`; `field_id` may be a slug or numeric ID. |
 | Label | `create_label`, `update_label`, `delete_label` | `color` must be a hex string (e.g. `#FF0000`), not a name. |
@@ -89,7 +90,7 @@ create_card(pipe_id, fields={…}) → supply every required field ID
 get_pipe(pipe_id)                → phases[].id / cards_count for workflow inventory
 create_card(
   pipe_id,
-  phase_id="340012345",
+  phase_id="341234567",
   skip_elicitation=true,
   title="Seeded card",
   fields={…},
@@ -111,6 +112,7 @@ MCP tool results use the standard envelope; inventory fields live under the `pip
 | `pipe.start_form_fields` | Start-form field definitions (intake) |
 | `pipe.phases[].id` | Workflow phase IDs (start form excluded) |
 | `pipe.phases[].name` | Phase display name |
+| `pipe.phases[].index` | Float sort key; `phases[]` is in ascending key order (see `create_phase`) |
 | `pipe.phases[].cards_count` | Native card count for that workflow phase |
 
 CLI `pipefy pipe get <pipe_id> --json` returns the same GraphQL shape.
@@ -127,8 +129,8 @@ Use these when you need per-phase totals or card lists without pipe-wide `CardSe
 Discovery path: `get_pipe(pipe_id)` → `phases[].id` for workflow phases; omit `phase_id` on `create_card` for start-form intake.
 
 ```
-get_phase_cards_count(phase_id="340012345")
-get_phase_cards(phase_id="340012345", first=50, include_fields=true)
+get_phase_cards_count(phase_id="341234567")
+get_phase_cards(phase_id="341234567", first=50, include_fields=true)
 ```
 
 ### Phase transitions (`get_phase_allowed_move_targets`)

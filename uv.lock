@@ -1063,7 +1063,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "email-validator", specifier = ">=2.2.0" },
-    { name = "gql", extras = ["httpx"], specifier = ">=4.0.0,<5" },
+    { name = "gql", extras = ["httpx"], specifier = ">=4.0.0,<4.4" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pipefy-infra", editable = "packages/infra" },
@@ -1237,7 +1237,7 @@ dev = [
 
 [[package]]
 name = "pipefy-workspace"
-version = "0.5.2b1"
+version = "0.5.5b1"
 source = { virtual = "." }
 
 [package.dev-dependencies]

@@ -17,6 +17,7 @@ from _shared.live_settings import (
 )
 
 from pipefy_sdk.graphql_executor import AuthenticatedExecutor, GraphQLEndpoint
+from pipefy_sdk.models.field_definition import FIELD_TYPE_IDS
 from pipefy_sdk.services.schema_introspection_service import (
     SchemaIntrospectionService,
 )
@@ -51,7 +52,7 @@ async def test_live_agent_inspects_query_root_then_sees_many_fields(live_svc):
 @pytest.mark.asyncio
 async def test_live_unknown_type_returns_error_payload(live_svc):
     """Invalid type name yields a structured error (agent can retry)."""
-    data = await live_svc.introspect_type("ZZZNonexistentType999Pipeclaw")
+    data = await live_svc.introspect_type("ZZZNonexistentType999Probe")
     assert "error" in data
     assert "not found" in data["error"].lower()
 
@@ -70,7 +71,7 @@ async def test_live_inspect_create_card_before_hypothetical_raw_call(live_svc):
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_unknown_mutation_returns_error(live_svc):
-    data = await live_svc.introspect_mutation("notARealMutationPipeclaw999")
+    data = await live_svc.introspect_mutation("notARealMutationProbe999")
     assert "error" in data
 
 
@@ -91,7 +92,7 @@ async def test_live_search_finds_card_types_and_excludes_double_underscore(live_
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_search_no_matches_empty_list(live_svc):
-    data = await live_svc.search_schema("zzzzpipeclawnomatch99999")
+    data = await live_svc.search_schema("zzzzprobenomatch99999")
     assert data.get("types") == []
 
 
@@ -142,3 +143,13 @@ async def test_live_execute_syntax_error_no_network_payload_shape(live_svc):
     assert "error" in data
     err = data["error"].lower()
     assert "syntax" in err or "invalid" in err or "unexpected" in err
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_live_field_type_id_enum_matches_sdk_field_type_ids(live_svc):
+    """``FIELD_TYPE_IDS`` mirrors the live ``FieldTypeId`` enum; drift fails here."""
+    data = await live_svc.introspect_type("FieldTypeId")
+    assert data.get("kind") == "ENUM"
+    live = {value["name"] for value in data.get("enumValues") or []}
+    assert live == set(FIELD_TYPE_IDS)

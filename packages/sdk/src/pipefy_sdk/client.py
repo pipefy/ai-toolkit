@@ -49,8 +49,14 @@ from pipefy_sdk.models.attachment import (
     AttachmentUploadResult,
     PresignedUploadTarget,
 )
+from pipefy_sdk.models.field_definition import FieldTypeId
+from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
-from pipefy_sdk.models.portal import PortalPageLayoutRow
+from pipefy_sdk.models.portal import (
+    InterfaceDataSource,
+    PortalColor,
+    PortalPageLayoutRow,
+)
 from pipefy_sdk.services.advanced_automations_service import AdvancedAutomationsService
 from pipefy_sdk.services.ai_agent_service import AiAgentService
 from pipefy_sdk.services.attachment_service import AttachmentService
@@ -100,6 +106,9 @@ from pipefy_sdk.services.types import (
     AiAgentGraphPayload,
     AutomationServiceResult,
     CardSearch,
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
     KnowledgeBaseAccessProbeResult,
     KnowledgeBaseDataLookupPayload,
     KnowledgeBaseDeleteResult,
@@ -113,6 +122,8 @@ from pipefy_sdk.services.types import (
     MePayload,
     ProviderAccessProbeResult,
     ProviderDependenciesResult,
+    RecordFilter,
+    RecordOrder,
     ToggleAgentStatusResult,
 )
 from pipefy_sdk.services.user_service import UserService
@@ -361,9 +372,37 @@ class PipefyClient:
         """Get a pipe with AI preferences, phases with fields, and start form fields."""
         return await self._pipe_service.get_pipe_with_preferences(pipe_id)
 
-    async def create_pipe(self, name: str, organization_id: str | int) -> dict:
-        """Create a new pipe in the organization."""
-        return await self._pipe_config_service.create_pipe(name, organization_id)
+    async def create_pipe(
+        self,
+        name: str,
+        organization_id: str | int,
+        phases: list[CreatePipePhase] | None = None,
+        start_form_fields: list[CreatePipeStartFormField] | None = None,
+        labels: list[CreatePipeLabel] | None = None,
+    ) -> dict:
+        """Create a new pipe in the organization.
+
+        With ``phases``, the pipe gets exactly those phases, in that order, each
+        connected to the phases beside it. Without it, the pipe gets Pipefy's
+        default Inbox, Doing and Done. Phase names must be unique.
+        ``start_form_fields`` and ``labels`` are created in the same call. The
+        result lists the new pipe's phases, start form fields and labels with
+        their ids.
+
+        Raises:
+            ValueError: A phase name is blank or repeated, or a label color is not
+                hex. Nothing was created.
+            PipePhaseSetupError: The pipe was created, but setting up its phases
+                failed. It carries ``pipe_id`` and ``created_phases`` for recovery;
+                the failed call's error is ``__cause__``.
+        """
+        return await self._pipe_config_service.create_pipe(
+            name,
+            organization_id,
+            phases=phases,
+            start_form_fields=start_form_fields,
+            labels=labels,
+        )
 
     async def update_pipe(self, pipe_id: str | int, **attrs: Any) -> dict:
         """Update pipe attributes (see Pipefy `UpdatePipeInput`)."""
@@ -413,10 +452,10 @@ class PipefyClient:
         self,
         phase_id: str | int,
         label: str,
-        field_type: str,
+        field_type: FieldTypeId | str,
         **attrs: Any,
     ) -> dict:
-        """Create a field on a phase (`field_type` is passed through to the API)."""
+        """Create a field on a phase (`field_type`: a `FieldTypeId` value, passed through)."""
         return await self._pipe_config_service.create_phase_field(
             phase_id,
             label,
@@ -863,6 +902,39 @@ class PipefyClient:
             email_template_id,
             card_uuid=card_uuid,
         )
+
+    async def draft_email_from_template(
+        self,
+        card_id: str,
+        email_template_id: str,
+        *,
+        to: list[str] | None = None,
+        from_: str | None = None,
+        **attrs: Any,
+    ) -> InboxEmailDraft:
+        """Resolve a template for a card into the email a send would deliver.
+
+        Reads only: nothing is sent. Show the draft for approval, then send it
+        with ``send_inbox_email_draft``.
+
+        Args:
+            card_id: Numeric ID of the card with inbox.
+            email_template_id: ID of the email template.
+            to: Optional override for recipients; if omitted, uses template's toEmail.
+            from_: Optional override for sender; if omitted, uses template's fromEmail.
+            **attrs: Extra CreateAndSendInboxEmailInput fields (cc, bcc, repoId, etc.).
+        """
+        return await self._webhook_service.draft_email_from_template(
+            card_id,
+            email_template_id,
+            to=to,
+            from_=from_,
+            **attrs,
+        )
+
+    async def send_inbox_email_draft(self, draft: InboxEmailDraft) -> dict[str, Any]:
+        """Send an ``InboxEmailDraft`` as-is, e.g. one from ``draft_email_from_template``."""
+        return await self._webhook_service.send_inbox_email_draft(draft)
 
     async def send_email_with_template(
         self,
@@ -1627,6 +1699,37 @@ class PipefyClient:
             pipe_id, search, include_fields=include_fields, first=first, after=after
         )
 
+    async def get_records(
+        self,
+        pipe_id: str | int,
+        where: RecordFilter | None = None,
+        search_term: str | None = None,
+        phase_id: str | int | None = None,
+        order_by: list[RecordOrder] | None = None,
+        include_fields: bool = False,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> dict:
+        """List, count and filter the cards of a pipe (the ``records`` GraphQL query).
+
+        Returns camelCase ``{"records": {totalCount, pageInfo, edges}}``; ``totalCount`` is the whole result.
+        ``field`` (in ``where`` and ``order_by``) takes the lowercase, hyphenated field uuid, else ``ValueError``.
+        ``in`` matches any and ``contains`` all; ``like``/``ilike`` match each word, any case (``%`` is literal).
+        Dates take an offset, but a ``date`` field the bare date. ``first`` is 1 to 50 (larger is capped); with ``where`` or
+        ``search_term`` pages stop at 10,000. Page by passing ``endCursor`` back as ``after``.
+        """
+        return await self._card_service.get_records(
+            pipe_id,
+            where,
+            search_term,
+            phase_id,
+            order_by,
+            include_fields,
+            first=first,
+            after=after,
+        )
+
     async def find_cards(
         self,
         pipe_id: str | int,
@@ -2036,6 +2139,184 @@ class PipefyClient:
         """
         return await self._portal_service.get_portal(portal_uuid)
 
+    async def list_html_interfaces(
+        self,
+        organization_uuid: str | int,
+        search_term: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List an organization's HTML interfaces (``contentModeHtml``).
+
+        Args:
+            organization_uuid: Organization UUID, or numeric organization id.
+            search_term: Optional name filter.
+        """
+        return await self._portal_service.list_html_interfaces(
+            organization_uuid, search_term=search_term
+        )
+
+    async def get_html_interface(self, interface_uuid: str) -> dict[str, Any]:
+        """Fetch an HTML interface with each element's live HTML document.
+
+        Args:
+            interface_uuid: HTML interface UUID.
+
+        Raises:
+            PipefyGraphQLError: No interface has this uuid; the API answers a
+                missing uuid with an error.
+            ValueError: The interface is a grid interface, or the response has no
+                interface.
+        """
+        return await self._portal_service.get_html_interface(interface_uuid)
+
+    async def write_html_document(
+        self, *, page_id: str, element_id: str, content: str
+    ) -> dict[str, Any]:
+        """Write and publish the HTML of an HTML interface's ``customCode`` element.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            content: The whole HTML document; it replaces the live one.
+
+        Raises:
+            HtmlValidationError: The HTML broke the API's HTML rules; nothing was
+                stored, and ``violations`` lists every rule it broke.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: No page has this id, or the element is not on the
+                page; the API answers a missing target with an error.
+        """
+        return await self._portal_service.write_html_document(
+            page_id=page_id, element_id=element_id, content=content
+        )
+
+    async def list_interface_repos(
+        self,
+        organization_id: str | int,
+        *,
+        interface_uuid: str | None = None,
+        repo_name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List the pipes and tables an interface element can take as a data source.
+
+        Args:
+            organization_id: Numeric organization id; a uuid is rejected.
+            interface_uuid: Interface the source is for. For a portal or
+                sub-portal, the organization's findable published pipes qualify;
+                otherwise the published pipes and tables the caller administers.
+            repo_name: Case-insensitive part of the repo name.
+
+        Raises:
+            ValueError: ``organization_id`` is not numeric; nothing is sent.
+        """
+        return await self._portal_service.list_interface_repos(
+            organization_id, interface_uuid=interface_uuid, repo_name=repo_name
+        )
+
+    async def get_interface_repo_fields(
+        self, repo_uuid: str, *, interface_uuid: str | None = None
+    ) -> list[dict[str, Any]]:
+        """List a pipe's or table's custom fields, for an interface data source.
+
+        A custom field's data source key is its ``uuid``. The built-in keys (such
+        as ``title``) come from ``get_interface_html_guidelines``, as
+        ``filters.fixedColumnNames``.
+
+        Args:
+            repo_uuid: The repo's uuid, as ``list_interface_repos`` returns it.
+            interface_uuid: Interface the source is for.
+
+        Raises:
+            ValueError: The response has no repo structure.
+            PipefyGraphQLError: No repo has this uuid, or the caller cannot read it.
+        """
+        return await self._portal_service.get_interface_repo_fields(
+            repo_uuid, interface_uuid=interface_uuid
+        )
+
+    async def set_interface_sources(
+        self,
+        page_id: str,
+        element_id: str,
+        data_sources: list[InterfaceDataSource | dict[str, Any]],
+        *,
+        interface_uuid: str,
+    ) -> dict[str, Any]:
+        """Replace the data sources of an HTML interface's ``customCode`` element.
+
+        The element's ``metadata`` and ``editable`` are read and sent back unchanged.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            data_sources: The complete source list (``id``, ``name``, ``repoId``,
+                ``fieldKeys``, optional ``filters``); ``[]`` removes them all.
+            interface_uuid: HTML interface holding the page.
+
+        Returns:
+            The element ``id`` (and ``uuid``) and the ``dataSources`` as sent, once
+            the update reports success; they are not read back. Call
+            ``get_html_interface`` for the stored sources.
+
+        Raises:
+            pydantic.ValidationError: ``data_sources`` breaks a source rule; nothing
+                is sent.
+            ValueError: The element is not on page ``page_id``, is not ``customCode``,
+                or the update reports ``success=false``.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: The caller cannot manage a repo that a new or
+                widened source reads; nothing is stored.
+        """
+        return await self._portal_service.set_interface_sources(
+            page_id, element_id, data_sources, interface_uuid=interface_uuid
+        )
+
+    async def get_interface_html_guidelines(
+        self, *, include_design_system: bool = False
+    ) -> dict[str, Any]:
+        """Fetch the rules, data-binding vocabulary and design system for ``customCode`` HTML.
+
+        Returns the allowed tags and attributes, every forbidden tag/attribute/CSS
+        construct with its violation code, the full error-code list,
+        ``dataPfyVocabulary`` (what each ``data-pfy-*`` attribute does, for most
+        which element it goes on, and the value it takes), the filter-tree
+        format (a worked example plus the operators each field type supports),
+        and content-size and nesting limits. The rules are the same for every
+        organization.
+
+        Args:
+            include_design_system: Also select ``designSystem``, a component
+                catalog (tokens, icons and components with usage examples) to
+                style generated content consistently. It is most of the
+                response, so the query skips it unless asked.
+        """
+        return await self._portal_service.get_interface_html_guidelines(
+            include_design_system=include_design_system
+        )
+
+    async def create_interface(
+        self,
+        organization_uuid: str | int,
+        name: str,
+        *,
+        color: PortalColor = "blue",
+        data_sources: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Create an HTML interface (``contentModeHtml``) with one ``customCode`` page.
+
+        Args:
+            organization_uuid: Organization UUID or numeric organization id.
+            name: Interface name; also used as the one page's title.
+            color: A ``PortalColor`` value, e.g. ``blue`` or ``purple``.
+                Defaults to ``blue``.
+            data_sources: The page's element's source bindings; ``[]``/``None``
+                for none. Each source has ``id`` (the handle the HTML reads it
+                by), ``name``, ``repoId``, ``fieldKeys`` (1 to 30) and optional
+                ``filters``. At most 10 sources; ``id``/``name`` unique among them.
+        """
+        return await self._portal_service.create_interface(
+            organization_uuid, name, color=color, data_sources=data_sources
+        )
+
     async def create_portal(self, organization_uuid: str | int) -> dict[str, Any]:
         """Create or fetch the organization's main portal (idempotent).
 
@@ -2210,6 +2491,7 @@ class PipefyClient:
         type: str,
         metadata: dict[str, Any],
         data_sources: list[dict[str, Any]] | None = None,
+        portal_uuid: str | None = None,
         editable: bool | None = None,
     ) -> dict[str, Any]:
         """Update a portal page element (full metadata replace).
@@ -2223,8 +2505,16 @@ class PipefyClient:
             page_id: Parent page UUID.
             type: Element type for metadata validation.
             metadata: Complete metadata blob.
-            data_sources: Optional data source bindings.
-            editable: Optional editable flag.
+            data_sources: Data source bindings that replace the element's list;
+                ``[]`` unlinks them all. Omit, with ``portal_uuid``, to keep the
+                current ones; passing the ``dataSources`` and ``editable`` already
+                read from ``get_portal`` skips the second read.
+            portal_uuid: Portal holding the element; required when
+                ``data_sources`` is omitted. The keep path resends the element's
+                ``dataSources`` (``repoId`` and ``fieldKeys``) and, unless
+                ``editable`` is given, its ``editable`` flag.
+            editable: Editable flag; the API requires it when a data source lists
+                ``fieldKeys``.
         """
         return await self._portal_service.update_portal_element(
             element_id,
@@ -2232,6 +2522,7 @@ class PipefyClient:
             type=type,
             metadata=metadata,
             data_sources=data_sources,
+            portal_uuid=portal_uuid,
             editable=editable,
         )
 

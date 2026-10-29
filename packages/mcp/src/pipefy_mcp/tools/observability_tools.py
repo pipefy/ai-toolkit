@@ -48,11 +48,10 @@ _DEFAULT_EXPORT_DOWNLOAD_BYTES = 50 * 1024 * 1024
 
 
 def _rewrite_ai_agent_log_not_found(exc: BaseException, log_uuid: str) -> str | None:
-    """Translate the Pipefy resolver's internal type leak to tool semantics.
+    """Rewrite the ``aiAgentLogDetails`` not-found error in the tool's own terms.
 
-    The ``aiAgentLogDetails`` resolver looks up by ``AutomationAction`` under
-    the hood; when the UUID isn't found, the upstream error string exposes
-    that internal type (``"Couldn't find AutomationAction with 'id'=..."``).
+    For an unknown UUID the API error names a record type the tool does not
+    expose, so an agent would not read it as "log not found".
     ``PipefyGraphQLError`` keeps per-error messages in ``.errors``, so we check
     both ``str(exc)`` and the structured error list.
     """
@@ -95,7 +94,7 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not repo_uuid or not isinstance(repo_uuid, str):
+            if not repo_uuid:
                 return build_observability_error_payload(
                     message="Invalid 'repo_uuid': provide a non-empty string.",
                 )
@@ -132,14 +131,14 @@ class ObservabilityTools:
             ctx: Context,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """Get detailed AI agent execution log by UUID. Includes executionTime, finishedAt, and tracingNodes — a step-by-step trace of each action the agent performed with per-node status (success, failed, skipped, conditions_not_met).
+            """Get detailed AI agent execution log by UUID. Includes executionTime, finishedAt, llmConfigInfo (LLM model and provider; can be null), and tracingNodes — a step-by-step trace of each action the agent performed with per-node status (success, failed, skipped, conditions_not_met).
 
             Args:
                 log_uuid: UUID of the AI agent log entry.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not log_uuid or not isinstance(log_uuid, str):
+            if not log_uuid:
                 return build_observability_error_payload(
                     message="Invalid 'log_uuid': provide a non-empty string.",
                 )
@@ -184,10 +183,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not automation_id:
-                return build_observability_error_payload(
-                    message="Invalid 'automation_id': provide a non-empty string.",
-                )
             if not _MIN_PAGE_SIZE <= first <= _MAX_PAGE_SIZE:
                 return build_observability_error_payload(
                     message=f"Invalid 'first': must be between {_MIN_PAGE_SIZE} and {_MAX_PAGE_SIZE}.",
@@ -236,10 +231,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not repo_id:
-                return build_observability_error_payload(
-                    message="Invalid 'repo_id': provide a non-empty string.",
-                )
             if not _MIN_PAGE_SIZE <= first <= _MAX_PAGE_SIZE:
                 return build_observability_error_payload(
                     message=f"Invalid 'first': must be between {_MIN_PAGE_SIZE} and {_MAX_PAGE_SIZE}.",
@@ -581,10 +572,6 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not export_id:
-                return build_observability_error_payload(
-                    message="Invalid 'export_id': provide a non-empty string.",
-                )
             try:
                 raw = await client.get_automation_jobs_export(export_id)
             except Exception as exc:  # noqa: BLE001
@@ -619,20 +606,14 @@ class ObservabilityTools:
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
-            if not export_id:
-                return build_observability_error_payload(
-                    message="Invalid 'export_id': provide a non-empty string.",
-                )
-            if not isinstance(max_output_chars, int) or not (
-                _MIN_CSV_CHARS <= max_output_chars <= _MAX_CSV_CHARS
-            ):
+            if not (_MIN_CSV_CHARS <= max_output_chars <= _MAX_CSV_CHARS):
                 return build_observability_error_payload(
                     message=(
                         f"Invalid 'max_output_chars': must be an integer between "
                         f"{_MIN_CSV_CHARS} and {_MAX_CSV_CHARS}."
                     ),
                 )
-            if not isinstance(max_download_bytes, int) or not (
+            if not (
                 _MIN_EXPORT_DOWNLOAD_BYTES
                 <= max_download_bytes
                 <= _MAX_EXPORT_DOWNLOAD_BYTES

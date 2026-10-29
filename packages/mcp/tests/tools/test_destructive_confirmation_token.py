@@ -11,6 +11,7 @@ import pytest
 from pipefy_mcp.tools.destructive_confirmation_token import (
     DESTRUCTIVE_CONFIRMATION_TTL_SECONDS,
     classify_confirmation_token_failure,
+    digest_identity_value,
     mint_confirmation_token,
     verify_confirmation_token,
 )
@@ -25,6 +26,13 @@ IDENTITY = {"field_id": "1", "pipe_uuid": "abc"}
 def _b64url_decode(part):
     padding = "=" * ((4 - len(part) % 4) % 4)
     return base64.urlsafe_b64decode(part + padding)
+
+
+def test_digest_identity_value_is_the_sha256_of_sorted_compact_json():
+    value = {"b": [1, {"d": 2, "c": 3}], "a": "x"}
+    expected = hashlib.sha256(b'{"a":"x","b":[1,{"c":3,"d":2}]}').hexdigest()
+
+    assert digest_identity_value(value) == expected
 
 
 def test_ttl_constant_is_300():

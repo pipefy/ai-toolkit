@@ -9,7 +9,7 @@ from pipefy_sdk.skills import parse_skill_surfaces
 
 
 def main() -> int:
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("skills")
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("plugins/pipefy/skills")
     paths = sorted(root.rglob("SKILL.md"))
     if not paths:
         print(f"{root}: no SKILL.md files found", file=sys.stderr)

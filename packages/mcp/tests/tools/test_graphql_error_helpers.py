@@ -3,12 +3,15 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pipefy_sdk import PipefyClient, PipefyGraphQLError
+from pipefy_sdk import PipefyClient, PipefyGraphQLError, PipefyRequestTimeoutError
 
 import pipefy_mcp.settings as settings_mod
+from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.graphql_error_helpers import (
     enrich_permission_denied_error,
     ensure_non_empty_error_message,
+    handle_tool_graphql_error,
+    timeout_message_or,
 )
 
 
@@ -47,6 +50,49 @@ def _mock_settings(monkeypatch):
     mock_settings = MagicMock()
     mock_settings.pipefy.permission_denied_enrichment_timeout_seconds = 5.0
     monkeypatch.setattr(settings_mod, "settings", mock_settings)
+
+
+@pytest.mark.unit
+def test_timeout_message_or_returns_timeout_text():
+    """A ``PipefyRequestTimeoutError`` surfaces its own descriptive message.
+
+    A timeout carries no GraphQL error code, so the code-based delete mappers would
+    fold it into a generic "try again" reply. ``timeout_message_or`` returns the
+    timeout's message ahead of that text, naming the limit and the mutation warning.
+    """
+    message = timeout_message_or(
+        PipefyRequestTimeoutError(30), "Please try again or contact support."
+    )
+    assert "timed out" in message.lower()
+    assert "30" in message
+    assert message != "Please try again or contact support."
+
+
+@pytest.mark.unit
+def test_timeout_message_or_passes_non_timeout_through():
+    """A non-timeout exception yields the code-based fallback unchanged."""
+    fallback = "Please try again or contact support."
+    assert timeout_message_or(PipefyGraphQLError([{"message": "boom"}]), fallback) == (
+        fallback
+    )
+    assert timeout_message_or(RuntimeError("x"), fallback) == fallback
+
+
+@pytest.mark.unit
+def test_handle_tool_graphql_error_surfaces_timeout_not_fallback():
+    """The tool reply names the timeout instead of the generic fallback.
+
+    A bare ``TimeoutError`` would leave the handler on ``fallback_msg``; the
+    descriptive ``PipefyRequestTimeoutError`` reaches the caller verbatim.
+    """
+    fallback = "The request to Pipefy failed."
+    payload = handle_tool_graphql_error(PipefyRequestTimeoutError(30), fallback)
+
+    message = tool_error_message(payload)
+    assert payload["success"] is False
+    assert message != fallback
+    assert "timed out" in message.lower()
+    assert "30" in message
 
 
 @pytest.mark.unit

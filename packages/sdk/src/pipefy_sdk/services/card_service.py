@@ -12,17 +12,26 @@ from pipefy_sdk.queries.card_queries import (
     GET_CARD_QUERY,
     GET_CARD_RELATIONS_QUERY,
     GET_CARDS_QUERY,
+    GET_RECORDS_QUERY,
     MOVE_CARD_TO_PHASE_MUTATION,
     UPDATE_CARD_FIELD_MUTATION,
     UPDATE_CARD_MUTATION,
     UPDATE_COMMENT_MUTATION,
     UPDATE_FIELDS_VALUES_MUTATION,
 )
-from pipefy_sdk.services.types import CardSearch
+from pipefy_sdk.services.types import (
+    CardSearch,
+    RecordFilter,
+    RecordOrder,
+    validate_record_filter,
+    validate_record_order,
+)
 from pipefy_sdk.utils.formatters import (
     convert_fields_to_array,
     convert_values_to_camel_case,
 )
+
+RECORDS_MAX_PAGE_SIZE = 50
 
 
 class CardService:
@@ -148,6 +157,43 @@ class CardService:
         if after is not None:
             variables["after"] = after
         return await self._executor.execute_query(FIND_CARDS_QUERY, variables)
+
+    async def get_records(
+        self,
+        pipe_id: str | int,
+        where: RecordFilter | None = None,
+        search_term: str | None = None,
+        phase_id: str | int | None = None,
+        order_by: list[RecordOrder] | None = None,
+        include_fields: bool = False,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> dict:
+        # The API fails on an empty filter and answers an empty cursor with an empty
+        # last page, so both mean "not given".
+        where = where or None
+        after = after or None
+        if first is not None and first < 1:
+            raise ValueError(f"first must be at least 1, got {first}")
+        if where is not None:
+            validate_record_filter(where)
+        if order_by is not None:
+            validate_record_order(order_by)
+        variables: dict[str, Any] = {
+            "repoId": str(pipe_id),
+            "includeFields": include_fields,
+        }
+        optional = {
+            "where": where,
+            "searchTerm": search_term,
+            "phaseId": None if phase_id is None else str(phase_id),
+            "orderBy": order_by,
+            "first": None if first is None else min(first, RECORDS_MAX_PAGE_SIZE),
+            "after": after,
+        }
+        variables.update({k: v for k, v in optional.items() if v is not None})
+        return await self._executor.execute_query(GET_RECORDS_QUERY, variables)
 
     async def move_card_to_phase(
         self, card_id: str | int, destination_phase_id: str | int

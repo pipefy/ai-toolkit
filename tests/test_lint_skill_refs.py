@@ -27,7 +27,25 @@ def catalog(tmp_path, monkeypatch):
         "_load_pipefy_client_method_names",
         lambda: frozenset({"get_pipe", "sdk_only"}),
     )
-    skill = tmp_path / "skills/pipes/pipefy-pipes"
+    monkeypatch.setattr(
+        _lint,
+        "_load_pipefy_cli_tree",
+        lambda: {
+            "pipe": {
+                "get": frozenset({"--json", "--help"}),
+                "list": frozenset({"--name", "--json", "--help"}),
+            }
+        },
+    )
+    monkeypatch.setattr(
+        _lint, "_load_pipefy_tool_params", lambda: {"get_pipe": frozenset({"pipe_id"})}
+    )
+    monkeypatch.setattr(
+        _lint,
+        "_load_pipefy_client_method_params",
+        lambda: {"get_pipe": frozenset({"pipe_id"}), "sdk_only": frozenset({"key"})},
+    )
+    skill = tmp_path / "plugins/pipefy/skills/pipefy-pipes"
     skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text(
         "---\nname: pipefy-pipes\ndescription: Read pipes.\n---\n"
@@ -135,10 +153,130 @@ def test_valid_references_pass_without_linting_unrelated_docs(catalog):
     assert _lint.main() == 0
 
 
+@pytest.mark.parametrize(
+    ("content", "error"),
+    [
+        (
+            "Run `pipefy pipe gett 123`.\n",
+            "unknown CLI subcommand `pipe gett`",
+        ),
+        (
+            "```bash\npipefy pipe get 123 --jsn\n```\n",
+            "unknown option `--jsn` for `pipefy pipe get`",
+        ),
+        (
+            "Run `pipefy pipe list --name=Ops --jsn`.\n",
+            "unknown option `--jsn` for `pipefy pipe list`",
+        ),
+        (
+            "| `pipefy pipe get <PIPE_ID> --jsn` |\n",
+            "unknown option `--jsn` for `pipefy pipe get`",
+        ),
+    ],
+)
+def test_invalid_cli_command_or_option_fails(catalog, capsys, content, error):
+    reference = catalog / "references/cli.md"
+    reference.parent.mkdir()
+    reference.write_text(content)
+    assert _lint.main() == 1
+    assert error in capsys.readouterr().err
+
+
+def test_valid_cli_invocations_with_options_pass(catalog):
+    reference = catalog / "references/cli.md"
+    reference.parent.mkdir()
+    reference.write_text(
+        "Run `pipefy pipe list --name Ops -j` or `pipefy pipe`.\n"
+        "| `pipefy pipe get <PIPE_ID> --json` |\n"
+        "```bash\npipefy pipe get 123 --json > pipe.json\n"
+        "pipefy pipe get 1 < in.json --jsn\n```\n"
+    )
+    assert _lint.main() == 0
+
+
+def test_cli_group_in_prose_is_not_walked(catalog):
+    reference = catalog / "references/cli.md"
+    reference.parent.mkdir()
+    reference.write_text("Use pipefy pipe and then read the result.\n")
+    assert _lint.main() == 0
+
+
+def test_unknown_mcp_argument_in_reference_fails(catalog, capsys):
+    reference = catalog / "references/mcp.md"
+    reference.parent.mkdir()
+    reference.write_text("```text\nget_pipe pipe_idd=123\n```\n")
+    assert _lint.main() == 1
+    assert (
+        "references/mcp.md:2: unknown argument `pipe_idd` for MCP tool `get_pipe`"
+        in capsys.readouterr().err
+    )
+
+
+def test_sdk_argument_name_fails_in_mcp_reference(catalog, capsys, monkeypatch):
+    monkeypatch.setattr(
+        _lint,
+        "_load_pipefy_client_method_params",
+        lambda: {"get_pipe": frozenset({"pipe_id", "include_phases"})},
+    )
+    reference = catalog / "references/mcp.md"
+    reference.parent.mkdir()
+    reference.write_text("```text\nget_pipe include_phases=true\n```\n")
+    assert _lint.main() == 1
+    assert "unknown argument `include_phases`" in capsys.readouterr().err
+
+
+def test_unknown_argument_in_body_example_fails(catalog, capsys):
+    with (catalog / "SKILL.md").open("a") as skill:
+        skill.write("Operation: `get_pipe pipe=123`\n")
+    assert _lint.main() == 1
+    assert "unknown argument `pipe` for operation `get_pipe`" in capsys.readouterr().err
+
+
+def test_body_example_accepts_sdk_or_mcp_argument_names(catalog, monkeypatch):
+    monkeypatch.setattr(
+        _lint,
+        "_load_pipefy_client_method_params",
+        lambda: {"get_pipe": frozenset({"pipe_id", "include_phases"})},
+    )
+    with (catalog / "SKILL.md").open("a") as skill:
+        skill.write("Operation: `get_pipe pipe_id=123 include_phases=true`\n")
+    assert _lint.main() == 0
+
+
+def test_text_inside_an_argument_value_is_not_an_argument(catalog):
+    reference = catalog / "references/mcp.md"
+    reference.parent.mkdir()
+    reference.write_text(
+        '```text\nget_pipe pipe_id="a b=c"\nget_pipe pipe_id=["x", "y=z"]\n```\n'
+    )
+    assert _lint.main() == 0
+
+
+def test_cli_tree_comes_from_the_typer_app():
+    tree = _lint._load_pipefy_cli_tree()
+    assert "--repo" in tree["agent"]["list"]
+    assert isinstance(tree["report-pipe"], dict)
+
+
+def test_tool_params_come_from_tool_signatures(tmp_path, monkeypatch):
+    monkeypatch.setattr(_lint, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        _lint, "_load_pipefy_tool_names", lambda: frozenset({"get_pipe"})
+    )
+    tools = tmp_path / "packages/mcp/src/pipefy_mcp/tools/pipe_tools.py"
+    tools.parent.mkdir(parents=True)
+    tools.write_text(
+        "def register(mcp):\n"
+        "    async def get_pipe(ctx, pipe_id: str, debug: bool = False): ...\n"
+        "    async def helper(ctx, other: str): ...\n"
+    )
+    assert _lint._load_pipefy_tool_params() == {"get_pipe": {"pipe_id", "debug"}}
+
+
 def test_missing_catalog_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(_lint, "REPO_ROOT", tmp_path)
     assert _lint.main() == 1
-    assert "No skills/ directory found" in capsys.readouterr().err
+    assert "No plugins/pipefy/skills/ directory found" in capsys.readouterr().err
 
 
 def test_client_method_names_come_from_pipefy_client(tmp_path, monkeypatch):
@@ -151,3 +289,16 @@ def test_client_method_names_come_from_pipefy_client(tmp_path, monkeypatch):
         "    def from_executors(self): ...\n"
     )
     assert _lint._load_pipefy_client_method_names() == {"get_pipe"}
+
+
+def test_client_method_params_come_from_pipefy_client(tmp_path, monkeypatch):
+    monkeypatch.setattr(_lint, "REPO_ROOT", tmp_path)
+    client = tmp_path / "packages/sdk/src/pipefy_sdk/client.py"
+    client.parent.mkdir(parents=True)
+    client.write_text(
+        "class PipefyClient:\n"
+        "    async def get_pipe(self, pipe_id, *, include_phases=False): ...\n"
+    )
+    assert _lint._load_pipefy_client_method_params() == {
+        "get_pipe": {"pipe_id", "include_phases"}
+    }

@@ -24,8 +24,8 @@ for skill_file in skills.directory().glob("*/SKILL.md"):
 
 ## Errors
 
-`PipefyError` is the root of the API error types. Catch it to handle a failure
-the Pipefy API reported:
+`PipefyError` is the root of the SDK error types. Catch it to handle any SDK
+error:
 
 ```python
 from pipefy_sdk import PipefyError, PipefyGraphQLError
@@ -37,16 +37,17 @@ except PipefyGraphQLError as exc:
     # message and extensions; read codes off that rather than the message text.
     codes = [(e.get("extensions") or {}).get("code") for e in exc.errors]
 except PipefyError:
-    # any other failure the API reported; see the carve-outs below
+    # any other SDK error; see the carve-outs below
     ...
 ```
 
 The hierarchy:
 
-- **`PipefyError`** — root of the API error types below.
+- **`PipefyError`** — root of the SDK error types below.
 - **`PipefyAPIError`** — the API returned an error payload.
 - **`PipefyGraphQLError`** — a GraphQL response carried `errors`. Subclasses `PipefyAPIError`, and carries the raw list on `.errors`. This is what most failures arrive as.
 - **`AiAgentConfigureError`** — `create_ai_agent` created the agent, but the update that writes its instruction and behaviors failed. The agent exists, and it is disabled when `.disabled_at` (the create's `disabledAt`) is set. To recover, write its behaviors with `update_ai_agent(agent_uuid, ...)`, which keeps it disabled, then activate it with `toggle_ai_agent_status`. To discard it, call `delete_ai_agent`. The error message says the same. The update's own error is `__cause__`.
+- **`PipefyRequestTimeoutError`** — the request exceeded the SDK's request timeout; the SDK stopped waiting and the API reported nothing. Subclasses both `PipefyError` and `TimeoutError`, so `except PipefyError` and a plain `except TimeoutError` both catch it. A timed-out write can still have been applied — see the timeout note below before you retry.
 
 Catch the specific type before the root, since `except PipefyError` also catches
 `PipefyGraphQLError` and would otherwise shadow it.
@@ -58,7 +59,12 @@ Other exported error types sit outside this root. Catch these by name:
 - **`AttachmentUploadError`** and **`KnowledgeBaseDocumentUploadError`**
   subclass `Exception`.
 
-Transport-level failures (connection refused, timeouts) surface as `gql`'s
+A request that exceeds the SDK's request timeout
+(`GraphQLEndpoint.GRAPHQL_REQUEST_TIMEOUT_SECONDS`) raises
+`PipefyRequestTimeoutError`, whose message names the limit and warns that a
+timed-out write can still have been applied: the server does not abort a mutation
+when the client stops waiting, so read the state back before you retry. Other
+transport-level failures (connection refused, for example) surface as `gql`'s
 `TransportError`, which the SDK does not wrap.
 
 ## AI agents

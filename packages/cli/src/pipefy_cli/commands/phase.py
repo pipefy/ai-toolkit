@@ -160,8 +160,8 @@ def phase_create(
             "between those phases. Equal keys have no fixed order; use a "
             "key no other phase has. A new pipe's Inbox, Doing and Done keys "
             "are 1, 2 and 3, "
-            "and 0 omits the phase from get_pipe phases. get_pipe does not "
-            "return this key."
+            "and 0 omits the phase from get_pipe phases. get_pipe returns "
+            "each key as phases[].index, in ascending order."
         ),
     ),
     description: str | None = typer.Option(None, "--description", "-d"),

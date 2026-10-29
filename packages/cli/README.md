@@ -28,7 +28,7 @@ pipefy card list --pipe 67890
 pipefy card create --pipe 67890 --title "New card"
 ```
 
-Agent skills are installed separately via [`skills.sh`](https://github.com/vercel-labs/skills); see [`skills/README.md`](../../skills/README.md).
+Agent skills are installed separately via [`skills.sh`](https://github.com/vercel-labs/skills); see [`plugins/pipefy/README.md`](../../plugins/pipefy/README.md).
 
 ## Configuration
 
@@ -82,4 +82,4 @@ uv run pytest packages/cli/tests     # CLI tests
 uv run ruff check packages/cli/src   # lint
 ```
 
-See [`AGENTS.md`](../../AGENTS.md) and [`CLAUDE.md`](../../CLAUDE.md) for contributor guidance.
+See [`AGENTS.md`](../../AGENTS.md) for contributor guidance.

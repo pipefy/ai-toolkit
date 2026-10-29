@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
-__version__ = "0.5.2-beta.1"
+__version__ = "0.5.5-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
-from pipefy_sdk.exceptions import AiAgentConfigureError, PipefyAPIError, PipefyError
+from pipefy_sdk.exceptions import (
+    AiAgentConfigureError,
+    HtmlValidationError,
+    HtmlViolation,
+    PipefyAPIError,
+    PipefyError,
+    PipefyRequestTimeoutError,
+    PipePhaseSetupError,
+)
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
     filter_fields_by_definitions,
@@ -22,6 +30,7 @@ from pipefy_sdk.graphql_problem import (
 from pipefy_sdk.member_removal import MemberRemovalResult
 from pipefy_sdk.models import (
     CONDITION_OPERATIONS,
+    FIELD_TYPE_IDS,
     Attachment,
     AttachmentTarget,
     AttachmentUploadError,
@@ -40,6 +49,9 @@ from pipefy_sdk.models import (
     CreateSendTaskAutomationInput,
     DataLookupCondition,
     DeleteCommentInput,
+    FieldTypeId,
+    InboxEmailDraft,
+    InterfaceDataSource,
     MemberInvite,
     NonBlankStr,
     PipefyId,
@@ -68,6 +80,7 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationRuleSummary,
 )
 from pipefy_sdk.services.automation_service import AUTOMATIONS_LIST_MAX_PAGE_SIZE
+from pipefy_sdk.services.card_service import RECORDS_MAX_PAGE_SIZE
 from pipefy_sdk.services.observability_export_csv import download_bytes, stream_bytes
 from pipefy_sdk.services.observability_service import (
     AUTOMATION_EXECUTION_METRICS_MAX_PAGE_SIZE,
@@ -80,6 +93,9 @@ from pipefy_sdk.services.types import (
     ActiveLlmProviderPayload,
     AiAgentGraphPayload,
     CardSearch,
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
     KnowledgeBaseAccessProbeResult,
     KnowledgeBaseDataLookupPayload,
     KnowledgeBaseDeleteResult,
@@ -94,7 +110,13 @@ from pipefy_sdk.services.types import (
     MePayload,
     ProviderAccessProbeResult,
     ProviderDependenciesResult,
+    RecordAttribute,
+    RecordFilter,
+    RecordOrder,
+    RecordRange,
     copy_card_search,
+    parse_record_filter,
+    parse_record_order,
 )
 from pipefy_sdk.settings import PipefySettings
 
@@ -132,12 +154,21 @@ __all__ = [
     "ConditionExpressionInput",
     "CreateAiAgentInput",
     "CreateAiAutomationInput",
+    "CreatePipeLabel",
+    "CreatePipePhase",
+    "CreatePipeStartFormField",
     "CreatePortalElementInput",
     "CreateSendTaskAutomationInput",
     "DataLookupCondition",
     "DeleteCommentInput",
+    "FIELD_TYPE_IDS",
+    "FieldTypeId",
+    "InboxEmailDraft",
+    "InterfaceDataSource",
     "GraphQLProblem",
     "GraphQLProblemKind",
+    "HtmlValidationError",
+    "HtmlViolation",
     "KnowledgeBaseAccessProbeResult",
     "KnowledgeBaseDataLookupPayload",
     "KnowledgeBaseDeleteResult",
@@ -168,7 +199,14 @@ __all__ = [
     "PipefyError",
     "PipefyGraphQLError",
     "PipefyId",
+    "PipefyRequestTimeoutError",
     "PipefySettings",
+    "PipePhaseSetupError",
+    "RecordAttribute",
+    "RecordFilter",
+    "RECORDS_MAX_PAGE_SIZE",
+    "RecordOrder",
+    "RecordRange",
     "TableRecordTarget",
     "UpdateAiAgentInput",
     "UpdateAiAutomationInput",
@@ -180,5 +218,7 @@ __all__ = [
     "create_form_model",
     "infer_content_type",
     "skipped_field_ids",
+    "parse_record_filter",
+    "parse_record_order",
     "stream_bytes",
 ]

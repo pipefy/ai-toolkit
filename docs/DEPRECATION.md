@@ -39,7 +39,7 @@ Non-breaking examples: clearer error strings, help text fixes, purely additive J
 
 ## Related docs
 
-- Root [`README.md#installation`](../README.md#installation) — install
+- [`install.md`](install.md): install paths
 - [`docs/config.md`](config.md) — environment variables and `config.toml`
 - [`docs/parity.md`](parity.md) — MCP tool ↔ CLI matrix
 - [`docs/MIGRATION.md`](MIGRATION.md) — packaging and config moves between eras

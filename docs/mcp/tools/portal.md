@@ -1,6 +1,6 @@
 # Portal
 
-Read and manage Pipefy portals (Interfaces schema): list org portals, fetch detail, create/update/delete portal metadata, manage pages (create, update, delete, sort, layout), manage page elements (create, update, delete, duplicate), and manage sub-portals (create, attach, publish, unpublish, detach, delete). **20 tools** — parity matrix rows in [`docs/parity.md`](../../parity.md).
+Read and manage Pipefy portals (Interfaces schema): list org portals, fetch detail, create/update/delete portal metadata, manage pages (create, update, delete, sort, layout), manage page elements (create, update, delete, duplicate), manage sub-portals (create, attach, publish, unpublish, detach, delete), HTML interfaces (list, read, create, write, data sources), and fetch the HTML/CSS authoring rules for `customCode` content. **28 tools** — parity matrix rows in [`docs/parity.md`](../../parity.md).
 
 Most portal tools call the **Interfaces** GraphQL endpoint (`interfaces_graphql_url`, default `https://app.pipefy.com/graphql/interfaces`), derived from `PIPEFY_BASE_URL`. Sub-portal **attach**, **publish**, **unpublish**, **detach**, and **delete** use **internal_api** (`<PIPEFY_BASE_URL>/internal_api`); only **`create_sub_portal`** uses Interfaces (`createSubPortal`).
 
@@ -72,7 +72,7 @@ Do **not** publish via `createElement(type: subPortal)` — live API expects an 
 
 ## Page element types (`InterfacePageElementType`)
 
-Fifteen values accepted by `create_portal_element` / `update_portal_element` (SDK `PortalElementType`):
+Sixteen values accepted by `create_portal_element` / `update_portal_element` (SDK `PortalElementType`):
 
 | `type` | Metadata expectations (SDK) | Agent notes |
 |--------|----------------------------|-------------|
@@ -91,10 +91,11 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `automationButton` | Opaque JSON | Automation trigger |
 | `contentBlock` | Opaque JSON | Content block |
 | `document` | Opaque JSON | Document widget |
+| `customCode` | Opaque JSON | HTML interfaces only (`contentModeHtml`): the element whose HTML is written with `writeHtmlDocument`. Read it back with `get_interface_html`. |
 
-**`update_portal_element`:** `metadata` is **replace-all** on the wire (`updateElement.metadata` required every time). Send the full blob, not a patch.
+**`update_portal_element`:** `metadata` is **replace-all** on the wire (`updateElement.metadata` required every time). Send the full blob, not a patch. `data_sources` is replace-all too, and the API rejects an update without it: `[]` unlinks the element from its pipe or table. To keep the current data sources, omit `data_sources` and pass `portal_uuid`; the SDK reads them from `get_portal` (`pages[].elements[].dataSources`) and sends them back, together with the element's stored `editable` unless you pass one (the API rejects an update whose data source lists `fieldKeys` without `editable`). Every update passes one of the two; omitting both is rejected before any call. An element with no bindings (`link`, `text`) can pass `data_sources: []`, which skips the read.
 
-**`data_sources`:** Each entry needs a pipe repo id as `repoId` (the declared Interfaces field, plus optional `fieldKeys` / `field_keys`). Unknown keys are skipped with an SDK warning.
+**`data_sources`:** Each entry needs a pipe repo id as `repoId` (the declared Interfaces field, plus optional `fieldKeys` / `field_keys`). A source's `id`, `name` and `filters` are sent when set; a `customCode` element needs an `id` and a `name` on every source. Unknown keys are skipped with an SDK warning. For an HTML interface, use `set_interface_sources`, which checks the sources before the call.
 
 ---
 
@@ -103,6 +104,14 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | Tool | Read-only | Role |
 |------|-----------|------|
 | `list_portals` | Yes | Flat list: `uuid`, `name`, `visibility`, `subType`. Optional `search_term`. |
+| `list_interfaces` | Yes | An organization's HTML interfaces (`contentModeHtml`). Optional `search_term`. Grid portals and sub-portals are not returned here (use `list_portals`). |
+| `get_interface_html` | Yes | HTML interface with each `customCode` element's live document. Raises on a grid-layout interface (use `get_portal`). |
+| `create_html_interface` | No | Creates an interface with one `customCode` page and writes its HTML in one call; optional `data_sources`, `color` (defaults to `blue`). |
+| `write_interface_html` | No | Writes and publishes a `customCode` element's whole HTML document; raises on invalid HTML (every violation listed), stores nothing. |
+| `get_interface_html_guidelines` | Yes | Optional `include_design_system` (default false) also returns the `designSystem` component catalog, which is most of the response; HTML/CSS authoring rules, the `data-pfy-*` vocabulary (`dataPfyVocabulary`: what each attribute does, for most which element it goes on, and the value it takes), and the data-source filter format for `customCode` content, the same for every organization. |
+| `list_interface_repos` | Yes | Numeric `organization_id`, optional `interface_uuid` and `repo_name`; the pipes and tables an HTML interface can take as data sources. |
+| `get_interface_repo_fields` | Yes | `repo_uuid`, optional `interface_uuid`; the repo's custom fields, each keyed by `uuid`. |
+| `set_interface_sources` | No | `interface_uuid`, `page_id`, `element_id`, `data_sources`; replaces a `customCode` element's sources. |
 | `get_portal` | Yes | Full portal: `published`, `pages[]`, `elements[]`, `subPortals[]`. |
 | `create_portal` | No | Idempotent main portal (`findOrCreateInterfaceByTemplate`). |
 | `update_portal` | No | `name`, `visibility` (`internal` \| `private` \| `public`), `color`, `icon`, `display_pipefy_header`. |
@@ -113,7 +122,7 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `sort_portal_pages` | No | `page_ids` ordered list. |
 | `update_portal_page_layout` | No | `page_id` + `layout` JSON only (no portal UUID on wire). |
 | `create_portal_element` | No | `page_id`, `type`, `metadata`; optional `data_sources`, `element_id`, `layout` (full row array with a row listing `element_id`: creates and places in one call). |
-| `update_portal_element` | No | Full `metadata` replace. |
+| `update_portal_element` | No | Full `metadata` replace; `data_sources` replaces the bindings, or omit it and pass `portal_uuid` to keep them. |
 | `delete_portal_element` | No | Irreversible. Optional `layout` (full row array with `element_id` removed from every row) prunes the grid in the same call; a row still listing `element_id` is rejected. MCP: send the same `layout` on the preview and the confirm call, since the token covers those rows. |
 | `duplicate_portal_element` | No | Same page; `element_id`, `portal_uuid`, `page_id`. |
 | `create_sub_portal` | No | Interfaces `createSubPortal`; `main_portal_uuid`, optional `name`. |
@@ -122,6 +131,10 @@ Fifteen values accepted by `create_portal_element` / `update_portal_element` (SD
 | `unpublish_sub_portal` | No | `updateSubPortalElement(subPortalUuid: null)`. |
 | `delete_sub_portal_element` | No | Detach wiring (`deleteSubPortalElement`). |
 | `delete_sub_portal` | No | Delete interface (`deleteSubPortalInterface`). |
+
+**`create_html_interface`:** runs `createInterface` then `writeHtmlDocument` under one call. A write failure after a successful create returns the new interface's `uuid`, `page_id` and `element_id`, so retry with `write_interface_html` using those ids instead of calling `create_html_interface` again, which would create a second, orphaned interface. `color` is optional (defaults to `blue`); pick one of the 12 accepted values for a specific one.
+
+**HTML interface data sources:** declare sources before writing the HTML that reads them. `list_interface_repos` lists the repos the interface can read: for an interface that is not a portal, the published pipes and tables you administer. A successful listing does not show that the interface exists: an unknown `interface_uuid` is listed like an interface that is not a portal, and an organization you cannot see lists nothing, both without an error, so confirm the interface with `get_interface_html`. `get_interface_repo_fields` lists a repo's custom fields; a field's key is its `uuid`, and built-in keys such as `title` come from `get_interface_html_guidelines` (`filters.fixedColumnNames`). `set_interface_sources` replaces the element's sources and returns them as sent, once the update reports success; they are not read back, so call `get_interface_html` for the stored sources. Each source needs a unique `id` (the handle the HTML reads it by) and `name`, a `repoId` from `list_interface_repos`, 1 to 30 `fieldKeys`, and `filters` as a filter tree or null; at most 10 sources. The tool reads the element and sends its `metadata` and `editable` back, so they are kept. A source on a repo you cannot bind returns "Permission denied for a data source".
 
 **Read before editing layout:** `get_portal` returns the full `pages[].layout` row array. Each row needs a non-empty `id`, `type: "row"`, and `children` as non-empty strings; array order defines placement. Pass the complete array to `update_portal_page_layout` (CLI `--layout '[...]'`), preserving unaffected rows, IDs, and children. Do not wrap it in `{ "rows": [...] }` and do not send an incomplete row: the API does not validate this field and stores that JSON verbatim, replacing the grid. The toolkit rejects a non-array and any incomplete row before the call. An empty array is a valid empty page. To add an element at a known position, pass `element_id` and `layout` (existing rows plus a row listing the new id) to `create_portal_element` instead of creating first and rewriting the grid afterwards. Element `metadata.gridMap` holds dimensions (`height`, `columns`, `minColumns`), not row order or grouping; retain it when replacing element metadata. Re-read the page and compare layout and element metadata after writing. If the layout cannot be read, stop the positional edit instead of reconstructing it from dimensions.
 
@@ -203,7 +216,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `sort_portal_pages` | `pipefy portal page sort --portal-uuid <uuid> --page-ids id1,id2` |
 | `update_portal_page_layout` | `pipefy portal page layout update --page-id <uuid> --layout '[…]'` |
 | `create_portal_element` | `pipefy portal element create --page-id <uuid> --type forms --metadata '{…}' [--element-id <uuid> --layout '[…]']` |
-| `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type link --metadata '{…}'` |
+| `update_portal_element` | `pipefy portal element update <element-uuid> <page-uuid> --type forms --metadata '{…}' --portal-uuid <uuid>` (or `--data-sources '[…]'`) |
 | `delete_portal_element` | `pipefy portal element delete <element-uuid> <page-uuid> [--layout '[…]'] --yes` |
 | `duplicate_portal_element` | `pipefy portal element duplicate --element-id <uuid> --portal-uuid <uuid> --page-id <uuid>` |
 | `create_sub_portal` | `pipefy portal sub-portal create --main-portal-uuid <uuid> [--name …]` |
@@ -212,6 +225,14 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | `unpublish_sub_portal` | `pipefy portal sub-portal unpublish <portal-uuid> <element-id>` |
 | `delete_sub_portal_element` | `pipefy portal sub-portal detach <portal-uuid> <element-id> --yes` |
 | `delete_sub_portal` | `pipefy portal sub-portal delete <sub-portal-uuid> --yes` |
+| `get_interface_html_guidelines` | `pipefy portal html-interface guidelines [--include-design-system]` |
+| `list_interfaces` | `pipefy portal html-interface list --organization-uuid <id> [--search-term <name>]` |
+| `get_interface_html` | `pipefy portal html-interface get <interface-uuid>` |
+| `write_interface_html` | `pipefy portal html-interface write --page-id <id> --element-id <id> --content <html>` (or `--content-file <path>`) |
+| `create_html_interface` | `pipefy portal html-interface create --organization-uuid <id> --name <name> --html <html>` (or `--html-file <path>`) `[--color <color>] [--data-sources '[…]']` |
+| `list_interface_repos` | `pipefy portal html-interface repos --organization-id <id> [--interface-uuid <uuid>] [--repo-name <name>]` |
+| `get_interface_repo_fields` | `pipefy portal html-interface repo-fields --repo-uuid <uuid> [--interface-uuid <uuid>]` |
+| `set_interface_sources` | `pipefy portal html-interface set-sources --interface-uuid <uuid> --page-id <id> --element-id <id> --data-sources '[…]'` |
 
 ---
 
@@ -220,7 +241,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 | Mode | Setup |
 |------|--------|
 | **Unit** | `uv run pytest -m "not integration" -k portal` — fictional IDs in [`fixture_ids.py`](../../../packages/sdk/tests/_shared/fixture_ids.py). |
-| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [README#installation](../../../README.md#installation); env reference: [`docs/config.md`](../../config.md#environment-variables). |
+| **Integration** | `PIPEFY_TOKEN` or service account + **`PIPEFY_PORTAL_ORG_UUID`** in local [`.env`](../../../.env.example) (org where the token has **`manage_portals`**). **`PIPEFY_BASE_URL`** for non-prod. Install: [`docs/install.md`](../../install.md); env reference: [`docs/config.md`](../../config.md#environment-variables). |
 
 ---
 
@@ -239,7 +260,7 @@ Nested GraphQL/internal_api `success: false` → MCP top-level `{ success: false
 When changing portal SDK/MCP/CLI behavior:
 
 1. **TDD loop:** SDK unit tests → MCP tool tests → CLI tests; `uv run pytest -m "not integration" -k portal`; update [`docs/parity.md`](../../parity.md) in the same PR.
-2. **Live schema:** Portal mutations may live on Interfaces or internal_api (see [Endpoints](#endpoints) above), not the main GraphQL URL. Before adding SDK queries, verify shapes with [`skills/introspection/pipefy-introspection/SKILL.md`](../../../skills/introspection/pipefy-introspection/SKILL.md) (`introspect_mutation` / `pipefy introspect mutation`) or `gql-cli` against the derived URLs (set `PIPEFY_BASE_URL` and auth per [`docs/config.md`](../../config.md)):
+2. **Live schema:** Portal mutations may live on Interfaces or internal_api (see [Endpoints](#endpoints) above), not the main GraphQL URL. Before adding SDK queries, verify shapes with [`plugins/pipefy/skills/pipefy-introspection/SKILL.md`](../../../plugins/pipefy/skills/pipefy-introspection/SKILL.md) (`introspect_mutation` / `pipefy introspect mutation`) or `gql-cli` against the derived URLs (set `PIPEFY_BASE_URL` and auth per [`docs/config.md`](../../config.md)):
 
    ```bash
    uv run gql-cli --headers "Authorization: Bearer $PIPEFY_ACCESS_TOKEN" \

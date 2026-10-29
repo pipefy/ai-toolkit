@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
@@ -9,6 +10,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    RootModel,
     ValidationError,
     model_validator,
 )
@@ -16,6 +18,21 @@ from pydantic import (
 from pipefy_sdk.models.validators import NonBlankStr
 
 PortalVisibility = Literal["internal", "private", "public"]
+
+PortalColor = Literal[
+    "blue",
+    "cyan",
+    "gray",
+    "green",
+    "indigo",
+    "lime",
+    "pink",
+    "purple",
+    "orange",
+    "red",
+    "sky",
+    "yellow",
+]
 
 PortalElementType = Literal[
     "text",
@@ -33,6 +50,7 @@ PortalElementType = Literal[
     "automationButton",
     "contentBlock",
     "document",
+    "customCode",
 ]
 
 
@@ -92,6 +110,23 @@ class CreatePortalInput(BaseModel):
     )
 
     model_config = ConfigDict(extra="forbid")
+
+
+class CreateInterfaceInput(BaseModel):
+    """Validated input for ``createInterface`` (Interfaces schema, plain creation).
+
+    ``data_sources`` is validated separately as ``InterfaceDataSources``, not a
+    field here: it has its own rules (uniqueness, a 10-source cap) independent
+    of ``organization_uuid``/``name``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    organization_uuid: str | int = Field(
+        description="Organization UUID or numeric organization id."
+    )
+    name: NonBlankStr
+    color: PortalColor = "blue"
 
 
 class UpdatePortalInput(BaseModel):
@@ -251,6 +286,11 @@ class UpdatePortalElementInput(BaseModel):
     Pipefy treats ``metadata`` as a **full replace** on every update — callers must
     send the complete blob, not a partial patch. The ``type`` field is used only for
     client-side metadata validation and is not sent to GraphQL.
+
+    ``data_sources`` is a full replace too, and the API rejects an update without
+    it. Omitting it therefore needs ``portal_uuid``, so the element's current data
+    sources (``repoId`` and ``fieldKeys``) and ``editable`` flag can be read and sent
+    back; ``[]`` unlinks them all.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -259,7 +299,14 @@ class UpdatePortalElementInput(BaseModel):
     page_id: NonBlankStr
     type: PortalElementType
     metadata: dict[str, Any]
-    data_sources: list[dict[str, Any]] = Field(default_factory=list)
+    data_sources: list[dict[str, Any]] | None = None
+    portal_uuid: NonBlankStr | None = Field(
+        default=None,
+        description=(
+            "Portal holding the element; required when data_sources is omitted, "
+            "to keep the element's current data sources and editable flag."
+        ),
+    )
     editable: bool | None = None
 
     @model_validator(mode="after")
@@ -271,11 +318,106 @@ class UpdatePortalElementInput(BaseModel):
         _validate_element_metadata(self.type, self.metadata)
         return self
 
+    @model_validator(mode="after")
+    def validate_data_sources_can_be_kept(self) -> Self:
+        """Omitted ``data_sources`` must come with ``portal_uuid`` to read them back.
+
+        The update replaces the element's data sources with the list it sends, so
+        sending ``[]`` for an omitted list would unlink the element from its pipe or
+        table.
+        """
+        if self.data_sources is None and self.portal_uuid is None:
+            raise ValueError(
+                "Pass portal_uuid to keep the element's current data sources, or "
+                "data_sources to replace them ([] unlinks them all)."
+            )
+        return self
+
+
+MAX_DATA_SOURCE_FIELD_KEYS = 30
+MAX_CUSTOM_CODE_DATA_SOURCES = 10
+
+# Keys a read returns that the update input does not take.
+_READ_ONLY_DATA_SOURCE_KEYS = frozenset({"repoName", "repoType"})
+
+
+def _decode_json_string(value: object) -> object:
+    """Decode a Json value read back as a string; a non-JSON string stays for the type check."""
+    if not isinstance(value, str):
+        return value
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+class InterfaceDataSource(BaseModel):
+    """One data source of an HTML interface's ``customCode`` element.
+
+    ``id`` is the handle the element's HTML reads the source by and ``name`` its
+    label; both are unique within the element. ``field_keys`` lists custom field
+    uuids and built-in keys such as ``title``. ``filters`` is a filter tree, as
+    ``get_interface_html_guidelines`` describes it, or ``None``. A source read from
+    ``get_html_interface`` can be passed back as read: ``repoName`` and ``repoType``
+    are dropped, and ``filters`` read as a JSON string is decoded.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    id: NonBlankStr
+    name: NonBlankStr
+    repo_id: NonBlankStr = Field(alias="repoId")
+    field_keys: list[NonBlankStr] = Field(
+        alias="fieldKeys", min_length=1, max_length=MAX_DATA_SOURCE_FIELD_KEYS
+    )
+    filters: Annotated[dict[str, Any] | None, BeforeValidator(_decode_json_string)] = (
+        None
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_read_only_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {
+                key: value
+                for key, value in data.items()
+                if key not in _READ_ONLY_DATA_SOURCE_KEYS
+            }
+        return data
+
+
+class InterfaceDataSources(RootModel[list[InterfaceDataSource]]):
+    """The complete data source list of an HTML interface's ``customCode`` element.
+
+    At most 10 sources, each with its own ``id`` and ``name``; ``[]`` is an
+    element with no sources.
+    """
+
+    root: list[InterfaceDataSource] = Field(max_length=MAX_CUSTOM_CODE_DATA_SOURCES)
+
+    @model_validator(mode="after")
+    def ids_and_names_are_unique(self) -> Self:
+        for attribute in ("id", "name"):
+            values = [getattr(source, attribute) for source in self.root]
+            repeated = sorted({value for value in values if values.count(value) > 1})
+            if repeated:
+                msg = (
+                    f"Each data source needs its own {attribute}; "
+                    f"repeated: {', '.join(repeated)}."
+                )
+                raise ValueError(msg)
+        return self
+
 
 __all__ = [
+    "MAX_CUSTOM_CODE_DATA_SOURCES",
+    "MAX_DATA_SOURCE_FIELD_KEYS",
     "CreatePortalElementInput",
     "CreatePortalInput",
     "DeletePortalElementInput",
+    "InterfaceDataSource",
+    "InterfaceDataSources",
+    "PortalColor",
     "PortalElementType",
     "PortalPageLayoutRow",
     "PortalVisibility",

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, Literal
 
-from typing_extensions import TypedDict
+from pydantic import ConfigDict, TypeAdapter, ValidationError, with_config
+from typing_extensions import NotRequired, TypedDict
+
+from pipefy_sdk.models.field_definition import FieldTypeId
 
 
 class CardSearch(TypedDict, total=False):
@@ -23,6 +27,174 @@ def copy_card_search(search: CardSearch) -> CardSearch:
     :meth:`PipefyClient.get_cards`.
     """
     return {k: search[k] for k in CardSearch.__optional_keys__ if k in search}
+
+
+RecordScalar = str | int | float | bool | None
+
+RecordAttribute = Literal[
+    "ID",
+    "INDEX",
+    "TITLE",
+    "CREATOR",
+    "CREATOR_EMAIL",
+    "DUE_DATE",
+    "CREATED_AT",
+    "UPDATED_AT",
+    "FINISHED_AT",
+    "CURRENT_PHASE",
+    "LABELS",
+    "ASSIGNEES",
+    "EMAIL_READ",
+]
+
+# Pydantic drops unknown keys by default, so a mistyped "AND" would vanish and the
+# filter would be sent without it; forbid them instead.
+_FORBID_EXTRA = with_config(ConfigDict(extra="forbid"))
+
+
+@_FORBID_EXTRA
+class RecordRange(TypedDict):
+    min: RecordScalar
+    max: RecordScalar
+
+
+# Functional form because "and", "or" and "in" are Python keywords.
+RecordFilter = _FORBID_EXTRA(
+    TypedDict(
+        "RecordFilter",
+        {
+            "and": list["RecordFilter"],
+            "or": list["RecordFilter"],
+            "attribute": RecordAttribute,
+            "field": str,
+            "eq": RecordScalar,
+            "neq": RecordScalar,
+            "lt": RecordScalar,
+            "gt": RecordScalar,
+            "lte": RecordScalar,
+            "gte": RecordScalar,
+            "contains": list[RecordScalar],
+            "ncontains": list[RecordScalar],
+            "in": list[RecordScalar],
+            "nin": list[RecordScalar],
+            "between": RecordRange,
+            "nbetween": RecordRange,
+            "like": RecordScalar,
+            "nlike": RecordScalar,
+            "ilike": RecordScalar,
+            "nilike": RecordScalar,
+        },
+        total=False,
+    )
+)
+
+
+@_FORBID_EXTRA
+class RecordOrder(TypedDict, total=False):
+    attribute: RecordAttribute
+    field: str
+    direction: Literal["ASC", "DESC"]
+
+
+@_FORBID_EXTRA
+class CreatePipePhase(TypedDict):
+    """A phase for ``create_pipe`` (Pipefy ``PhaseInput``)."""
+
+    name: str
+    done: NotRequired[bool]
+
+
+@_FORBID_EXTRA
+class CreatePipeStartFormField(TypedDict):
+    """A start form field for ``create_pipe`` (Pipefy ``PhaseFieldInput``)."""
+
+    label: str
+    type_id: FieldTypeId | str
+    description: NotRequired[str]
+    help: NotRequired[str]
+    required: NotRequired[bool]
+    editable: NotRequired[bool]
+    options: NotRequired[list[str]]
+
+
+@_FORBID_EXTRA
+class CreatePipeLabel(TypedDict):
+    """A label for ``create_pipe`` (Pipefy ``LabelInput``).
+
+    ``color`` is hex ``#RGB`` or ``#RRGGBB``.
+    """
+
+    name: str
+    color: str
+
+
+def _is_canonical_uuid(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
+
+# The API answers a slug or a non-canonical uuid with a generic internal error.
+def _check_field_uuid(field: object) -> None:
+    if field is not None and not _is_canonical_uuid(field):
+        raise ValueError(
+            "field must be the custom field uuid (from get_phase_fields), "
+            f"lowercase with hyphens, got {field!r}"
+        )
+
+
+# GraphQL coerces a single value to a one-item list, so the API runs it.
+def _as_list(value: object) -> list[Any]:
+    if isinstance(value, dict):
+        return [value]
+    return value if isinstance(value, list) else []
+
+
+def validate_record_filter(where: RecordFilter) -> None:
+    if not isinstance(where, dict):
+        return
+    _check_field_uuid(where.get("field"))
+    for key in ("and", "or"):
+        for child in _as_list(where.get(key)):
+            validate_record_filter(child)
+
+
+def validate_record_order(order_by: list[RecordOrder]) -> None:
+    for entry in _as_list(order_by):
+        if isinstance(entry, dict):
+            _check_field_uuid(entry.get("field"))
+
+
+_RECORD_FILTER_ADAPTER: TypeAdapter[RecordFilter] = TypeAdapter(RecordFilter)
+_RECORD_ORDER_ADAPTER: TypeAdapter[list[RecordOrder]] = TypeAdapter(list[RecordOrder])
+
+
+def _parse_records_input(adapter: TypeAdapter[Any], raw: object, label: str) -> Any:
+    try:
+        return adapter.validate_python(raw)
+    except ValidationError as exc:
+        clauses = (
+            f"{'.'.join([label, *map(str, err['loc'])])}: {err['msg']}"
+            for err in exc.errors()
+        )
+        raise ValueError("; ".join(clauses)) from None
+
+
+def parse_record_filter(raw: object) -> RecordFilter:
+    """Parse untyped input into a ``RecordFilter``; raises ``ValueError`` naming each bad key or value."""
+    where = _parse_records_input(_RECORD_FILTER_ADAPTER, raw, "where")
+    validate_record_filter(where)
+    return where
+
+
+def parse_record_order(raw: object) -> list[RecordOrder]:
+    """Parse untyped input into a ``RecordOrder`` list; raises ``ValueError`` naming each bad key or value."""
+    order_by = _parse_records_input(_RECORD_ORDER_ADAPTER, raw, "order_by")
+    validate_record_order(order_by)
+    return order_by
 
 
 class AiAgentGraphPayload(TypedDict, total=False):

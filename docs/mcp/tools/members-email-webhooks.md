@@ -19,8 +19,8 @@ Manage pipe membership, send emails from card inboxes, read inbox replies, and m
 |------|-----------|------|
 | `get_email_templates` | Yes | List email templates for a pipe or table (`repo_id`); optional `filter_by_name`. Use before `send_email_with_template` to discover template IDs. Lists only; it cannot create or change a template. |
 | `get_card_inbox_emails` | Yes | List emails (sent and received) for a card's inbox. Use `email_type: 'received'` to get only replies. |
-| `send_inbox_email` | No | Send an email from a card's inbox; requires the card to have an email inbox enabled. `from_` (sender) is required. |
-| `send_email_with_template` | No | Send an email using a template that already exists. Resolves placeholders (e.g. `{{card.title}}`). `card_id`, `email_template_id` required; optional `to`, `from_` to override defaults. |
+| `send_inbox_email` | No | Send an email from a card's inbox; requires the card to have an email inbox enabled. `from_` (sender) is required. [Two-step](cross-cutting.md#destructive-operations): the preview returns the message under `email`; the token binds to that exact message. |
+| `send_email_with_template` | No | Send an email using a template that already exists. Resolves placeholders (e.g. `{{card.title}}`). `card_id`, `email_template_id` required; optional `to`, `from_` to override defaults. [Two-step](cross-cutting.md#destructive-operations): the preview returns the resolved message under `email`; if it resolves differently on confirm, a fresh preview comes back. |
 
 Hard stop: creating, editing and deleting email templates is not part of the API or MCP surface. The GraphQL schema has no template CRUD mutation, so the only path is the Pipefy UI. A flow that needs a new or edited template carries a manual UI step, and that step belongs in the plan handed to the user before any build starts.
 
@@ -30,5 +30,5 @@ Hard stop: creating, editing and deleting email templates is not part of the API
 |------|-----------|------|
 | `get_webhooks` | Yes | Lists webhooks for a pipe (`id`, `name`, `url`, `actions`, `headers`, `email`). |
 | `create_webhook` | No | Register a webhook for pipe events; `url` must be HTTPS; `actions` is a list of event names (e.g. `['card.move', 'card.create']`). Use `introspect_type('WebhookActions')` for valid actions. |
-| `update_webhook` | No | Patch an existing webhook (`webhook_id`, optional `name`, `url`, `actions`, `headers`). |
+| `update_webhook` | No | Update an existing webhook (`webhook_id`, optional `name`, `url`, `actions`, `headers`). `headers` replaces the whole set: a key left out is deleted, so send every header to keep. An update without `headers` deletes every header, so resend them when changing only `name` or `url`. |
 | `delete_webhook` | No | Permanently delete a webhook by ID (`destructiveHint=True`; [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`). |

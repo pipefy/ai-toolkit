@@ -142,8 +142,9 @@ jobs:
 
       # --- Everything above validates; everything below publishes. ----------
       # No step that publishes runs until the wheels have installed into a clean
-      # virtualenv and every entry point has launched, so a validation failure
-      # leaves only the tag -- unavoidable, being what triggers this workflow.
+      # virtualenv, every entry point has launched, and an authenticated call has
+      # gone through, so a validation failure leaves only the tag -- unavoidable,
+      # being what triggers this workflow.
       # `v0.4.0-beta.1` is what the other order cost: a published Release
       # advertising a wheel that could not start, withdrawn by hand.
       #

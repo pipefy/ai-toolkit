@@ -345,8 +345,12 @@ async def test_pipefy_client_facade_delegates_to_services_without_modifying_args
         field_updates=[{"field_id": "x", "value": "y"}],
     )
 
-    assert await client.create_pipe("P", 100) == {"ok": "create_pipe"}
-    pipe_config_service.create_pipe.assert_awaited_once_with("P", 100)
+    assert await client.create_pipe("P", 100, phases=[{"name": "Triage"}]) == {
+        "ok": "create_pipe"
+    }
+    pipe_config_service.create_pipe.assert_awaited_once_with(
+        "P", 100, phases=[{"name": "Triage"}], start_form_fields=None, labels=None
+    )
 
     assert await client.update_pipe(200, name="N") == {"ok": "update_pipe"}
     pipe_config_service.update_pipe.assert_awaited_once_with(200, name="N")
@@ -923,6 +927,35 @@ async def test_sub_portal_mutation_routes_through_internal_api_client(mock_setti
 
     internal.endpoint.execute.assert_awaited()
     assert result == {"updateSubPortalElement": {"success": True}}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_portal_element_forwards_portal_uuid(mock_settings):
+    """Every argument reaches PortalService as given; [] must not turn into a keep."""
+    client = PipefyClient(settings=mock_settings, auth=StaticBearerAuth("t"))
+    client._portal_service = MagicMock()
+    client._portal_service.update_portal_element = AsyncMock(return_value={"id": "e"})
+
+    await client.update_portal_element(
+        "e",
+        "p",
+        type="forms",
+        metadata={"name": "F"},
+        data_sources=[],
+        portal_uuid="portal-1",
+        editable=True,
+    )
+
+    client._portal_service.update_portal_element.assert_awaited_once_with(
+        "e",
+        "p",
+        type="forms",
+        metadata={"name": "F"},
+        data_sources=[],
+        portal_uuid="portal-1",
+        editable=True,
+    )
 
 
 @pytest.mark.unit

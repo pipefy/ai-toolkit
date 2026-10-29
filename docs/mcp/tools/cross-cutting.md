@@ -1,6 +1,6 @@
 # Cross-cutting tool behavior
 
-Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides linked from the [main README](../../../README.md#mcp-server).
+Conventions shared across many MCP tools. Per-area details (parameters, edge cases) stay in the guides listed in the [MCP docs index](../README.md).
 
 ## Pagination
 
@@ -8,7 +8,7 @@ List-style tools accept `first` and `after`. Continue with `pageInfo.endCursor` 
 
 ## IDs
 
-Pipefy GraphQL uses string IDs. Pass IDs as strings (e.g. `"301234"`). Some parameters also accept JSON integers; the server normalizes to string before calling the API. Success payloads return string IDs. Empty, zero, or otherwise invalid IDs fail validation before any network call.
+Pipefy GraphQL uses string IDs. Pass IDs as strings (e.g. `"301234567"`). Some parameters also accept JSON integers; the server normalizes to string before calling the API. Success payloads return string IDs. Empty, zero, or otherwise invalid IDs fail validation before any network call.
 
 Which **form** each tool expects (slug vs `internal_id` vs uuid vs numeric id) is the canonical [Identifiers map](identifiers.md#the-four-forms). Type-safety and coercion detail: [Pipefy IDs and type safety](pipes-and-cards.md#pipefy-ids-type-safety).
 
@@ -32,6 +32,8 @@ This is not a human click. A client that auto-approves tool calls can preview an
 
 `execute_graphql` queries stay ungated. Mutations need the same confirmation token, and the token binds to the document and the variables, so changing either one invalidates it. The preview names the mutation but does not claim it is irreversible: the server cannot tell create from delete. Tokens are replayable, so a non-idempotent mutation can run twice if resent within the TTL. Prefer dedicated tools for those writes.
 
+`send_inbox_email` and `send_email_with_template` use the same two-step without `destructiveHint`: sending adds an email rather than destroying anything, but a sent email cannot be recalled. The preview carries the resolved message under `email` (recipients, cc/bcc, sender, subject, body; for a template, as resolved for the card), and the token binds to the card and a digest of that message, so changing any of it needs a new preview. The token is replayable within its TTL like any other, so resending the confirmed call sends the email again: after a failed or timed-out step 2, check the card's sent mail (`get_card_inbox_emails` with `email_type='sent'`) before retrying. The CLI equivalents (`pipefy email inbox send`, `pipefy email template send`) print the same message and exit 2 unless `--yes` is set.
+
 Both `execute_graphql` and `pipefy graphql exec` refuse a document too deeply nested to parse, and nothing is sent. The server cannot tell whether such a document is a query or a mutation, so it declines to classify rather than run it unconfirmed. The ceiling is the parser's remaining stack headroom rather than a fixed depth, so the same document can be accepted by one surface and refused by another. Reduce the nesting and retry.
 
 `call_ipaas_tool` is gated when the **call** is judged destructive, in this order: catalog `annotations.destructiveHint` true, then `arguments.operation` needle-equality after strip and casefold against `delete`, `remove`, `destroy`, `drop`, `uninstall`, `revoke`, then annotation false stops, else the catalog name is matched as a substring against those same needles. A catalog miss (the name was not on the page this server read) is unclassifiable and takes the two-step as well. Mixed manage calls with `operation=DELETE` are two-step; `ADD` and `UPDATE` stay one-shot as long as no `confirmation_token` is supplied. Passing a token routes the call through the guard whatever the classification, so a leftover `DELETE` token cannot execute an `ADD`; the reply says the call is not classified as destructive and hands back a fresh token.
@@ -52,7 +54,7 @@ Pipefy often returns **`PERMISSION_DENIED`** for `card(id: …)` when the card w
 
 ## Pre-flight validation for AI features
 
-Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read-delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
+Before creating/updating AI automations or AI agents, call [`validate_ai_automation_prompt`](automations-and-ai.md#ai-automations) and [`validate_ai_agent_behaviors`](automations-and-ai.md#ai-agent-read--delete) to catch prompt, field, and event errors and membership gaps without round-tripping the write mutation.
 
 ## Introspection
 

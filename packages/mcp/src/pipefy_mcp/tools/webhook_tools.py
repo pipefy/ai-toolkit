@@ -6,20 +6,30 @@ from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pipefy_sdk import PipefyId
+from pipefy_sdk import InboxEmailDraft, PipefyId
 
+from pipefy_mcp.tools.destructive_confirmation_token import digest_identity_value
 from pipefy_mcp.tools.destructive_tool_guard import check_destructive_confirmation
 from pipefy_mcp.tools.remote_profile import REMOTE
 from pipefy_mcp.tools.tool_context import get_pipefy_client
-from pipefy_mcp.tools.validation_helpers import (
-    mutation_error_if_not_optional_dict,
-    validate_tool_id,
-)
+from pipefy_mcp.tools.validation_helpers import validate_tool_id
 from pipefy_mcp.tools.webhook_tool_helpers import (
     build_webhook_error_payload,
     build_webhook_success_payload,
     handle_webhook_tool_graphql_error,
 )
+
+
+def _email_descriptor(draft: InboxEmailDraft) -> str:
+    return f"email from card {draft.card_id} to {', '.join(draft.to)}"
+
+
+def _email_irreversible_sentence(draft: InboxEmailDraft) -> str:
+    return (
+        f"Sending the {_email_descriptor(draft)} cannot be undone: a sent email "
+        "cannot be recalled. The resolved message (recipients, cc/bcc, sender, "
+        "subject, body) is under 'email'."
+    )
 
 
 class WebhookTools:
@@ -137,11 +147,23 @@ class WebhookTools:
             from_: str,
             ctx: Context,
             extra_input: dict[str, Any] | None = None,
+            confirm: bool = False,
+            confirmation_token: str | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
             """Send an email from a card's inbox.
 
-            Requires the card to have an email inbox enabled.
+            Requires the card to have an email inbox enabled. A sent email cannot
+            be recalled, so sending is two-step: the first call returns the
+            message under ``email`` with a ``confirmation_token`` and sends
+            nothing. Show it to the user; once they approve, call again with the
+            same arguments plus ``confirm=True`` and that token. The token covers
+            that one message: change any argument and it no longer verifies.
+
+            The token is replayable within its TTL, so resending the confirmed
+            call sends the email again. On an error or timeout after step 2, list
+            the card's sent mail (``get_card_inbox_emails`` with
+            ``email_type='sent'``) before retrying; do not blind-retry a send.
 
             Args:
                 card_id: ID of the card.
@@ -150,46 +172,54 @@ class WebhookTools:
                 body: Email body (plain text or HTML).
                 from_: Sender email address (required by API).
                 extra_input: Optional extra CreateAndSendInboxEmailInput fields (html, cc, bcc).
+                confirm: Set to True with the preview token to send (step 2).
+                confirmation_token: Token from the preview response.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
             cid, err = validate_tool_id(card_id, "card_id")
             if err is not None:
                 return err
-            if not isinstance(to, list) or not to:
+            if not to:
                 return build_webhook_error_payload(
                     message="Invalid 'to': provide a non-empty list of email addresses.",
                 )
-            if not all(isinstance(e, str) and e.strip() for e in to):
+            if not all(e.strip() for e in to):
                 return build_webhook_error_payload(
                     message="Invalid 'to': each recipient must be a non-empty string.",
                 )
-            if not isinstance(subject, str) or not subject.strip():
+            if not subject.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'subject': provide a non-empty string.",
                 )
-            if not isinstance(body, str):
-                return build_webhook_error_payload(
-                    message="Invalid 'body': provide a string.",
-                )
-            if not isinstance(from_, str) or not from_.strip():
+            if not from_.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'from_': provide a non-empty sender email address.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
+            draft = InboxEmailDraft(
+                card_id=cid,
+                to=to,
+                subject=subject.strip(),
+                body=body,
+                from_=from_,
+                extra=extra_input or {},
             )
-            if bad is not None:
-                return bad
+            guard = await check_destructive_confirmation(
+                ctx,
+                confirm=confirm,
+                resource_descriptor=_email_descriptor(draft),
+                irreversible_sentence=_email_irreversible_sentence(draft),
+                resource_identity={
+                    "card_id": draft.card_id,
+                    "email": digest_identity_value(draft.model_dump(mode="json")),
+                },
+                tool_name="send_inbox_email",
+                confirmation_token=confirmation_token,
+            )
+            if guard is not None:
+                return {**guard, "email": draft.model_dump(mode="json")}
             try:
-                raw = await client.send_inbox_email(
-                    cid,
-                    [e.strip() for e in to],
-                    subject.strip(),
-                    body,
-                    from_=from_.strip(),
-                    **(extra_input or {}),
-                )
+                raw = await client.send_inbox_email_draft(draft)
             except Exception as exc:  # noqa: BLE001
                 return handle_webhook_tool_graphql_error(
                     exc,
@@ -199,7 +229,7 @@ class WebhookTools:
                     resource_id=str(cid),
                 )
             return build_webhook_success_payload(
-                message="Email sent.",
+                message="Send requested; 'emailSent' in data reports whether it went out.",
                 data=raw,
             )
 
@@ -214,6 +244,8 @@ class WebhookTools:
             to: list[str] | None = None,
             from_: str | None = None,
             extra_input: dict[str, Any] | None = None,
+            confirm: bool = False,
+            confirmation_token: str | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
             """Send an email from a card's inbox using an existing email template.
@@ -221,6 +253,19 @@ class WebhookTools:
             Fetches the template with placeholders (e.g. {{card.title}}) resolved
             for the card, then sends via createAndSendInboxEmail. Use
             get_email_templates to find template IDs.
+
+            A sent email cannot be recalled, so sending is two-step: the first
+            call returns the resolved message (recipients, subject, body) under
+            ``email`` with a ``confirmation_token`` and sends nothing. Show it
+            to the user; once they approve, call again with the same arguments
+            plus ``confirm=True`` and that token. If the resolved message
+            changes before step 2 (the card was edited), the token no longer
+            verifies and a fresh preview comes back.
+
+            The token is replayable within its TTL, so resending the confirmed
+            call sends the email again. On an error or timeout after step 2, list
+            the card's sent mail (``get_card_inbox_emails`` with
+            ``email_type='sent'``) before retrying; do not blind-retry a send.
 
             Hard stop: there is no API or MCP path to create or change an email
             template. A flow that needs a new or edited template requires a
@@ -232,32 +277,23 @@ class WebhookTools:
                 to: Optional override for recipients; if omitted, uses template's toEmail.
                 from_: Optional override for sender; if omitted, uses template's fromEmail.
                 extra_input: Optional extra CreateAndSendInboxEmailInput fields (cc, bcc).
+                confirm: Set to True with the preview token to send (step 2).
+                confirmation_token: Token from the preview response.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
             cid, err = validate_tool_id(card_id, "card_id")
             if err is not None:
                 return err
-            if not email_template_id.strip():
-                return build_webhook_error_payload(
-                    message="Invalid 'email_template_id': provide a non-empty string.",
-                )
-            if to is not None and (
-                not isinstance(to, list)
-                or not all(isinstance(e, str) and e.strip() for e in to)
-            ):
+            if to is not None and not all(e.strip() for e in to):
                 return build_webhook_error_payload(
                     message="Invalid 'to': when provided, must be a non-empty list of email strings.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
-            )
-            if bad is not None:
-                return bad
+            template_id = email_template_id.strip()
             try:
-                raw = await client.send_email_with_template(
+                draft = await client.draft_email_from_template(
                     cid,
-                    email_template_id.strip(),
+                    template_id,
                     to=to,
                     from_=from_,
                     **(extra_input or {}),
@@ -272,8 +308,37 @@ class WebhookTools:
                     resource_kind="email_template",
                     resource_id=str(email_template_id),
                 )
+            guard = await check_destructive_confirmation(
+                ctx,
+                confirm=confirm,
+                resource_descriptor=_email_descriptor(draft),
+                irreversible_sentence=_email_irreversible_sentence(draft),
+                resource_identity={
+                    "card_id": cid,
+                    "email_template_id": template_id,
+                    "email": digest_identity_value(draft.model_dump(mode="json")),
+                },
+                tool_name="send_email_with_template",
+                confirmation_token=confirmation_token,
+            )
+            if guard is not None:
+                return {
+                    **guard,
+                    "email_template_id": template_id,
+                    "email": draft.model_dump(mode="json"),
+                }
+            try:
+                raw = await client.send_inbox_email_draft(draft)
+            except Exception as exc:  # noqa: BLE001
+                return handle_webhook_tool_graphql_error(
+                    exc,
+                    "Send email with template failed.",
+                    debug=debug,
+                    resource_kind="card",
+                    resource_id=str(cid),
+                )
             return build_webhook_success_payload(
-                message="Email sent with template.",
+                message="Template send requested; 'emailSent' in data reports whether it went out.",
                 data=raw,
             )
 
@@ -344,23 +409,18 @@ class WebhookTools:
             pid, err = validate_tool_id(pipe_id, "pipe_id")
             if err is not None:
                 return err
-            if not isinstance(url, str) or not url.strip():
+            if not url.strip():
                 return build_webhook_error_payload(
                     message="Invalid 'url': provide a non-empty string.",
                 )
-            if not isinstance(actions, list) or not actions:
+            if not actions:
                 return build_webhook_error_payload(
                     message="Invalid 'actions': provide a non-empty list of event action strings.",
                 )
-            if not all(isinstance(a, str) and a.strip() for a in actions):
+            if not all(a.strip() for a in actions):
                 return build_webhook_error_payload(
                     message="Invalid 'actions': each action must be a non-empty string.",
                 )
-            bad = mutation_error_if_not_optional_dict(
-                extra_input, arg_name="extra_input"
-            )
-            if bad is not None:
-                return bad
             try:
                 raw = await client.create_webhook(
                     pid,
@@ -408,6 +468,9 @@ class WebhookTools:
                 url: Optional new HTTPS callback URL.
                 actions: Optional new list of event action strings (non-empty when provided).
                 headers: Optional JSON object of custom HTTP headers for the webhook request.
+                    Replaces the whole set: a key left out is deleted, so send every header to keep.
+                    Leaving ``headers`` out also deletes every header: the API stores an empty set,
+                    so an update that changes only ``url`` or ``name`` must resend the headers.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -421,28 +484,24 @@ class WebhookTools:
                 )
 
             if name is not None:
-                if not isinstance(name, str) or not name.strip():
+                if not name.strip():
                     return build_webhook_error_payload(
                         message="Invalid 'name': when provided, must be a non-empty string.",
                     )
             if url is not None:
-                if not isinstance(url, str) or not url.strip():
+                if not url.strip():
                     return build_webhook_error_payload(
                         message="Invalid 'url': when provided, must be a non-empty string.",
                     )
             if actions is not None:
-                if not isinstance(actions, list) or not actions:
+                if not actions:
                     return build_webhook_error_payload(
                         message="Invalid 'actions': when provided, must be a non-empty list.",
                     )
-                if not all(isinstance(a, str) and a.strip() for a in actions):
+                if not all(a.strip() for a in actions):
                     return build_webhook_error_payload(
                         message="Invalid 'actions': each action must be a non-empty string.",
                     )
-            if headers is not None and not isinstance(headers, dict):
-                return build_webhook_error_payload(
-                    message="Invalid 'headers': when provided, must be a JSON object (dict).",
-                )
 
             kwargs: dict[str, Any] = {}
             if name is not None:

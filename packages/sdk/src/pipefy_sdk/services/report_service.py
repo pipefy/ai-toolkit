@@ -315,7 +315,7 @@ class ReportService:
             pipe_report_id: Pipe report ID to export.
             sort_by: ``ReportSortDirectionInput`` (``direction``, ``field``).
             filter: ``ReportCardsFilter`` shape; normalized, raises ``ValueError`` when invalid.
-            columns: Column field IDs to include in the export file.
+            columns: Column ``name`` values (as ``get_pipe_report_columns`` returns them) to include in the file.
         """
         input_obj: dict[str, Any] = {
             "pipeId": str(pipe_id),
@@ -350,7 +350,7 @@ class ReportService:
             pipe_ids: Pipe IDs to scope the export.
             sort_by: ``ReportSortDirectionInput``.
             filter: ``ReportCardsFilter`` shape; normalized, raises ``ValueError`` when invalid.
-            columns: Column field IDs for the export file.
+            columns: Column ``name`` values (internal names, not labels) to include in the file.
         """
         # int() casts: live schema uses Int (not ID) for these fields — see ADR-002.
         input_obj: dict[str, Any] = {"organizationId": int(organization_id)}

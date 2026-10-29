@@ -226,7 +226,9 @@ def report_pipe_export(
     ),
     filter_json: str | None = typer.Option(None, "--filter"),
     columns: str | None = typer.Option(
-        None, "--columns", help="JSON array of column ids."
+        None,
+        "--columns",
+        help="JSON array of column names from report-pipe columns; date columns appear only when named here.",
     ),
     poll_timeout: float = typer.Option(
         90.0,

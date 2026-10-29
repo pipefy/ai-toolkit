@@ -77,7 +77,8 @@ Credential variables reject leading and trailing whitespace; `PIPEFY_ORG_ID` (be
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `PIPEFY_ORG_ID` | unset | Convenience: pins a default org for CLI and MCP tools that take an optional `org_id` argument. |
-| `PIPEFY_PORTAL_ORG_UUID` | unset | SDK portal integration tests only (`pytest -m integration -k portal`). Set in local `.env` to an organization **UUID** (or numeric org id string) where the active token has **`manage_portals`** (and usually `create_portal`). Never committed; runtime MCP/CLI do not read this. Many default orgs return `PERMISSION_DENIED` on portal writes — pick an org with portal admin scope. See [`mcp/tools/portal.md`](mcp/tools/portal.md#testing). |
+| `PIPEFY_PORTAL_ORG_UUID` | unset | SDK portal integration tests (`pytest -m integration -k portal`) and the CLI's `html-interface create` live smoke (`pytest -m integration -k "html_interface and create and round_trips"`). Set in local `.env` to an organization **UUID** (or numeric org id string) where the active token has **`manage_portals`** (and usually `create_portal`). Never committed; runtime MCP/CLI do not read this. Many default orgs return `PERMISSION_DENIED` on portal writes — pick an org with portal admin scope. See [`mcp/tools/portal.md`](mcp/tools/portal.md#testing). |
+| `PIPEFY_HTML_INTERFACE_UUID` | unset | SDK HTML interface live tests only (`pytest -m integration -k "html or interface"`). Set in local `.env` to the UUID of a **disposable** HTML interface with a `customCode` element that the active token can edit. The data source reads use it, and two tests write to it: `write_html_document` sends HTML the API rejects, and the `set_interface_sources` round trip sets two sources, then puts the element's sources back. The round trip and the repo listing also need `PIPEFY_PORTAL_ORG_UUID`, and they skip when the token administers no published pipe or table there. Unset skips these tests. Never committed; runtime MCP/CLI do not read this. |
 | `PIPEFY_DISABLE_STORED_SESSION` | `0` | Set to `1` (or `disable_stored_session = true` in TOML) to skip the keychain-backed stored-session tier entirely. `pipefy auth login` / `auth logout` refuse with exit code 2 when set. |
 | `PIPEFY_KEYCHAIN_BACKEND` | `auto` | Set to `file` (or `keychain_backend = "file"` in TOML) to use a file-backed plaintext keyring under `~/.config/pipefy/keyring.cfg` (`%APPDATA%\pipefy\keyring.cfg` on Windows). Unblocks headless Linux and CI runners. Plaintext on disk; opt-in only. |
 | `PIPEFY_ALLOW_INSECURE_URLS` | `false` | Disables the SSRF host check on URL variables. Local development only. |
@@ -97,7 +98,7 @@ Full migration notes: [`MIGRATION.md#service-account-env-var-rename`](MIGRATION.
 init kwargs > environment variables > .env > config.toml > field defaults
 ```
 
-Setting `PIPEFY_BASE_URL=https://staging.pipefy.com` in the shell wins over a `base_url = "..."` line in the file. The reverse — file wins over env — is *not* supported: environment is meant for one-off overrides on top of declarative defaults.
+Setting `PIPEFY_BASE_URL=https://<your-api-host>` in the shell wins over a `base_url = "..."` line in the file. The reverse (file wins over env) is *not* supported: environment is meant for one-off overrides on top of declarative defaults.
 
 ## Credentials
 

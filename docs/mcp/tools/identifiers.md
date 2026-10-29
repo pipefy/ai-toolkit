@@ -6,10 +6,10 @@ Pipefy exposes several identifier forms, and different tools expect different on
 
 | Form | Looks like | What it is |
 | --- | --- | --- |
-| **numeric id** | `"303088927"` | The node's numeric database id, as a string. Pipes, cards, organizations, automations. GraphQL types it as `ID` — always pass a string; a JSON integer is coerced to the same string. |
-| **uuid** | `"5f66417e-5adc-4c83-908f-0b888493c847"` | The node's UUID. Pipe UUID (`repo_uuid` / `pipe_uuid`), organization UUID, portal UUID, agent UUID, data-source id, log UUID. |
+| **numeric id** | `"301234567"` | The node's numeric database id, as a string. Pipes, cards, organizations, automations. GraphQL types it as `ID`, so always pass a string; a JSON integer is coerced to the same string. |
+| **uuid** | `"550e8400-e29b-41d4-a716-446655440000"` | The node's UUID. Pipe UUID (`repo_uuid` / `pipe_uuid`), organization UUID, portal UUID, agent UUID, data-source id, log UUID. |
 | **slug** | `"document_upload"` | A field's human-readable id (GraphQL `id` on a field row). Used to address a **card** field for a one-off edit. |
-| **internal_id** | `"429659034"` | A field's numeric id (GraphQL `internal_id` on a field row). Used by automations, field conditions, and AI prompt/behavior field references. |
+| **internal_id** | `"421234567"` | A field's numeric id (GraphQL `internal_id` on a field row). Used by automations, field conditions, and AI prompt/behavior field references. |
 
 Discover ids with `list_organizations` (org id + uuid, no input needed), `search_pipes` / `get_pipe` (pipe id + uuid), and `get_start_form_fields` / `get_phase_fields` (a field's `id` = slug **and** `internal_id`).
 
@@ -22,7 +22,7 @@ The single biggest source of wrong-id errors: the same pipe is addressed by five
 | `pipe_id` | numeric id | pipes/cards, automations, relations, most tools |
 | `repo_id` | numeric id (string) | email templates (`get_email_templates` — pipe **or table** id), observability automation-by-repo logs (`get_automation_logs_by_repo`), optional scope on `get_automation_execution_metrics` |
 | `source_repo_id` | numeric id | knowledge-base data lookups (a UUID is accepted on create but breaks at index time — use the numeric id) |
-| `repo_uuid` | **uuid** | AI agents (`get_ai_agents`, `create_ai_agent`, …), AI agent logs |
+| `repo_uuid` | **uuid** | AI agents (`get_ai_agents`, `create_ai_agent`, …), AI agent logs, `get_interface_repo_fields` (a pipe or table uuid from `list_interface_repos`, which is also a data source's `repoId`) |
 | `pipe_uuid` | **uuid** | knowledge-base tools; pipe report **reads** (`get_pipe_report*`) — report create/update use numeric `pipe_id` |
 
 ## UUID-named arguments that also accept a numeric id
@@ -49,8 +49,10 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 | Field condition `condition.expressions[].field_address` and `actions[].phaseFieldId` | **internal_id** |
 | AI automation prompt / AI agent behavior `%{…}` references | **internal_id** |
 | Data-lookup `output_fields` / `conditions[].field` | **slug** (plus statics like `id`, `title`, `current_phase`) |
+| `set_interface_sources` `data_sources[].fieldKeys` | **uuid** from `get_interface_repo_fields`, plus built-in keys such as `title` (`get_interface_html_guidelines` lists them as `filters.fixedColumnNames`). In a source's `filters`, a custom field's `columnName` is `field-<uuid>`. |
+| `get_records` `where.field` / `order_by[].field` | **uuid**, lowercase and hyphenated (a slug or any other form is rejected before the call). `get_phase_fields` returns it; for a start-form field, call it with `phase_id` set to `get_pipe` → `startFormPhaseId` |
 
-`get_phase_fields` / `get_start_form_fields` return both the `id` (slug) and the `internal_id` for each field, so you can pick the form the target surface needs.
+`get_phase_fields` / `get_start_form_fields` return both the `id` (slug) and the `internal_id` for each field, so you can pick the form the target surface needs. Only `get_phase_fields` also returns the field `uuid`.
 
 ### Phase fields (create vs update)
 
@@ -94,5 +96,6 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 ### Organization, portal, relations, reports
 - `list_organizations`: no id. `get_organization(organization_id)`: numeric id.
 - Portal: `organization_uuid` (UUID or numeric); `portal_uuid` (interface UUID).
+- HTML interface data sources: `list_interface_repos(organization_id)` takes the **numeric** org id only (a uuid is rejected before the call); `interface_uuid` is the interface UUID; `repo_uuid` and `data_sources[].repoId` are the repo `uuid` from `list_interface_repos`.
 - Relations: `get_pipe_relations(pipe_id)` (numeric pipe id); `get_table_relations(relation_ids)` (table-**relation** ids, not table ids); `create_card_relation(source_id)` = a pipe-relation id from `get_pipe_relations`.
 - Reports: filter `field` values come from `get_pipe_report_filterable_fields`.

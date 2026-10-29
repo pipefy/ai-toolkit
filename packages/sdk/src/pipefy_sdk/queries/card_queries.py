@@ -110,6 +110,56 @@ GET_CARDS_QUERY = gql(
     """
 )
 
+GET_RECORDS_QUERY = gql(
+    """
+    query ($repoId: ID!, $phaseId: ID, $searchTerm: String, $where: FilterSet, $orderBy: [OrderBy!], $first: Int, $after: String, $includeFields: Boolean!) {
+        records(repoId: $repoId, phaseId: $phaseId, searchTerm: $searchTerm, where: $where, orderBy: $orderBy, first: $first, after: $after) {
+            totalCount
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    id
+                    uuid
+                    title
+                    createdAt
+                    updatedAt
+                    finishedAt
+                    dueDate
+                    currentPhase {
+                        id
+                        name
+                        done
+                    }
+                    assignees {
+                        id
+                        name
+                    }
+                    labels {
+                        id
+                        name
+                    }
+                    createdBy {
+                        id
+                        name
+                    }
+                    fields @include(if: $includeFields) {
+                        name
+                        value
+                        field {
+                            id
+                            uuid
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+)
+
 GET_CARD_RELATIONS_QUERY = gql(
     """
     query ($cardId: ID!) {
@@ -274,6 +324,7 @@ __all__ = [
     "GET_CARD_QUERY",
     "GET_CARD_RELATIONS_QUERY",
     "GET_CARDS_QUERY",
+    "GET_RECORDS_QUERY",
     "MOVE_CARD_TO_PHASE_MUTATION",
     "UPDATE_CARD_FIELD_MUTATION",
     "UPDATE_CARD_MUTATION",

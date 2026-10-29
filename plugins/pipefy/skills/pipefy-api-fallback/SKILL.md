@@ -1,0 +1,232 @@
+---
+name: pipefy-api-fallback
+description: >
+  Use this skill when a toolkit operation fails AND the introspection skill could
+  not resolve the problem. This is the last-resort fallback (Tier 3):
+  call the Pipefy GraphQL API directly using curl or httpx, authenticating
+  with the Service Account (OAuth2) or a Personal Access Token (PAT)
+  available as env var. Follow the 3-tier resolution strategy before
+  reaching this point.
+tags: [pipefy, graphql, api, fallback, troubleshooting, curl]
+---
+
+# Pipefy API Fallback (Tier 3 — Last Resort)
+
+Read the [MCP reference](references/mcp.md) or [CLI reference](references/cli.md) for the surface you are using. Load only the relevant reference.
+
+This skill activates only after Tiers 1 and 2 have failed. Call the Pipefy GraphQL API directly, bypassing the toolkit connection.
+
+If a write reports failure, re-read the target before changing tiers or retrying. The mutation may already have applied; follow [Ambiguous write failure](#ambiguous-write-failure-re-read-before-retry).
+
+---
+
+## 3-tier resolution strategy (always follow in order)
+
+1. Try a dedicated operation (`create_card`, `get_phase_cards`, `get_phase_allowed_move_targets`, `update_pipe`, etc.). For card/phase seeding and inventory, see `pipefy-pipes-and-cards` — Seed pipe across phases.
+2. Use schema introspection and `execute_graphql` when a dedicated operation is unavailable or fails unexpectedly. See `pipefy-introspection`.
+3. Use direct HTTP only when the toolkit connection is unavailable or GraphQL execution fails with an infrastructure error.
+
+**Do not jump to Tier 3 after a single failure.** Follow the tiers in order. Testing a new mutation belongs in Tier 2.
+
+---
+
+## Authentication
+
+Two options (use whichever is available in the environment). Prefer the Service Account when both exist.
+
+To see which variables are set, list their names only, never their values:
+
+```bash
+env | cut -d= -f1 | grep '^PIPEFY_'
+```
+
+Do not run `env`, `printenv`, or `echo` on these variables to choose an option: that prints the secret into the conversation before the user agrees.
+
+Before reading any `PIPEFY_*` variable, tell the user which variable you will read and that its value goes to `app.pipefy.com` in the `Authorization` header or the token request, and wait for a yes. Do not read it from a file the user did not name.
+
+**Option A — OAuth2 Client Credentials (preferred):**
+
+```bash
+TOKEN=$(curl -s -X POST https://app.pipefy.com/oauth/token \
+  -H "Content-Type: application/json" \
+  -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$PIPEFY_SERVICE_ACCOUNT_CLIENT_ID\",\"client_secret\":\"$PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET\"}" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+```
+
+**Option B — Personal Access Token (PAT):**
+
+```bash
+TOKEN="$PIPEFY_PAT"   # or $PIPEFY_TOKEN
+```
+
+PATs are deprecated for new integrations but may still exist in the environment.
+
+### Token rules
+
+- The `Bearer ` prefix is **mandatory** — Pipefy rejects requests without it.
+- Never expose `PIPEFY_SERVICE_ACCOUNT_CLIENT_ID`, `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`, `PIPEFY_PAT`, or `PIPEFY_TOKEN` in responses to the user or in logs.
+- Service Account tokens are reused while valid; only re-fetch on expiry (401).
+
+---
+
+## Endpoints
+
+| Purpose | URL |
+|---------|-----|
+| Queries, mutations, and introspection | `https://app.pipefy.com/graphql` |
+| OAuth2 token | `https://app.pipefy.com/oauth/token` |
+
+This one endpoint serves queries, mutations, and introspection of the public schema, and `https://api.pipefy.com/graphql` answers the same way. It is the endpoint the toolkit uses for the public schema (`PIPEFY_BASE_URL` plus `/graphql`). Portal tools and a few others use two more endpoints, `/graphql/interfaces` and `/internal_api`; see [`docs/mcp/tools/portal.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/portal.md).
+
+---
+
+## Execute a GraphQL query
+
+```bash
+curl -s -X POST https://app.pipefy.com/graphql \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ me { id name } }"}' | jq .
+```
+
+## Execute a GraphQL mutation
+
+```bash
+curl -s -X POST https://app.pipefy.com/graphql \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "mutation CreateCard($input: CreateCardInput!) { createCard(input: $input) { card { id } } }",
+    "variables": {
+      "input": {
+        "pipe_id": 67890,
+        "title": "Fallback Card"
+      }
+    }
+  }' | jq .
+```
+
+---
+
+## Introspection via raw API
+
+When you need to discover schema over direct HTTP, call the same endpoint:
+
+```bash
+# All queries and mutations
+curl -s -X POST https://app.pipefy.com/graphql \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { queryType { fields { name description } } mutationType { fields { name description } } } }"}'
+
+# Type details
+curl -s -X POST https://app.pipefy.com/graphql \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __type(name: \"CreateCardInput\") { inputFields { name description type { name kind ofType { name kind } } } } }"}'
+```
+
+---
+
+## Error code → cause
+
+GraphQL errors, including syntax errors (`GRAPHQL_PARSE_FAILED`), return HTTP 200: check the `errors` array and its `extensions.code`, not the HTTP status code. An authentication failure returns HTTP 401, and a request body that is not valid JSON returns HTTP 500 with a plain-text page.
+
+| Code | Likely cause | Recovery |
+|-------|--------------|----------|
+| HTTP 401, body `{"errors": [{"title": "Unauthorized", ...}]}` | `Authorization` header missing or empty, or the token sent without the `Bearer ` prefix | Fix the header: `Authorization: Bearer $TOKEN`, with a non-empty token. |
+| HTTP 401, body `{"error": "invalid_token", ...}` | Bearer token present but invalid or expired | Re-fetch the token (Option A). |
+| PERMISSION_DENIED | Service Account not a member of this pipe/table; Pipefy also answers this for a pipe or card ID that does not exist | Verify the ID; add the SA via `invite_members` or ask the user. |
+| resource_not_found | ID does not exist or SA cannot see it | Verify ID; check pipe/table membership. |
+| invalid_input | Wrong argument name or type | Run `introspect_type` (Tier 2) to recheck the input shape. |
+| undefinedField | The query selects a field the type does not have | Run `introspect_type` on the type and fix the selection. |
+| INTERNAL_SERVER_ERROR | API bug or unsupported payload | **Do NOT retry the same payload.** Try an alternative mutation or workaround. |
+| missingRequiredInputObjectAttribute | A required field is missing from the input | Compare the payload against `__type(name: …InputType)`. |
+| Ambiguous write failure (`success: false`, empty or unclear message) | Mutation may already have applied (side effects on the server) | **Re-read before any retry** — see [Ambiguous write failure](#ambiguous-write-failure-re-read-before-retry). |
+
+---
+
+## Ambiguous write failure (re-read before retry)
+
+Write operations and `execute_graphql` can report failure even when the mutation already applied. Blind retry duplicates customer data (e.g. many cards created despite `success: false`).
+
+1. **Do not** immediately re-run the same create/mutation.
+2. **Re-read** first: `get_cards` / `get_phase_cards_count` / returned ids / `cards_count` on the pipe or phase you targeted. Prefer comparing to a count or id set you recorded **before** the write when available.
+3. Retry **only** if the re-read clearly shows the write did not land.
+4. If the re-read is **inconclusive** (no pre-write baseline, pagination truncates results, or counts cannot prove absence), **stop** — report the ambiguous failure and the re-read evidence to the user. Do not guess-retry.
+5. **Hard stop — no client-side idempotency:** `CreateCardInput` has no `idempotency_key` (only `clientMutationId`, which is not create-idempotency). Do not invent client-side keys or assume retries are safe. Re-read is the only safe path until the API adds real idempotency.
+
+---
+
+## Known workarounds
+
+### Cross-pipe card creation
+- `createAutomation` with `action: create_card` + `field_map` can return `INTERNAL_SERVER_ERROR` for a cross-pipe target. Do not retry that payload unchanged.
+- For a **one-time** connected card, `createCard` with `throughConnectors` can create the card when a connector field has `canCreateNewConnected: true`.
+- `createCard` does not create an automation rule. If the user needs future cards created automatically, report that the one-time call does not meet that requirement.
+
+### Pipe listing shorter than `pipesCount`
+- `pipesCount` is the org-wide total; `organization { pipes { ... } }` and `search_pipes` return only the pipes the calling identity is a member of. A shorter listing, or an empty one, is expected behavior and not an error. Role does not widen it: a `super_admin` gets the same membership-scoped result. Detail and workarounds: [`docs/mcp/tools/organization.md`](https://github.com/pipefy/ai-toolkit/blob/main/docs/mcp/tools/organization.md#why-counts-disagree).
+- `organization { pipes(include_publics: true) }` widens the listing with pipes that are public inside the org. It still normally returns fewer than `pipesCount`.
+- Service accounts hit this most often: an SA starts as a member of nothing.
+- Pipes created via API are automatically visible to the SA.
+- Pipes created in the UI require the SA to be added as an admin.
+- Workaround: get pipe IDs from the user once and query `pipe(id: "...")` directly.
+
+### `invite_members` accepts unknown emails silently
+- Pipefy mints a new `user_id` for typo addresses without rejecting the invite. Sanity-check email syntax before calling.
+
+---
+
+## External resources (when raw API also fails)
+
+- Pipefy developer portal:
+  - https://developers.pipefy.com/reference/cards
+  - https://developers.pipefy.com/reference/pipes
+  - https://developers.pipefy.com/reference/automation-creation
+  - https://developers.pipefy.com/reference/how-to-handle-errors
+- API reference:
+  - https://api-docs.pipefy.com/reference/mutations/overview/
+  - https://api-docs.pipefy.com/reference/queries/overview/
+- Community + changelog:
+  - https://community.pipefy.com/api-76
+  - https://developers.pipefy.com/changelog
+- Status page: https://status.pipefy.com
+
+Search for the exact error message + "Pipefy GraphQL", or the mutation name + "example Pipefy API".
+
+---
+
+## Escalation to the user (absolute last resort)
+
+Only after all 3 tiers and external resources have failed:
+
+1. State exactly what was tried (dedicated operation, introspection, raw API).
+2. Show the verbatim error response.
+3. Propose a concrete workaround (e.g., "create via the Pipefy UI, then continue via API with the resulting ID").
+4. Stop — do not loop.
+
+---
+
+## Success criteria
+
+- The operation completes without an HTTP 4xx/5xx error.
+- The response contains a `data` key and `errors` is null or absent.
+
+## Failure modes
+
+- **HTTP 401**: header missing, empty, or without `Bearer ` (body `Unauthorized`), or the token is invalid or expired (body `invalid_token`). Fix the header, or re-fetch the OAuth token (Option A).
+- **`GRAPHQL_PARSE_FAILED` at HTTP 200**: GraphQL syntax error. Validate the query string and escape quotes properly when embedding via shell.
+- **HTTP 500**: first check that the request body is valid JSON, because a malformed body also returns 500. If it is, treat it as a Pipefy API outage: check [status.pipefy.com](https://status.pipefy.com) and retry later. Do not loop.
+- **`INTERNAL_SERVER_ERROR` in `errors` array** — do NOT retry the same payload; pick a different mutation path.
+- **Ambiguous write failure** — reported error with empty/unclear message after a create or other write: re-read counts/ids before retrying; never blind-retry creates ([Ambiguous write failure](#ambiguous-write-failure-re-read-before-retry)).
+
+## Security notes
+
+- Never log or print tokens in plain text.
+- Prefer environment variables over inline credentials.
+- Use `PIPEFY_TOKEN` / `PIPEFY_PAT` only for personal/development use; use service-account credentials (`PIPEFY_SERVICE_ACCOUNT_CLIENT_ID` + `PIPEFY_SERVICE_ACCOUNT_CLIENT_SECRET`) for service accounts.
+
+## See also
+
+- `pipefy-introspection` — Tier 2: use `execute_graphql` and introspection tools before falling back to direct HTTP.

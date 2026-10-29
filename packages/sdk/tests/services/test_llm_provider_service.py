@@ -1,4 +1,4 @@
-"""Unit tests for LlmProviderService and the shared GraphQL problem classifier."""
+"""Unit tests for LlmProviderService."""
 
 from __future__ import annotations
 
@@ -9,11 +9,6 @@ from _shared.mock_clients import mock_executor
 from graphql import print_ast
 
 from pipefy_sdk.graphql_executor import GraphQLResult
-from pipefy_sdk.graphql_problem import (
-    GraphQLProblemKind,
-    classify_exception,
-    classify_graphql_error_dicts,
-)
 from pipefy_sdk.queries.llm_provider_queries import (
     CREATE_LLM_PROVIDER_MUTATION,
     UPDATE_LLM_PROVIDER_MUTATION,
@@ -361,81 +356,6 @@ class TestValidateLlmProviderAccess:
 
         assert probe["ok"] is False
         assert probe["problem"]["kind"] == "runtime"
-
-
-class TestGraphQLProblemClassifier:
-    def test_code_wins_over_message(self):
-        problem = classify_graphql_error_dicts(
-            [
-                {
-                    "message": "Record not found",
-                    "extensions": {"code": "PERMISSION_DENIED"},
-                }
-            ]
-        )
-        assert problem is not None
-        assert problem.kind is GraphQLProblemKind.PERMISSION_DENIED
-
-    def test_not_found_falls_back_to_message_marker(self):
-        problem = classify_graphql_error_dicts(
-            [{"message": "Couldn't find Repo with uuid x", "extensions": {}}]
-        )
-        assert problem is not None
-        assert problem.kind is GraphQLProblemKind.NOT_FOUND
-        assert problem.code is None
-
-    def test_invalid_arguments_and_feature_codes(self):
-        invalid = classify_graphql_error_dicts(
-            [{"message": "bad", "extensions": {"code": "RECORD_INVALID"}}]
-        )
-        feature = classify_graphql_error_dicts(
-            [{"message": "off", "extensions": {"code": "FEATURE_NOT_ENABLED"}}]
-        )
-        assert (
-            invalid is not None and invalid.kind is GraphQLProblemKind.INVALID_ARGUMENTS
-        )
-        assert (
-            feature is not None
-            and feature.kind is GraphQLProblemKind.FEATURE_NOT_ENABLED
-        )
-
-    def test_unrecognized_error_is_runtime(self):
-        problem = classify_graphql_error_dicts(
-            [{"message": "boom", "extensions": {"code": "SOMETHING_ELSE"}}]
-        )
-        assert problem is not None
-        assert problem.kind is GraphQLProblemKind.RUNTIME
-        assert problem.code == "SOMETHING_ELSE"
-
-    def test_empty_list_returns_none(self):
-        assert classify_graphql_error_dicts([]) is None
-
-    def test_blank_or_whitespace_message_becomes_unknown_error(self):
-        for raw in ("", "   ", None):
-            problem = classify_graphql_error_dicts(
-                [{"message": raw, "extensions": {"code": "PERMISSION_DENIED"}}]
-            )
-            assert problem is not None
-            assert problem.message == "Unknown error"
-            assert problem.kind is GraphQLProblemKind.PERMISSION_DENIED
-
-    def test_classify_exception_reads_errors_attribute(self):
-        class FakeTransportError(Exception):
-            def __init__(self):
-                super().__init__("gql error")
-                self.errors = [
-                    {
-                        "message": "Permission denied",
-                        "extensions": {"code": "PERMISSION_DENIED"},
-                    }
-                ]
-
-        problem = classify_exception(FakeTransportError())
-        assert problem is not None
-        assert problem.kind is GraphQLProblemKind.PERMISSION_DENIED
-
-    def test_classify_exception_without_graphql_errors_returns_none(self):
-        assert classify_exception(RuntimeError("socket closed")) is None
 
 
 class TestConfigurationSecrecyInvariants:

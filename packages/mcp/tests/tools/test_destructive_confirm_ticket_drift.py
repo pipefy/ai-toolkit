@@ -32,6 +32,13 @@ PROTOCOL_KEYS = frozenset({"confirm", "confirmation_token", "debug"})
 # resource_identity (today: delete_phase_field.pipe_uuid). "Required" here is
 # the schema required list, so an optional selector is invisible to the walk.
 
+# Writes gated by the confirmation token without destructiveHint: their effect
+# is additive (MCP's sense of the hint) but needs approval anyway. Raw GraphQL
+# cannot tell what a mutation changes; a sent email cannot be recalled.
+CONFIRMED_WITHOUT_DESTRUCTIVE_HINT = frozenset(
+    {"execute_graphql", "send_inbox_email", "send_email_with_template"}
+)
+
 # A destructive needle in the name that the tool does not act on. Keep empty
 # unless a tool genuinely reads as destructive while doing something else.
 DESTRUCTIVELY_NAMED_BUT_NOT_DESTRUCTIVE = frozenset()
@@ -366,17 +373,16 @@ class TestDestructiveConfirmSchema:
                 f"{tool.name} missing confirmation_token in input schema"
             )
 
-    def test_execute_graphql_declares_confirm_fields_without_hint(self):
+    @pytest.mark.parametrize("name", sorted(CONFIRMED_WITHOUT_DESTRUCTIVE_HINT))
+    def test_confirmed_writes_declare_confirm_fields_without_hint(self, name):
         tools = {tool.name: tool for tool in _listed_tools(_schema_server())}
-        tool = tools["execute_graphql"]
+        tool = tools[name]
         hint = tool.annotations.destructive_hint if tool.annotations else None
         assert hint is not True
         properties = _schema_properties(_input_schema(tool))
-        assert "confirm" in properties, (
-            "execute_graphql missing confirm in input schema"
-        )
+        assert "confirm" in properties, f"{name} missing confirm in input schema"
         assert "confirmation_token" in properties, (
-            "execute_graphql missing confirmation_token in input schema"
+            f"{name} missing confirmation_token in input schema"
         )
 
     def test_non_destructive_tools_omit_confirmation_token(self):
@@ -384,7 +390,7 @@ class TestDestructiveConfirmSchema:
         names = {tool.name for tool in tools}
         assert "unpublish_sub_portal" in names
         skip = {tool.name for tool in tools if _is_destructive(tool)}
-        skip.add("execute_graphql")
+        skip |= CONFIRMED_WITHOUT_DESTRUCTIVE_HINT
         for tool in tools:
             if tool.name in skip:
                 continue

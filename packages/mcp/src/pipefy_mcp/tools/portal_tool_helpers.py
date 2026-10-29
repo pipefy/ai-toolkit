@@ -8,18 +8,21 @@ confirms ``get_portal`` -> ``subPortals[].published`` flips to false. CLI
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
 from pipefy_sdk import PipefyGraphQLError
-from pipefy_sdk.exceptions import PortalPermissionError
+from pipefy_sdk.exceptions import (
+    HtmlValidationError,
+    HtmlViolation,
+    PortalPermissionError,
+)
 from pipefy_sdk.models.portal import DeletePortalElementInput
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error
+from pipefy_mcp.tools.destructive_confirmation_token import digest_identity_value
 from pipefy_mcp.tools.graphql_error_helpers import (
     ensure_non_empty_error_message,
     extract_error_strings,
@@ -40,23 +43,50 @@ _PORTAL_OPERATION_FAILED = (
 )
 
 
+def _html_violation_line(violation: HtmlViolation) -> str:
+    """One violation as ``- CODE at selector[attribute]: message``."""
+    location = violation.selector or ""
+    if violation.attribute:
+        location += f"[{violation.attribute}]"
+    location_clause = f" at {location}" if location else ""
+    return f"- {violation.code}{location_clause}: {violation.message}"
+
+
+def _html_validation_message(exc: HtmlValidationError) -> str:
+    count = len(exc.violations)
+    noun = "violation" if count == 1 else "violations"
+    lines = [
+        f"The HTML was not saved: it has {count} {noun}. "
+        "Fix every one, then write the whole document again.",
+        *(_html_violation_line(violation) for violation in exc.violations),
+    ]
+    return "\n".join(lines)
+
+
 def map_portal_error_to_message(
     exc: BaseException,
     *,
+    not_found_message: str | None = None,
     empty_fallback: str = _PORTAL_OPERATION_FAILED,
 ) -> str:
     """Map portal SDK/GraphQL failures to agent-friendly messages.
 
     Args:
         exc: Exception raised by ``PipefyClient`` portal methods or GraphQL transport.
+        not_found_message: Message naming what the call was given, returned in
+            place of the API's own not-found text (not fit to show). Omit to
+            leave a not-found error unmapped, as every caller does today.
         empty_fallback: Non-empty message when ``str(exc)`` is blank after strip.
             Writes keep the default write-style fallback; reads pass a plain
             read-domain string.
 
     Returns:
         User-visible error string; permission failures mention ``create_portal``
-        and ``manage_portals``.
+        and ``manage_portals``, and HTML validation failures list every violation.
     """
+    if isinstance(exc, HtmlValidationError):
+        return _html_validation_message(exc)
+
     if isinstance(exc, PortalPermissionError):
         return ensure_non_empty_error_message(
             str(exc).strip(), _PORTAL_PERMISSION_GUIDANCE
@@ -76,6 +106,11 @@ def map_portal_error_to_message(
             if isinstance(code, str):
                 codes.append(code)
 
+    if not_found_message is not None and (
+        _NOT_FOUND_CODES.intersection(codes) or lowered.startswith("couldn't find")
+    ):
+        return not_found_message
+
     if "PERMISSION_DENIED" in codes or "permission denied" in lowered:
         return _PORTAL_PERMISSION_GUIDANCE
 
@@ -85,6 +120,62 @@ def map_portal_error_to_message(
             return "; ".join(messages)
 
     return ensure_non_empty_error_message(text, empty_fallback)
+
+
+_NOT_FOUND_CODES = frozenset({"RECORD_NOT_FOUND", "RESOURCE_NOT_FOUND"})
+_SOURCE_ACCESS_DENIED = (
+    "Permission denied for a data source: you can bind only the pipes and tables "
+    "list_interface_repos returns for this interface."
+)
+
+
+def map_interface_source_error_to_message(
+    exc: BaseException,
+    *,
+    not_found_message: str,
+    empty_fallback: str = _PORTAL_OPERATION_FAILED,
+) -> str:
+    """Map failures of the interface data source tools to agent-friendly messages.
+
+    The API's text for an unknown repo or interface uuid is not fit to show, so a
+    not-found error becomes ``not_found_message``. A ``Permission denied`` with no
+    error code is the API refusing a source's repo, not the interface.
+
+    Args:
+        exc: Exception raised by a ``PipefyClient`` interface source method.
+        not_found_message: Message naming the ids the call was given.
+        empty_fallback: Message for any other error whose text is blank.
+    """
+    if not isinstance(exc, PipefyGraphQLError):
+        return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
+    codes = extract_graphql_error_codes(exc)
+    lowered = str(exc).strip().lower()
+    if _NOT_FOUND_CODES.intersection(codes) or lowered.startswith("couldn't find"):
+        return not_found_message
+    if not codes and lowered == "permission denied":
+        return _SOURCE_ACCESS_DENIED
+    return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
+
+
+def interface_sources_validation_error(exc: ValidationError) -> dict[str, object]:
+    """Map an ``InterfaceDataSources`` validation error to ``INVALID_ARGUMENTS``.
+
+    Each problem reads ``data_sources[index].key: message``; a rule over the whole
+    list (a repeated ``id`` or ``name``) keeps its own message.
+    """
+    clauses: list[str] = []
+    for err in exc.errors(include_url=False):
+        inner = (err.get("ctx") or {}).get("error")
+        if err.get("type") == "value_error" and inner is not None:
+            message = str(inner)
+        else:
+            message = str(err.get("msg", ""))
+        where = "data_sources" + "".join(
+            f"[{part}]" if isinstance(part, int) else f".{part}"
+            for part in err.get("loc", ())
+        )
+        clauses.append(f"{where}: {message}")
+    return tool_error("; ".join(clauses), code="INVALID_ARGUMENTS")
 
 
 def validate_tool_ids(
@@ -288,9 +379,7 @@ def plan_portal_element_delete_confirmation(
     if validated.layout is None:
         return PortalElementDeleteConfirmation(descriptor, identity)
     rows = [row.model_dump() for row in validated.layout]
-    identity["layout"] = hashlib.sha256(
-        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    identity["layout"] = digest_identity_value(rows)
     noun = "row" if len(rows) == 1 else "rows"
     return PortalElementDeleteConfirmation(
         f"{descriptor}, replacing that page's layout ({len(rows)} {noun} sent)",
@@ -301,6 +390,8 @@ def plan_portal_element_delete_confirmation(
 __all__ = [
     "PortalElementDeleteConfirmation",
     "finalize_internal_api_mutation",
+    "interface_sources_validation_error",
+    "map_interface_source_error_to_message",
     "map_portal_error_to_message",
     "plan_portal_element_delete_confirmation",
     "portal_element_validation_error",

@@ -22,6 +22,23 @@ def looks_like_uuid(value: str) -> bool:
     return True
 
 
+def numeric_organization_id(organization_id: str | int) -> str:
+    """Return ``organization_id`` as the digit string an ``orgId`` argument expects.
+
+    Raises:
+        ValueError: The value is not a number or a string of digits. A uuid is
+            rejected too: the API matches ``orgId`` against the numeric id only.
+    """
+    text = str(organization_id).strip()
+    if not (text.isascii() and text.isdigit()):
+        msg = (
+            "Expected the numeric organization id, not its uuid or name; "
+            f"got {organization_id!r}."
+        )
+        raise ValueError(msg)
+    return text
+
+
 async def resolve_organization_uuid(
     execute_query: ExecuteQuery,
     organization_identifier: str | int,

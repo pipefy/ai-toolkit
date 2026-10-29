@@ -407,32 +407,6 @@ def test_every_receipt_key_the_writer_emits_survives_the_reader(tmp_path):
     assert unreadable == [], unreadable
 
 
-# --------------------------------------------------------- the onboarding skill
-
-_ONBOARDING = (
-    Path(__file__).resolve().parents[1]
-    / "skills"
-    / "onboarding"
-    / "pipefy-toolkit-setup"
-    / "SKILL.md"
-)
-
-
-def test_the_onboarding_skill_verifies_without_a_repository_checkout():
-    """Hosted MCP and the plugin give the agent no clone to run a script from."""
-    body = _ONBOARDING.read_text(encoding="utf-8")
-    assert "(references/mcp.md)" in body
-    body = (_ONBOARDING.parent / "references/mcp.md").read_text(encoding="utf-8")
-    verify = body.split("4. **Verify**", 1)[1].split("## Failure modes", 1)[0]
-    assert "curl -LsSf" in verify
-    assert "uninstall.sh | sh -s -- --scan" in verify
-    for line in body.splitlines():
-        # A bare `./uninstall.sh` as the instruction is the dead command; naming
-        # it as the checkout alternative beside the curl form is not.
-        if "./uninstall.sh" in line:
-            assert "curl -LsSf" in line, line
-
-
 # ------------------------------------------------------------- the pipe drain
 
 

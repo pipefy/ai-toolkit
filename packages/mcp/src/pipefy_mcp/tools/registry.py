@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md and README MCP totals.
+# Keep PIPEFY_TOOL_NAMES in sync with docs/parity.md.
 PIPEFY_TOOL_NAMES = frozenset(
     {
         "add_card_comment",
@@ -53,6 +53,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "create_ai_knowledge_base_document",
         "create_ai_knowledge_base_plain_text",
         "create_field_condition",
+        "create_html_interface",
         "create_ipaas_connection",
         "create_label",
         "create_llm_provider",
@@ -141,6 +142,8 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_card_relations",
         "get_cards",
         "get_email_templates",
+        "get_interface_html_guidelines",
+        "get_interface_repo_fields",
         "get_ipaas_connection_auth_url",
         "get_ipaas_tools",
         "get_labels",
@@ -153,6 +156,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_phase_allowed_move_targets",
         "get_phase_cards",
         "get_phase_cards_count",
+        "get_interface_html",
         "get_phase_fields",
         "get_portal",
         "get_pipe",
@@ -163,6 +167,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_pipe_report_export",
         "get_pipe_report_filterable_fields",
         "get_pipe_reports",
+        "get_records",
         "get_start_form_fields",
         "get_table",
         "get_table_record",
@@ -174,6 +179,8 @@ PIPEFY_TOOL_NAMES = frozenset(
         "introspect_query",
         "introspect_type",
         "invite_members",
+        "list_interface_repos",
+        "list_interfaces",
         "list_organizations",
         "list_portals",
         "move_card_to_phase",
@@ -188,6 +195,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "simulate_automation",
         "sort_portal_pages",
         "set_default_llm_provider",
+        "set_interface_sources",
         "set_llm_provider_active_status",
         "set_role",
         "set_table_record_field_value",
@@ -226,6 +234,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "validate_ai_automation_prompt",
         "validate_knowledge_base_access",
         "validate_llm_provider_access",
+        "write_interface_html",
     }
 )
 

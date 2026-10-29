@@ -381,6 +381,7 @@ async def validate_ai_agent_behaviors_sdk(
             field_ids,
             phase_ids,
             related_pipe_ids,
+            pipe_event_ids,
             context_fetch_warnings,
         ) = await fetch_pipe_validation_context(
             client, pid, timeout=VALIDATE_FETCH_TIMEOUT_SECONDS
@@ -480,6 +481,7 @@ async def validate_ai_agent_behaviors_sdk(
         pipe_phase_ids=phase_ids,
         related_pipe_ids=related_pipe_ids,
         cross_pipe_field_ids=cross_pipe_field_ids or None,
+        pipe_event_ids=pipe_event_ids,
         unknown_action_types=unknown_action_types,
     )
     transition_problems = await collect_ai_behavior_move_transition_problems(

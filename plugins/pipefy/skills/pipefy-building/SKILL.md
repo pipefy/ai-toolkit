@@ -1,0 +1,53 @@
+---
+name: pipefy-building
+description: >
+  Thin router for Pipefy build and configure asks: map user intent to the
+  correct domain skill (pipes, automations, AI agents, iPaaS, portals, etc.).
+  Use when the user wants to create, build, configure, or integrate something
+  in Pipefy and you need to know which skill to open. Do not use this skill
+  as a delivery playbook — if the user already has a building skill or a
+  detailed build prompt, follow that for how to build; use this skill only
+  for which Pipefy domain skill to read.
+tags: [pipefy, building, routing, orchestration]
+---
+
+# Pipefy Building (router)
+
+Maps **what the user wants** to **which domain skill to read**. It does not teach create/update workflows — open the linked skill for that.
+
+If the user already has a building skill or a detailed build prompt/spec, use that for *how to build*; use this skill for *which Pipefy skill to load*.
+
+---
+
+## When the user wants X → read skill Y
+
+| User intent (examples) | Read |
+|------------------------|------|
+| Design / architecture / "help me structure this process" | `pipefy-process-design` (consulting only) |
+| Impact / ROI / "is this change worth it?" / justify internally | `pipefy-process-impact` (consulting; do not implement from there) |
+| Pipes, phases, fields, labels, cards, field conditions | `pipefy-pipes-and-cards` |
+| Traditional or AI automations (if/then, prompt-driven rules) | `pipefy-automations` |
+| Conversational AI agents and behaviors | `pipefy-ai-agents` |
+| External integration / integrate with Slack, Gmail, Sheets, or another app | `pipefy-ipaas` |
+| Main portal: its grid-layout pages, elements, sub-portals | `pipefy-portal-setup` |
+| A standalone page or dashboard built as one HTML document (an HTML interface), with data from pipes and tables; if unclear whether the user means this or a portal page, ask | `pipefy-html-interfaces` |
+| Members, email templates, inbox email, webhooks | `pipefy-members-email-webhooks` |
+| Database tables and records | `pipefy-database-tables` |
+| Pipe/card relations | `pipefy-relations` |
+| Reports and exports | `pipefy-reports` |
+| Logs, usage, credits, job exports | `pipefy-observability` |
+| First-time toolkit setup | `pipefy-toolkit-setup` |
+
+**Do not re-teach domain workflows here — open the linked skill.**
+
+---
+
+## Product limits live in domain skills
+
+Hard stops and quirks (phase connections UI-only, email template create/edit UI-only, incompatible automation event×action pairs, no automation action applies a label, verify-after-write, AI consent) are documented in the domain skills above; follow those contracts after routing.
+
+## See also
+
+- `pipefy-process-design` — consulting when the ask is design, not build.
+- `pipefy-process-impact` for consulting when the ask is impact, ROI, or justification, not build.
+- [plugins/pipefy/README.md](https://github.com/pipefy/ai-toolkit/blob/main/plugins/pipefy/README.md) — full catalog.

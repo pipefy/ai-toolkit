@@ -3,14 +3,20 @@
 Tests validate the card-related operations without requiring real API credentials.
 """
 
+import copy
+from typing import Any, cast
+
 import pytest
+from _shared.fixture_ids import EXAMPLE_PHASE_ID, EXAMPLE_PIPE_ID
 from _shared.mock_clients import mock_executor
+from graphql import print_ast
 
 from pipefy_sdk.queries.card_queries import (
     CREATE_CARD_MUTATION,
     FIND_CARDS_QUERY,
     GET_CARD_RELATIONS_QUERY,
     GET_CARDS_QUERY,
+    GET_RECORDS_QUERY,
 )
 from pipefy_sdk.services.card_service import CardService
 
@@ -24,7 +30,7 @@ def _make_service(return_value: dict):
 @pytest.mark.asyncio
 async def test_create_card_converts_fields_and_sets_generated_by_ai():
     """Test create_card converts dict fields to array format with generated_by_ai."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {"title": "Teste-MCP"}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -52,7 +58,7 @@ async def test_create_card_converts_fields_and_sets_generated_by_ai():
 @pytest.mark.asyncio
 async def test_create_card_with_phase_id_sends_create_card_input():
     """create_card with phase_id uses CreateCardInput with phase_id and fields_attributes."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     phase_id = 987654321
     fields = {"title": "Orphan phase card"}
 
@@ -82,7 +88,7 @@ async def test_create_card_with_phase_id_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_phase_id_and_title_sends_create_card_input():
     """create_card passes optional title on CreateCardInput when provided."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     phase_id = 987654321
     card_title = "Seed card title"
 
@@ -104,7 +110,7 @@ async def test_create_card_with_phase_id_and_title_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_without_phase_id_uses_create_card_input():
     """create_card without phase_id still uses CreateCardInput (no phase_id key)."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {"title": "Start form card"}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -133,7 +139,7 @@ async def test_create_card_without_phase_id_uses_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_title_only_sends_create_card_input():
     """create_card passes title on CreateCardInput without phase_id (MCP happy path)."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     card_title = "Start form title"
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -154,7 +160,7 @@ async def test_create_card_with_title_only_sends_create_card_input():
 @pytest.mark.asyncio
 async def test_create_card_with_empty_dict_sends_empty_list():
     """Test that create_card with empty dict sends fields as empty list to GraphQL."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     fields = {}
 
     service, executor = _make_service({"createCard": {"card": {"id": "12345"}}})
@@ -176,7 +182,7 @@ async def test_create_card_with_empty_dict_sends_empty_list():
 @pytest.mark.asyncio
 async def test_get_cards_with_none_search_sends_empty_search():
     """Test get_cards sends empty search object when search is None."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     result = await service.get_cards(pipe_id, None)
@@ -194,7 +200,7 @@ async def test_get_cards_with_none_search_sends_empty_search():
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_true_passes_includeFields_variable():
     """Test get_cards uses GET_CARDS_QUERY with includeFields=True when include_fields=True."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     await service.get_cards(pipe_id, search=None, include_fields=True)
@@ -209,7 +215,7 @@ async def test_get_cards_with_include_fields_true_passes_includeFields_variable(
 @pytest.mark.asyncio
 async def test_get_cards_with_include_fields_false_passes_includeFields_variable():
     """Test get_cards uses GET_CARDS_QUERY with includeFields=False when include_fields=False."""
-    pipe_id = 303181849
+    pipe_id = 301234568
 
     service, executor = _make_service({"cards": {"edges": []}})
     await service.get_cards(pipe_id, search=None, include_fields=False)
@@ -224,7 +230,7 @@ async def test_get_cards_with_include_fields_false_passes_includeFields_variable
 @pytest.mark.asyncio
 async def test_find_cards_sends_pipeId_search_and_includeFields():
     """Test find_cards uses FIND_CARDS_QUERY with pipeId, search.fieldId, search.fieldValue, includeFields."""
-    pipe_id = 303181849
+    pipe_id = 301234568
     field_id = "status"
     field_value = "In Progress"
 
@@ -552,3 +558,149 @@ async def test_get_card_relations_uses_query_and_cardId_variable():
     assert query_used is GET_CARD_RELATIONS_QUERY
     assert variables == {"cardId": "999"}
     assert result == expected
+
+
+_FIELD_UUID = "00000000-0000-4000-8000-0000000000aa"
+_EMPTY_RECORDS = {"records": {"totalCount": 0, "pageInfo": {}, "edges": []}}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_sends_repo_id_and_omits_none_arguments():
+    service, executor = _make_service(_EMPTY_RECORDS)
+    result = await service.get_records(EXAMPLE_PIPE_ID)
+
+    query, variables = executor.execute_query.call_args[0]
+    assert query is GET_RECORDS_QUERY
+    assert variables == {"repoId": EXAMPLE_PIPE_ID, "includeFields": False}
+    assert result == _EMPTY_RECORDS
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_returns_the_page_unchanged():
+    page = {
+        "records": {
+            "totalCount": 120,
+            "pageInfo": {"hasNextPage": True, "endCursor": "c1=="},
+            "edges": [{"node": {"id": "1", "labels": [], "assignees": []}}],
+        }
+    }
+    service, _ = _make_service(copy.deepcopy(page))
+
+    assert await service.get_records(EXAMPLE_PIPE_ID, first=1) == page
+
+
+@pytest.mark.unit
+def test_get_records_query_selects_count_cursor_and_arguments():
+    text = " ".join(print_ast(GET_RECORDS_QUERY.document).split())
+    assert (
+        "records( repoId: $repoId phaseId: $phaseId searchTerm: $searchTerm "
+        "where: $where orderBy: $orderBy first: $first after: $after )"
+    ) in text
+    assert "totalCount" in text
+    assert "pageInfo { hasNextPage endCursor }" in text
+    assert "edges { node {" in text
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_sends_every_argument():
+    where = {"field": _FIELD_UUID, "eq": "x"}
+    order_by = [{"attribute": "CREATED_AT", "direction": "DESC"}]
+    service, executor = _make_service(_EMPTY_RECORDS)
+    await service.get_records(
+        EXAMPLE_PIPE_ID,
+        where,
+        "acme",
+        int(EXAMPLE_PHASE_ID),
+        order_by,
+        True,
+        first=20,
+        after="cursor-1",
+    )
+
+    assert executor.execute_query.call_args[0][1] == {
+        "repoId": EXAMPLE_PIPE_ID,
+        "where": where,
+        "searchTerm": "acme",
+        "phaseId": EXAMPLE_PHASE_ID,
+        "orderBy": order_by,
+        "includeFields": True,
+        "first": 20,
+        "after": "cursor-1",
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_clamps_first_to_fifty():
+    service, executor = _make_service(_EMPTY_RECORDS)
+    await service.get_records(EXAMPLE_PIPE_ID, first=100)
+
+    assert executor.execute_query.call_args[0][1]["first"] == 50
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "where",
+    [
+        {"field": "total_value", "eq": "x"},
+        {"and": [{"attribute": "TITLE", "eq": "a"}, {"field": "total_value"}]},
+    ],
+)
+async def test_get_records_rejects_field_slug_before_calling(where):
+    service, executor = _make_service(_EMPTY_RECORDS)
+    with pytest.raises(ValueError, match="uuid"):
+        await service.get_records(EXAMPLE_PIPE_ID, where)
+
+    executor.execute_query.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_rejects_order_by_slug_before_calling():
+    service, executor = _make_service(_EMPTY_RECORDS)
+    with pytest.raises(ValueError, match="uuid"):
+        await service.get_records(
+            EXAMPLE_PIPE_ID, order_by=[{"field": "total_value", "direction": "ASC"}]
+        )
+
+    executor.execute_query.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_treats_empty_where_and_after_as_absent():
+    service, executor = _make_service(_EMPTY_RECORDS)
+    await service.get_records(EXAMPLE_PIPE_ID, where={}, after="")
+
+    assert executor.execute_query.call_args[0][1] == {
+        "repoId": EXAMPLE_PIPE_ID,
+        "includeFields": False,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first", [0, -5])
+async def test_get_records_rejects_first_below_one(first):
+    service, executor = _make_service(_EMPTY_RECORDS)
+    with pytest.raises(ValueError, match="first"):
+        await service.get_records(EXAMPLE_PIPE_ID, first=first)
+
+    executor.execute_query.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_records_rejects_a_single_order_by_object_with_a_slug():
+    service, executor = _make_service(_EMPTY_RECORDS)
+    with pytest.raises(ValueError, match="uuid"):
+        await service.get_records(
+            EXAMPLE_PIPE_ID,
+            order_by=cast(Any, {"field": "total_value", "direction": "ASC"}),
+        )
+
+    executor.execute_query.assert_not_called()

@@ -280,6 +280,63 @@ class TestLaunch:
         assert len(runner.calls) == 1
 
 
+class TestAuthenticatedCall:
+    """Runs the real SDK from the workspace venv against the stub endpoint."""
+
+    def test_passes_when_the_sdk_sends_the_bearer(self) -> None:
+        _smoke.authenticated_call()
+
+    def test_ignores_the_operators_pipefy_settings(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Schema reuse would send an introspection query the stub cannot answer."""
+        monkeypatch.setenv("PIPEFY_GQL_REUSE_FETCHED_GRAPHQL_SCHEMA", "true")
+        _smoke.authenticated_call()
+
+    def test_bypasses_an_environment_proxy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for name in ("HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+            monkeypatch.setenv(name, "http://127.0.0.1:9")
+        _smoke.authenticated_call()
+
+    def test_a_loopback_bind_failure_is_a_smoke_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def refuse(*_args: object) -> None:
+            raise PermissionError("bind refused")
+
+        monkeypatch.setattr(_smoke, "ThreadingHTTPServer", refuse)
+        with pytest.raises(_smoke.SmokeError, match="bind refused"):
+            _smoke.authenticated_call()
+
+    def test_a_wrong_payload_is_a_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def answer_null_me(handler) -> None:
+            handler.rfile.read(int(handler.headers.get("Content-Length", 0)))
+            handler._reply(200, b'{"data": {"me": null}}', "application/json")
+
+        monkeypatch.setattr(_smoke._StubGraphQLHandler, "do_POST", answer_null_me)
+        with pytest.raises(_smoke.SmokeError, match="get_me returned None"):
+            _smoke.authenticated_call()
+
+    def test_a_rejected_bearer_is_a_failure(self) -> None:
+        with pytest.raises(_smoke.SmokeError, match="401"):
+            _smoke.authenticated_call(token="wrong-token")
+
+    def test_fails_when_the_transport_builds_an_httpx2_client(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The break this check exists for: gql 4.4 picks httpx2 when it is installed."""
+        httpx2 = pytest.importorskip("httpx2")
+        import gql.transport.httpx as gql_httpx
+
+        monkeypatch.setattr(gql_httpx, "httpx", httpx2)
+        with pytest.raises(_smoke.SmokeError, match='Invalid "auth" argument'):
+            _smoke.authenticated_call()
+
+
 class TestMain:
     def test_reports_failure_on_stderr_and_exits_non_zero(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -297,19 +354,42 @@ class TestMain:
         for name in ("pipefy", "pipefy-mcp-server"):
             (tmp_path / name).touch()
         runner = FakeRunner()
+        calls: list[str] = []
         monkeypatch.setattr(_smoke, "distributions", _full_install)
         monkeypatch.setattr(_smoke.sysconfig, "get_path", lambda _name: str(tmp_path))
         monkeypatch.setattr(_smoke.subprocess, "run", runner)
-        assert _smoke.main() == 0
-        assert (
-            "Every published console entry point launched." in capsys.readouterr().out
+        monkeypatch.setattr(
+            _smoke, "authenticated_call", lambda: calls.append("authenticated_call")
         )
-        # Asserted explicitly: without this, removing the launch() call from main
-        # leaves both the exit code and the banner intact.
+        assert _smoke.main() == 0
+        assert "an authenticated call went through." in capsys.readouterr().out
+        # Asserted explicitly: without this, removing the launch() or the
+        # authenticated_call() from main leaves both the exit code and the
+        # banner intact.
         assert runner.calls == [
             [str(tmp_path / "pipefy"), "--help"],
             [str(tmp_path / "pipefy-mcp-server"), "--help"],
         ]
+        assert calls == ["authenticated_call"]
+
+    def test_a_failed_authenticated_call_exits_non_zero(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        for name in ("pipefy", "pipefy-mcp-server"):
+            (tmp_path / name).touch()
+
+        def fail() -> None:
+            raise _smoke.SmokeError("TypeError: Invalid auth argument")
+
+        monkeypatch.setattr(_smoke, "distributions", _full_install)
+        monkeypatch.setattr(_smoke.sysconfig, "get_path", lambda _name: str(tmp_path))
+        monkeypatch.setattr(_smoke.subprocess, "run", FakeRunner())
+        monkeypatch.setattr(_smoke, "authenticated_call", fail)
+        assert _smoke.main() == 1
+        assert "Invalid auth argument" in capsys.readouterr().err
 
     def test_check_wheels_mode_passes_on_a_complete_directory(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
