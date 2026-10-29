@@ -199,6 +199,18 @@ async def test_update_pipe_relation_merges_attrs_over_current_flags():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_update_pipe_relation_sends_explicit_false_over_current_true():
+    service, executor = _make_service(
+        side_effect=[_current_relation(), {"updatePipeRelation": {}}]
+    )
+    await service.update_pipe_relation("r9", "N", autoFillFieldEnabled=False)
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp["autoFillFieldEnabled"] is False
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_update_pipe_relation_omits_own_field_maps_when_not_passed():
     """``ownFieldMaps`` is optional on update and the API keeps it when absent."""
     service, executor = _make_service(
