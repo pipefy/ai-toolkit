@@ -250,6 +250,25 @@ async def test_update_pipe_relation_graphql_error(
 
 
 @pytest.mark.anyio
+async def test_update_pipe_relation_not_found(
+    relation_session, mock_relation_client, extract_payload
+):
+    mock_relation_client.update_pipe_relation.side_effect = ValueError(
+        "Pipe relation '404' was not found."
+    )
+
+    async with relation_session as session:
+        result = await session.call_tool(
+            "update_pipe_relation",
+            {"relation_id": 404, "name": "x"},
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert tool_error_message(payload) == "Pipe relation '404' was not found."
+
+
+@pytest.mark.anyio
 async def test_delete_pipe_relation_success(relation_session, mock_relation_client):
     mock_relation_client.delete_pipe_relation.return_value = {
         "deletePipeRelation": {"success": True},

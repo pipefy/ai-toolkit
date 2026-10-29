@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK `create_pipe`, phases, start form and labels**: `PipefyClient.create_pipe` takes optional `phases` (`CreatePipePhase`: `name`, `done`), `start_form_fields` (`CreatePipeStartFormField`) and `labels` (`CreatePipeLabel`), so a pipe can be built in one call. With `phases`, the pipe gets exactly those phases, in order, each connected to the phases beside it, and Pipefy's default Inbox, Doing and Done are deleted. Pipefy's own `phases` input is not used: it skips a phase named like a default and puts the requested phases between the defaults. Blank or repeated phase names raise `ValueError` before any call. If deleting a default phase or creating a requested phase fails, `PipePhaseSetupError` carries the new pipe's `pipe_id` and the phases created so far, with the failed call's error as `__cause__`. The result now lists the new pipe's phases, start form fields (with `internal_id`) and labels with their ids, with or without the new arguments, so the MCP `create_pipe` tool returns them too.
 
+### Fixed
+
+- **SDK / MCP / CLI `update_pipe_relation`, constraint flags**: an update set every constraint flag the caller left out (`autoFillFieldEnabled`, `canConnectMultipleItems`, `childMustExistToMoveParent` and the rest) to its create default, so even a rename changed the relation's constraints. The update now reads the relation's current flags and sends them back, with the caller's `extra_input` / `--extra` on top; the defaults apply only on create. An omitted `ownFieldMaps` still keeps the current auto-fill maps. An unknown relation id raises `ValueError` ("Pipe relation '<id>' was not found.") before any mutation; the MCP tool returns that message and the CLI prints it and exits 2. A caller who relied on a bare update to reset the flags now passes them explicitly. Each update makes one extra read.
+
 ## [0.5.5-beta.1] - 2026-10-26
 
 ### Added

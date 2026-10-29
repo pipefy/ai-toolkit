@@ -30,7 +30,7 @@ Link processes and cards across workflows.
 | ------------ | ----------- | --------- |
 | `get_pipe_relations` | Yes | List pipe-to-pipe relations for a pipe. |
 | `create_pipe_relation` | No | Create a new pipe-to-pipe relation. |
-| `update_pipe_relation` | No | Change relation config (auto-fill, constraints). Pass every constraint flag; see Failure modes. |
+| `update_pipe_relation` | No | Change relation config (auto-fill, constraints). Flags you leave out keep their current values. |
 | `delete_pipe_relation` | No | **Destructive; review and approve first.** |
 | `get_table_relations` | Yes | Load table relations by relation ID. |
 | `get_card_relations` | Yes | List all card-to-card relations on a card. |
@@ -76,7 +76,7 @@ Link processes and cards across workflows.
 
 - **`create_card_relation` fails with "relation not found":** `source_id` must be the **pipe relation ID** (from `get_pipe_relations`), not the pipe ID. These are different values.
 - **Table relations return empty:** `get_table_relations` requires table-relation IDs, not table IDs. Get table-relation IDs from the table's connection config.
-- **`update_pipe_relation` resets the flags you leave out.** Pipefy requires all eight constraint flags on every update (`allChildrenMustBeDoneToFinishParent`, `allChildrenMustBeDoneToMoveParent`, `autoFillFieldEnabled`, `canConnectExistingItems`, `canConnectMultipleItems`, `canCreateNewItems`, `childMustExistToFinishParent`, `childMustExistToMoveParent`). A flag you do not pass is sent with a default: the three `canConnect…`/`canCreateNewItems` flags `true`, the other five `false`. So even a rename changes the relation's constraints. Read the relation with `get_pipe_relations` and pass every flag's current value. Leave `ownFieldMaps` out to keep the auto-fill mappings: sending it replaces the whole list.
+- **`update_pipe_relation` and `ownFieldMaps`:** constraint flags you leave out keep their current values, so pass only the ones you change. Leave `ownFieldMaps` out to keep the auto-fill mappings: sending it replaces the whole list.
 - **Deletion:** show the affected relation and obtain approval before removing it.
 
 ## See also
