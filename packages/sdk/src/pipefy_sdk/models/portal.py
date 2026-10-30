@@ -414,6 +414,7 @@ MAX_CUSTOM_CODE_ACTIONS = 50
 # NOTE: ASCII classes on purpose: Python's \w also matches non-ASCII letters,
 # which the API's actionId rule rejects.
 _ACTION_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+_AUTOMATION_ID_PATTERN = r"^[0-9]+$"
 
 
 class _InterfaceAction(BaseModel):
@@ -458,12 +459,15 @@ class OpenRecordAction(_InterfaceAction):
 class TriggerAutomationAction(_InterfaceAction):
     """Runs ``automation_ids`` on a record of source ``source_id``.
 
-    Each id is a manually triggered automation of the source's repo.
+    Each id is a manually triggered automation of the source's repo, as a string of
+    digits.
     """
 
     kind: Literal["triggerAutomation"]
     source_id: NonBlankStr = Field(alias="sourceId")
-    automation_ids: list[PipefyId] = Field(alias="automationIds", min_length=1)
+    automation_ids: list[Annotated[PipefyId, Field(pattern=_AUTOMATION_ID_PATTERN)]] = (
+        Field(alias="automationIds", min_length=1)
+    )
     label: str | None = None
 
 

@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **196** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **197** tools).
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -181,6 +181,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `send_email_with_template` | `pipefy email template send` | shipped | (`--card`, `--template`). MCP two-step with `confirmation_token`: the preview returns the message resolved for the card, and a changed resolution returns a fresh preview. CLI prints the email and exits 2 unless `--yes`. |
 | `send_inbox_email` | `pipefy email inbox send` | shipped | (`--from-email`, `--to`, `--subject`, `--body`). MCP two-step with `confirmation_token`: the preview returns the message, and the token binds to it. CLI prints the email and exits 2 unless `--yes`. |
 | `set_default_llm_provider` | `pipefy ai-provider default set` | shipped | Organization-scoped; exactly one of `--provider-id` / `--system-provider-id`. |
+| `set_interface_actions` | `pipefy portal html-interface set-actions` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its `metadata.actions` (`[]` removes them), keeping its other metadata keys and data sources, and sets or keeps `editable` (`--editable/--no-editable`). Actions are checked before the call, and each `sourceId`/`repoId` against the element's sources. Remote-safe. |
 | `set_interface_sources` | `pipefy portal html-interface set-sources` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its data sources (`[]` removes them), keeping its `metadata` and `editable`. Sources are checked before the call. Remote-safe. |
 | `set_llm_provider_active_status` | `pipefy ai-provider set-active-status` | shipped | Custom (BYOM) provider; `--active/--inactive`; org from session. |
 | `set_role` | `pipefy member set-role` | shipped | — |
@@ -235,6 +236,6 @@ for n in m.body:
             print(len(v.args[0].elts))"
 ```
 
-Expect **196** tool names in `PIPEFY_TOOL_NAMES` and **196** data rows in the parity table (excluding the header rows).
+Expect **197** tool names in `PIPEFY_TOOL_NAMES` and **197** data rows in the parity table (excluding the header rows).
 
 When adding or removing an MCP tool, update **this file** and `PIPEFY_TOOL_NAMES` in the same change set.

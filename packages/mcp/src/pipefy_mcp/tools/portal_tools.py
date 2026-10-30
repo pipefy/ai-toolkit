@@ -10,6 +10,7 @@ from pipefy_sdk import PipefyId
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
     DeletePortalElementInput,
+    InterfaceActions,
     InterfaceDataSources,
     PortalColor,
     PortalElementType,
@@ -28,7 +29,9 @@ from pipefy_mcp.tools.introspection_tool_helpers import (
 )
 from pipefy_mcp.tools.portal_tool_helpers import (
     finalize_internal_api_mutation,
+    interface_actions_validation_error,
     interface_sources_validation_error,
+    map_interface_action_error_to_message,
     map_interface_source_error_to_message,
     map_portal_error_to_message,
     plan_portal_element_delete_confirmation,
@@ -314,9 +317,13 @@ class PortalTools:
             - ``filters``: optional filter tree in the format
               ``get_interface_html_guidelines`` describes, or null.
 
-            At most 10 sources. Returns the element ``uuid`` and the
-            ``dataSources`` as sent, once the update reports success; they are not
-            read back. Call ``get_interface_html`` for the stored sources.
+            At most 10 sources. The update is refused while an action in the
+            element's ``metadata.actions`` fails the API's checks: it names a
+            source the list drops, or a page or automation that was deleted.
+            Change or drop that action with ``set_interface_actions`` first.
+            Returns the element ``uuid`` and the ``dataSources`` as sent,
+            once the update reports success; they are not read back. Call
+            ``get_interface_html`` for the stored sources.
 
             Args:
                 interface_uuid: The HTML interface's uuid.
@@ -349,6 +356,103 @@ class PortalTools:
             except Exception as exc:  # noqa: BLE001
                 return build_error_payload(
                     map_interface_source_error_to_message(
+                        exc,
+                        not_found_message=(
+                            f"No HTML interface has uuid '{interface_uuid}'."
+                        ),
+                    )
+                )
+            return build_success_payload(element, include_parsed=True)
+
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False), meta=REMOTE)
+        async def set_interface_actions(
+            ctx: Context,
+            interface_uuid: str,
+            page_id: str,
+            element_id: str,
+            actions: list[dict[str, Any]],
+            editable: bool | None = None,
+        ) -> dict[str, Any]:
+            """Replace the actions an HTML interface's customCode element can run.
+
+            Declare actions after ``set_interface_sources`` and before writing the
+            HTML that names them: a ``<button data-pfy-action="<actionId>">``
+            runs the action, and an undeclared ``actionId`` runs no action. The list
+            replaces the element's actions (``[]`` removes them all) and is stored
+            as ``metadata.actions``; the element's sources and other settings are
+            kept. Each action has ``actionId`` (1 to 64 letters, digits,
+            underscores or hyphens, unique within the element) and ``kind``:
+
+            - ``openStartForm``: ``repoId``, the ``repoId`` of one of the
+              element's sources. Example: ``{"actionId": "new-request", "kind":
+              "openStartForm", "repoId": "<repo uuid>"}``.
+            - ``openRecord``: ``sourceId``, the ``id`` of one of the element's
+              sources; optional ``display`` (``modal``, the default, or
+              ``page``), ``fieldKeys`` (keys from that source's ``fieldKeys``
+              for the modal to show) and ``pageId`` (required with ``page``: a
+              record layout page of this interface for the source's repo).
+              Example: ``{"actionId": "details", "kind": "openRecord",
+              "sourceId": "open-requests", "fieldKeys": ["title"]}``.
+            - ``triggerAutomation``: ``sourceId`` as above, ``automationIds``
+              (one or more manually triggered automations of the source's
+              repo, each a string of digits) and optional ``label``. Example: ``{"actionId": "approve",
+              "kind": "triggerAutomation", "sourceId": "open-requests",
+              "automationIds": ["301"]}``.
+
+            ``openRecord`` and ``triggerAutomation`` act on a record, so their
+            button goes inside a record (a ``data-pfy-row`` clone, or a source
+            container with ``data-pfy-record``); ``get_interface_html_guidelines``
+            describes both in ``dataPfyVocabulary``. At most 50 actions.
+
+            ``editable`` turns on viewer edits for the element's
+            ``data-pfy-editable`` fields; ``dataPfyVocabulary`` in
+            ``get_interface_html_guidelines`` says which edits the API then
+            accepts. Omit it to keep the current value.
+
+            Returns the element ``uuid``, the ``actions`` and the ``editable``
+            flag as sent, once the update reports success; they are not read
+            back. Call ``get_interface_html`` for the stored ``metadata.actions``.
+
+            Args:
+                interface_uuid: The HTML interface's uuid.
+                page_id: Page holding the element.
+                element_id: The page's customCode element.
+                actions: The element's complete action list.
+                editable: Whether viewers can save edits to the element's
+                    ``data-pfy-editable`` fields; omit to keep it.
+            """
+            client = get_pipefy_client(ctx)
+            cleaned, err = validate_tool_ids(
+                {
+                    "interface_uuid": interface_uuid,
+                    "page_id": page_id,
+                    "element_id": element_id,
+                }
+            )
+            if err is not None:
+                return err
+            interface_uuid = cleaned["interface_uuid"]
+            page_id = cleaned["page_id"]
+            element_id = cleaned["element_id"]
+            try:
+                parsed = InterfaceActions.model_validate(actions)
+            except ValidationError as exc:
+                return interface_actions_validation_error(exc)
+            await ctx.debug(
+                f"set_interface_actions: element_id={element_id}, "
+                f"actions={len(parsed.root)}, editable={editable}"
+            )
+            try:
+                element = await client.set_interface_actions(
+                    page_id,
+                    element_id,
+                    parsed.root,
+                    interface_uuid=interface_uuid,
+                    editable=editable,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return build_error_payload(
+                    map_interface_action_error_to_message(
                         exc,
                         not_found_message=(
                             f"No HTML interface has uuid '{interface_uuid}'."
@@ -411,8 +515,10 @@ class PortalTools:
             """Fetch an HTML interface with each ``customCode`` element's live HTML.
 
             Returns uuid, name, visibility, ``contentModeHtml``, and pages (each
-            with elements carrying ``dataSources`` and ``htmlDocument``: ``content``,
-            ``contentHash``, ``createdAt``). Raises on a grid-layout interface; use
+            with elements carrying ``dataSources``, ``metadata`` (a customCode
+            element's declared actions are ``metadata.actions``), ``editable`` and
+            ``htmlDocument``: ``content``, ``contentHash``, ``createdAt``). Raises
+            on a grid-layout interface; use
             ``get_portal`` for those. The response includes both ``result``
             (pretty-printed JSON string) and ``data`` (parsed dict) for convenience.
 
@@ -456,6 +562,13 @@ class PortalTools:
             element with ``get_interface_html`` before writing to it, since this
             replaces its whole document. On ``HTML_VALIDATION_FAILED``, nothing is
             stored; fix every listed violation and retry with the corrected HTML.
+
+            A ``data-pfy-action`` runs only an action declared in the element's
+            ``metadata.actions``, so declare actions with ``set_interface_actions``
+            before writing HTML that names them. A ``data-pfy-editable`` field
+            saves a viewer's edit only on an ``editable`` element, which
+            ``set_interface_actions`` sets; ``dataPfyVocabulary`` says which
+            edits the API then accepts.
 
             Args:
                 page_id: Page holding the element (``get_interface_html``
@@ -525,6 +638,11 @@ class PortalTools:
               ``get_interface_html_guidelines`` describes, or null.
 
             At most 10 sources.
+
+            Actions are declared on the created element, so a ``data-pfy-action``
+            in ``html`` runs no action until ``set_interface_actions`` declares it,
+            using the page and element uuids this returns. That tool also sets
+            ``editable``, which ``data-pfy-editable`` fields need to save.
 
             Args:
                 organization_uuid: Organization UUID, or numeric organization id.

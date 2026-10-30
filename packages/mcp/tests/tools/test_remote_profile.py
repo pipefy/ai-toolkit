@@ -241,10 +241,12 @@ REMOTE_SEED = frozenset(
         "update_sub_portal_element",
         "delete_sub_portal_element",
         # HTML interface writes: same reasoning as the portal writes above.
-        # set_interface_sources and create_html_interface validate data_sources
-        # client-side before any call, which narrows input, not authorization;
-        # the API still governs whether the caller can bind each source's repo.
+        # set_interface_sources, set_interface_actions and create_html_interface
+        # validate their lists client-side before any call, which narrows input,
+        # not authorization; the API still governs whether the caller can bind
+        # each source's repo and which automations an action may run.
         "create_html_interface",
+        "set_interface_actions",
         "set_interface_sources",
         "write_interface_html",
         # webhook / member / email writes: create/update/delete, membership

@@ -192,6 +192,7 @@ def test_build_server_remote_mode_exposes_the_html_interface_tools(mocked_runtim
         "list_interface_repos",
         "get_interface_repo_fields",
         "set_interface_sources",
+        "set_interface_actions",
         "list_interfaces",
         "get_interface_html",
         "write_interface_html",

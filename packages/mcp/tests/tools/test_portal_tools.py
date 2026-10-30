@@ -18,7 +18,12 @@ from pipefy_sdk.exceptions import (
     HtmlViolation,
     PortalPermissionError,
 )
-from pipefy_sdk.models.portal import InterfaceDataSource, parse_portal_page_layout
+from pipefy_sdk.models.portal import (
+    InterfaceDataSource,
+    OpenRecordAction,
+    TriggerAutomationAction,
+    parse_portal_page_layout,
+)
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.portal_tools import PortalTools
@@ -135,6 +140,7 @@ def mock_portal_client():
     client.list_interface_repos = AsyncMock()
     client.get_interface_repo_fields = AsyncMock()
     client.set_interface_sources = AsyncMock()
+    client.set_interface_actions = AsyncMock()
     client.list_html_interfaces = AsyncMock()
     client.get_html_interface = AsyncMock()
     client.write_html_document = AsyncMock()
@@ -3646,3 +3652,218 @@ async def test_create_html_interface_maps_api_errors_for_agents(
     assert payload["success"] is False
     assert payload["error"]["message"] == message
     mock_portal_client.write_html_document.assert_not_awaited()
+
+
+_ACTIONS = [
+    {
+        "actionId": "details",
+        "kind": "openRecord",
+        "sourceId": "open-requests",
+        "fieldKeys": ["title"],
+    },
+    {
+        "actionId": "approve",
+        "kind": "triggerAutomation",
+        "sourceId": "open-requests",
+        "automationIds": ["301"],
+    },
+]
+_SET_ACTIONS_ARGS = {
+    "interface_uuid": "html-uuid-1",
+    "page_id": "page-uuid-1",
+    "element_id": "el-uuid-1",
+    "actions": _ACTIONS,
+}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("editable", [None, True])
+async def test_set_interface_actions_sends_parsed_actions_and_returns_them(
+    portal_session, mock_portal_client, extract_payload, editable
+):
+    set_result = {
+        "id": "el-uuid-1",
+        "uuid": "el-uuid-1",
+        "actions": _ACTIONS,
+        "editable": bool(editable),
+    }
+    mock_portal_client.set_interface_actions = AsyncMock(return_value=set_result)
+    arguments = dict(_SET_ACTIONS_ARGS)
+    if editable is not None:
+        arguments["editable"] = editable
+
+    async with portal_session as session:
+        result = await session.call_tool("set_interface_actions", arguments)
+
+    mock_portal_client.set_interface_actions.assert_awaited_once_with(
+        "page-uuid-1",
+        "el-uuid-1",
+        [
+            OpenRecordAction(
+                action_id="details",
+                kind="openRecord",
+                source_id="open-requests",
+                field_keys=["title"],
+            ),
+            TriggerAutomationAction(
+                action_id="approve",
+                kind="triggerAutomation",
+                source_id="open-requests",
+                automation_ids=["301"],
+            ),
+        ],
+        interface_uuid="html-uuid-1",
+        editable=editable,
+    )
+    payload = extract_payload(result)
+    assert payload["success"] is True
+    assert payload["data"] == set_result
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("actions", "message"),
+    [
+        (
+            [{**_ACTIONS[0], "sourceId": " "}],
+            "actions[0].sourceId: Value should have at least 1 item after "
+            "validation, not 0",
+        ),
+        (
+            [_ACTIONS[0], {**_ACTIONS[1], "automationIds": []}],
+            "actions[1].automationIds: List should have at least 1 item after "
+            "validation, not 0",
+        ),
+        (
+            [{**_ACTIONS[0], "kind": "openUrl"}],
+            "actions[0].kind: Input tag 'openUrl' found using 'kind' does not "
+            "match any of the expected tags: 'openStartForm', 'openRecord', "
+            "'triggerAutomation'",
+        ),
+        (
+            [{**_ACTIONS[0], "display": "page"}],
+            "actions[0]: Action details opens the record on a page, so it needs "
+            "a pageId: a record layout page of this interface for the source's "
+            "repo.",
+        ),
+        (
+            [_ACTIONS[0], {**_ACTIONS[1], "actionId": "details"}],
+            "actions: Each action needs its own actionId; repeated: details.",
+        ),
+    ],
+    ids=[
+        "blank source id",
+        "no automation ids",
+        "unknown kind",
+        "page display without page id",
+        "repeated action id",
+    ],
+)
+async def test_set_interface_actions_rejects_invalid_actions_before_any_call(
+    portal_session, mock_portal_client, actions, message
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "set_interface_actions", {**_SET_ACTIONS_ARGS, "actions": actions}
+        )
+
+    payload = assert_invalid_arguments_envelope(result)
+    assert payload["error"]["message"] == message
+    mock_portal_client.set_interface_actions.assert_not_awaited()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("blank", ["interface_uuid", "page_id", "element_id"])
+async def test_set_interface_actions_rejects_blank_ids_before_any_call(
+    portal_session, mock_portal_client, extract_payload, blank
+):
+    async with portal_session as session:
+        result = await session.call_tool(
+            "set_interface_actions", {**_SET_ACTIONS_ARGS, blank: " "}
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["message"] == _blank_id_message(blank)
+    mock_portal_client.set_interface_actions.assert_not_awaited()
+
+
+_ACTION_SOURCE_REFUSED = (
+    "Permission denied for a data source of this element: you can set its "
+    "actions only when you can bind every pipe and table its sources read, as "
+    "list_interface_repos returns them for this interface."
+)
+_UNKNOWN_SOURCE = (
+    "actions[0].sourceId: 'closed-requests' is not a data source of this "
+    "element; its sources are: open-requests"
+)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            PipefyGraphQLError([{"message": "Couldn't find the interface"}]),
+            "No HTML interface has uuid 'html-uuid-1'.",
+        ),
+        (
+            PipefyGraphQLError(
+                [{"message": "x", "extensions": {"code": "RESOURCE_NOT_FOUND"}}]
+            ),
+            "No HTML interface has uuid 'html-uuid-1'.",
+        ),
+        (
+            PipefyGraphQLError([{"message": "Permission denied"}]),
+            _ACTION_SOURCE_REFUSED,
+        ),
+        (
+            PipefyGraphQLError(
+                [
+                    {
+                        "message": "Permission denied",
+                        "extensions": {"code": "PERMISSION_DENIED"},
+                    }
+                ]
+            ),
+            _PORTAL_PERMISSION_DENIED_MSG,
+        ),
+        (
+            PortalPermissionError(_PORTAL_PERMISSION_DENIED_MSG),
+            _PORTAL_PERMISSION_DENIED_MSG,
+        ),
+        (
+            PipefyGraphQLError(
+                [
+                    {
+                        "message": "Action approve lists automationIds that are "
+                        "not manually triggered automations of its source's repo: 9"
+                    }
+                ]
+            ),
+            "Action approve lists automationIds that are not manually triggered "
+            "automations of its source's repo: 9",
+        ),
+        (ValueError(_UNKNOWN_SOURCE), _UNKNOWN_SOURCE),
+    ],
+    ids=[
+        "unknown interface",
+        "coded not found",
+        "source repo refused",
+        "coded refusal",
+        "interface refused",
+        "action refused by the api",
+        "sdk",
+    ],
+)
+async def test_set_interface_actions_maps_api_errors_for_agents(
+    portal_session, mock_portal_client, extract_payload, error, message
+):
+    mock_portal_client.set_interface_actions = AsyncMock(side_effect=error)
+
+    async with portal_session as session:
+        result = await session.call_tool("set_interface_actions", _SET_ACTIONS_ARGS)
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["message"] == message

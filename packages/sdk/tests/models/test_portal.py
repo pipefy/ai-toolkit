@@ -816,6 +816,9 @@ def test_interface_actions_rejects_a_repeated_action_id() -> None:
         {**_TRIGGER_AUTOMATION, "automationIds": []},
         {**_TRIGGER_AUTOMATION, "automationIds": [""]},
         {**_TRIGGER_AUTOMATION, "label": 3},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["abc"]},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["2abc"]},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["-301"]},
         {**_TRIGGER_AUTOMATION, "automation_id": "301"},
     ],
     ids=[
@@ -835,6 +838,9 @@ def test_interface_actions_rejects_a_repeated_action_id() -> None:
         "no automation ids",
         "blank automation id",
         "label not text",
+        "automation id not digits",
+        "automation id with a digit prefix",
+        "negative automation id",
         "unknown key",
     ],
 )

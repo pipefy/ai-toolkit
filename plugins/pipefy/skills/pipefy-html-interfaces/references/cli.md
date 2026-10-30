@@ -2,7 +2,7 @@
 
 All commands sit under `pipefy portal html-interface`, except deleting a duplicate, which uses `pipefy portal delete`.
 
-`write` and `create` take the HTML document as `--content`/`--html`, or read it from a file with `--content-file`/`--html-file` (mutually exclusive, one required) — a real document is hard to quote in a shell. `create`'s `--color` defaults to `blue`. `--data-sources` on `create` and `set-sources` takes the JSON array inline, the same shape as the MCP `data_sources` argument.
+`write` and `create` take the HTML document as `--content`/`--html`, or read it from a file with `--content-file`/`--html-file` (mutually exclusive, one required) — a real document is hard to quote in a shell. `create`'s `--color` defaults to `blue`. `--data-sources` on `create` and `set-sources` takes the JSON array inline, the same shape as the MCP `data_sources` argument. `set-actions` takes `--actions` the same way, the shape of the MCP `actions` argument, and `--editable` or `--no-editable` to set the flag; omit both to keep it.
 
 ## Command mapping
 
@@ -16,6 +16,7 @@ All commands sit under `pipefy portal html-interface`, except deleting a duplica
 | `create_html_interface` | `pipefy portal html-interface create` |
 | `set_interface_sources` | `pipefy portal html-interface set-sources` |
 | `write_interface_html` | `pipefy portal html-interface write` |
+| `set_interface_actions` | `pipefy portal html-interface set-actions` |
 | `delete_portal` (duplicate cleanup) | `pipefy portal delete` |
 
 ```bash
@@ -45,6 +46,11 @@ pipefy portal html-interface create --organization-uuid <org_id> --name "Open re
 ```bash
 pipefy portal html-interface set-sources --interface-uuid <interface_uuid> --page-id <page_id> --element-id <element_id> \
   --data-sources '[...]'
+```
+
+```bash
+pipefy portal html-interface set-actions --interface-uuid <interface_uuid> --page-id <page_id> --element-id <element_id> \
+  --actions '[{"actionId": "approve", "kind": "triggerAutomation", "sourceId": "requests", "automationIds": ["<automation_id>"]}]' --editable
 ```
 
 ```bash

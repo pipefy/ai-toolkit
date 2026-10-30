@@ -24,7 +24,7 @@ Each skill folder holds a `SKILL.md` with the shared domain guidance. MCP client
 | **Observability** | [pipefy-observability](skills/pipefy-observability/SKILL.md) | Logs, usage, credits, execution metrics, job exports. |
 | **Members, Email & Webhooks** | [pipefy-members-email-webhooks](skills/pipefy-members-email-webhooks/SKILL.md) | Membership, email, webhooks. |
 | **Portal setup** | [pipefy-portal-setup](skills/pipefy-portal-setup/SKILL.md) | Main portal, pages, elements, sub-portals (publish/unpublish). |
-| **HTML interfaces** | [pipefy-html-interfaces](skills/pipefy-html-interfaces/SKILL.md) | Pages written as one HTML document, with data sources from pipes and tables. |
+| **HTML interfaces** | [pipefy-html-interfaces](skills/pipefy-html-interfaces/SKILL.md) | Pages written as one HTML document, with data sources from pipes and tables and button actions on their records. |
 | **Introspection** | [pipefy-introspection](skills/pipefy-introspection/SKILL.md) | Schema discovery and GraphQL fallback. |
 | **Attachments** | [pipefy-attachments](skills/pipefy-attachments/SKILL.md) | Upload files to card or table-record attachment fields. |
 | **Building** | [pipefy-building](skills/pipefy-building/SKILL.md) | Thin router: map build/configure intent → domain skill. Not a delivery playbook. |

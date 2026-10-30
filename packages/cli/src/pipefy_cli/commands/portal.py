@@ -19,6 +19,7 @@ from pipefy_sdk.exceptions import (
 )
 from pipefy_sdk.models.portal import (
     DeletePortalElementInput,
+    InterfaceActions,
     InterfaceDataSources,
     PortalColor,
     PortalPageLayoutRow,
@@ -1020,6 +1021,11 @@ _HTML_INTERFACE_SOURCE_ACCESS_DENIED = (
     "Permission denied for a data source: you can bind only the pipes and "
     "tables 'portal html-interface repos' returns for this interface."
 )
+_HTML_INTERFACE_ACTION_SOURCE_ACCESS_DENIED = (
+    "Permission denied for a data source of this element: you can set its "
+    "actions only when you can bind every pipe and table its sources read, as "
+    "'portal html-interface repos' returns them for this interface."
+)
 _NOT_FOUND_ERROR_CODES = frozenset({"RECORD_NOT_FOUND", "RESOURCE_NOT_FOUND"})
 _GRID_INTERFACE_ERROR_MARKER = "use get_portal to read its elements"
 
@@ -1081,6 +1087,7 @@ def _html_interface_error_text(
     *,
     not_found_message: str | None = None,
     source_access_denied: bool = False,
+    source_access_denied_message: str = _HTML_INTERFACE_SOURCE_ACCESS_DENIED,
 ) -> str | None:
     """CLI-side twin of the MCP html-interface tools' error mapping.
 
@@ -1104,7 +1111,7 @@ def _html_interface_error_text(
         return not_found_message
 
     if source_access_denied and not codes and lowered == "permission denied":
-        return _HTML_INTERFACE_SOURCE_ACCESS_DENIED
+        return source_access_denied_message
 
     if "PERMISSION_DENIED" in codes or "permission denied" in lowered:
         return _HTML_INTERFACE_PERMISSION_GUIDANCE
@@ -1117,6 +1124,7 @@ def _reraise_mapped_html_interface_error(
     *,
     not_found_message: str | None = None,
     source_access_denied: bool = False,
+    source_access_denied_message: str = _HTML_INTERFACE_SOURCE_ACCESS_DENIED,
 ) -> NoReturn:
     """Re-raise ``exc`` with the MCP twins' clean text in place of the raw API text.
 
@@ -1142,12 +1150,14 @@ def _reraise_mapped_html_interface_error(
         exc,
         not_found_message=not_found_message,
         source_access_denied=source_access_denied,
+        source_access_denied_message=source_access_denied_message,
     )
     if text is None:
         raise exc
     if text in (
         _HTML_INTERFACE_PERMISSION_GUIDANCE,
         _HTML_INTERFACE_SOURCE_ACCESS_DENIED,
+        _HTML_INTERFACE_ACTION_SOURCE_ACCESS_DENIED,
     ):
         raise PortalPermissionError(text) from exc
     if isinstance(exc, PipefyGraphQLError):
@@ -1539,6 +1549,76 @@ def html_interface_set_sources(
                 exc,
                 not_found_message=f"No HTML interface has uuid '{interface_uuid}'.",
                 source_access_denied=True,
+            )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@html_interface_app.command("set-actions")
+def html_interface_set_actions(
+    ctx: typer.Context,
+    interface_uuid: str = typer.Option(
+        ..., "--interface-uuid", help="HTML interface holding the page."
+    ),
+    page_id: str = typer.Option(..., "--page-id", help="Page holding the element."),
+    element_id: str = typer.Option(
+        ..., "--element-id", help="The page's customCode element."
+    ),
+    actions: str = typer.Option(
+        ...,
+        "--actions",
+        help=(
+            "JSON array, the element's complete action list (actionId, kind and "
+            "the kind's keys); '[]' removes them all."
+        ),
+    ),
+    editable: bool | None = typer.Option(
+        None,
+        "--editable/--no-editable",
+        help=(
+            "Whether viewers can save edits to the element's data-pfy-editable "
+            "fields; omit to keep the current value."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Replace the actions of an HTML interface's customCode element."""
+
+    interface_uuid = _require_non_empty_portal_uuid(interface_uuid)
+    page_id = _require_non_empty_portal_uuid(page_id)
+    element_id = _require_non_empty_portal_uuid(element_id)
+    parsed = parse_json_value(actions, "--actions")
+    if not isinstance(parsed, list):
+        raise typer.BadParameter("--actions must be a JSON array.")
+    try:
+        validated = InterfaceActions.model_validate(parsed)
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    async def factory(client: PipefyClient):
+        try:
+            return await client.set_interface_actions(
+                page_id,
+                element_id,
+                validated.root,
+                interface_uuid=interface_uuid,
+                editable=editable,
+            )
+        except ValueError as exc:
+            raise _rewrite_grid_interface_error(exc) from exc
+        except Exception as exc:
+            _reraise_mapped_html_interface_error(
+                exc,
+                not_found_message=f"No HTML interface has uuid '{interface_uuid}'.",
+                source_access_denied=True,
+                source_access_denied_message=(
+                    _HTML_INTERFACE_ACTION_SOURCE_ACCESS_DENIED
+                ),
             )
 
     run_cli_command(ctx, json_out, factory)
