@@ -74,7 +74,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 
 ### AI agents and knowledge bases
 - AI agent tools scope by `repo_uuid` (pipe **UUID**); the agent itself is addressed by its own `uuid`.
-- Knowledge-base tools scope by `pipe_uuid` (pipe **UUID**); items (plain text, document, data source) by their data-source **UUID**; data lookups read `source_repo_id` (numeric pipe id).
+- Knowledge-base tools scope by `pipe_uuid` (pipe **UUID**); items (plain text, document, data source) by their data-source **UUID**; data lookups read `source_repo_id` (numeric pipe id, or a table's numeric `internal_id`).
 - `dataSourceIds` / `data_source_ids`: knowledge-base item **UUIDs**.
 
 ### Automations

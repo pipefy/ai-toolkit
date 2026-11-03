@@ -236,6 +236,28 @@ UPDATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION = gql(
     """
 )
 
+# ``pipes(ids:)`` also resolves a database table by its numeric ``internal_id``:
+# a table's fields come back as ``start_form_fields``.
+GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY = gql(
+    """
+    query dataLookupSourceFields($ids: [ID]!) {
+        pipes(ids: $ids) {
+            id
+            start_form_fields {
+                id
+                uuid
+            }
+            phases {
+                fields {
+                    id
+                    uuid
+                }
+            }
+        }
+    }
+    """
+)
+
 DELETE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION = gql(
     """
     mutation deleteAiKnowledgeBaseDataLookup(
@@ -260,6 +282,7 @@ __all__ = [
     "GET_AI_KNOWLEDGE_BASE_DATA_LOOKUP_QUERY",
     "GET_AI_KNOWLEDGE_BASE_DOCUMENT_QUERY",
     "GET_AI_KNOWLEDGE_BASE_PLAIN_TEXT_QUERY",
+    "GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY",
     "GET_PIPE_ORGANIZATION_QUERY",
     "UPDATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION",
     "UPDATE_AI_KNOWLEDGE_BASE_DOCUMENT_MUTATION",

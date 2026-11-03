@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK / MCP / CLI tables and pipes**: `search_tables`, `get_table`, and `get_tables` return the table's numeric `internal_id` and the `uuid` of each table field. `get_pipe` and `get_start_form_fields` return the `uuid` of each start form field, and `get_pipe` returns it for phase fields too. A data lookup on a database table takes the numeric `internal_id` as its source, and record filters take field uuids. Before, only `get_phase_fields` returned a field uuid, and no read returned a table's `internal_id`.
 
+### Changed
+
+- **SDK / MCP / CLI data lookups**: create and update write the records search, the same shape the Pipefy UI writes. This search is the only one that can read a database table, so a data lookup can now use a table as its source. `source_repo_id` takes a pipe ID or a table's numeric `internal_id`. Each condition gets `fieldUuid` (custom field) or `attribute` (fixed field) from its `field` slug. When a condition targets a custom field, the write reads the source's fields once to find the uuid. A slug that is not a field of the source fails before the write. An update of a lookup that used the older card search moves it to the records search. `attribute` takes one of nine fixed values, and a condition that sets both `fieldUuid` and `attribute` fails.
+
+### Removed
+
+- **SDK / MCP / CLI data lookups**: the `search_query` argument of `create_ai_knowledge_base_data_lookup` and `update_ai_knowledge_base_data_lookup`, and the `--search-query` option of `pipefy kb data-lookup create` and `update`. Every write now sets the search itself.
+
 ## [0.5.6-beta.1] - 2026-11-03
 
 ### Added

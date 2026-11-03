@@ -234,8 +234,8 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 | `update_ai_knowledge_base_document` | No | Metadata-only update (name/description); no file replacement. |
 | `delete_ai_knowledge_base_document` | No | **Destructive; review and approve first.** |
 | `get_ai_knowledge_base_data_lookup` | Yes | Fetch one data lookup; the payload never includes `conditions` — keep the definition client-side. |
-| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name`, `description` 1-900, `source_repo_id` numeric pipe ID, `output_fields` 1-30, `conditions` — all required). |
-| `update_ai_knowledge_base_data_lookup` | No | Full replacement: resend `source_repo_id`/`output_fields`/`conditions` every call; omitted `search_query` clears it; only name/description are partial. |
+| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name`, `description` 1-900, `source_repo_id` numeric pipe ID or table `internal_id`, `output_fields` 1-30, `conditions`, all required). |
+| `update_ai_knowledge_base_data_lookup` | No | Full replacement: resend `source_repo_id`/`output_fields`/`conditions` every call; only name/description are partial. |
 | `delete_ai_knowledge_base_data_lookup` | No | **Destructive; review and approve first.** |
 | `validate_knowledge_base_access` | Yes | Probe read access before writes. |
 
@@ -249,9 +249,9 @@ For a **PDF document**, use `create_ai_knowledge_base_document` with `pipe_uuid`
 
 ### Data lookups: create with an AI-filled condition → attach → update (full replacement)
 
-A **data lookup** lets the agent search cards in a source pipe by conditions and return selected field values. Same flow as above at step 2, with three rules of its own:
+A **data lookup** lets the agent search records in a source pipe or database table by conditions and return selected field values. Same flow as above at step 2, with three rules of its own:
 
-1. **Create** — `create_ai_knowledge_base_data_lookup(pipe_uuid, name, description, source_repo_id, output_fields, conditions)`. `source_repo_id` is the **numeric** ID of the source pipe (a UUID is accepted by the API but the lookup then breaks when the agent runs it). `output_fields` takes 1-30 field IDs (field slugs plus static fields like `id`, `title`, `created_at`). Each condition needs `field` + `operator` (opaque backend string, e.g. `"eq"`, `"contains"`) and is either **static** (string `value` required) or **AI-filled** — the AI asks the user for the value at runtime:
+1. **Create** — `create_ai_knowledge_base_data_lookup(pipe_uuid, name, description, source_repo_id, output_fields, conditions)`. `source_repo_id` is the **numeric** ID of the source pipe, or the `internal_id` of the source table from `get_table` / `search_tables` (a UUID is accepted by the API but the lookup then breaks when the agent runs it). `output_fields` takes 1-30 field IDs (field slugs plus static fields like `id`, `title`, `created_at`). Each condition needs `field` + `operator` (opaque backend string, e.g. `"eq"`, `"contains"`) and is either **static** (string `value` required) or **AI-filled**, where the AI asks the user for the value at runtime. Put the field slug in `field`: the tool sets `fieldUuid` or `attribute` from it, and rejects a slug that is not a field of the source. An AI-filled condition looks like this:
 
    ```json
    [{"field": "customer_email", "operator": "eq", "usingFillWithAi": true,
@@ -260,7 +260,7 @@ A **data lookup** lets the agent search cards in a source pipe by conditions and
    ```
 
 2. **Attach** — keep the returned `id` and add it to `dataSourceIds`, exactly as for the other kinds. **Also keep the definition you sent**: reads never return `conditions`, so your copy is the only complete record of the lookup.
-3. **Update replaces everything** — `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta), and omitting `search_query` clears it. Only `name`/`description` keep their stored values when omitted.
+3. **Update replaces everything** — `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta). Only `name`/`description` keep their stored values when omitted.
 
 ---
 

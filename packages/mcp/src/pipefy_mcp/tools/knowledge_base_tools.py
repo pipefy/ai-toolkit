@@ -598,19 +598,26 @@ class KnowledgeBaseTools:
             source_repo_id: str,
             output_fields: list[str],
             conditions: list[dict[str, Any]],
-            search_query: str | None = None,
         ) -> dict[str, Any]:
-            """Create a pipe-scoped knowledge base data lookup: an agent data source that searches cards in a source pipe by conditions and returns selected fields. Requires manage_ai_agents on the pipe; run `validate_knowledge_base_access` first.
+            """Create a pipe-scoped knowledge base data lookup: an agent data source that searches records in a source pipe or database table by conditions and returns selected fields. Requires manage_ai_agents on the pipe; run `validate_knowledge_base_access` first.
 
             The definition is validated client-side because the API accepts
             shapes that only break later, when an agent runs the lookup:
-            `source_repo_id` must be the numeric pipe ID (not a UUID);
+            `source_repo_id` must be the numeric pipe ID or the numeric table
+            `internal_id` from `get_table` / `search_tables` (not a UUID);
             `output_fields` takes 1-30 field IDs (field slugs plus static
             fields like `id`, `title`, `created_at`); each condition needs
-            `field` and `operator` (an opaque backend string, e.g. `"eq"`,
-            `"contains"`) and is either static (string `value` required) or
-            AI-filled (`usingFillWithAi: true` with `inputName`, `inputType`
-            (e.g. `"text"`, `"number"`), and `inputDescription`; no `value`).
+            `field` (the field slug) and `operator` (an opaque backend
+            string, e.g. `"eq"`, `"contains"`) and is either static (string
+            `value` required) or AI-filled (`usingFillWithAi: true` with
+            `inputName`, `inputType` (e.g. `"text"`, `"number"`), and
+            `inputDescription`; no `value`). The lookup uses the records
+            search, the same one the Pipefy UI writes. The tool sets each
+            condition's `fieldUuid` (custom field) or `attribute` (`id`,
+            `title`, `created_by`, `created_at`, `due_date`, `finished_at`,
+            `current_phase`, `labels`, `assignees`) from its `field`, so the
+            slug is enough. A slug that is not a field of the source is
+            rejected before the write.
             Keep the full definition client-side: reads never return
             `conditions`. To attach the result to an agent, pass the returned
             `id` in the agent's or behavior's `dataSourceIds`.
@@ -619,11 +626,10 @@ class KnowledgeBaseTools:
                 pipe_uuid: Pipe UUID (not the numeric ID) that owns the lookup.
                 name: Display name (required, non-blank).
                 description: Description (required, 1-900 characters).
-                source_repo_id: Numeric ID of the source pipe to look up data from.
+                source_repo_id: Numeric ID of the source pipe, or the numeric `internal_id` of the source database table.
                 output_fields: Field IDs whose values matching records return (1-30).
                 conditions: Condition objects (at least one), e.g.
                     `{"field": "customer_email", "operator": "eq", "usingFillWithAi": true, "inputName": "Customer email", "inputType": "text", "inputDescription": "The customer's email address"}`.
-                search_query: Optional backend-defined search mode marker; leave unset unless you know the backend value you need.
             """
             client = get_pipefy_client(ctx)
             err = _blank_error(pipe_uuid, "pipe_uuid")
@@ -637,7 +643,6 @@ class KnowledgeBaseTools:
                     source_repo_id=source_repo_id,
                     output_fields=output_fields,
                     conditions=conditions,
-                    search_query=search_query,
                 )
             except ValueError as exc:
                 return tool_error(
@@ -661,7 +666,6 @@ class KnowledgeBaseTools:
             source_repo_id: str,
             output_fields: list[str],
             conditions: list[dict[str, Any]],
-            search_query: str | None = None,
             name: str | None = None,
             description: str | None = None,
         ) -> dict[str, Any]:
@@ -670,19 +674,19 @@ class KnowledgeBaseTools:
             Every update rewrites the whole definition: the API replaces the
             stored definition with exactly what this call carries, so
             `source_repo_id`, `output_fields`, and `conditions` are required
-            every time, and omitting `search_query` clears it. Reads never
-            return `conditions`, so resend the definition from your own
-            client-side copy. Only `name`/`description` are partial (omitted
-            means keep the stored value). Field rules match
-            `create_ai_knowledge_base_data_lookup`.
+            every time. Reads never return `conditions`, so resend the
+            definition from your own client-side copy. Only
+            `name`/`description` are partial (omitted means keep the stored
+            value). Field rules and the records search match
+            `create_ai_knowledge_base_data_lookup`. An update also moves a
+            lookup that used the older card search to the records search.
 
             Args:
                 data_lookup_id: Data lookup ID to update (from `get_ai_knowledge_bases`).
                 pipe_uuid: Pipe UUID (not the numeric ID).
-                source_repo_id: Numeric ID of the source pipe (required; omitting it would strip the source from the stored definition).
+                source_repo_id: Numeric ID of the source pipe or table `internal_id` (required; omitting it would strip the source from the stored definition).
                 output_fields: Field IDs whose values matching records return (1-30).
                 conditions: Condition objects (at least one) — the complete set, not a delta.
-                search_query: Optional backend-defined search mode marker; omitted means cleared.
                 name: New name (non-blank when given).
                 description: New description (1-900 characters when given).
             """
@@ -699,7 +703,6 @@ class KnowledgeBaseTools:
                     source_repo_id=source_repo_id,
                     output_fields=output_fields,
                     conditions=conditions,
-                    search_query=search_query,
                     name=name,
                     description=description,
                 )

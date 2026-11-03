@@ -721,7 +721,6 @@ def test_kb_data_lookup_create_json(runner, clean_pipefy_env, saved_cwd, monkeyp
         source_repo_id="303088927",
         output_fields=["title"],
         conditions=[{"field": "title", "operator": "contains", "value": "x"}],
-        search_query=None,
     )
 
 
@@ -815,7 +814,6 @@ def test_kb_data_lookup_update_sends_full_definition(
         source_repo_id="303088927",
         output_fields=["title"],
         conditions=[{"field": "title", "operator": "contains", "value": "x"}],
-        search_query=None,
         name="Renamed",
         description=None,
     )

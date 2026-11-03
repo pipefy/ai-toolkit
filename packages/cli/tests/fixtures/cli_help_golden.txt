@@ -2039,8 +2039,9 @@ Usage: pipefy kb data-lookup create [OPTIONS]
  Gated on the read-access probe. The definition is validated client-side:
  ``--source-repo-id`` must be numeric, ``--output-fields`` takes 1-30 field
  IDs, and every condition is typed (static conditions need a string ``value``;
- AI-filled ones need the input trio). Reads never return conditions, so keep
- the definition you send as the source of truth.
+ AI-filled ones need the input trio). The lookup uses the records search, as
+ the Pipefy UI does, so it can read a pipe or a database table. Reads never
+ return conditions, so keep the definition you send as the source of truth.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe-uuid               TEXT  Pipe UUID (not the numeric ID; `pipefy    │
@@ -2049,22 +2050,21 @@ Usage: pipefy kb data-lookup create [OPTIONS]
 │ *  --name                    TEXT  Display name (required). [required]       │
 │ *  --description             TEXT  Description (required, 1-900 characters). │
 │                                    [required]                                │
-│ *  --source-repo-id          TEXT  Numeric ID of the source pipe to look up  │
-│                                    data from.                                │
+│ *  --source-repo-id          TEXT  Numeric ID of the source pipe, or the     │
+│                                    numeric internal_id of the source         │
+│                                    database table.                           │
 │                                    [required]                                │
 │ *  --output-fields           TEXT  JSON array of field IDs whose values      │
 │                                    matching records return (1-30).           │
 │                                    [required]                                │
 │ *  --conditions              TEXT  JSON array of condition objects. Each     │
-│                                    needs field + operator, and either a      │
-│                                    string value (static) or                  │
+│                                    needs field (the field slug) + operator,  │
+│                                    and either a string value (static) or     │
 │                                    "usingFillWithAi": true with              │
 │                                    inputName/inputType/inputDescription      │
-│                                    (AI-filled).                              │
+│                                    (AI-filled). The command sets fieldUuid   │
+│                                    or attribute from field.                  │
 │                                    [required]                                │
-│    --search-query            TEXT  Backend-defined search mode marker; leave │
-│                                    unset unless you know the backend value   │
-│                                    you need.                                 │
 │    --json            -j            Print machine-readable JSON to stdout.    │
 │    --help                          Show this message and exit.               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2115,8 +2115,8 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 
  Every update rewrites the stored definition with exactly what this call
  carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions`` are
- required every time, and omitting ``--search-query`` clears it. Only
- ``--name``/``--description`` are partial. Gated on the read-access probe.
+ required every time. Only ``--name``/``--description`` are partial. The update
+ writes the records search, as create does. Gated on the read-access probe.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --id                      TEXT  Knowledge base data lookup ID to update.  │
@@ -2124,23 +2124,22 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 │ *  --pipe-uuid               TEXT  Pipe UUID (not the numeric ID; `pipefy    │
 │                                    pipe get` shows the uuid).                │
 │                                    [required]                                │
-│ *  --source-repo-id          TEXT  Numeric ID of the source pipe to look up  │
-│                                    data from.                                │
+│ *  --source-repo-id          TEXT  Numeric ID of the source pipe, or the     │
+│                                    numeric internal_id of the source         │
+│                                    database table.                           │
 │                                    [required]                                │
 │ *  --output-fields           TEXT  JSON array of field IDs whose values      │
 │                                    matching records return (1-30).           │
 │                                    [required]                                │
 │ *  --conditions              TEXT  JSON array of condition objects. Each     │
-│                                    needs field + operator, and either a      │
-│                                    string value (static) or                  │
+│                                    needs field (the field slug) + operator,  │
+│                                    and either a string value (static) or     │
 │                                    "usingFillWithAi": true with              │
 │                                    inputName/inputType/inputDescription      │
-│                                    (AI-filled). Pass the complete set, not a │
-│                                    delta.                                    │
+│                                    (AI-filled). The command sets fieldUuid   │
+│                                    or attribute from field. Pass the         │
+│                                    complete set, not a delta.                │
 │                                    [required]                                │
-│    --search-query            TEXT  Backend-defined search mode marker; leave │
-│                                    unset unless you know the backend value   │
-│                                    you need. Omitted means cleared.          │
 │    --name                    TEXT  New name (non-blank).                     │
 │    --description             TEXT  New description (1-900 characters).       │
 │    --json            -j            Print machine-readable JSON to stdout.    │

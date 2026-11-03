@@ -1464,7 +1464,6 @@ class PipefyClient:
         source_repo_id: str,
         output_fields: list[str],
         conditions: list[dict[str, Any] | DataLookupCondition],
-        search_query: str | None = None,
     ) -> KnowledgeBaseDataLookupPayload:
         """Create a pipe-scoped knowledge base data lookup (definition validated client-side)."""
         return await self._knowledge_base_service.create_ai_knowledge_base_data_lookup(
@@ -1474,7 +1473,6 @@ class PipefyClient:
             source_repo_id=source_repo_id,
             output_fields=output_fields,
             conditions=conditions,
-            search_query=search_query,
         )
 
     async def update_ai_knowledge_base_data_lookup(
@@ -1485,7 +1483,6 @@ class PipefyClient:
         source_repo_id: str,
         output_fields: list[str],
         conditions: list[dict[str, Any] | DataLookupCondition],
-        search_query: str | None = None,
         name: str | None = None,
         description: str | None = None,
     ) -> KnowledgeBaseDataLookupPayload:
@@ -1496,7 +1493,6 @@ class PipefyClient:
             source_repo_id=source_repo_id,
             output_fields=output_fields,
             conditions=conditions,
-            search_query=search_query,
             name=name,
             description=description,
         )

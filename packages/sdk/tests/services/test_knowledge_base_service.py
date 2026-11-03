@@ -8,6 +8,7 @@ from _shared.mock_clients import mock_executor
 from pipefy_sdk.graphql_executor import GraphQLResult
 from pipefy_sdk.queries.knowledge_base_queries import (
     CREATE_AI_KNOWLEDGE_BASE_DOCUMENT_MUTATION,
+    GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY,
 )
 from pipefy_sdk.services import knowledge_base_service as kb_module
 from pipefy_sdk.services.knowledge_base_service import (
@@ -841,6 +842,20 @@ AI_CONDITION = {
 }
 
 
+CUSTOMER_EMAIL_UUID = "550e8400-e29b-41d4-a716-446655440201"
+SOURCE_FIELDS = {
+    "pipes": [
+        {
+            "id": "301234567",
+            "start_form_fields": [
+                {"id": "customer_email", "uuid": CUSTOMER_EMAIL_UUID}
+            ],
+            "phases": [{"fields": [{"id": "status", "uuid": "phase-field-uuid"}]}],
+        }
+    ]
+}
+
+
 class TestGetDataLookup:
     @pytest.mark.anyio
     async def test_returns_data_lookup(self):
@@ -870,15 +885,19 @@ class TestGetDataLookup:
         executor.execute_query.assert_not_awaited()
 
 
+_CREATE_RESPONSE = {
+    "createAiKnowledgeBaseDataLookup": {"knowledgeBaseDataLookup": DATA_LOOKUP_FULL}
+}
+
+
 def _data_lookup_create_executor():
     """Executor whose create mutation succeeds with ``DATA_LOOKUP_FULL``."""
-    return mock_executor(
-        {
-            "createAiKnowledgeBaseDataLookup": {
-                "knowledgeBaseDataLookup": DATA_LOOKUP_FULL
-            }
-        }
-    )
+    return mock_executor(_CREATE_RESPONSE)
+
+
+def _source_read_then_create_executor():
+    """Executor that answers the source fields read, then the create mutation."""
+    return mock_executor(side_effect=[SOURCE_FIELDS, _CREATE_RESPONSE])
 
 
 class TestCreateDataLookup:
@@ -898,7 +917,7 @@ class TestCreateDataLookup:
 
     @pytest.mark.anyio
     async def test_create_sends_serialized_definition(self):
-        executor = _data_lookup_create_executor()
+        executor = _source_read_then_create_executor()
         service = self._service(executor)
 
         result = await self._create(
@@ -920,6 +939,7 @@ class TestCreateDataLookup:
                         "operator": "contains",
                         "value": "urgent",
                         "usingFillWithAi": False,
+                        "attribute": "TITLE",
                     },
                     {
                         "field": "customer_email",
@@ -928,24 +948,75 @@ class TestCreateDataLookup:
                         "inputName": "Customer email",
                         "inputType": "text",
                         "inputDescription": "The customer's email address",
+                        "fieldUuid": CUSTOMER_EMAIL_UUID,
                     },
                 ],
+                "searchQuery": "records",
             }
         }
 
     @pytest.mark.anyio
-    async def test_search_query_sent_only_when_given(self):
+    async def test_custom_field_reads_source_fields_once(self):
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+
+        await self._create(
+            service,
+            conditions=[dict(AI_CONDITION), {**STATIC_CONDITION, "field": "status"}],
+        )
+
+        read_query, read_variables = executor.execute_query.await_args_list[0].args
+        assert read_query is GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY
+        assert read_variables == {"ids": ["301234567"]}
+        assert executor.execute_query.await_count == 2
+        _, variables = executor.execute_query.await_args.args
+        uuids = [c["fieldUuid"] for c in variables["input"]["conditions"]]
+        assert uuids == [CUSTOMER_EMAIL_UUID, "phase-field-uuid"]
+
+    @pytest.mark.anyio
+    async def test_fixed_fields_and_given_uuids_skip_source_read(self):
         executor = _data_lookup_create_executor()
         service = self._service(executor)
 
-        await self._create(service, search_query="records")
+        await self._create(
+            service,
+            conditions=[
+                dict(STATIC_CONDITION),
+                {**AI_CONDITION, "fieldUuid": CUSTOMER_EMAIL_UUID},
+                {"field": "created_by", "operator": "eq", "value": "42"},
+            ],
+        )
 
+        assert executor.execute_query.await_count == 1
         _, variables = executor.execute_query.await_args.args
-        assert variables["input"]["searchQuery"] == "records"
+        conditions = variables["input"]["conditions"]
+        assert conditions[0]["attribute"] == "TITLE"
+        assert conditions[1]["fieldUuid"] == CUSTOMER_EMAIL_UUID
+        assert conditions[2]["attribute"] == "CREATOR"
+
+    @pytest.mark.anyio
+    async def test_unknown_custom_slug_rejected_before_write(self):
+        executor = mock_executor(side_effect=[SOURCE_FIELDS, _CREATE_RESPONSE])
+        service = self._service(executor)
+
+        with pytest.raises(ValueError, match=r"conditions\[0\]\.field 'priority'"):
+            await self._create(
+                service, conditions=[{**STATIC_CONDITION, "field": "priority"}]
+            )
+        assert executor.execute_query.await_count == 1
+
+    @pytest.mark.anyio
+    async def test_source_with_no_fields_rejects_custom_slug(self):
+        executor = mock_executor(side_effect=[{"pipes": []}, _CREATE_RESPONSE])
+        service = self._service(executor)
+
+        with pytest.raises(ValueError, match="no field with this slug in source"):
+            await self._create(service, conditions=[dict(AI_CONDITION)])
+        assert executor.execute_query.await_count == 1
 
     @pytest.mark.anyio
     async def test_snake_case_condition_keys_accepted(self):
-        executor = _data_lookup_create_executor()
+        executor = _source_read_then_create_executor()
         service = self._service(executor)
 
         await self._create(
@@ -985,7 +1056,7 @@ class TestCreateDataLookup:
         executor = mock_executor({})
         service = self._service(executor)
 
-        with pytest.raises(ValueError, match="numeric pipe ID"):
+        with pytest.raises(ValueError, match="numeric pipe ID or the numeric table"):
             await self._create(
                 service, source_repo_id="550e8400-e29b-41d4-a716-446655440101"
             )
@@ -1130,10 +1201,38 @@ class TestUpdateDataLookup:
                         "operator": "contains",
                         "value": "urgent",
                         "usingFillWithAi": False,
+                        "attribute": "TITLE",
                     }
                 ],
+                "searchQuery": "records",
             }
         }
+
+    @pytest.mark.anyio
+    async def test_custom_field_condition_gets_uuid_on_update(self):
+        executor = mock_executor(
+            side_effect=[
+                SOURCE_FIELDS,
+                {
+                    "updateAiKnowledgeBaseDataLookup": {
+                        "knowledgeBaseDataLookup": DATA_LOOKUP_FULL
+                    }
+                },
+            ]
+        )
+        service = KnowledgeBaseService(executor=executor)
+
+        await service.update_ai_knowledge_base_data_lookup(
+            "kb-3",
+            "p",
+            source_repo_id="301234567",
+            output_fields=["title"],
+            conditions=[dict(AI_CONDITION)],
+        )
+
+        _, variables = executor.execute_query.await_args.args
+        assert variables["input"]["conditions"][0]["fieldUuid"] == CUSTOMER_EMAIL_UUID
+        assert variables["input"]["searchQuery"] == "records"
 
     @pytest.mark.anyio
     async def test_optional_fields_sent_when_given(self):
@@ -1146,13 +1245,11 @@ class TestUpdateDataLookup:
             source_repo_id="301234567",
             output_fields=["title"],
             conditions=[dict(STATIC_CONDITION)],
-            search_query="records",
             name="Renamed",
             description="New description",
         )
 
         _, variables = executor.execute_query.await_args.args
-        assert variables["input"]["searchQuery"] == "records"
         assert variables["input"]["name"] == "Renamed"
         assert variables["input"]["description"] == "New description"
 
@@ -1214,7 +1311,7 @@ class TestDeleteDataLookup:
 
 class TestDataLookupConditionEdgeCases:
     @pytest.mark.anyio
-    async def test_passthrough_condition_keys_accepted(self):
+    async def test_given_targets_sent_as_given(self):
         executor = _data_lookup_create_executor()
         service = KnowledgeBaseService(executor=executor)
 
@@ -1226,19 +1323,68 @@ class TestDataLookupConditionEdgeCases:
             output_fields=["title"],
             conditions=[
                 {
+                    "field": "labels",
+                    "attribute": "LABELS",
+                    "operator": "eq",
+                    "value": "x",
+                },
+                {
                     "field": "label",
-                    "attribute": "label",
                     "fieldUuid": "f-uuid-1",
                     "operator": "eq",
-                    "value": "urgent",
-                }
+                    "value": "y",
+                },
             ],
         )
 
         _, variables = executor.execute_query.await_args.args
-        condition = variables["input"]["conditions"][0]
-        assert condition["attribute"] == "label"
-        assert condition["fieldUuid"] == "f-uuid-1"
+        conditions = variables["input"]["conditions"]
+        assert conditions[0]["attribute"] == "LABELS"
+        assert conditions[1]["fieldUuid"] == "f-uuid-1"
+        assert "attribute" not in conditions[1]
+
+    @pytest.mark.anyio
+    async def test_both_targets_rejected(self):
+        service = KnowledgeBaseService(executor=mock_executor({}))
+
+        with pytest.raises(ValueError, match="not both"):
+            await service.create_ai_knowledge_base_data_lookup(
+                "p",
+                name="n",
+                description="d",
+                source_repo_id="301234567",
+                output_fields=["title"],
+                conditions=[
+                    {
+                        "field": "title",
+                        "attribute": "TITLE",
+                        "fieldUuid": "f-uuid-1",
+                        "operator": "eq",
+                        "value": "x",
+                    }
+                ],
+            )
+
+    @pytest.mark.anyio
+    async def test_unknown_attribute_rejected(self):
+        service = KnowledgeBaseService(executor=mock_executor({}))
+
+        with pytest.raises(ValueError, match=r"conditions\[0\]: attribute"):
+            await service.create_ai_knowledge_base_data_lookup(
+                "p",
+                name="n",
+                description="d",
+                source_repo_id="301234567",
+                output_fields=["title"],
+                conditions=[
+                    {
+                        "field": "label",
+                        "attribute": "label",
+                        "operator": "eq",
+                        "value": "x",
+                    }
+                ],
+            )
 
     @pytest.mark.anyio
     async def test_non_string_condition_field_is_clean_value_error(self):
@@ -1258,7 +1404,7 @@ class TestDataLookupConditionEdgeCases:
     async def test_non_decimal_unicode_digit_repo_id_rejected(self):
         service = KnowledgeBaseService(executor=mock_executor({}))
 
-        with pytest.raises(ValueError, match="numeric pipe ID"):
+        with pytest.raises(ValueError, match="numeric pipe ID or the numeric table"):
             await service.create_ai_knowledge_base_data_lookup(
                 "p",
                 name="n",
