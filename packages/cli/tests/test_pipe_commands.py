@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from pipefy_sdk import PipePhaseSetupError
 from pipefy_sdk.graphql_inputs import (
     RepoPreferenceInput,
     UpdatePipeInput,
@@ -156,7 +157,111 @@ def test_pipe_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
         )
     assert result.exit_code == 0
     assert json.loads(result.stdout) == {"createPipe": {"pipe": {"id": "301234567"}}}
-    mock_client.create_pipe.assert_awaited_once_with("My Pipe", "555")
+    mock_client.create_pipe.assert_awaited_once_with(
+        "My Pipe", "555", phases=None, start_form_fields=None, labels=None
+    )
+
+
+def test_pipe_create_passes_phases_start_form_fields_and_labels(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("pipe-create-phases")
+    phases = [{"name": "Triage"}, {"name": "Approved", "done": True}]
+    fields = [{"label": "Amount", "type_id": "currency", "required": True}]
+    labels = [{"name": "Urgent", "color": "#f00"}]
+    mock_client = MagicMock()
+    mock_client.create_pipe = AsyncMock(
+        return_value={"createPipe": {"pipe": {"id": "1"}}}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "pipe",
+                "create",
+                "Purchases",
+                "--org",
+                "555",
+                "--phases",
+                json.dumps(phases),
+                "--start-form-fields",
+                json.dumps(fields),
+                "--labels",
+                json.dumps(labels),
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0
+    mock_client.create_pipe.assert_awaited_once_with(
+        "Purchases", "555", phases=phases, start_form_fields=fields, labels=labels
+    )
+
+
+def test_pipe_create_phases_not_a_json_array_of_objects_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("pipe-create-bad-phases")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            ["pipe", "create", "P", "--org", "1", "--phases", '["Triage"]'],
+        )
+    assert result.exit_code == 2
+    mock_client.create_pipe.assert_not_called()
+
+
+def test_pipe_create_unknown_phase_key_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("pipe-create-phase-key")
+    mock_client = MagicMock()
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "pipe",
+                "create",
+                "P",
+                "--org",
+                "1",
+                "--phases",
+                '[{"name": "Triage", "index": 1}]',
+            ],
+        )
+    assert result.exit_code == 2
+    mock_client.create_pipe.assert_not_called()
+
+
+def test_pipe_create_phase_setup_error_names_the_pipe_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("pipe-create-setup-error")
+    mock_client = MagicMock()
+    mock_client.create_pipe = AsyncMock(
+        side_effect=PipePhaseSetupError(
+            pipe_id="1", created_phases=[], reason="Phase not saved"
+        )
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            ["pipe", "create", "P", "--org", "1", "--phases", '[{"name": "A"}]'],
+        )
+    assert result.exit_code == 1
+    assert "Pipe 1 was created" in result.stderr
 
 
 def test_pipe_create_whitespace_name_exit_2(

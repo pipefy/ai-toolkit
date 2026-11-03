@@ -48,7 +48,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `create_organization_report` | `pipefy report-org create` | shipped | Organization reports; `filter` preflight validates ReportCardsFilter shape (nested `operator` + `queries`). |
 | `create_phase` | `pipefy phase create` | shipped | — |
 | `create_phase_field` | `pipefy field create` | shipped | (phase fields). |
-| `create_pipe` | `pipefy pipe create` | shipped | (`--org`). |
+| `create_pipe` | `pipefy pipe create` | shipped | (`--org`); `phases`, `start_form_fields` and `labels` are the JSON array options `--phases`, `--start-form-fields` and `--labels`. |
 | `create_pipe_relation` | `pipefy relation pipe create` | shipped | — |
 | `create_pipe_report` | `pipefy report-pipe create` | shipped | Reports domain; `filter` preflight validates ReportCardsFilter shape (nested `operator` + `queries`). |
 | `create_portal` | `pipefy portal create` | shipped | `--organization-uuid`; idempotent (find-or-create main portal). |
