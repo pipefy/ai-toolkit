@@ -466,8 +466,8 @@ class PipeConfigTools:
 
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
-            to avoid trial-and-error moves. Transition rules are configured in the
-            Pipefy UI and are not editable via API.
+            to avoid trial-and-error moves. ``create_phase`` connects a new phase to
+            the phases beside it; other connections are changed in the Pipefy UI.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -651,11 +651,11 @@ class PipeConfigTools:
         ) -> dict[str, Any]:
             """Create a phase in a pipe.
 
-            Phase Connections / ``allowed_phases`` (the move-transition rules)
-            are configured in the Pipefy UI and are not editable via API. Call
-            ``get_phase_allowed_move_targets`` on the source phase to read its
-            current move targets before a move. The success payload repeats this
-            as a ``connection_hint`` key.
+            The new phase is connected to the phases beside it in ``index`` order,
+            so cards can move between them. Call ``get_phase_allowed_move_targets``
+            on the new phase and its neighbors to read the result, and change the
+            connections in the Pipefy UI when they need changes. The success
+            payload repeats this as a ``connection_hint`` key.
 
             Args:
                 pipe_id: Pipe that will contain the phase.
@@ -668,9 +668,8 @@ class PipeConfigTools:
                     are 1, 2 and 3, and 0 omits the phase from ``get_pipe``
                     phases. ``get_pipe`` returns each key as
                     ``phases[].index``, in ascending order.
-                    Index only sets order - it does not configure Phase
-                    Connections / ``allowed_phases`` (UI-only); call
-                    ``get_phase_allowed_move_targets`` before moves.
+                    The phases beside the new phase in this order are the
+                    phases it is connected to.
                 description: Optional phase description.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
@@ -732,8 +731,8 @@ class PipeConfigTools:
             name (resolved via get_phase_fields). Values identical to the current state
             are accepted but result in a no-op API call.
 
-            Updating a phase does not configure its Phase Connections /
-            ``allowed_phases`` (UI-only, not editable via API). Call
+            Updating a phase does not change its Phase Connections /
+            ``allowed_phases``; change them in the Pipefy UI. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 

@@ -20,7 +20,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 - **Field types** for `create_phase_field` are the API's `FieldTypeId` enum values (lower case, e.g. `short_text`, not `SHORT_TEXT`). The tool's input schema lists them.
 
-- **Phase connections are UI-only.** `create_pipe` with `phases` connects each phase to the phases beside it. Past that, adding or reordering phases does not wire Phase Connections / `allowed_phases`. Configure edges in the Pipefy UI; use `get_phase_allowed_move_targets` before moves. The API cannot add transition edges.
+- **Phase connections.** `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it. After adding a phase, call `get_phase_allowed_move_targets` on it and on its neighbors. Change the connections in the Pipefy UI only when the result needs changes. Call `get_phase_allowed_move_targets` before moves.
 - **Verify-after-write.** After create/update, re-read with the matching get tool (`get_pipe`, `get_card`, `get_phase_fields`, etc.) before reporting success. Do not treat the write response alone as proof.
 
 ---
@@ -55,7 +55,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 ### Steps — add a phase to an existing pipe
 
-Call `create_phase` with an `index`. `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. The default Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. Between 2 and 3, use two decimal places (`2.01`, `2.02`, ..., `2.99`): `2.10` is the same float as `2.1`, so the tenth value ties with the first. Call `get_pipe` and confirm the phase names are in the intended order.
+Call `create_phase` with an `index`. `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. The default Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. Between 2 and 3, use two decimal places (`2.01`, `2.02`, ..., `2.99`): `2.10` is the same float as `2.1`, so the tenth value ties with the first. Call `get_pipe` and confirm the phase names are in the intended order. The new phase is connected to the phases beside it; call `get_phase_allowed_move_targets` on it and on its neighbors to check the connections.
 
 ---
 
@@ -67,7 +67,7 @@ Call `create_phase` with an `index`. `index` is a float sort key: a value betwee
 | `create_phase` | No | Add a phase to a pipe. |
 | `update_phase` | No | Rename, set the done flag. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. |
 | `delete_phase` | No | **Destructive; review and approve first.** |
-| `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase` (UI-configured edges only). |
+| `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase`. |
 | `get_phase_cards_count` | Yes | Native per-phase card count via `get_phase`. |
 | `get_phase_cards` | Yes | Paginated cards in a phase. |
 
@@ -75,7 +75,7 @@ Call `create_phase` with an `index`. `index` is a float sort key: a value betwee
 
 ## Seed pipe across phases
 
-Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. Transition edges must already exist in the Pipefy UI.
+Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. The phases must already be connected; `get_phase_allowed_move_targets` shows the connections.
 
 ### Tools needed
 
