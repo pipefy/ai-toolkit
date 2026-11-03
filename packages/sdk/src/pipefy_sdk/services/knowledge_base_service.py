@@ -190,7 +190,7 @@ class KnowledgeBaseService:
             pipe_uuid: Pipe UUID (not the numeric id).
             name: Display name (required, 1-80 chars).
             content: Plain text content (required, 1-3500 chars).
-            description: Description (required by the backend, 1-300 chars).
+            description: Description (required, 1-300 chars).
 
         Returns:
             The created plain text dict.
@@ -331,7 +331,7 @@ class KnowledgeBaseService:
         Args:
             pipe_uuid: Pipe UUID (not the numeric id).
             name: Display name (required, 1-80 chars).
-            description: Description (required by the backend, 1-300 chars).
+            description: Description (required, 1-300 chars).
             file_path: Local path to a ``.pdf`` file (``~`` is expanded).
 
         Returns:
@@ -484,7 +484,7 @@ class KnowledgeBaseService:
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.
             name: Display name (required, 1-80 chars).
-            description: Description (required by the backend, 1-300 chars).
+            description: Description (required, 1-300 chars).
             source_repo_id: Numeric ID of the source pipe to look up data from.
             output_fields: Field IDs returned from matching records (1-30).
             conditions: Record-filter conditions (at least one); dicts are
@@ -757,7 +757,7 @@ def _parse_data_lookup_definition(
       or non-string value). AI-filled conditions need their input trio. Both
       rules live on :class:`DataLookupCondition`.
     - ``output_fields`` must be non-empty (backend-enforced) and at most 30
-      (the backend ``DataLookup`` model cap), each entry a non-blank field ID.
+      (backend cap), each entry a non-blank field ID.
 
     Raises:
         ValueError: On any rule violation, with the offending index for

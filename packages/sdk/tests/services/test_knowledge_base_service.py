@@ -1149,10 +1149,12 @@ class TestCreateDataLookup:
 
     @pytest.mark.anyio
     async def test_over_limit_name_rejected(self):
-        service = self._service(mock_executor({}))
+        executor = mock_executor({})
+        service = self._service(executor)
 
         with pytest.raises(ValueError, match="name must be at most 80"):
             await self._create(service, name="n" * (MAX_KB_NAME_LENGTH + 1))
+        executor.execute_query.assert_not_awaited()
 
     @pytest.mark.anyio
     async def test_null_mutation_payload_raises(self):
@@ -1259,7 +1261,8 @@ class TestUpdateDataLookup:
 
     @pytest.mark.anyio
     async def test_over_limit_name_rejected(self):
-        service = KnowledgeBaseService(executor=mock_executor({}))
+        executor = mock_executor({})
+        service = KnowledgeBaseService(executor=executor)
 
         with pytest.raises(ValueError, match="name must be at most 80"):
             await service.update_ai_knowledge_base_data_lookup(
@@ -1270,6 +1273,7 @@ class TestUpdateDataLookup:
                 conditions=[dict(STATIC_CONDITION)],
                 name="n" * (MAX_KB_NAME_LENGTH + 1),
             )
+        executor.execute_query.assert_not_awaited()
 
 
 class TestDeleteDataLookup:

@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **SDK / MCP / CLI knowledge bases**: plain text, document, and data lookup writes cap `name` at 80 characters and `description` at 300 characters. These are the limits the Pipefy UI forms enforce. The cap for `description` was 900, and `name` had no cap. An item over either cap cannot be saved from the UI until the user shortens it. A write over either cap fails with a `ValueError` before any call, and the MCP tools and CLI commands return that message.
+- **SDK / MCP / CLI knowledge bases**: plain text, document, and data lookup writes cap `name` at 80 characters and `description` at 300 characters. These are the limits the Pipefy UI forms enforce. The cap for `description` was 900, and `name` had no cap. An item over either cap cannot be saved from the UI until the user shortens it. A write over either cap fails with a `ValueError` before the mutation is sent, and the MCP tools and CLI commands return that message. Stored items do not change. An update that omits `name` or `description` keeps the stored value, whatever its length.
 
 ## [0.5.6-beta.1] - 2026-11-03
 
