@@ -130,6 +130,13 @@ class FakeGitHub(GitHub):
                 "name": "Release maintainer",
                 "email": "release@example.test",
             }
+        if path == "/users/github-actions%5Bbot%5D":
+            return {
+                "id": 2,
+                "login": "github-actions[bot]",
+                "name": None,
+                "email": None,
+            }
         if path == "/graphql":
             [update] = payload["variables"]["input"]["refUpdates"]
             ref = update["name"].removeprefix("refs/")

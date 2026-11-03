@@ -210,12 +210,36 @@ def test_latest_metadata_failure_keeps_completion_recoverable(github):
     assert github.main_updates == 1
 
 
-def test_journal_commits_sign_off_the_explicit_author(github):
+@pytest.mark.parametrize(
+    ("actions", "expected_author"),
+    [
+        (
+            False,
+            {"name": "Release maintainer", "email": "release@example.test"},
+        ),
+        (
+            True,
+            {
+                "name": "github-actions[bot]",
+                "email": "2+github-actions[bot]@users.noreply.github.com",
+            },
+        ),
+    ],
+    ids=["maintainer", "actions-bot"],
+)
+def test_journal_commits_sign_off_the_explicit_author(
+    github, monkeypatch, actions, expected_author
+):
+    if actions:
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    else:
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     Journal(github).save(candidate())
     commits = [payload for path, _, payload in github.writes if path == "git/commits"]
     assert commits
     for commit in commits:
         author = commit["author"]
+        assert author == expected_author
         assert (
             f"Signed-off-by: {author['name']} <{author['email']}>" in commit["message"]
         )
