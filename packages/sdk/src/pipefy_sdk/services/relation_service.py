@@ -114,7 +114,8 @@ class RelationService:
         """Update a pipe relation (`UpdatePipeRelationInput`).
 
         The API requires every constraint flag on update, so the flags the caller
-        leaves out are read from the relation and sent back unchanged. ``ownFieldMaps``
+        leaves out are read from the relation and sent back unchanged; a flag that
+        reads back null is sent as ``False``. ``ownFieldMaps``
         is optional on the API, which keeps the current maps when it is omitted.
 
         Args:
@@ -150,7 +151,10 @@ class RelationService:
             msg = f"Pipe relation '{relation_id}' was not found."
             raise ValueError(msg)
         current = relations[0]
-        return {flag: current[flag] for flag in _PIPE_RELATION_CONSTRAINT_DEFAULTS}
+        # Flags read back nullable but the input requires them; null sends False, not a create default.
+        return {
+            flag: bool(current[flag]) for flag in _PIPE_RELATION_CONSTRAINT_DEFAULTS
+        }
 
     async def delete_pipe_relation(self, relation_id: str | int) -> dict[str, Any]:
         """Delete a pipe relation by ID (permanent).

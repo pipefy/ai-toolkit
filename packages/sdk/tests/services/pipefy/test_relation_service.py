@@ -211,6 +211,49 @@ async def test_update_pipe_relation_sends_explicit_false_over_current_true():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_update_pipe_relation_sends_false_for_a_null_current_flag():
+    """``PipeRelation`` flags are nullable but ``UpdatePipeRelationInput`` requires them."""
+    current = {
+        **_CURRENT_FLAGS,
+        "autoFillFieldEnabled": None,
+        "canCreateNewItems": None,
+    }
+    service, executor = _make_service(
+        side_effect=[
+            {"pipe_relations": [{"id": "r9", **current}]},
+            {"updatePipeRelation": {}},
+        ]
+    )
+    await service.update_pipe_relation("r9", "Renamed")
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp == {
+        "id": "r9",
+        "name": "Renamed",
+        **_CURRENT_FLAGS,
+        "autoFillFieldEnabled": False,
+        "canCreateNewItems": False,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_pipe_relation_caller_flag_wins_over_a_null_current_flag():
+    current = {**_CURRENT_FLAGS, "canConnectMultipleItems": None}
+    service, executor = _make_service(
+        side_effect=[
+            {"pipe_relations": [{"id": "r9", **current}]},
+            {"updatePipeRelation": {}},
+        ]
+    )
+    await service.update_pipe_relation("r9", "N", canConnectMultipleItems=True)
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp["canConnectMultipleItems"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_update_pipe_relation_omits_own_field_maps_when_not_passed():
     """``ownFieldMaps`` is optional on update and the API keeps it when absent."""
     service, executor = _make_service(
