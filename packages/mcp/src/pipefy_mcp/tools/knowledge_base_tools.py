@@ -208,15 +208,15 @@ class KnowledgeBaseTools:
             """Create a pipe-scoped knowledge base plain text. Requires manage_ai_agents on the pipe; run `validate_knowledge_base_access` first to confirm access.
 
             Limits are enforced client-side to fail fast: `content` is 1-3500
-            characters and `description` is 1-900 characters (both required). To
+            characters and `description` is 1-300 characters (both required). To
             attach the result to an agent, pass the returned `id` in the agent's or
             behavior's `dataSourceIds`.
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID).
-                name: Display name (required, non-blank).
+                name: Display name (required, 1-80 characters).
                 content: Plain text content (required, 1-3500 characters).
-                description: Description (required, 1-900 characters).
+                description: Description (required, 1-300 characters).
             """
             client = get_pipefy_client(ctx)
             err = _blank_error(pipe_uuid, "pipe_uuid")
@@ -257,14 +257,14 @@ class KnowledgeBaseTools:
             Partial update: only the fields you pass change; omitted fields keep
             their stored value. Provide at least one of `name`, `content`, or
             `description`. When given, `content` is 1-3500 characters and
-            `description` is 1-900 characters (limits enforced client-side).
+            `description` is 1-300 characters (limits enforced client-side).
 
             Args:
                 plain_text_id: Plain text ID to update (from `get_ai_knowledge_bases`).
                 pipe_uuid: Pipe UUID (not the numeric ID).
-                name: New name (non-blank when given).
+                name: New name (1-80 characters when given).
                 content: New content (1-3500 characters when given).
-                description: New description (1-900 characters when given).
+                description: New description (1-300 characters when given).
             """
             client = get_pipefy_client(ctx)
             err = _blank_error(plain_text_id, "plain_text_id") or _blank_error(
@@ -404,15 +404,15 @@ class KnowledgeBaseTools:
             Reads the local PDF the MCP server (running as the user) can access,
             uploads it via a presigned URL, then registers the document. `~` is
             expanded. Client-side checks fail fast: the file must be a `.pdf`
-            (case-insensitive) under 20 MiB, and `description` is 1-900
+            (case-insensitive) under 20 MiB, and `description` is 1-300
             characters (required). Indexing is asynchronous: the document may
             not be searchable by agents immediately. To attach it to an agent,
             pass the returned `id` in the agent's or behavior's `dataSourceIds`.
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID).
-                name: Display name (required, non-blank).
-                description: Description (required, 1-900 characters).
+                name: Display name (required, 1-80 characters).
+                description: Description (required, 1-300 characters).
                 file_path: Local path to a `.pdf` file. Supports `~` expansion.
             """
             client = get_pipefy_client(ctx)
@@ -456,13 +456,13 @@ class KnowledgeBaseTools:
 
             Metadata only: `name` and/or `description`; the PDF file cannot be
             replaced. Provide at least one field. When given, `description` is
-            1-900 characters (enforced client-side).
+            1-300 characters (enforced client-side).
 
             Args:
                 document_id: Document ID to update (from `get_ai_knowledge_bases`).
                 pipe_uuid: Pipe UUID (not the numeric ID).
-                name: New name (non-blank when given).
-                description: New description (1-900 characters when given).
+                name: New name (1-80 characters when given).
+                description: New description (1-300 characters when given).
             """
             client = get_pipefy_client(ctx)
             err = _blank_error(document_id, "document_id") or _blank_error(
@@ -617,8 +617,8 @@ class KnowledgeBaseTools:
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID) that owns the lookup.
-                name: Display name (required, non-blank).
-                description: Description (required, 1-900 characters).
+                name: Display name (required, 1-80 characters).
+                description: Description (required, 1-300 characters).
                 source_repo_id: Numeric ID of the source pipe to look up data from.
                 output_fields: Field IDs whose values matching records return (1-30).
                 conditions: Condition objects (at least one), e.g.
@@ -683,8 +683,8 @@ class KnowledgeBaseTools:
                 output_fields: Field IDs whose values matching records return (1-30).
                 conditions: Condition objects (at least one) — the complete set, not a delta.
                 search_query: Optional backend-defined search mode marker; omitted means cleared.
-                name: New name (non-blank when given).
-                description: New description (1-900 characters when given).
+                name: New name (1-80 characters when given).
+                description: New description (1-300 characters when given).
             """
             client = get_pipefy_client(ctx)
             err = _blank_error(data_lookup_id, "data_lookup_id") or _blank_error(
