@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Agent reads and update responses now include `eventParams.kindOfSla`, preserving the SLA trigger type when a behavior is read and sent back in an update.
+- **SDK / MCP / CLI `update_pipe_relation`, constraint flags**: an update set every constraint flag the caller left out (`autoFillFieldEnabled`, `canConnectMultipleItems`, `childMustExistToMoveParent` and the rest) to its create default, so even a rename changed the relation's constraints. The update now reads the relation's current flags and sends them back, with the caller's `extra_input` / `--extra` on top; a flag that reads back null is sent as `false`, and the defaults apply only on create. An omitted `ownFieldMaps` still keeps the current auto-fill maps. An unknown relation id raises `ValueError` ("Pipe relation '<id>' was not found.") before any mutation; the MCP tool returns that message and the CLI prints it and exits 2. A caller who relied on a bare update to reset the flags now passes them explicitly. Each update makes one extra read.
 
 ## [0.5.5-beta.1] - 2026-10-26
 
