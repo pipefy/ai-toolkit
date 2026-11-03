@@ -96,7 +96,7 @@ def select_candidate(github: GitHub, sha: str, *, hotfix: bool = False) -> Relea
     previous = github.ref(f"tags/v{previous_version}")
     if github.tree(previous) != github.tree(main):
         raise ReleaseError(
-            "main differs from its published source. Reconcile it before selecting a candidate."
+            "main differs from its published tag. Reconcile it before selecting a candidate."
         )
     if not github.ancestor(previous, sha):
         raise ReleaseError(

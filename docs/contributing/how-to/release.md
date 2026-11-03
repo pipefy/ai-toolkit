@@ -27,7 +27,7 @@ PyPI Trusted Publishers must cover all workspace distributions under `.github/wo
 
 An administrator must apply the repository rules in [Activation](#activation) before the first release. The command refuses publication when those rules are absent.
 
-The files in `main` must equal the files of the tag that matches the version in `main`. `release-pr`, `doctor`, and `publish` refuse otherwise, with the message "main differs from its published source". After activation, the promotion merge keeps this true. If `main` received commits after its tag, for example a fix merged directly into `main`, reconcile it first. The one-time procedure is in [Activation](#activation).
+The files in `main` must match its published version tag. `release-pr`, `doctor`, and `publish` stop otherwise with "main differs from its published tag". If the files differ, stop for maintainer review before preparing or selecting another release. Promotion preserves this condition.
 
 Inspect existing progress:
 
@@ -120,11 +120,15 @@ The update to `main` requires its exact recorded SHA through GitHub's `updateRef
 
 Keep the command running until it reports completion. If the agent or terminal disconnects after publication, run `resume vX` again. The command can recognize a completed promotion whose final response was lost.
 
+After successful publication and public installation tests, `resume vX` can recover a manual merge of the recorded promotion PR. The PR must target `main` in the same repository and retain the recorded candidate as its head. `main` must point to that PR's merge commit. The commit must have the recorded base and candidate as parents, with exactly the candidate's files. The candidate branch and tag must still point to the recorded SHA. The command records the actual merge SHA without rebuilding or republishing packages.
+
 ## Publication and recovery
 
 The `release-ledger` branch records identity, progress, original hashes, the GitHub Release ID, and the workflow ID. Each change appends a Git commit. Concurrent updates cannot overwrite each other. Do not edit or delete this branch manually.
 
 Original wheels remain GitHub Release assets. They do not depend on the retention period for Actions artifacts. Do not replace or delete those assets while recovery remains necessary.
+
+A failed retry keeps the `publishing` state if publication already started. That state warns that some files can already be public.
 
 | Failure | Action |
 | --- | --- |
@@ -135,13 +139,16 @@ Original wheels remain GitHub Release assets. They do not depend on the retentio
 | An existing upload differs from its recorded hash | Stop for maintainer review. Do not overwrite or rebuild the version. |
 | Original files are missing | Stop for maintainer review. Do not replace them with a new build. |
 | Public installation fails | The workflow waits up to two minutes for PyPI propagation. After that, fix the external failure, then resume. A package defect requires a new version or withdrawal. |
-| The recorded promotion commit changed | Rerun the completed Release run from the Actions page. The `complete` step records the new commit and its status. Then run `resume vX`. |
+| GitHub changed the unmerged promotion commit | Rerun the completed Release run from the Actions page. The `complete` step records the new commit and its status. Then run `resume vX`. |
 | Publication succeeds but promotion fails | Run `resume vX`. Keep the same candidate, packages, and expected base. |
-| Approval or `main` changes | Stop for review. Do not change the recorded identity to force progress. |
+| Someone merged the promotion PR manually | Run `resume vX`. It records completion only when the merge matches the published candidate and recorded base. |
+| Approval changes or `main` receives unrelated changes | Stop for review. Do not change the recorded identity to force progress. |
 
 An initial build or storage failure consumes a version even if no package becomes public. This rule prevents a retry from replacing the original files with another build.
 
-After a stop for review, the release keeps the active slot. Free it with `resume vX` once the condition no longer holds, for example after a renewed approval. If the recorded candidate or base can no longer apply, run `abandon vX` and prepare a new version.
+After a stop for review, the release keeps the active slot. Free it with `resume vX` once the condition no longer holds, for example after a renewed approval. If the recorded candidate or base can no longer apply, stop for maintainer review. Abandon the release only if promotion did not reach `main`.
+
+If GitHub merged the promotion PR, use `resume vX` to record completion. If recovery rejects the merge, stop for maintainer review.
 
 To abandon a release, first cancel any running Release workflow. Wait until GitHub reports completion. Then record the reason:
 
@@ -149,7 +156,7 @@ To abandon a release, first cancel any running Release workflow. Wait until GitH
 uv run python scripts/release.py abandon vX --reason "The candidate requires a source correction"
 ```
 
-Abandonment closes the promotion PR and releases the active slot. It preserves tags, original files, and the audit history. Published packages remain available. Explicit package withdrawal requires a separate maintainer decision. Do not move tags, reuse versions, or roll back `main` to hide a publication.
+Abandonment closes an open promotion PR and releases the active slot. It preserves tags, original files, and the audit history. Published packages remain available. Explicit package withdrawal requires a separate maintainer decision. Do not move tags, reuse versions, or roll back `main` to hide a publication.
 
 PyPI, GitHub Releases, and Git cannot update in one transaction. Packages can become public before `main` advances. During that interval, `main` retains the previous completed release. A failed release can leave partial public files until a maintainer recovers or withdraws them.
 
@@ -208,13 +215,9 @@ Keep existing CI and review requirements. Do not configure bypass actors for the
 
 GitHub hides bypass actor lists from callers without ruleset administration access. An administrator must inspect those lists during activation. Runtime checks reject visible bypass actors and require the current caller's bypass state to be `never`. These checks do not prove that hidden actor lists are empty.
 
-The first candidate requires `main` to equal its published tag. If `main` received commits after that tag, cut one release with the former procedure before this tooling merges into `dev`. Prepare the version from `dev`, merge the release PR into `main`, and tag it there. That release makes `main` equal its tag. The former back-merge returns the tag to `dev`. After this tooling merges into `dev`, the former procedure no longer works. A tag on `main` then starts the new `release.yml`, which requires a recorded candidate.
+The version tag starts `release.yml` from the tagged candidate. This trigger does not depend on `workflow_dispatch` reaching the default branch.
 
-The first candidate carries the new `release.yml`. Its tag starts that workflow from the tagged commit, so activation does not depend on `workflow_dispatch` reaching the default branch.
-
-The command requires release protocol `1` and the publication pipeline in the candidate workflow. An old alpha or hotfix branch must include that tooling before selection. This prevents the command from starting the former publication workflow.
-
-Before the first run, disable the obsolete Back-merge workflow in GitHub Actions. Its file, script, and tests disappear from `main` when the implementation release completes. Do not use the former release command during this transition. The new publication gate blocks early promotion through `main`.
+The command requires release protocol `1` and the publication pipeline in the candidate workflow. Every alpha and hotfix candidate must include that workflow before selection.
 
 Before enabling production publication, rehearse the protected promotion in a disposable repository with the same rules. Exercise consecutive releases, changed candidate or approval, a concurrent `main` update, partial uploads, missing originals, alphas, and hotfix reintegration. Use test package destinations for upload experiments. Do not use production package versions for a rehearsal.
 

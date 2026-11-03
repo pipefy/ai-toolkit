@@ -129,7 +129,7 @@ def test_source_changes_only_on_main_stop_the_next_release(tmp_path):
     (tmp_path / "unexpected.txt").write_text("unpublished source")
     repo.git("add", "unexpected.txt")
     repo.git("commit", "-qm", "unexpected main change")
-    with pytest.raises(ReleaseError, match="differs from its published source"):
+    with pytest.raises(ReleaseError, match="differs from its published tag"):
         select_candidate(repo, candidate)
 
 
