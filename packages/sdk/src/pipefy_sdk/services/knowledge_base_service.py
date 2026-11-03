@@ -66,7 +66,7 @@ from pipefy_sdk.services.attachment_service import (
 from pipefy_sdk.services.data_lookup_records import (
     RECORDS_SEARCH_QUERY,
     field_uuids_by_slug,
-    needs_field_uuids,
+    needs_source_fields,
     to_records_conditions,
 )
 from pipefy_sdk.services.types import (
@@ -490,7 +490,9 @@ class KnowledgeBaseService:
         several shapes that only fail later, when an agent runs the lookup.
         The lookup uses the records search: each condition gets ``fieldUuid``
         or ``attribute`` from its ``field`` slug, which takes one extra read of
-        the source's fields when a condition targets a custom field.
+        the source's fields when a condition sets neither. A slug that matches
+        both a fixed field and a custom field, or two custom fields, fails
+        before the write.
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.
@@ -562,7 +564,6 @@ class KnowledgeBaseService:
         input_obj: dict[str, Any] = {
             "pipeUuid": _require_non_blank(pipe_uuid, "pipe_uuid"),
             "dataLookupId": _require_non_blank(data_lookup_id, "data_lookup_id"),
-            **await self._records_definition(source_repo_id, output_fields, conditions),
         }
         if name is not None:
             input_obj["name"] = _require_non_blank(name, "name")
@@ -570,6 +571,9 @@ class KnowledgeBaseService:
             input_obj["description"] = _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
             )
+        input_obj.update(
+            await self._records_definition(source_repo_id, output_fields, conditions)
+        )
         response = await self._executor.execute_query(
             UPDATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION, {"input": input_obj}
         )
@@ -590,12 +594,12 @@ class KnowledgeBaseService:
         repo_id, fields, parsed = _parse_data_lookup_definition(
             source_repo_id, output_fields, conditions
         )
-        field_uuids: dict[str, str] = {}
-        if needs_field_uuids(parsed):
+        field_uuids: dict[str, set[str]] = {}
+        if needs_source_fields(parsed):
             response = await self._executor.execute_query(
                 GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY, {"ids": [repo_id]}
             )
-            field_uuids = field_uuids_by_slug(response)
+            field_uuids = field_uuids_by_slug(response, repo_id)
         records_conditions = to_records_conditions(parsed, field_uuids, repo_id)
         return {
             "sourceRepoId": repo_id,
