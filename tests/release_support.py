@@ -62,6 +62,13 @@ class FakeGitHub(GitHub):
         self.main_updates = 0
         self.fail_latest_response = False
         self.mergeable = [True]
+        self.promotion_pr = {
+            "state": "open",
+            "merged": False,
+            "merge_commit_sha": "c" * 40,
+            "head": {"sha": "a" * 40, "repo": {"full_name": self.repo}},
+            "base": {"ref": "main", "repo": {"full_name": self.repo}},
+        }
 
     def next_sha(self):
         self.counter += 1
@@ -110,7 +117,9 @@ class FakeGitHub(GitHub):
 
     def pull(self, number):
         return {
-            "state": "OPEN",
+            "state": "MERGED"
+            if self.promotion_pr["merged"]
+            else self.promotion_pr["state"].upper(),
             "isDraft": False,
             "headRefOid": self.refs[f"heads/release/{self.tag}"],
             "baseRefOid": self.refs["heads/main"],
@@ -151,6 +160,8 @@ class FakeGitHub(GitHub):
             self.refs[ref] = update["afterOid"]
             if ref == "heads/main":
                 self.main_updates += 1
+                if update["afterOid"] == self.promotion_pr["merge_commit_sha"]:
+                    self.promotion_pr.update(merged=True, state="closed")
                 if self.fail_main_response:
                     self.fail_main_response = False
                     raise GitHubError("Connection lost after promotion")
@@ -223,14 +234,12 @@ class FakeGitHub(GitHub):
                 ]
             }
         if path == "pulls/1":
+            if payload:
+                self.promotion_pr.update(payload)
             mergeable = (
                 self.mergeable.pop(0) if len(self.mergeable) > 1 else self.mergeable[0]
             )
-            return {
-                "merge_commit_sha": "c" * 40,
-                "mergeable": mergeable,
-                "merged": self.refs["heads/main"] == "c" * 40,
-            }
+            return {**copy.deepcopy(self.promotion_pr), "mergeable": mergeable}
         if path.startswith("releases/"):
             release = self.releases[int(path.split("/")[1])]
             if (

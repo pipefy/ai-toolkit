@@ -143,7 +143,10 @@ def advance(
         return
     if release.phase == "abandoned":
         raise ReleaseError(f"Release {release.tag} is abandoned. Select a new version.")
-    if release.phase == "published" and github.ref("heads/main") == release.promotion:
+    if (
+        release.phase == "published"
+        and github.ref("heads/main") != release.expected_main
+    ):
         finish_promotion(github, journal, release)
         return
     ensure_candidate_pr(github, journal, release)
@@ -194,7 +197,10 @@ def abandon(github: GitHub, tag: str, reason: str) -> None:
         raise ReleaseError(f"Release {tag} is already {release.phase}.")
     if not reason.strip():
         raise ReleaseError("Record a reason for abandoning this release.")
-    if release.promotion and github.ref("heads/main") == release.promotion:
+    pull = github.api(f"pulls/{release.pr}") if release.pr else None
+    if (pull and pull["merged"]) or (
+        release.promotion and github.ref("heads/main") == release.promotion
+    ):
         raise ReleaseError(
             f"Release {tag} already reached main. Use resume to record completion."
         )
@@ -203,7 +209,7 @@ def abandon(github: GitHub, tag: str, reason: str) -> None:
         raise ReleaseError(
             "Cancel the active Release run and wait for completion before abandoning it."
         )
-    if release.pr:
+    if pull and pull["state"] == "open":
         github.api(f"pulls/{release.pr}", "PATCH", {"state": "closed"})
     github.status(release.candidate, "failure", "Release abandoned by a maintainer")
     if release.promotion:

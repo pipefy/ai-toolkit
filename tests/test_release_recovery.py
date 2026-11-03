@@ -19,7 +19,7 @@ from release_artifacts import (
     stage_missing,
     wait_for_pypi,
 )
-from release_commands import abandon
+from release_commands import abandon, resume
 from release_gates import finish_promotion, prepare_promotion, require_candidate
 from release_github import GitHubError, Journal
 from release_state import ReleaseError
@@ -170,6 +170,92 @@ def test_failed_installation_keeps_github_draft_and_main_unchanged(
         release_pipeline.stage(github, Journal(github), release, tmp_path)
     assert github.releases[1]["draft"] is True
     assert github.refs["heads/main"] == "b" * 40
+
+
+@pytest.fixture
+def manually_merged_release(github):
+    release = candidate(phase="published", promotion="c" * 40)
+    Journal(github).save(release)
+    github.statuses[release.candidate] = "success"
+    github.statuses[release.promotion] = "success"
+    github.releases[1]["draft"] = False
+    actual = "d" * 40
+    github.commits[actual] = {**github.commits[release.promotion], "sha": actual}
+    github.refs["heads/main"] = actual
+    github.promotion_pr.update(merged=True, state="closed", merge_commit_sha=actual)
+    return release
+
+
+def test_resume_records_a_manual_merge_without_republishing(
+    github, manually_merged_release
+):
+    resume(github, manually_merged_release.tag)
+    assert github.recorded()["promotion"] == "d" * 40
+    assert github.recorded()["phase"] == "complete"
+    assert Journal(github).contents["active"] is None
+    assert github.refs["heads/main"] == "d" * 40
+    assert github.main_updates == 0
+    assert [
+        payload for path, _, payload in github.writes if path.startswith("releases/")
+    ] == [{"make_latest": "true"}]
+
+
+def test_manual_merge_recovery_retries_latest_metadata(github, manually_merged_release):
+    github.fail_latest_response = True
+    with pytest.raises(GitHubError, match="Latest metadata"):
+        resume(github, manually_merged_release.tag)
+    assert github.recorded()["promotion"] == "d" * 40
+    assert github.recorded()["phase"] == "published"
+    assert Journal(github).contents["active"] == manually_merged_release.tag
+    resume(github, manually_merged_release.tag)
+    assert github.recorded()["phase"] == "complete"
+    assert github.main_updates == 0
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["tree", "parents", "tag", "unmerged", "head", "base", "repo", "main", "phase"],
+)
+def test_manual_merge_recovery_rejects_changes_to_the_published_candidate(
+    github, manually_merged_release, change
+):
+    release = manually_merged_release
+    if change == "tree":
+        github.commits["d" * 40]["tree"] = {"sha": "e" * 40}
+    elif change == "parents":
+        github.commits["d" * 40]["parents"] = [{"sha": release.expected_main}]
+    elif change == "tag":
+        github.refs[f"tags/{release.tag}"] = "d" * 40
+    elif change == "unmerged":
+        github.promotion_pr["merged"] = False
+    elif change == "head":
+        github.promotion_pr["head"]["sha"] = "e" * 40
+    elif change == "base":
+        github.promotion_pr["base"]["ref"] = "dev"
+    elif change == "repo":
+        github.promotion_pr["head"]["repo"]["full_name"] = "other/toolkit"
+    elif change == "main":
+        github.refs["heads/main"] = "e" * 40
+    else:
+        release.phase = "publishing"
+        Journal(github).save(release)
+    with pytest.raises(ReleaseError):
+        resume(github, release.tag)
+    assert Journal(github).contents["active"] == release.tag
+    assert github.recorded()["phase"] == release.phase
+    assert github.recorded()["promotion"] == release.promotion
+    assert github.main_updates == 0
+    assert not any(path.startswith("releases/") for path, _, _ in github.writes)
+
+
+def test_abandon_redirects_a_manually_merged_release_to_resume(
+    github, manually_merged_release
+):
+    with pytest.raises(ReleaseError, match="Use resume to record completion"):
+        abandon(github, manually_merged_release.tag, "manual merge")
+    assert github.recorded()["phase"] == "published"
+    assert Journal(github).contents["active"] == manually_merged_release.tag
+    assert not any(path == "pulls/1" for path, _, _ in github.writes)
 
 
 def test_promotion_retry_does_not_build_or_republish(github):

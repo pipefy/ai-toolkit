@@ -182,7 +182,10 @@ def require_review(github: GitHub, release: Release) -> None:
         raise ReleaseError("No current approval identifies the exact candidate SHA.")
 
 
-def require_candidate(github: GitHub, release: Release, *, tagged: bool = True) -> None:
+def require_candidate_source(
+    github: GitHub, release: Release, *, tagged: bool = True
+) -> None:
+    """Require the active candidate branch and tag to retain their recorded SHA."""
     journal = Journal(github)
     if (
         journal.contents["active"] != release.tag
@@ -195,6 +198,10 @@ def require_candidate(github: GitHub, release: Release, *, tagged: bool = True) 
         raise ReleaseError("The candidate branch changed. Stop for review.")
     if tagged and github.ref(f"tags/{release.tag}") != release.candidate:
         raise ReleaseError("The release tag changed. Stop for review.")
+
+
+def require_candidate(github: GitHub, release: Release, *, tagged: bool = True) -> None:
+    require_candidate_source(github, release, tagged=tagged)
     if github.ref("heads/main") != release.expected_main:
         raise ReleaseError("main changed after candidate selection. Stop for review.")
     require_configuration(github, release)
@@ -240,6 +247,30 @@ def prepare_promotion(
     return promotion_commit(release, commit, github.tree(release.candidate))
 
 
+def record_merged_promotion(
+    github: GitHub, journal: Journal, release: Release, current: str
+) -> None:
+    """Record a merged promotion PR only when its history and files match the candidate."""
+    require_candidate_source(github, release)
+    pull = github.api(f"pulls/{release.pr}")
+    if (
+        not pull["merged"]
+        or pull["merge_commit_sha"] != current
+        or pull["head"]["sha"] != release.candidate
+        or (pull["head"]["repo"] or {}).get("full_name") != github.repo
+        or pull["base"]["ref"] != "main"
+        or pull["base"]["repo"]["full_name"] != github.repo
+    ):
+        raise ReleaseError(
+            "main does not match the merged promotion PR. Stop for review."
+        )
+    commit = github.api(f"git/commits/{current}")
+    actual = promotion_commit(release, commit, github.tree(release.candidate))
+    if actual != release.promotion:
+        release.promotion = actual
+        journal.save(release)
+
+
 def finish_promotion(github: GitHub, journal: Journal, release: Release) -> None:
     if release.kind == "alpha":
         raise ReleaseError("Alphas do not promote main.")
@@ -247,10 +278,12 @@ def finish_promotion(github: GitHub, journal: Journal, release: Release) -> None
         raise ReleaseError(
             "Publication and public installation tests must finish before promotion."
         )
-    commit = github.api(f"git/commits/{release.promotion}")
-    promotion_commit(release, commit, github.tree(release.candidate))
     current = github.ref("heads/main")
-    if current != release.promotion:
+    if current != release.expected_main:
+        record_merged_promotion(github, journal, release, current)
+    else:
+        commit = github.api(f"git/commits/{release.promotion}")
+        promotion_commit(release, commit, github.tree(release.candidate))
         require_candidate(github, release)
         if prepare_promotion(github, release) != release.promotion:
             raise ReleaseError("GitHub changed the promotion commit. Stop for review.")
