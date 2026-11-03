@@ -56,7 +56,7 @@ class DataLookupCondition(BaseModel):
       (the runtime replaces it with the AI-provided input, so a static value
       here would be silently ignored).
 
-    ``operator`` is an opaque backend string (e.g. ``"eq"``, ``"contains"``);
+    ``operator`` is an opaque backend string (e.g. ``"eq"``, ``"ilike"``);
     ``input_type`` likewise (e.g. ``"text"``, ``"number"``). ``field`` is the
     field slug and is always required (the backend rejects a condition without
     one). The agent searches by ``field_uuid`` for a custom field or by

@@ -607,17 +607,26 @@ class KnowledgeBaseTools:
             `internal_id` from `get_table` / `search_tables` (not a UUID);
             `output_fields` takes 1-30 field IDs (field slugs plus static
             fields like `id`, `title`, `created_at`); each condition needs
-            `field` (the field slug) and `operator` (an opaque backend
-            string, e.g. `"eq"`, `"contains"`) and is either static (string
-            `value` required) or AI-filled (`usingFillWithAi: true` with
-            `inputName`, `inputType` (e.g. `"text"`, `"number"`), and
+            `field` (the field slug) and `operator` and is either static
+            (string `value` required) or AI-filled (`usingFillWithAi: true`
+            with `inputName`, `inputType` (e.g. `"text"`, `"number"`), and
             `inputDescription`; no `value`). The lookup uses the records
-            search, the same one the Pipefy UI writes. The tool sets each
-            condition's `fieldUuid` (custom field) or `attribute` (`id`,
-            `title`, `created_by`, `created_at`, `due_date`, `finished_at`,
-            `current_phase`, `labels`, `assignees`) from its `field`, so the
-            slug is enough. A slug that is not a field of the source is
-            rejected before the write.
+            search, the same one the Pipefy UI writes. In that search `eq`
+            matches an exact value and `ilike` a case-insensitive substring.
+            `contains` returns no records on a text field such as `title`.
+            The tool sets each condition's `fieldUuid` (custom field) or
+            `attribute` (fixed field) from its `field`, so the slug is
+            enough. The fixed slugs `id`, `title`, `created_by`,
+            `created_at`, `due_date`, `finished_at`, `current_phase`,
+            `labels`, `assignees` map to the attributes `ID`, `TITLE`,
+            `CREATOR`, `CREATED_AT`, `DUE_DATE`, `FINISHED_AT`,
+            `CURRENT_PHASE`, `LABELS`, `ASSIGNEES`. The tool rejects a slug
+            that is not a field of the source before the write. It also
+            rejects a slug that names two targets, such as a custom field
+            labeled "Labels" (Pipefy gives it the slug `labels`). For those,
+            set `fieldUuid` or `attribute` on the condition. A table has no
+            phases, so `current_phase` on a table source fails when the agent
+            runs.
             Keep the full definition client-side: reads never return
             `conditions`. To attach the result to an agent, pass the returned
             `id` in the agent's or behavior's `dataSourceIds`.
@@ -680,6 +689,8 @@ class KnowledgeBaseTools:
             value). Field rules and the records search match
             `create_ai_knowledge_base_data_lookup`. An update also moves a
             lookup that used the older card search to the records search.
+            There, a `contains` condition on a text field returns no records,
+            so change it to `ilike` when you resend the definition.
 
             Args:
                 data_lookup_id: Data lookup ID to update (from `get_ai_knowledge_bases`).

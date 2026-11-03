@@ -251,7 +251,7 @@ For a **PDF document**, use `create_ai_knowledge_base_document` with `pipe_uuid`
 
 A **data lookup** lets the agent search records in a source pipe or database table by conditions and return selected field values. Same flow as above at step 2, with three rules of its own:
 
-1. **Create** — `create_ai_knowledge_base_data_lookup(pipe_uuid, name, description, source_repo_id, output_fields, conditions)`. `source_repo_id` is the **numeric** ID of the source pipe, or the `internal_id` of the source table from `get_table` / `search_tables` (a UUID is accepted by the API but the lookup then breaks when the agent runs it). `output_fields` takes 1-30 field IDs (field slugs plus static fields like `id`, `title`, `created_at`). Each condition needs `field` + `operator` (opaque backend string, e.g. `"eq"`, `"contains"`) and is either **static** (string `value` required) or **AI-filled**, where the AI asks the user for the value at runtime. Put the field slug in `field`: the tool sets `fieldUuid` or `attribute` from it, and rejects a slug that is not a field of the source. An AI-filled condition looks like this:
+1. **Create** — `create_ai_knowledge_base_data_lookup(pipe_uuid, name, description, source_repo_id, output_fields, conditions)`. `source_repo_id` is the **numeric** ID of the source pipe, or the `internal_id` of the source table from `get_table` / `search_tables` (a UUID is accepted by the API but the lookup then breaks when the agent runs it). `output_fields` takes 1-30 field IDs (field slugs plus static fields like `id`, `title`, `created_at`). Each condition needs `field` + `operator` (opaque backend string, e.g. `"eq"`, `"ilike"`) and is either **static** (string `value` required) or **AI-filled**, where the AI asks the user for the value at runtime. Use `ilike` for a substring match: `contains` returns no records on a text field. Put the field slug in `field`: the tool sets `fieldUuid` or `attribute` from it. The tool rejects a slug that is not a field of the source. It also rejects a slug that names two fields: a custom field labeled "Labels" gets the fixed slug `labels`. For those, set `fieldUuid` from `get_start_form_fields`, `get_phase_fields`, or `get_table`. An AI-filled condition looks like this:
 
    ```json
    [{"field": "customer_email", "operator": "eq", "usingFillWithAi": true,
@@ -260,7 +260,7 @@ A **data lookup** lets the agent search records in a source pipe or database tab
    ```
 
 2. **Attach** — keep the returned `id` and add it to `dataSourceIds`, exactly as for the other kinds. **Also keep the definition you sent**: reads never return `conditions`, so your copy is the only complete record of the lookup.
-3. **Update replaces everything** — `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta). Only `name`/`description` keep their stored values when omitted.
+3. **Update replaces everything** — `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta). Only `name`/`description` keep their stored values when omitted. An update moves a lookup written by an older toolkit version to the records search: change a `contains` condition on a text field to `ilike`.
 
 ---
 

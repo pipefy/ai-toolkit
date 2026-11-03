@@ -402,7 +402,8 @@ class KnowledgeBaseDataLookupPayload(TypedDict, total=False):
     Returned by the get query and by create/update. ``conditions`` are never
     part of the payload: the API stores them but does not expose them on
     reads, so callers must keep the lookup definition client-side.
-    ``sourceRepoId`` is the numeric ID of the source pipe.
+    ``sourceRepoId`` is the numeric ID of the source pipe, or the numeric
+    ``internal_id`` of the source table.
     """
 
     id: str

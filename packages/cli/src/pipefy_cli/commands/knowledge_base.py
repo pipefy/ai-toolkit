@@ -29,7 +29,7 @@ document_app = typer.Typer(
 )
 kb_app.add_typer(document_app, name="document")
 data_lookup_app = typer.Typer(
-    help="Knowledge base data lookups (search cards in a source pipe).",
+    help="Knowledge base data lookups (search records in a source pipe or table).",
     no_args_is_help=True,
 )
 kb_app.add_typer(data_lookup_app, name="data-lookup")
@@ -373,7 +373,9 @@ _CONDITIONS_HELP = (
     "JSON array of condition objects. Each needs field (the field slug) + "
     'operator, and either a string value (static) or "usingFillWithAi": true '
     "with inputName/inputType/inputDescription (AI-filled). The command sets "
-    "fieldUuid or attribute from field."
+    "fieldUuid or attribute from field, and rejects a slug that names two "
+    'fields: set fieldUuid or attribute on that condition. Use "ilike" for a '
+    'substring match: "contains" returns no records on a text field.'
 )
 
 
@@ -495,8 +497,9 @@ def kb_data_lookup_update(
     Every update rewrites the stored definition with exactly what this call
     carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions``
     are required every time. Only ``--name``/``--description`` are partial.
-    The update writes the records search, as create does. Gated on the
-    read-access probe.
+    The update writes the records search, as create does. There, a
+    ``contains`` condition on a text field returns no records, so change it to
+    ``ilike`` when you resend the definition. Gated on the read-access probe.
     """
     fields, condition_list = _parse_data_lookup_options(output_fields, conditions)
 

@@ -21,7 +21,7 @@ The single biggest source of wrong-id errors: the same pipe is addressed by five
 | --- | --- | --- |
 | `pipe_id` | numeric id | pipes/cards, automations, relations, most tools |
 | `repo_id` | numeric id (string) | email templates (`get_email_templates` — pipe **or table** id), observability automation-by-repo logs (`get_automation_logs_by_repo`), optional scope on `get_automation_execution_metrics` |
-| `source_repo_id` | numeric id | knowledge-base data lookups (a UUID is accepted on create but breaks at index time — use the numeric id) |
+| `source_repo_id` | numeric pipe id, or a table's numeric `internal_id` | knowledge-base data lookups (a UUID is accepted on create but breaks at index time — use the numeric id) |
 | `repo_uuid` | **uuid** | AI agents (`get_ai_agents`, `create_ai_agent`, …), AI agent logs, `get_interface_repo_fields` (a pipe or table uuid from `list_interface_repos`, which is also a data source's `repoId`) |
 | `pipe_uuid` | **uuid** | knowledge-base tools; pipe report **reads** (`get_pipe_report*`) — report create/update use numeric `pipe_id` |
 
