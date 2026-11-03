@@ -9,10 +9,12 @@ GET_TABLE_QUERY = gql(
     query GetTable($id: ID!) {
         table(id: $id) {
             id
+            internal_id
             name
             description
             table_fields {
                 id
+                uuid
                 label
                 type
                 required
@@ -29,10 +31,12 @@ GET_TABLES_QUERY = gql(
     query GetTables($ids: [ID!]!) {
         tables(ids: $ids) {
             id
+            internal_id
             name
             description
             table_fields {
                 id
+                uuid
                 label
                 type
                 required
@@ -271,6 +275,7 @@ SEARCH_TABLES_QUERY = gql(
             tables(first: $first) {
                 nodes {
                     id
+                    internal_id
                     name
                     description
                 }

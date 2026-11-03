@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SDK / MCP / CLI tables and pipes**: `search_tables`, `get_table`, and `get_tables` return the table's numeric `internal_id` and the `uuid` of each table field. `get_pipe` and `get_start_form_fields` return the `uuid` of each start form field, and `get_pipe` returns it for phase fields too. A data lookup on a database table takes the numeric `internal_id` as its source, and record filters take field uuids. Before, only `get_phase_fields` returned a field uuid, and no read returned a table's `internal_id`.
+
 ## [0.5.6-beta.1] - 2026-11-03
 
 ### Added

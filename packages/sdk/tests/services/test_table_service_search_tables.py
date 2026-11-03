@@ -3,6 +3,7 @@
 import pytest
 from _shared.mock_clients import mock_executor
 from _shared.pagination_test_defaults import DEFAULT_FIRST
+from _shared.query_selection import selected_field_names
 
 from pipefy_sdk.queries.table_queries import SEARCH_TABLES_QUERY
 from pipefy_sdk.services.table_service import TableService
@@ -175,3 +176,31 @@ async def test_search_tables_propagates_has_next_page():
     executor.execute_query.assert_awaited_once_with(
         SEARCH_TABLES_QUERY, {"first": DEFAULT_FIRST}
     )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_matched_tables_keep_internal_id():
+    """A data lookup takes the table's numeric internal_id, so search keeps it."""
+    organizations = [
+        {
+            "id": "org1",
+            "name": "Acme Corp",
+            "tables": _table_connection(
+                [{"id": "T1", "internal_id": "301234567", "name": "Clients"}]
+            ),
+        }
+    ]
+    service, _ = _make_service({"organizations": organizations})
+
+    result = await service.search_tables("Clients")
+
+    assert result["organizations"][0]["tables"][0]["internal_id"] == "301234567"
+
+
+@pytest.mark.unit
+def test_search_tables_query_selects_internal_id():
+    nodes = selected_field_names(
+        SEARCH_TABLES_QUERY, "organizations", "tables", "nodes"
+    )
+    assert "internal_id" in nodes
