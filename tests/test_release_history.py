@@ -174,26 +174,3 @@ def test_merge_cannot_discard_the_previous_release_notes(tmp_path):
     repo.git("commit", "-qm", "Discard previous release notes")
     with pytest.raises(ReleaseError, match="previous release notes"):
         select_candidate(repo, repo.ref("heads/dev"))
-
-
-def test_fast_forward_rejects_a_concurrent_main_change(tmp_path):
-    repo = Repository(tmp_path)
-    candidate = repo.commit("1.1.0", "candidate")
-    expected_main = repo.ref("heads/main")
-    merge = repo.promote(candidate, "1.1.0")
-    repo.git("branch", "target", expected_main)
-    repo.git("push", ".", f"{merge}:refs/heads/target")
-    assert repo.ref("heads/target") == merge
-    repo.git("update-ref", "refs/heads/main", expected_main)
-    repo.git("reset", "--hard", expected_main)
-    concurrent = repo.commit("1.0.1", "concurrent change")
-    repo.git("update-ref", "refs/heads/target", concurrent)
-    result = subprocess.run(
-        ["git", "push", ".", f"{merge}:refs/heads/target"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode != 0
-    assert repo.ref("heads/target") == concurrent

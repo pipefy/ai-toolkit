@@ -194,3 +194,29 @@ def test_expected_wheel_stems_are_derived_from_the_published_members() -> None:
     assert len(_checks.EXPECTED_WHEEL_STEMS) == len(
         _checks.smoke_entry_points.PUBLISHED_DISTRIBUTIONS
     )
+
+
+def _stub_apply_prepare(monkeypatch, current: str):
+    calls: list[list[str]] = []
+    monkeypatch.setattr(_release, "run", lambda cmd: calls.append(cmd))
+    monkeypatch.setattr(_release, "capture", lambda cmd: "")
+    monkeypatch.setattr(_release.bump_version, "read_sdk_version", lambda: current)
+    stamps: list[str] = []
+    monkeypatch.setattr(_release, "stamp_changelog", stamps.append)
+    return calls, stamps
+
+
+def test_apply_prepare_stamps_a_beta_and_signs_off(monkeypatch) -> None:
+    # A Signed-off-by trailer lives inside the message, so an unsigned
+    # preparation commit is repaired only by an amend on the open PR.
+    calls, stamps = _stub_apply_prepare(monkeypatch, "0.5.0-beta.1")
+    _release.apply_prepare("beta", "0.5.0-beta.1")
+    assert stamps == ["0.5.0-beta.1"]
+    [commit] = [c for c in calls if c[:2] == ["git", "commit"]]
+    assert "-s" in commit, commit
+
+
+def test_apply_prepare_keeps_unreleased_notes_for_an_alpha(monkeypatch) -> None:
+    _, stamps = _stub_apply_prepare(monkeypatch, "0.5.0-alpha.1")
+    _release.apply_prepare("version=0.5.0-alpha.1", "0.5.0-alpha.1")
+    assert stamps == []
