@@ -172,6 +172,46 @@ def test_failed_installation_keeps_github_draft_and_main_unchanged(
     assert github.refs["heads/main"] == "b" * 40
 
 
+@pytest.mark.parametrize("failure", ["upload_hash", "approval"])
+def test_publication_retry_keeps_publishing_after_failure(
+    github, tmp_path, monkeypatch, failure
+):
+    original = tmp_path / "dist-original"
+    original.mkdir()
+    for distribution in (
+        "pipefy",
+        "pipefy_auth",
+        "pipefy_cli",
+        "pipefy_infra",
+        "pipefy_mcp_server",
+    ):
+        (original / f"{distribution}-1.1.0-py3-none-any.whl").write_bytes(
+            distribution.encode()
+        )
+    manifest = original_manifest(original, "1.1.0")
+    release = candidate(phase="publishing", manifest=manifest, build_started=True)
+    Journal(github).save(release)
+    github.releases[1]["draft"] = False
+    monkeypatch.setenv("GITHUB_RUN_ID", "17")
+    monkeypatch.setattr(release_pipeline, "build_or_restore", lambda *args: None)
+
+    def install(requirements):
+        if failure == "approval":
+            github.review = "REVIEW_REQUIRED"
+
+    monkeypatch.setattr(release_pipeline, "install_smoke", install)
+    uploaded = {next(iter(manifest)): "b" * 64} if failure == "upload_hash" else {}
+    monkeypatch.setattr(release_pipeline, "pypi_inventory", lambda version: uploaded)
+    message = "differs from the original manifest" if uploaded else "needs approval"
+    with pytest.raises(ReleaseError, match=message):
+        release_pipeline.stage(github, Journal(github), release, tmp_path)
+    assert github.recorded()["phase"] == "publishing"
+    assert github.recorded()["manifest"] == manifest
+    assert original_manifest(original, release.version) == manifest
+    assert github.releases[1]["draft"] is False
+    assert Journal(github).contents["active"] == release.tag
+
+
 @pytest.fixture
 def manually_merged_release(github):
     release = candidate(phase="published", promotion="c" * 40)

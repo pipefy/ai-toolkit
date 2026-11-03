@@ -95,8 +95,9 @@ def stage(github: GitHub, journal: Journal, release: Release, root: Path) -> boo
     original = root / "dist-original"
     build_or_restore(github, journal, release, original)
     install_smoke([str(original / name) for name in release.manifest])
-    release.phase = "built"
-    journal.save(release)
+    if release.phase != "publishing":
+        release.phase = "built"
+        journal.save(release)
     missing = stage_missing(
         release, original, root / "dist-pypi", pypi_inventory(release.version)
     )
