@@ -196,7 +196,15 @@ def release_pr(bump_arg: str, *, alpha: bool = False, assume_yes: bool = False) 
             f"Target {target} must be newer than dev {current} and main {main_version}."
         )
     previous = f"v{main_version}"
-    run(["git", "merge-base", "--is-ancestor", previous, "origin/dev"])
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", previous, "origin/dev"],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    if ancestor.returncode:
+        raise ReleaseError(
+            f"dev omits the published tag {previous}. Merge the correction branch into dev first."
+        )
     previous_tree, main_tree = capture(
         ["git", "rev-parse", f"{previous}^{{tree}}", "origin/main^{tree}"]
     ).splitlines()
@@ -258,7 +266,9 @@ def main() -> int:
     for name in ("publish", "doctor"):
         command = sub.add_parser(name)
         command.add_argument(
-            "--sha", help="full prepared commit SHA, default: origin/dev"
+            "--sha",
+            required=name == "publish",
+            help="full prepared commit SHA (doctor defaults to origin/dev)",
         )
         command.add_argument("--hotfix", action="store_true")
         if name == "publish":

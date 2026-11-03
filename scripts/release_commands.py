@@ -125,10 +125,14 @@ def watch_workflow(github: GitHub, release: Release, *, retry: bool) -> None:
             raise ReleaseError(
                 "The workflow retry did not start. Inspect Actions before retrying."
             )
-    subprocess.run(
+    watched = subprocess.run(
         ["gh", "run", "watch", str(run["id"]), "--repo", github.repo, "--exit-status"],
-        check=True,
+        check=False,
     )
+    if watched.returncode:
+        raise ReleaseError(
+            f"Publication run {run['id']} failed. Inspect it, then use 'release.py resume {release.tag}' to retry the original files."
+        )
 
 
 def advance(
