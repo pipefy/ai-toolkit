@@ -2923,7 +2923,11 @@ _ALL_SUPPLIERS_SOURCE = {
 
 
 def _html_interface_with_custom_code(
-    *, editable: bool = False, element_type: str = "customCode"
+    *,
+    editable: bool = False,
+    element_type: str = "customCode",
+    data_sources: list[dict] | None = None,
+    metadata: object = _HTML_ELEMENT_METADATA,
 ) -> dict:
     """``interface`` payload: the target on its page, after a sibling on another page."""
     return {
@@ -2954,9 +2958,9 @@ def _html_interface_with_custom_code(
                         {
                             "id": _HTML_ELEMENT_ID,
                             "type": element_type,
-                            "metadata": _HTML_ELEMENT_METADATA,
+                            "metadata": metadata,
                             "editable": editable,
-                            "dataSources": [],
+                            "dataSources": data_sources or [],
                             "htmlDocument": None,
                         }
                     ],
@@ -3172,6 +3176,365 @@ async def test_set_interface_sources_permission_denied_raises_portal_permission_
 
     with pytest.raises(PortalPermissionError):
         await _set_open_requests_and_suppliers(service)
+
+
+# The sources as the API reads them back: filters as a JSON string, plus the
+# read-only repoName and repoType.
+_STORED_OPEN_REQUESTS_SOURCE = {
+    **_OPEN_REQUESTS_SOURCE,
+    "filters": _OPEN_FILTER_JSON,
+    "repoName": "Purchase requests",
+    "repoType": "Pipe",
+}
+_STORED_ALL_SUPPLIERS_SOURCE = {
+    **_ALL_SUPPLIERS_SOURCE,
+    "filters": None,
+    "repoName": "Suppliers",
+    "repoType": "Table",
+}
+_NEW_REQUEST_ACTION = {
+    "actionId": "new-request",
+    "kind": "openStartForm",
+    "repoId": EXAMPLE_PIPE_REPO_ID,
+}
+_REQUEST_DETAILS_ACTION = {
+    "actionId": "details",
+    "kind": "openRecord",
+    "sourceId": "open-requests",
+    "fieldKeys": [_REQUEST_AMOUNT_FIELD_UUID],
+}
+_APPROVE_ACTION = {
+    "actionId": "approve",
+    "kind": "triggerAutomation",
+    "sourceId": "open-requests",
+    "automationIds": ["301"],
+}
+
+
+def _interface_with_sources(**overrides: object) -> dict:
+    return _html_interface_with_custom_code(
+        data_sources=[_STORED_OPEN_REQUESTS_SOURCE, _STORED_ALL_SUPPLIERS_SOURCE],
+        **overrides,
+    )
+
+
+async def _set_request_actions(
+    service: PortalService, actions: list | None = None, **kwargs: object
+) -> dict:
+    return await service.set_interface_actions(
+        _HTML_PAGE_ID,
+        _HTML_ELEMENT_ID,
+        [_NEW_REQUEST_ACTION, _REQUEST_DETAILS_ACTION, _APPROVE_ACTION]
+        if actions is None
+        else actions,
+        interface_uuid="html-uuid-1",
+        **kwargs,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stored_editable", [False, True])
+async def test_set_interface_actions_merges_actions_keeping_sources_and_editable(
+    stored_editable: bool,
+) -> None:
+    """updateElement replaces metadata and sources, so both go back as read."""
+    service, interfaces_executor = _set_sources_service(
+        _interface_with_sources(
+            editable=stored_editable,
+            metadata={**_HTML_ELEMENT_METADATA, "actions": [_APPROVE_ACTION]},
+        )
+    )
+
+    await _set_request_actions(service)
+
+    assert interfaces_executor.execute_query.await_args_list == [
+        mock_call(GET_HTML_INTERFACE_QUERY, {"uuid": "html-uuid-1"}),
+        mock_call(
+            UPDATE_ELEMENT_MUTATION,
+            {
+                "input": {
+                    "element_id": _HTML_ELEMENT_ID,
+                    "page_id": _HTML_PAGE_ID,
+                    "metadata": json.dumps(
+                        {
+                            **_HTML_ELEMENT_METADATA,
+                            "actions": [
+                                _NEW_REQUEST_ACTION,
+                                _REQUEST_DETAILS_ACTION,
+                                _APPROVE_ACTION,
+                            ],
+                        },
+                        separators=(",", ":"),
+                    ),
+                    "editable": stored_editable,
+                    "data_sources": [
+                        {**_OPEN_REQUESTS_SOURCE, "filters": _OPEN_FILTER_JSON},
+                        _ALL_SUPPLIERS_SOURCE,
+                    ],
+                }
+            },
+        ),
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("editable", [False, True])
+async def test_set_interface_actions_sets_editable_when_passed(editable: bool) -> None:
+    service, interfaces_executor = _set_sources_service(
+        _interface_with_sources(editable=not editable)
+    )
+
+    await _set_request_actions(service, editable=editable)
+
+    assert _sent_update_input(interfaces_executor)["editable"] is editable
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stored_metadata", [None, []])
+async def test_set_interface_actions_on_metadata_with_no_keys_stores_only_actions(
+    stored_metadata: object,
+) -> None:
+    """The API reads an element with no metadata keys as null or as ``[]``."""
+    service, interfaces_executor = _set_sources_service(
+        _interface_with_sources(metadata=stored_metadata)
+    )
+
+    await _set_request_actions(service, [_NEW_REQUEST_ACTION])
+
+    assert json.loads(_sent_update_input(interfaces_executor)["metadata"]) == {
+        "actions": [_NEW_REQUEST_ACTION]
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_empty_list_removes_every_action() -> None:
+    service, interfaces_executor = _set_sources_service(
+        _interface_with_sources(
+            metadata={**_HTML_ELEMENT_METADATA, "actions": [_APPROVE_ACTION]}
+        )
+    )
+
+    await _set_request_actions(service, [])
+
+    assert json.loads(_sent_update_input(interfaces_executor)["metadata"]) == {
+        **_HTML_ELEMENT_METADATA,
+        "actions": [],
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_returns_the_actions_and_editable_sent() -> None:
+    service, _interfaces_executor = _set_sources_service(
+        _interface_with_sources(editable=True)
+    )
+
+    result = await _set_request_actions(service)
+
+    assert result == {
+        "id": _HTML_ELEMENT_ID,
+        "uuid": _HTML_ELEMENT_ID,
+        "actions": [_NEW_REQUEST_ACTION, _REQUEST_DETAILS_ACTION, _APPROVE_ACTION],
+        "editable": True,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_rejects_invalid_actions_before_any_call() -> None:
+    service, interfaces_executor = _set_sources_service(_interface_with_sources())
+
+    with pytest.raises(ValidationError, match="own actionId"):
+        await _set_request_actions(
+            service, [_APPROVE_ACTION, {**_NEW_REQUEST_ACTION, "actionId": "approve"}]
+        )
+
+    interfaces_executor.execute_query.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("action", "message"),
+    [
+        (
+            {**_NEW_REQUEST_ACTION, "repoId": "repo-uuid-9"},
+            "actions[1].repoId: 'repo-uuid-9' is not the repo of a data source "
+            "of this element",
+        ),
+        (
+            {**_APPROVE_ACTION, "sourceId": "closed-requests"},
+            "actions[1].sourceId: 'closed-requests' is not a data source of this "
+            "element; its sources are: open-requests, all-suppliers",
+        ),
+        (
+            {**_REQUEST_DETAILS_ACTION, "fieldKeys": ["title", "due_date"]},
+            "actions[1].fieldKeys: not in source 'open-requests': due_date",
+        ),
+    ],
+    ids=["unknown repoId", "unknown sourceId", "field key outside its source"],
+)
+async def test_set_interface_actions_unknown_reference_reads_but_sends_no_update(
+    action: dict, message: str
+) -> None:
+    service, interfaces_executor = _set_sources_service(_interface_with_sources())
+
+    with pytest.raises(ValueError) as excinfo:
+        await _set_request_actions(
+            service, [{**_REQUEST_DETAILS_ACTION, "actionId": "first"}, action]
+        )
+
+    assert message in str(excinfo.value)
+    interfaces_executor.execute_query.assert_awaited_once_with(
+        GET_HTML_INTERFACE_QUERY, {"uuid": "html-uuid-1"}
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_lists_every_unknown_reference() -> None:
+    service, _interfaces_executor = _set_sources_service(_interface_with_sources())
+
+    with pytest.raises(ValueError) as excinfo:
+        await _set_request_actions(
+            service,
+            [
+                {**_NEW_REQUEST_ACTION, "repoId": "repo-uuid-9"},
+                {**_APPROVE_ACTION, "sourceId": "closed-requests"},
+            ],
+        )
+
+    assert str(excinfo.value).startswith("actions[0].repoId: ")
+    assert "; actions[1].sourceId: " in str(excinfo.value)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_empty_list_needs_no_sources() -> None:
+    """Removing every action from an element that has no sources is allowed."""
+    service, interfaces_executor = _set_sources_service(
+        _html_interface_with_custom_code(
+            metadata={**_HTML_ELEMENT_METADATA, "actions": [_APPROVE_ACTION]}
+        )
+    )
+
+    await _set_request_actions(service, [])
+
+    assert json.loads(_sent_update_input(interfaces_executor)["metadata"]) == {
+        **_HTML_ELEMENT_METADATA,
+        "actions": [],
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_open_record_without_field_keys_is_sent() -> None:
+    """``fieldKeys`` is optional on openRecord, so there is nothing to check."""
+    service, interfaces_executor = _set_sources_service(_interface_with_sources())
+    action = {"actionId": "details", "kind": "openRecord", "sourceId": "open-requests"}
+
+    await _set_request_actions(service, [action])
+
+    sent = json.loads(_sent_update_input(interfaces_executor)["metadata"])
+    assert sent["actions"] == [action]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_ignores_a_stored_source_without_an_id() -> None:
+    """A read source may carry a null id; it is no action's target and is not listed."""
+    service, _interfaces_executor = _set_sources_service(
+        _html_interface_with_custom_code(
+            data_sources=[
+                _STORED_OPEN_REQUESTS_SOURCE,
+                {**_STORED_ALL_SUPPLIERS_SOURCE, "id": None},
+            ]
+        )
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        await _set_request_actions(
+            service, [{**_APPROVE_ACTION, "sourceId": "closed-requests"}]
+        )
+
+    assert str(excinfo.value) == (
+        "actions[0].sourceId: 'closed-requests' is not a data source of this "
+        "element; its sources are: open-requests"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_on_an_element_with_no_sources_says_to_set_them() -> (
+    None
+):
+    service, _interfaces_executor = _set_sources_service(
+        _html_interface_with_custom_code()
+    )
+
+    with pytest.raises(ValueError, match="has no data sources"):
+        await _set_request_actions(service, [_APPROVE_ACTION])
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("page_id", "element_id", "element_type", "message"),
+    [
+        (_PAGE_ID_2, _HTML_ELEMENT_ID, "customCode", f"page_id='{_HTML_PAGE_ID}'"),
+        (
+            _HTML_PAGE_ID,
+            "missing-element",
+            "customCode",
+            "no page of interface 'html-uuid-1'",
+        ),
+        (_HTML_PAGE_ID, _HTML_ELEMENT_ID, "table", "actions go on an HTML interface"),
+    ],
+    ids=["on another page", "on no page", "not customCode"],
+)
+async def test_set_interface_actions_wrong_element_reads_but_sends_no_update(
+    page_id: str, element_id: str, element_type: str, message: str
+) -> None:
+    service, interfaces_executor = _set_sources_service(
+        _interface_with_sources(element_type=element_type)
+    )
+
+    with pytest.raises(ValueError, match=message):
+        await service.set_interface_actions(
+            page_id, element_id, [_NEW_REQUEST_ACTION], interface_uuid="html-uuid-1"
+        )
+
+    interfaces_executor.execute_query.assert_awaited_once_with(
+        GET_HTML_INTERFACE_QUERY, {"uuid": "html-uuid-1"}
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_unsuccessful_update_raises_value_error() -> None:
+    service, _interfaces_executor = _set_sources_service(
+        _interface_with_sources(), {"updateElement": {"success": False}}
+    )
+
+    with pytest.raises(ValueError, match="success=false"):
+        await _set_request_actions(service)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_set_interface_actions_permission_denied_raises_portal_permission_error() -> (
+    None
+):
+    service, _interfaces_executor = _set_sources_service(
+        _interface_with_sources(), _PERMISSION_DENIED_ERROR
+    )
+
+    with pytest.raises(PortalPermissionError):
+        await _set_request_actions(service)
 
 
 def test_get_html_interface_selects_element_metadata_and_editable():

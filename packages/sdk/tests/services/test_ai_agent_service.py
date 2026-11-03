@@ -123,6 +123,23 @@ def test_ai_agent_selection_round_trips_capabilities_and_provider_ids(document):
     assert "systemProviderId" in printed
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "document",
+    [GET_AI_AGENT_QUERY.document, UPDATE_AI_AGENT_MUTATION.document],
+    ids=["get", "update"],
+)
+def test_ai_agent_selection_preserves_sla_event_params(document):
+    assert {
+        "kindOfSla",
+        "fromPhaseId",
+        "inPhaseId",
+        "to_phase_id",
+        "triggerFieldIds",
+        "triggerAutomationId",
+    } <= _selected_under(document, "event_params")
+
+
 def _make_behavior_dict(instruction="", actions=None):
     result = {
         "name": "Test Behavior",

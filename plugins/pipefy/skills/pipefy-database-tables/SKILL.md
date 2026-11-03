@@ -18,6 +18,7 @@ Tables, records (rows), schema columns (table fields), and attachments for Pipef
 ## Cross-cutting patterns
 
 - Use `introspect_type` on inputs such as `CreateTableFieldInput` / `UpdateTableFieldInput`.
+- **Read by label, write by id.** A record's `record_fields` come back as `name` (the field label) and `value`, but `create_table_record`, `set_table_record_field_value` and `find_records` take the field **id**. Map labels to ids with `get_table` before you write.
 - **Pagination:** `get_table_records` and `find_records` support `first` / `after`; default page size is 50.
 - **`find_records` over paginated `get_table_records`** when you know the field value. One call with `field_id` and `field_value` beats N pages of `get_table_records`.
 
@@ -41,7 +42,7 @@ Tables, records (rows), schema columns (table fields), and attachments for Pipef
 | Operation | Purpose |
 | ------------ | --------- |
 | `create_table_field` | Add a column to a table schema. |
-| `update_table_field` | Rename or change column description, required status, or options. |
+| `update_table_field` | Rename or change column description, required status, or options. Pass `table_id` as well as the field id. |
 | `delete_table_field` | **Destructive; review and approve first.** Requires `table_id`. |
 
 ---

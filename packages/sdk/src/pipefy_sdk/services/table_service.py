@@ -261,12 +261,15 @@ class TableService:
 
         Args:
             field_id: Table field ID.
-            table_id: Owning table ID when known; otherwise pass ``table_id`` inside ``attrs``.
+            table_id: Owning table ID (required by the API).
             **attrs: ``UpdateTableFieldInput`` fields; ``None`` omits the key.
+
+        Raises:
+            ValueError: When ``table_id`` is omitted or ``None``.
         """
-        payload: dict[str, Any] = {"id": field_id}
-        if table_id is not None:
-            payload["table_id"] = str(table_id)
+        if table_id is None:
+            raise ValueError("table_id is required to update a table field")
+        payload: dict[str, Any] = {"id": field_id, "table_id": str(table_id)}
         for key, value in attrs.items():
             if value is not None:
                 payload[key] = value

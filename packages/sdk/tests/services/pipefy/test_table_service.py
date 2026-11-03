@@ -367,15 +367,28 @@ async def test_create_table_field_raises_transport_query_error():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_update_table_field_merges_id_and_attrs():
+@pytest.mark.parametrize("kwargs", [{}, {"table_id": None}])
+async def test_update_table_field_requires_table_id_before_request(kwargs):
+    service, executor = _make_service({})
+
+    with pytest.raises(ValueError, match="table_id is required"):
+        await service.update_table_field("f1", label="New", **kwargs)
+
+    executor.execute_query.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("table_id", [501, "501"])
+async def test_update_table_field_merges_id_and_attrs(table_id):
     service, executor = _make_service(
         {"updateTableField": {"table_field": {"id": "f1"}}},
     )
-    await service.update_table_field("f1", label="New", public=None)
+    await service.update_table_field("f1", table_id=table_id, label="New", public=None)
 
     query, variables = executor.execute_query.call_args[0]
     assert query is UPDATE_TABLE_FIELD_MUTATION
-    assert variables == {"input": {"id": "f1", "label": "New"}}
+    assert variables == {"input": {"id": "f1", "table_id": "501", "label": "New"}}
 
 
 @pytest.mark.unit
@@ -383,7 +396,7 @@ async def test_update_table_field_merges_id_and_attrs():
 async def test_update_table_field_raises_transport_query_error():
     service = _service_raising(PipefyGraphQLError([{"message": "e"}]))
     with pytest.raises(PipefyGraphQLError):
-        await service.update_table_field(1, label="x")
+        await service.update_table_field(1, table_id=501, label="x")
 
 
 @pytest.mark.unit

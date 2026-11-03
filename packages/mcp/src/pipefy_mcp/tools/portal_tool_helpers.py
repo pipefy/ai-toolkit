@@ -18,7 +18,7 @@ from pipefy_sdk.exceptions import (
     HtmlViolation,
     PortalPermissionError,
 )
-from pipefy_sdk.models.portal import DeletePortalElementInput
+from pipefy_sdk.models.portal import INTERFACE_ACTION_KINDS, DeletePortalElementInput
 from pydantic import ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error
@@ -129,6 +129,31 @@ _SOURCE_ACCESS_DENIED = (
 )
 
 
+_ACTION_SOURCE_ACCESS_DENIED = (
+    "Permission denied for a data source of this element: you can set its "
+    "actions only when you can bind every pipe and table its sources read, as "
+    "list_interface_repos returns them for this interface."
+)
+
+
+def _map_interface_element_error(
+    exc: BaseException,
+    *,
+    not_found_message: str,
+    access_denied_message: str,
+    empty_fallback: str,
+) -> str:
+    if not isinstance(exc, PipefyGraphQLError):
+        return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
+    codes = extract_graphql_error_codes(exc)
+    lowered = str(exc).strip().lower()
+    if _NOT_FOUND_CODES.intersection(codes) or lowered.startswith("couldn't find"):
+        return not_found_message
+    if not codes and lowered == "permission denied":
+        return access_denied_message
+    return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
+
+
 def map_interface_source_error_to_message(
     exc: BaseException,
     *,
@@ -146,15 +171,58 @@ def map_interface_source_error_to_message(
         not_found_message: Message naming the ids the call was given.
         empty_fallback: Message for any other error whose text is blank.
     """
-    if not isinstance(exc, PipefyGraphQLError):
-        return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
-    codes = extract_graphql_error_codes(exc)
-    lowered = str(exc).strip().lower()
-    if _NOT_FOUND_CODES.intersection(codes) or lowered.startswith("couldn't find"):
-        return not_found_message
-    if not codes and lowered == "permission denied":
-        return _SOURCE_ACCESS_DENIED
-    return map_portal_error_to_message(exc, empty_fallback=empty_fallback)
+    return _map_interface_element_error(
+        exc,
+        not_found_message=not_found_message,
+        access_denied_message=_SOURCE_ACCESS_DENIED,
+        empty_fallback=empty_fallback,
+    )
+
+
+def map_interface_action_error_to_message(
+    exc: BaseException,
+    *,
+    not_found_message: str,
+    empty_fallback: str = _PORTAL_OPERATION_FAILED,
+) -> str:
+    """Map failures of ``set_interface_actions`` to agent-friendly messages.
+
+    As ``map_interface_source_error_to_message``: a not-found error becomes
+    ``not_found_message``, and a ``Permission denied`` with no error code is the
+    API refusing a repo of the element's sources, which the update sends back.
+
+    Args:
+        exc: Exception raised by ``PipefyClient.set_interface_actions``.
+        not_found_message: Message naming the ids the call was given.
+        empty_fallback: Message for any other error whose text is blank.
+    """
+    return _map_interface_element_error(
+        exc,
+        not_found_message=not_found_message,
+        access_denied_message=_ACTION_SOURCE_ACCESS_DENIED,
+        empty_fallback=empty_fallback,
+    )
+
+
+def _list_validation_error(
+    exc: ValidationError, *, argument: str, union_tags: frozenset[str] = frozenset()
+) -> dict[str, object]:
+    clauses: list[str] = []
+    for err in exc.errors(include_url=False):
+        inner = (err.get("ctx") or {}).get("error")
+        if err.get("type") == "value_error" and inner is not None:
+            message = str(inner)
+        else:
+            message = str(err.get("msg", ""))
+        where = argument + "".join(
+            f"[{part}]" if isinstance(part, int) else f".{part}"
+            for part in err.get("loc", ())
+            if part not in union_tags
+        )
+        if err.get("type") in ("union_tag_invalid", "union_tag_not_found"):
+            where += ".kind"
+        clauses.append(f"{where}: {message}")
+    return tool_error("; ".join(clauses), code="INVALID_ARGUMENTS")
 
 
 def interface_sources_validation_error(exc: ValidationError) -> dict[str, object]:
@@ -163,19 +231,19 @@ def interface_sources_validation_error(exc: ValidationError) -> dict[str, object
     Each problem reads ``data_sources[index].key: message``; a rule over the whole
     list (a repeated ``id`` or ``name``) keeps its own message.
     """
-    clauses: list[str] = []
-    for err in exc.errors(include_url=False):
-        inner = (err.get("ctx") or {}).get("error")
-        if err.get("type") == "value_error" and inner is not None:
-            message = str(inner)
-        else:
-            message = str(err.get("msg", ""))
-        where = "data_sources" + "".join(
-            f"[{part}]" if isinstance(part, int) else f".{part}"
-            for part in err.get("loc", ())
-        )
-        clauses.append(f"{where}: {message}")
-    return tool_error("; ".join(clauses), code="INVALID_ARGUMENTS")
+    return _list_validation_error(exc, argument="data_sources")
+
+
+def interface_actions_validation_error(exc: ValidationError) -> dict[str, object]:
+    """Map an ``InterfaceActions`` validation error to ``INVALID_ARGUMENTS``.
+
+    Each problem reads ``actions[index].key: message``, without the ``kind`` the
+    union was matched on; a rule over the whole list (a repeated ``actionId``)
+    keeps its own message.
+    """
+    return _list_validation_error(
+        exc, argument="actions", union_tags=frozenset(INTERFACE_ACTION_KINDS)
+    )
 
 
 def validate_tool_ids(
@@ -390,7 +458,9 @@ def plan_portal_element_delete_confirmation(
 __all__ = [
     "PortalElementDeleteConfirmation",
     "finalize_internal_api_mutation",
+    "interface_actions_validation_error",
     "interface_sources_validation_error",
+    "map_interface_action_error_to_message",
     "map_interface_source_error_to_message",
     "map_portal_error_to_message",
     "plan_portal_element_delete_confirmation",

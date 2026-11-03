@@ -28,7 +28,7 @@ Not for designing a process (`pipefy-process-design`), a full pipe diagnosis or 
 ## How to answer
 
 1. **Pick the hop.** From the conversation, name the one manual, repetitive step with the best return: a move someone does by hand, a triage, a copy-paste, a chase. With several candidates, take the one with the most cases per week. Do not walk the whole process.
-2. **Check coverage when a pipe is named.** Run the reads in the reference: `get_pipe`, `get_automations`, `get_ai_agents`, then `get_ai_agent` for each active agent. If an active automation or agent already does the hop, say so, size that coverage, and move to the next uncovered hop, restating what the agent or rule already does there. Do not propose a second one. With no pipe in view, say coverage was not checked instead of claiming nothing covers the hop. `cards_count` is what sits in a phase now, not volume or duration, and `get_cards` selects no dates; when the answer needs time, use the timed card read under Measuring.
+2. **Check coverage when a pipe is named.** Run `get_pipe` and keep both its `id` and its `uuid`; `get_automations` with the numeric id, paging until the listing says there is no next page; `get_ai_agents` with the `uuid`; then `get_ai_agent` for each active agent. If an active automation or agent already does the hop, say so, size that coverage, and move to the next uncovered hop, restating what the agent or rule already does there. Do not propose a second one. With no pipe in view, say coverage was not checked instead of claiming nothing covers the hop. `cards_count` is what sits in a phase now, not volume or duration, and `get_cards` selects no dates; when the answer needs time, use the timed card read under Measuring.
 3. **Show the arithmetic**, with the user's numbers or the gaps named:
 
 ```text
@@ -62,9 +62,24 @@ For a written case, expand each line into a short paragraph and add an "Assumpti
 
 ## Measuring
 
-Lead time, age, and time per phase come from a timed card read: one `execute_graphql` query on the pipe's cards that selects `createdAt`, `finished_at`, `started_current_phase_at`, `current_phase_age`, and `phases_history` (`firstTimeIn`, `lastTimeOut`, `duration` in seconds per phase). The document is in the reference. It is a read, runs with no confirmation, and returns 25 cards per page (up to 50); say how many cards the numbers come from, and page with `after` when the pipe has more. Lead time is `finished_at` minus `createdAt` on done cards; time in a phase is the `duration` of its `phases_history` entry.
+Lead time, age, and time per phase come from a timed card read: one `execute_graphql` query on the pipe's cards, with `variables` `{"pipeId": "<id>"}`:
 
-Weekly volume for a whole pipe comes from the user or from a pipe report export (`created_at` per card), which is the better path when the pipe has more cards than a few pages. The export works on an existing report (`get_pipe_reports`); when the pipe has none, `create_pipe_report` is a write, so ask first. Pass the date columns by `name` from `get_pipe_report_columns`; `pipefy-reports` has the export and polling steps. The export ends in an XLSX link, so use it for volume, not for a number the user wants in the chat.
+```graphql
+query TimedCards($pipeId: ID!, $first: Int = 25, $after: String) {
+  cards(pipe_id: $pipeId, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    edges { node {
+      id done createdAt finished_at started_current_phase_at current_phase_age updated_at
+      current_phase { name }
+      phases_history { phase { name } firstTimeIn lastTimeOut duration }
+    } }
+  }
+}
+```
+
+`duration` is seconds; `lastTimeOut` is null on the phase the card is in. The `cards` query returns the oldest cards first and takes no sort, so the first pages describe the pipe's oldest cards, not recent work: page to the end, or use a pipe report export for recent numbers. It is a read, runs with no confirmation, and returns 25 cards per page; say how many cards the numbers come from, and pass `"after": <pageInfo.endCursor>` in `variables` when the pipe has more. A page of 25 cards with `phases_history` is about 40 thousand characters; raise `first` (the API caps it at 50) only when the client can hold it. Lead time is `finished_at` minus `createdAt` on done cards; time in a phase is the `duration` of its `phases_history` entry.
+
+Weekly volume for a whole pipe comes from the user or from a pipe report export (`created_at` per card), which is the better path when the pipe has more cards than a few pages. The export works on an existing report (`get_pipe_reports`); when the pipe has none, `create_pipe_report` is a write, so ask first. Pass the date columns by `name` from `get_pipe_report_columns`. The report reads take the pipe `uuid`; the export takes the numeric pipe id. Poll the export until its state is `done`; `pipefy-reports` has the steps. The export ends in an XLSX link (`fileURL`), so use it for volume, not for a number the user wants in the chat.
 
 ## Tools
 

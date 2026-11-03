@@ -3056,6 +3056,7 @@ Usage: pipefy portal html-interface [OPTIONS] COMMAND [ARGS]...
 │               source.                                                        │
 │ set-sources   Replace the data sources of an HTML interface's customCode     │
 │               element.                                                       │
+│ set-actions   Replace the actions of an HTML interface's customCode element. │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/html-interface/create
@@ -3169,6 +3170,36 @@ Usage: pipefy portal html-interface repos [OPTIONS]
 │    --repo-name                TEXT  Case-insensitive part of the repo name.  │
 │    --json             -j            Print machine-readable JSON to stdout.   │
 │    --help                           Show this message and exit.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/set-actions
+Usage: pipefy portal html-interface set-actions [OPTIONS]
+
+ Replace the actions of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --interface-uuid                       TEXT  HTML interface holding the   │
+│                                                 page.                        │
+│                                                 [required]                   │
+│ *  --page-id                              TEXT  Page holding the element.    │
+│                                                 [required]                   │
+│ *  --element-id                           TEXT  The page's customCode        │
+│                                                 element.                     │
+│                                                 [required]                   │
+│ *  --actions                              TEXT  JSON array, the element's    │
+│                                                 complete action list         │
+│                                                 (actionId, kind and the      │
+│                                                 kind's keys); '[]' removes   │
+│                                                 them all.                    │
+│                                                 [required]                   │
+│    --editable            --no-editable          Whether viewers can save     │
+│                                                 edits to the element's       │
+│                                                 data-pfy-editable fields;    │
+│                                                 omit to keep the current     │
+│                                                 value.                       │
+│    --json            -j                         Print machine-readable JSON  │
+│                                                 to stdout.                   │
+│    --help                                       Show this message and exit.  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/html-interface/set-sources

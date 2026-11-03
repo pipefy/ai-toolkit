@@ -22,7 +22,7 @@ add_service_account_to_pipe pipe_id=67890 email=svc-automations@your-org.pipefy-
 get_card_inbox_emails card_id=12345
 ```
 
-The first send call returns a preview under `email` with a `confirmation_token` and sends nothing. After the user approves, repeat it with the token:
+The first call to `send_inbox_email` or `send_email_with_template` sends nothing: it returns the message under `email` (`to`, `subject`, `body`, `from_`, and `cc` / `bcc` under `extra` when set) with a `confirmation_token`. For a template, the preview is already resolved for the card. Show it to the user. After they approve, repeat the same call with `confirm=true` and that token. The token covers that one message: changing any argument, or a card edit that changes what the template resolves to, returns a fresh preview instead of sending. The token stays valid for its TTL, so repeating the confirmed call sends the email again.
 
 ```text
 send_inbox_email card_id=12345 to='["customer@example.com"]' from_="you@example.com" subject="Your request is in progress" body="Hi, we are processing your request."

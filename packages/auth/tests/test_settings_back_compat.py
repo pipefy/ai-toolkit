@@ -34,6 +34,8 @@ def _reset_warning_dedup(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PIPEFY_SERVICE_ACCOUNT_URL", raising=False)
     monkeypatch.delenv("PIPEFY_BASE_URL", raising=False)
     monkeypatch.delenv("PIPEFY_AUTH_URL", raising=False)
+    monkeypatch.delenv("PIPEFY_TOKEN", raising=False)
+    monkeypatch.delenv("PIPEFY_DISABLE_STORED_SESSION", raising=False)
     _reset_legacy_oauth_warning_state()
     yield
     _reset_legacy_oauth_warning_state()

@@ -17,6 +17,8 @@ Agent reads (`get_ai_agents`, `get_ai_agent`, `validate_ai_agent_behaviors`) and
 
 ## Enablement responses
 
+`create_ai_agent` takes `active=false` in place of `disabled_at` to start the agent disabled.
+
 Create/update responses use `disabled_at` / `active`; prefer these when present. A successful response with `agent_uuid` still requires checking enablement: null `disabled_at` means active. A partial-failure shell is often disabled; its envelope carries `disabled_at`.
 
 On a partial create failure, the MCP envelope carries `agent_uuid`. Use it to

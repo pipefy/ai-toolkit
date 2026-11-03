@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import typer
 from pipefy_sdk import FIELD_TYPE_IDS, PipefyClient
+from pipefy_sdk.graphql_inputs import (
+    CreatePhaseFieldInput,
+    UpdatePhaseFieldInput,
+)
 
 from pipefy_cli.commands._common import (
     ID_POSITIONAL_CONTEXT_SETTINGS,
     confirm_destructive,
+    graphql_input_or_bad_parameter,
     parse_json_object,
+    reject_reserved_extra_keys,
     resource_id_argument,
     run_cli_command,
 )
@@ -63,15 +69,23 @@ def field_create(
 ) -> None:
     """Create a field on a phase."""
 
-    extra = parse_json_object(extra_json, "--extra") or {}
+    extra = reject_reserved_extra_keys(
+        parse_json_object(extra_json, "--extra"),
+        reserved=frozenset({"phase_id", "label", "type"}),
+    )
     lab = label.strip()
     ft = field_type.strip()
     if not lab or not ft:
         typer.echo("--label and --type must be non-empty.", err=True)
         raise typer.Exit(2)
 
+    create_input = graphql_input_or_bad_parameter(
+        CreatePhaseFieldInput,
+        {"phase_id": phase_id, "label": lab, "type": ft, **extra},
+    )
+
     async def factory(client: PipefyClient):
-        return await client.create_phase_field(phase_id, lab, ft, **extra)
+        return await client.create_phase_field(create_input)
 
     run_cli_command(ctx, json_out, factory)
 
@@ -89,12 +103,27 @@ def field_update(
 ) -> None:
     """Update a phase field (pass attributes via ``--extra`` JSON)."""
 
-    extra = parse_json_object(extra_json, "--extra")
+    extra = reject_reserved_extra_keys(
+        parse_json_object(extra_json, "--extra"),
+        reserved=frozenset({"id"}),
+    )
     if not extra:
         raise typer.BadParameter("Provide --extra with a non-empty JSON object.")
 
+    # UpdatePhaseFieldInput has no phase_id / pipe_id. They narrow the SDK's
+    # slug-to-uuid lookup, so they are lifted out of --extra rather than sent.
+    extra = dict(extra)
+    phase_id = extra.pop("phase_id", None)
+    pipe_id = extra.pop("pipe_id", None)
+    update_input = graphql_input_or_bad_parameter(
+        UpdatePhaseFieldInput,
+        {"id": field_id, **extra},
+    )
+
     async def factory(client: PipefyClient):
-        return await client.update_phase_field(field_id, **extra)
+        return await client.update_phase_field(
+            update_input, phase_id=phase_id, pipe_id=pipe_id
+        )
 
     run_cli_command(ctx, json_out, factory)
 

@@ -21,6 +21,7 @@ GET_AI_AGENT_QUERY = gql(
                 active
                 eventId: event_id
                 eventParams: event_params {
+                    kindOfSla
                     fromPhaseId
                     inPhaseId
                     to_phase_id
@@ -157,6 +158,7 @@ UPDATE_AI_AGENT_MUTATION = gql(
                     active
                     eventId: event_id
                     eventParams: event_params {
+                        kindOfSla
                         fromPhaseId
                         inPhaseId
                         to_phase_id

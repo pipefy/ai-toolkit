@@ -120,6 +120,7 @@ DOMAINS: dict[str, frozenset[str]] = {
             "list_interfaces",
             "list_portals",
             "publish_sub_portal",
+            "set_interface_actions",
             "set_interface_sources",
             "sort_portal_pages",
             "write_interface_html",
