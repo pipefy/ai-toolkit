@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.6-beta.1] - 2026-11-03
+
 ### Added
 
 - **SDK HTML interface actions**: `PipefyClient.set_interface_actions` declares the actions an HTML interface's `customCode` element can run from a `data-pfy-action` button: `openStartForm` (`repoId`), `openRecord` (`sourceId`, optional `display`, `fieldKeys` and `pageId`) and `triggerAutomation` (`sourceId`, `automationIds`, optional `label`). The list replaces the element's `metadata.actions`; its other metadata keys and its data sources are read and sent back unchanged, since the update replaces both. `editable`, which `data-pfy-editable` fields need to save, is kept unless passed. Actions are parsed into the `InterfaceAction` models before any call (a known `kind`, a unique `actionId` of 1 to 64 letters, digits, underscores or hyphens, `pageId` with `display: "page"`, at least one automation id, each a string of digits, at most 50 actions), then each `sourceId`, `repoId` and `openRecord` `fieldKeys` is checked against the element's sources before the update, and a failure names `actions[index].key`.
