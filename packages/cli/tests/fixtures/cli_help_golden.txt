@@ -2748,7 +2748,8 @@ Usage: pipefy pipe [OPTIONS] COMMAND [ARGS]...
 │              (``get_start_form_fields``).                                    │
 │ list         Search pipes across organizations (same as MCP                  │
 │              ``search_pipes``).                                              │
-│ create       Create an empty pipe in an organization.                        │
+│ create       Create a pipe, optionally with its phases, start form fields    │
+│              and labels.                                                     │
 │ update       Update pipe settings (pass at least one attribute).             │
 │ delete       Delete a pipe permanently.                                      │
 │ clone        Clone a pipe from a template pipe id.                           │
@@ -2772,15 +2773,31 @@ Usage: pipefy pipe clone [OPTIONS] TEMPLATE_PIPE_ID
 ### HELP pipe/create
 Usage: pipefy pipe create [OPTIONS] NAME
 
- Create an empty pipe in an organization.
+ Create a pipe, optionally with its phases, start form fields and labels.
+
+ Without ``--phases`` the pipe gets the default phases Inbox, Doing and Done.
+ With it, the pipe gets exactly those phases, in order, each connected to the
+ phases beside it. The result lists the new phases, fields and labels with ids.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    name      TEXT  Display name for the new pipe. [required]               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ *  --org           TEXT  Organization id that will own the pipe. [required]  │
-│    --json  -j                                                                │
-│    --help                Show this message and exit.                         │
+│ *  --org                        TEXT  Organization id that will own the      │
+│                                       pipe.                                  │
+│                                       [required]                             │
+│    --phases                     TEXT  JSON array of phases in order, e.g.    │
+│                                       [{"name": "Triage"}, {"name": "Done",  │
+│                                       "done": true}]. Replaces the default   │
+│                                       phases.                                │
+│    --start-form-fields          TEXT  JSON array of start form fields:       │
+│                                       label, type_id, and optional           │
+│                                       description, help, required, editable, │
+│                                       options.                               │
+│    --labels                     TEXT  JSON array of labels: name and color   │
+│                                       (hex #RGB or #RRGGBB).                 │
+│    --json               -j                                                   │
+│    --help                             Show this message and exit.            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP pipe/delete

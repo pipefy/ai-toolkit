@@ -20,7 +20,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 - **Field types** for `create_phase_field` are the API's `FieldTypeId` enum values (lower case, e.g. `short_text`, not `SHORT_TEXT`). The tool's input schema lists them.
 
-- **Phase connections are UI-only.** Creating or reordering phases does not wire Phase Connections / `allowed_phases`. Configure edges in the Pipefy UI; use `get_phase_allowed_move_targets` before moves. The API cannot add transition edges.
+- **Phase connections.** `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it. After adding a phase, call `get_phase_allowed_move_targets` on it and on its neighbors. Change the connections in the Pipefy UI only when the result needs changes. Call `get_phase_allowed_move_targets` before moves.
 - **Verify-after-write.** After create/update, re-read with the matching get tool (`get_pipe`, `get_card`, `get_phase_fields`, etc.) before reporting success. Do not treat the write response alone as proof.
 
 ---
@@ -31,7 +31,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 | ------------ | ----------- | --------- |
 | `get_pipe` | Yes | Fetch pipe metadata including phases and fields. |
 | `search_pipes` | Yes | Search by name pattern. |
-| `create_pipe` | No | Create a new pipe in the org. |
+| `create_pipe` | No | Create a new pipe in the org, with its phases, start form fields and labels. |
 | `update_pipe` | No | Rename or change pipe settings. |
 | `delete_pipe` | No | **Destructive; review and approve first.** |
 | `clone_pipe` | No | Clone an existing pipe. |
@@ -39,19 +39,23 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 ### Steps — create a pipe with phases
 
-1. **Create the pipe:**
+1. **Create the pipe with its phases and start form fields in one call.** Pass the phases in order, mark the final one `done`, and give each a name no other phase in the pipe has.
 
-   `create_pipe name="Customer Onboarding" organization_id=300123456`
+   `create_pipe name="Customer Onboarding" organization_id=300123456 phases=[{"name": "Kickoff"}, {"name": "Setup"}, {"name": "Live", "done": true}] start_form_fields=[{"label": "Customer name", "type_id": "short_text", "required": true}]`
 
-2. **Shape the phases.** `create_pipe` already adds Inbox, Doing and Done at keys 1, 2 and 3. Do not call `create_phase` once for every requested name on top of those three.
+   With `phases`, the pipe gets exactly those phases, in that order, instead of Inbox, Doing and Done, and each phase is connected to the phases beside it so cards can move between them. Without `phases`, the pipe keeps Inbox, Doing and Done. Pass `labels` (`name` and a hex `color`) in the same call when the process needs them. Do not create the pipe first and then rename or add phases.
 
-   When the pipe needs three or more phases and the last one is final, rename Inbox, Doing and Done with `update_phase`. Leave `done` unset on Done so it stays the final phase. Create only the phases that sit between the second and the last, at `2.01`, `2.02`, and so on. When the pipe needs fewer than three phases, delete each empty default you will not keep. `delete_phase` is destructive; review and approve first.
+   The result lists the new phases, start form fields and labels with their ids. Use those ids in the next calls.
 
-   `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. Between 2 and 3, use two decimal places (`2.01`, `2.02`, ..., `2.99`): `2.10` is the same float as `2.1`, so the tenth value ties with the first. `index` does not wire Phase Connections / `allowed_phases` (configure those in the Pipefy UI; use `get_phase_allowed_move_targets` before moves).
+   When the call fails with `PIPE_PHASE_SETUP_FAILED`, the pipe exists but its phases are incomplete: `error.details` holds `pipe_id` and the phases created so far. Read the pipe with `get_pipe`, then add the missing phases with `create_phase`, or delete the pipe. `delete_pipe` is destructive; review and approve first.
 
-   Call `get_pipe` and confirm the phase names are in the intended order.
+2. **Add fields to the other phases** with `create_phase_field`, using the phase ids from the result.
 
-3. **Add start form fields** — call `create_phase_field` on the start form phase.
+3. Call `get_pipe` and confirm the phases and fields.
+
+### Steps — add a phase to an existing pipe
+
+Call `create_phase` with an `index`. `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. The default Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. Between 2 and 3, use two decimal places (`2.01`, `2.02`, ..., `2.99`): `2.10` is the same float as `2.1`, so the tenth value ties with the first. Call `get_pipe` and confirm the phase names are in the intended order. The new phase is connected to the phases beside it; call `get_phase_allowed_move_targets` on it and on its neighbors to check the connections.
 
 ---
 
@@ -63,7 +67,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 | `create_phase` | No | Add a phase to a pipe. |
 | `update_phase` | No | Rename, set the done flag. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. |
 | `delete_phase` | No | **Destructive; review and approve first.** |
-| `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase` (UI-configured edges only). |
+| `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase`. |
 | `get_phase_cards_count` | Yes | Native per-phase card count via `get_phase`. |
 | `get_phase_cards` | Yes | Paginated cards in a phase. |
 
@@ -71,7 +75,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 ## Seed pipe across phases
 
-Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. Transition edges must already exist in the Pipefy UI.
+Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. The phases must already be connected; `get_phase_allowed_move_targets` shows the connections.
 
 ### Tools needed
 
