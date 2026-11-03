@@ -53,6 +53,13 @@ scripts/*
 !scripts/bump_version.py
 !scripts/generate_graphql_inputs.py
 !scripts/release.py
+!scripts/release_artifacts.py
+!scripts/release_checks.py
+!scripts/release_commands.py
+!scripts/release_gates.py
+!scripts/release_github.py
+!scripts/release_pipeline.py
+!scripts/release_state.py
 !scripts/smoke_entry_points.py
 
 # macOS
