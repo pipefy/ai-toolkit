@@ -66,6 +66,28 @@ class AiAgentConfigureError(PipefyError):
         super().__init__(message)
 
 
+class PipePhaseSetupError(PipefyError):
+    """Raised when ``create_pipe`` created the pipe but setting up its phases failed.
+
+    The pipe exists. Some default phases can remain, and of the requested phases
+    only ``created_phases`` exist. Read the pipe with ``get_pipe`` and fix its
+    phases, or remove it with ``delete_pipe``. The failed call's error is the
+    ``__cause__``.
+    """
+
+    def __init__(
+        self, *, pipe_id: str, created_phases: list[dict[str, Any]], reason: str
+    ) -> None:
+        self.pipe_id = pipe_id
+        self.created_phases = created_phases
+        names = ", ".join(phase["name"] for phase in created_phases) or "none"
+        super().__init__(
+            f"Pipe {pipe_id} was created, but setting up its phases failed: "
+            f"{reason.strip().rstrip('.')}. Requested phases created: {names}. Read the "
+            "pipe with get_pipe, then fix its phases or delete it with delete_pipe."
+        )
+
+
 def _text_or_none(value: object) -> str | None:
     """Read a blank or non-text value as absent."""
     if isinstance(value, str) and value.strip():

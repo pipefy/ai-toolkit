@@ -195,6 +195,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "simulate_automation",
         "sort_portal_pages",
         "set_default_llm_provider",
+        "set_interface_actions",
         "set_interface_sources",
         "set_llm_provider_active_status",
         "set_role",

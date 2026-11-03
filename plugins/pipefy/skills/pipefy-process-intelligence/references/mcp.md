@@ -7,24 +7,11 @@ get_pipe pipe_id=<id>
 ```
 
 ```text
-get_cards pipe_id=<id> first=50 include_fields=true
+get_records pipe_id=<id> first=50 include_fields=true order_by=[{"attribute": "CREATED_AT", "direction": "DESC"}]
 ```
 
 ```text
-execute_graphql query=<document below> variables={"pipeId": "<id>"}
-```
-
-```graphql
-query TimedCards($pipeId: ID!, $first: Int = 25, $after: String) {
-  cards(pipe_id: $pipeId, first: $first, after: $after) {
-    pageInfo { hasNextPage endCursor }
-    edges { node {
-      id done createdAt finished_at started_current_phase_at current_phase_age updated_at
-      current_phase { name }
-      phases_history { phase { name } firstTimeIn lastTimeOut duration }
-    } }
-  }
-}
+execute_graphql query=<the TimedCards document in the skill> variables={"pipeId": "<id>"}
 ```
 
 ```text

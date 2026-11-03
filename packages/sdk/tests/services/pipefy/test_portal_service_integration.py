@@ -625,16 +625,19 @@ _OPEN_RECORDS_FILTER = {
 }
 
 
-def _stored_sources(detail: dict, element_id: str) -> list[dict]:
-    """The element's sources as read, in the shape ``set_interface_sources`` returns."""
-    element = {
+def _stored_element(detail: dict, element_id: str) -> dict:
+    return {
         candidate["id"]: candidate
         for page in detail["pages"]
         for candidate in page["elements"]
     }[element_id]
+
+
+def _stored_sources(detail: dict, element_id: str) -> list[dict]:
+    """The element's sources as read, in the shape ``set_interface_sources`` returns."""
     return [
         InterfaceDataSource.model_validate(source).model_dump(by_alias=True)
-        for source in element["dataSources"]
+        for source in _stored_element(detail, element_id)["dataSources"]
     ]
 
 
@@ -697,3 +700,83 @@ async def test_live_set_interface_sources_round_trip_keeps_handles_and_filters(
     assert result["dataSources"] == wanted
     assert _stored_sources(after_set, element["id"]) == wanted
     assert _stored_sources(after_update, element["id"]) == wanted
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_live_set_interface_actions_round_trip_keeps_metadata_and_sources(
+    live_portal_service: PortalService,
+) -> None:
+    """Actions are stored in metadata.actions, read back whole, and the rest is kept.
+
+    Writes only the disposable interface, and puts its element's actions, sources
+    and ``editable`` back.
+    """
+    interface_uuid = _require_disposable_html_interface_uuid()
+    page_id, element = await _first_custom_code_element(
+        live_portal_service, interface_uuid
+    )
+    repo = await _first_bindable_repo(live_portal_service, interface_uuid)
+    original_metadata = (
+        element["metadata"] if isinstance(element["metadata"], dict) else {}
+    )
+    original_actions = original_metadata.get("actions") or []
+    sources = [
+        {
+            "id": "live-actions-records",
+            "name": "Live actions records",
+            "repoId": repo["uuid"],
+            "fieldKeys": ["title"],
+            "filters": None,
+        }
+    ]
+    actions = [
+        {"actionId": "live-new", "kind": "openStartForm", "repoId": repo["uuid"]},
+        {
+            "actionId": "live-details",
+            "kind": "openRecord",
+            "sourceId": "live-actions-records",
+            "fieldKeys": ["title"],
+        },
+    ]
+
+    async def set_actions(wanted: list, editable: bool) -> dict:
+        return await live_portal_service.set_interface_actions(
+            page_id,
+            element["id"],
+            wanted,
+            interface_uuid=interface_uuid,
+            editable=editable,
+        )
+
+    try:
+        # NOTE: the API refuses new sources while a stored action names a source
+        # they drop, so the element's own actions go first.
+        if original_actions:
+            await set_actions([], element["editable"])
+        await live_portal_service.set_interface_sources(
+            page_id, element["id"], sources, interface_uuid=interface_uuid
+        )
+        result = await set_actions(actions, True)
+        after = await live_portal_service.get_html_interface(interface_uuid)
+    finally:
+        await set_actions([], element["editable"])
+        await live_portal_service.set_interface_sources(
+            page_id,
+            element["id"],
+            element["dataSources"],
+            interface_uuid=interface_uuid,
+        )
+        if original_actions:
+            await set_actions(original_actions, element["editable"])
+
+    stored = _stored_element(after, element["id"])
+    assert result["actions"] == actions
+    assert stored["metadata"]["actions"] == actions
+    assert {
+        key: value for key, value in stored["metadata"].items() if key != "actions"
+    } == {key: value for key, value in original_metadata.items() if key != "actions"}
+    assert (
+        _stored_sources({"pages": [{"elements": [stored]}]}, element["id"]) == sources
+    )
+    assert stored["editable"] is True

@@ -4,11 +4,15 @@
 
 Most write tools support `debug=true` on errors, returning GraphQL codes and `correlation_id`.
 
+`extra_input` merges extra API keys (camelCase); keys that duplicate primary arguments are ignored.
+
 Interactive clients may elicit start-form fields on `create_card`. For agent seeding, use `skip_elicitation=true`:
 
 ```
 create_card pipe_id="301234567" phase_id="341234567" skip_elicitation=true title="Seeded"
 ```
+
+With `skip_elicitation=true`, `create_card` filters `fields` to the editable fields of the phase and the start form before it sends them.
 
 `get_pipe` returns phase metadata inside the pipe's phases. On a required empty field, `move_card_to_phase` may return `success: false` naming the field and optionally a hide hint. Always discover allowed targets first.
 

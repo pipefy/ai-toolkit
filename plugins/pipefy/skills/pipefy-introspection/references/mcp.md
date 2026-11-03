@@ -32,7 +32,7 @@ To set options at creation, pass `options` to `create_phase_field`; use this mut
 Then after the preview:
 
 ```
-execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}' confirm=true confirmation_token="<token from preview>"
+execute_graphql query='mutation($id: ID!, $uuid: ID, $label: String!, $options: [String!]) { updatePhaseField(input: { id: $id, uuid: $uuid, label: $label, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-slug>","uuid":"<field-uuid>","label":"<current label>","options":["High","Medium","Low"]}' confirm=true confirmation_token="<token from preview>"
 ```
 
 ## Optional schema cache

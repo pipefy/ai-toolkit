@@ -8,7 +8,7 @@ Destructive deletes are two-step: show the preview to the user and obtain approv
 until `has_more` is false. For `get_ai_automations`, pagination describes the
 mixed automation page, not only the AI rules returned from that page.
 
-An invalid `create_automation` phase transition returns `success: false` with a **text** error message listing allowed destination phases by name and id, plus a hint that transition rules are configured in the Pipefy UI only (not editable via API). There is no structured `valid_destinations` field on this envelope.
+An invalid `create_automation` phase transition returns `success: false` with a **text** error message listing allowed destination phases by name and id, plus a hint on how phases get connected and where to change the connections. There is no structured `valid_destinations` field on this envelope.
 
 Invalid `field_map` field IDs fail before GraphQL with `success: false` and the offending ID.
 

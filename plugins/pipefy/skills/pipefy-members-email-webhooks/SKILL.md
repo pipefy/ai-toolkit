@@ -60,11 +60,13 @@ When setting up an iPaaS (Advanced Automations) flow that runs under a **service
 | Operation | Read-only | Purpose |
 | ------------ | ----------- | --------- |
 | `get_card_inbox_emails` | Yes | Read emails in a card's inbox. |
-| `send_inbox_email` | No | Send an email from a card inbox. Two-step: preview, then confirm. |
+| `send_inbox_email` | No | Send an email from a card inbox. Approve first (see below). |
 | `get_email_templates` | Yes | List templates for a pipe or table (`repo_id` numeric). |
-| `send_email_with_template` | No | Send using a template (`email_template_id` from that list). Two-step: preview, then confirm. |
+| `send_email_with_template` | No | Send using a template (`email_template_id` from that list). Approve first (see below). |
 
-> **Confirm every send.** Both send operations deliver mail outside Pipefy, often to external addresses, and a sent email cannot be recalled. The first call sends nothing: it returns the message under `email` (`to`, `subject`, `body`, `from_`, and `cc` / `bcc` under `extra` when set) with a `confirmation_token`. Show the user the recipients, the subject and the body from that preview; for `send_email_with_template`, also name the template. The preview is the template already resolved for the card, so it shows the real recipients even when the template's `toEmail` is a `{{...}}` placeholder. After the user approves, repeat the same call with `confirm=true` and that `confirmation_token`. The token covers that one message: changing any argument, or a card edit that changes what the template resolves to, returns a fresh preview instead of sending. The template's `ccEmail` / `bccEmail` are not sent: to copy someone, pass `cc` / `bcc` in the send call. One confirmation covers one send: a request covering several cards still needs a confirmation per email, never one approval for a loop. The token stays valid for its TTL, so repeating the confirmed call sends the email again. If step 2 errors or times out, list the card's sent mail with `get_card_inbox_emails(email_type='sent')` before retrying, and never blind-retry a send. On the CLI, a send without `--yes` prints the email and exits 2; add `--yes` only after approval.
+> **Confirm every send.** Both send operations deliver mail outside Pipefy, often to external addresses, and a sent email cannot be recalled. Before anything is sent, show the user the recipients, the subject and the body; for a template send, also name the template, and show it resolved for the card, so the real recipients appear even when the template's `toEmail` is a `{{...}}` placeholder. Send only after the user approves. The template's `ccEmail` / `bccEmail` are not sent: to copy someone, pass `cc` / `bcc` in the send call. One confirmation covers one send: a request covering several cards still needs a confirmation per email, never one approval for a loop. If a send errors or times out, list the card's sent mail with `get_card_inbox_emails(email_type='sent')` before retrying, and never blind-retry a send.
+>
+> How the approval works depends on the surface. In the SDK, `send_inbox_email` and `send_email_with_template` send at once: for a template, `draft_email_from_template` resolves it for the card without sending, and `send_inbox_email_draft` sends the approved draft as it is. The MCP tools return a preview and a confirmation token first ([MCP](references/mcp.md)). The CLI prints the email and sends only with `--yes` ([CLI](references/cli.md)).
 
 > **Templates are UI-only.** Creating, editing and deleting an email template has no API, MCP or CLI path: the GraphQL schema has no template CRUD mutation. The template must already exist before a flow can send with it. When the process needs a new or changed template, put the manual Pipefy UI step in the plan you give the user instead of promising an end-to-end email flow.
 
@@ -74,13 +76,13 @@ When setting up an iPaaS (Advanced Automations) flow that runs under a **service
 
    Operation: `get_card_inbox_emails(card_id=12345)`
 
-2. **Preview the reply** (sends nothing):
+2. **Show the reply** to the user (recipients, sender, subject, body) and wait for their approval.
+
+3. **Send the reply** (only after approval):
 
    Operation: `send_inbox_email(card_id=12345, to=["customer@example.com"], from_="you@example.com", subject="Your request is in progress", body="Hi, we are processing your request.")`
 
-   `to` is a list of addresses, and `from_` (the sender address) is required. Show the user the returned `email` and wait for their approval.
-
-3. **Send the reply** (only after approval): repeat the same call with `confirm=true` and the `confirmation_token` from step 2.
+   `to` is a list of addresses, and `from_` (the sender address) is required. On MCP and the CLI, this step includes the preview and confirm described above.
 
 ---
 

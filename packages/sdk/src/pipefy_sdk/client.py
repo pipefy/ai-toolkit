@@ -32,6 +32,15 @@ from pipefy_sdk.graphql_executor import (
     GraphQLEndpoint,
     GraphQLExecutor,
 )
+from pipefy_sdk.graphql_inputs import (
+    CreateFieldConditionInput,
+    CreatePhaseFieldInput,
+    UpdateFieldConditionInput,
+    UpdateLabelInput,
+    UpdatePhaseFieldInput,
+    UpdatePhaseInput,
+    UpdatePipeInput,
+)
 from pipefy_sdk.member_removal import MemberRemovalResult, verify_member_removal
 from pipefy_sdk.models.ai_agent import (
     BehaviorInput,
@@ -49,10 +58,10 @@ from pipefy_sdk.models.attachment import (
     AttachmentUploadResult,
     PresignedUploadTarget,
 )
-from pipefy_sdk.models.field_definition import FieldTypeId
 from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
 from pipefy_sdk.models.portal import (
+    InterfaceAction,
     InterfaceDataSource,
     PortalColor,
     PortalPageLayoutRow,
@@ -106,6 +115,9 @@ from pipefy_sdk.services.types import (
     AiAgentGraphPayload,
     AutomationServiceResult,
     CardSearch,
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
     KnowledgeBaseAccessProbeResult,
     KnowledgeBaseDataLookupPayload,
     KnowledgeBaseDeleteResult,
@@ -369,13 +381,41 @@ class PipefyClient:
         """Get a pipe with AI preferences, phases with fields, and start form fields."""
         return await self._pipe_service.get_pipe_with_preferences(pipe_id)
 
-    async def create_pipe(self, name: str, organization_id: str | int) -> dict:
-        """Create a new pipe in the organization."""
-        return await self._pipe_config_service.create_pipe(name, organization_id)
+    async def create_pipe(
+        self,
+        name: str,
+        organization_id: str | int,
+        phases: list[CreatePipePhase] | None = None,
+        start_form_fields: list[CreatePipeStartFormField] | None = None,
+        labels: list[CreatePipeLabel] | None = None,
+    ) -> dict:
+        """Create a new pipe in the organization.
 
-    async def update_pipe(self, pipe_id: str | int, **attrs: Any) -> dict:
-        """Update pipe attributes (see Pipefy `UpdatePipeInput`)."""
-        return await self._pipe_config_service.update_pipe(pipe_id, **attrs)
+        With ``phases``, the pipe gets exactly those phases, in that order, each
+        connected to the phases beside it. Without it, the pipe gets Pipefy's
+        default Inbox, Doing and Done. Phase names must be unique.
+        ``start_form_fields`` and ``labels`` are created in the same call. The
+        result lists the new pipe's phases, start form fields and labels with
+        their ids.
+
+        Raises:
+            ValueError: A phase name is blank or repeated, or a label color is not
+                hex. Nothing was created.
+            PipePhaseSetupError: The pipe was created, but setting up its phases
+                failed. It carries ``pipe_id`` and ``created_phases`` for recovery;
+                the failed call's error is ``__cause__``.
+        """
+        return await self._pipe_config_service.create_pipe(
+            name,
+            organization_id,
+            phases=phases,
+            start_form_fields=start_form_fields,
+            labels=labels,
+        )
+
+    async def update_pipe(self, input: UpdatePipeInput) -> dict:
+        """Update pipe attributes."""
+        return await self._pipe_config_service.update_pipe(input)
 
     async def delete_pipe(self, pipe_id: str | int) -> dict:
         """Delete a pipe by ID (permanent)."""
@@ -409,32 +449,29 @@ class PipefyClient:
             description=description,
         )
 
-    async def update_phase(self, phase_id: str | int, **attrs: Any) -> dict:
-        """Update phase attributes (see Pipefy `UpdatePhaseInput`)."""
-        return await self._pipe_config_service.update_phase(phase_id, **attrs)
+    async def update_phase(self, input: UpdatePhaseInput) -> dict:
+        """Update phase attributes."""
+        return await self._pipe_config_service.update_phase(input)
 
     async def delete_phase(self, phase_id: str | int) -> dict:
         """Delete a phase by ID (permanent)."""
         return await self._pipe_config_service.delete_phase(phase_id)
 
-    async def create_phase_field(
-        self,
-        phase_id: str | int,
-        label: str,
-        field_type: FieldTypeId | str,
-        **attrs: Any,
-    ) -> dict:
-        """Create a field on a phase (`field_type`: a `FieldTypeId` value, passed through)."""
-        return await self._pipe_config_service.create_phase_field(
-            phase_id,
-            label,
-            field_type,
-            **attrs,
-        )
+    async def create_phase_field(self, input: CreatePhaseFieldInput) -> dict:
+        """Create a field on a phase (`type` is passed through to the API)."""
+        return await self._pipe_config_service.create_phase_field(input)
 
-    async def update_phase_field(self, field_id: str | int, **attrs: Any) -> dict:
-        """Update a phase field (see Pipefy `UpdatePhaseFieldInput`)."""
-        return await self._pipe_config_service.update_phase_field(field_id, **attrs)
+    async def update_phase_field(
+        self,
+        input: UpdatePhaseFieldInput,
+        *,
+        phase_id: str | int | None = None,
+        pipe_id: str | int | None = None,
+    ) -> dict:
+        """Update a phase field, resolving a slug `id` when `phase_id`/`pipe_id` is given."""
+        return await self._pipe_config_service.update_phase_field(
+            input, phase_id=phase_id, pipe_id=pipe_id
+        )
 
     async def delete_phase_field(
         self,
@@ -451,31 +488,21 @@ class PipefyClient:
         """Create a label on a pipe."""
         return await self._pipe_config_service.create_label(pipe_id, name, color)
 
-    async def update_label(self, label_id: str | int, **attrs: Any) -> dict:
-        """Update a label (see Pipefy `UpdateLabelInput`)."""
-        return await self._pipe_config_service.update_label(label_id, **attrs)
+    async def update_label(self, input: UpdateLabelInput) -> dict:
+        """Update a label. The API requires both `name` and `color` on every update."""
+        return await self._pipe_config_service.update_label(input)
 
     async def delete_label(self, label_id: str | int) -> dict:
         """Delete a label by ID (permanent)."""
         return await self._pipe_config_service.delete_label(label_id)
 
-    async def create_field_condition(
-        self,
-        phase_id: str | int,
-        condition: dict[str, Any],
-        actions: list[dict[str, Any]],
-        **attrs: Any,
-    ) -> dict:
-        """Create a field condition (``createFieldCondition`` / ``createFieldConditionInput``)."""
-        return await self._pipe_config_service.create_field_condition(
-            phase_id, condition, actions, **attrs
-        )
+    async def create_field_condition(self, input: CreateFieldConditionInput) -> dict:
+        """Create a field condition (``createFieldCondition``)."""
+        return await self._pipe_config_service.create_field_condition(input)
 
-    async def update_field_condition(self, condition_id: str, **attrs: Any) -> dict:
+    async def update_field_condition(self, input: UpdateFieldConditionInput) -> dict:
         """Update an existing field condition."""
-        return await self._pipe_config_service.update_field_condition(
-            condition_id, **attrs
-        )
+        return await self._pipe_config_service.update_field_condition(input)
 
     async def delete_field_condition(self, condition_id: str) -> dict:
         """Delete a field condition by ID (permanent)."""
@@ -2236,10 +2263,65 @@ class PipefyClient:
                 or the update reports ``success=false``.
             PortalPermissionError: The caller cannot update the interface.
             PipefyGraphQLError: The caller cannot manage a repo that a new or
-                widened source reads; nothing is stored.
+                widened source reads, or an action in the element's
+                ``metadata.actions`` no longer passes the API's checks (it names
+                a source the list drops, or a deleted page or automation).
+                Nothing is stored; change or drop that action with
+                ``set_interface_actions`` first.
         """
         return await self._portal_service.set_interface_sources(
             page_id, element_id, data_sources, interface_uuid=interface_uuid
+        )
+
+    async def set_interface_actions(
+        self,
+        page_id: str,
+        element_id: str,
+        actions: list[InterfaceAction | dict[str, Any]],
+        *,
+        interface_uuid: str,
+        editable: bool | None = None,
+    ) -> dict[str, Any]:
+        """Replace the actions of an HTML interface's ``customCode`` element.
+
+        The actions are stored as ``metadata.actions``; the element's other
+        metadata keys and its data sources are read and sent back unchanged, and
+        ``editable`` is kept unless passed. Each action's ``sourceId`` or ``repoId``
+        must name one of the element's sources, so call ``set_interface_sources``
+        first.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            actions: The complete action list (``openStartForm``, ``openRecord``
+                or ``triggerAutomation``, each with an ``actionId``); ``[]``
+                removes them all.
+            interface_uuid: HTML interface holding the page.
+            editable: Whether viewers can save edits to ``data-pfy-editable``
+                fields; ``None`` keeps the stored flag.
+
+        Returns:
+            The element ``id`` (and ``uuid``), the ``actions`` and the ``editable``
+            flag as sent, once the update reports success; they are not read
+            back. Call ``get_html_interface`` for the stored ``metadata.actions``.
+
+        Raises:
+            pydantic.ValidationError: ``actions`` breaks an action rule; nothing is
+                sent.
+            ValueError: The element is not on page ``page_id``, is not
+                ``customCode``, lacks a source or repo an action names, or the
+                update reports ``success=false``.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: No interface has ``interface_uuid``, or the API
+                refused an action (for example an automation id that is not
+                manually triggered); nothing is stored.
+        """
+        return await self._portal_service.set_interface_actions(
+            page_id,
+            element_id,
+            actions,
+            interface_uuid=interface_uuid,
+            editable=editable,
         )
 
     async def get_interface_html_guidelines(

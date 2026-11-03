@@ -258,6 +258,55 @@ def test_relation_pipe_create_empty_name_exit_2(
     mock_client.create_pipe_relation.assert_not_called()
 
 
+def test_relation_pipe_update_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
+    oauth_env("rel-pu")
+    mock_client = MagicMock()
+    mock_client.update_pipe_relation = AsyncMock(
+        return_value={"updatePipeRelation": {"pipeRelation": {"id": "9"}}}
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "relation",
+                "pipe",
+                "update",
+                "9",
+                "--name",
+                " Renamed ",
+                "--extra",
+                '{"canConnectMultipleItems": false}',
+                "--json",
+            ],
+        )
+    assert result.exit_code == 0
+    mock_client.update_pipe_relation.assert_awaited_once_with(
+        "9", "Renamed", extra_input={"canConnectMultipleItems": False}
+    )
+
+
+def test_relation_pipe_update_not_found_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("rel-pu-404")
+    mock_client = MagicMock()
+    mock_client.update_pipe_relation = AsyncMock(
+        side_effect=ValueError("Pipe relation '404' was not found.")
+    )
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(
+            app, ["relation", "pipe", "update", "404", "--name", "N", "--json"]
+        )
+    assert result.exit_code == 2
+    assert "Pipe relation '404' was not found." in result.stderr
+
+
 def test_relation_card_delete_internal_api_json(
     runner, clean_pipefy_env, saved_cwd, oauth_env
 ):

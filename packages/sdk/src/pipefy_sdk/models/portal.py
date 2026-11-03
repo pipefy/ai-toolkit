@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self, get_args
 
 from pydantic import (
     BaseModel,
@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from pipefy_sdk.models.validators import NonBlankStr
+from pipefy_sdk.models.validators import NonBlankStr, PipefyId
 
 PortalVisibility = Literal["internal", "private", "public"]
 
@@ -409,18 +409,121 @@ class InterfaceDataSources(RootModel[list[InterfaceDataSource]]):
         return self
 
 
+MAX_CUSTOM_CODE_ACTIONS = 50
+
+# NOTE: ASCII classes on purpose: Python's \w also matches non-ASCII letters,
+# which the API's actionId rule rejects.
+_ACTION_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+_AUTOMATION_ID_PATTERN = r"^[0-9]+$"
+
+
+class _InterfaceAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    action_id: str = Field(alias="actionId", pattern=_ACTION_ID_PATTERN)
+
+
+class OpenStartFormAction(_InterfaceAction):
+    """Opens the start form of ``repo_id``, the repo of one of the element's sources."""
+
+    kind: Literal["openStartForm"]
+    repo_id: NonBlankStr = Field(alias="repoId")
+
+
+class OpenRecordAction(_InterfaceAction):
+    """Opens a record of source ``source_id``, in a modal (the default) or on a page.
+
+    ``field_keys`` picks the fields the modal shows, from the source's own
+    ``fieldKeys``. ``display="page"`` needs ``page_id``, a record layout page of
+    the interface for the source's repo.
+    """
+
+    kind: Literal["openRecord"]
+    source_id: NonBlankStr = Field(alias="sourceId")
+    display: Literal["modal", "page"] | None = None
+    field_keys: list[NonBlankStr] | None = Field(default=None, alias="fieldKeys")
+    page_id: NonBlankStr | None = Field(default=None, alias="pageId")
+
+    @model_validator(mode="after")
+    def page_display_names_its_page(self) -> Self:
+        if self.display == "page" and self.page_id is None:
+            msg = (
+                f"Action {self.action_id} opens the record on a page, so it needs "
+                "a pageId: a record layout page of this interface for the "
+                "source's repo."
+            )
+            raise ValueError(msg)
+        return self
+
+
+class TriggerAutomationAction(_InterfaceAction):
+    """Runs ``automation_ids`` on a record of source ``source_id``.
+
+    Each id is a manually triggered automation of the source's repo, as a string of
+    digits.
+    """
+
+    kind: Literal["triggerAutomation"]
+    source_id: NonBlankStr = Field(alias="sourceId")
+    automation_ids: list[Annotated[PipefyId, Field(pattern=_AUTOMATION_ID_PATTERN)]] = (
+        Field(alias="automationIds", min_length=1)
+    )
+    label: str | None = None
+
+
+InterfaceAction = Annotated[
+    OpenStartFormAction | OpenRecordAction | TriggerAutomationAction,
+    Field(discriminator="kind"),
+]
+
+INTERFACE_ACTION_KINDS: tuple[str, ...] = tuple(
+    kind
+    for action in (OpenStartFormAction, OpenRecordAction, TriggerAutomationAction)
+    for kind in get_args(action.model_fields["kind"].annotation)
+)
+
+
+class InterfaceActions(RootModel[list[InterfaceAction]]):
+    """The complete action list of an HTML interface's ``customCode`` element.
+
+    The element's HTML runs an action with ``data-pfy-action="<actionId>"``. At
+    most 50 actions, each with its own ``actionId``; ``[]`` is an element with
+    no actions.
+    """
+
+    root: list[InterfaceAction] = Field(max_length=MAX_CUSTOM_CODE_ACTIONS)
+
+    @model_validator(mode="after")
+    def action_ids_are_unique(self) -> Self:
+        ids = [action.action_id for action in self.root]
+        repeated = sorted({value for value in ids if ids.count(value) > 1})
+        if repeated:
+            msg = (
+                f"Each action needs its own actionId; repeated: {', '.join(repeated)}."
+            )
+            raise ValueError(msg)
+        return self
+
+
 __all__ = [
+    "INTERFACE_ACTION_KINDS",
+    "MAX_CUSTOM_CODE_ACTIONS",
     "MAX_CUSTOM_CODE_DATA_SOURCES",
     "MAX_DATA_SOURCE_FIELD_KEYS",
     "CreatePortalElementInput",
     "CreatePortalInput",
     "DeletePortalElementInput",
+    "InterfaceAction",
+    "InterfaceActions",
     "InterfaceDataSource",
     "InterfaceDataSources",
+    "OpenRecordAction",
+    "OpenStartFormAction",
     "PortalColor",
     "PortalElementType",
     "PortalPageLayoutRow",
     "PortalVisibility",
+    "TriggerAutomationAction",
     "UpdatePortalElementInput",
     "UpdatePortalInput",
     "parse_portal_page_layout",

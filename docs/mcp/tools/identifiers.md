@@ -50,6 +50,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 | AI automation prompt / AI agent behavior `%{…}` references | **internal_id** |
 | Data-lookup `output_fields` / `conditions[].field` | **slug** (plus statics like `id`, `title`, `current_phase`) |
 | `set_interface_sources` `data_sources[].fieldKeys` | **uuid** from `get_interface_repo_fields`, plus built-in keys such as `title` (`get_interface_html_guidelines` lists them as `filters.fixedColumnNames`). In a source's `filters`, a custom field's `columnName` is `field-<uuid>`. |
+| `set_interface_actions` `actions[].fieldKeys` | keys from the `fieldKeys` of the action's own source (`get_interface_html` → `dataSources[].fieldKeys`): custom field **uuids** and built-in keys such as `title`. |
 | `get_records` `where.field` / `order_by[].field` | **uuid**, lowercase and hyphenated (a slug or any other form is rejected before the call). `get_phase_fields` returns it; for a start-form field, call it with `phase_id` set to `get_pipe` → `startFormPhaseId` |
 
 `get_phase_fields` / `get_start_form_fields` return both the `id` (slug) and the `internal_id` for each field, so you can pick the form the target surface needs. Only `get_phase_fields` also returns the field `uuid`.
@@ -96,6 +97,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 ### Organization, portal, relations, reports
 - `list_organizations`: no id. `get_organization(organization_id)`: numeric id.
 - Portal: `organization_uuid` (UUID or numeric); `portal_uuid` (interface UUID).
+- HTML interface actions: `set_interface_actions` takes the same `interface_uuid`, `page_id` and `element_id` as `set_interface_sources`. In each action, `sourceId` is the `id` of one of the element's data sources (the handle its HTML reads, not a repo id), `repoId` is the `repoId` (repo **uuid**) of one of those sources, `automationIds` are **numeric** automation ids as strings (manually triggered automations of the source's repo, from `get_automations`), and `pageId` is the **uuid** of a record layout page of the same interface.
 - HTML interface data sources: `list_interface_repos(organization_id)` takes the **numeric** org id only (a uuid is rejected before the call); `interface_uuid` is the interface UUID; `repo_uuid` and `data_sources[].repoId` are the repo `uuid` from `list_interface_repos`.
 - Relations: `get_pipe_relations(pipe_id)` (numeric pipe id); `get_table_relations(relation_ids)` (table-**relation** ids, not table ids); `create_card_relation(source_id)` = a pipe-relation id from `get_pipe_relations`.
 - Reports: filter `field` values come from `get_pipe_report_filterable_fields`.

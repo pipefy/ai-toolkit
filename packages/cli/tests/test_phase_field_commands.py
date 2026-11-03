@@ -5,6 +5,13 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from click import unstyle
+from pipefy_sdk.graphql_inputs import (
+    CreatePhaseFieldInput,
+    UpdatePhaseFieldInput,
+    UpdatePhaseInput,
+)
 from pipefy_sdk.transition_hints import TRANSITION_RULES_HINT
 
 from pipefy_cli.main import app
@@ -66,9 +73,68 @@ def test_phase_update_resolves_name_json(
             ["phase", "update", "3", "--description", "x", "--json"],
         )
     assert result.exit_code == 0
-    mock_client.update_phase.assert_awaited_once_with("3", description="x", name="Todo")
+    mock_client.update_phase.assert_awaited_once_with(
+        UpdatePhaseInput(id="3", description="x", name="Todo")
+    )
     assert TRANSITION_RULES_HINT in result.stderr
     json.loads(result.stdout)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        [
+            "field",
+            "update",
+            "priority",
+            "--extra",
+            '{"id": "other_field", "label": "L"}',
+        ],
+        [
+            "phase",
+            "update",
+            "original",
+            "--extra",
+            '{"id": "other_phase", "name": "N"}',
+        ],
+        [
+            "phase",
+            "update",
+            "original",
+            "--extra",
+            '{"id": "other_phase", "description": "D"}',
+        ],
+    ],
+)
+@pytest.mark.parametrize("colored", [False, True])
+def test_update_rejects_extra_id_before_client_creation(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, monkeypatch, args, colored
+):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color" if colored else "dumb")
+    monkeypatch.setenv("FORCE_COLOR" if colored else "NO_COLOR", "1")
+    oauth_env("update-reserved")
+    mock_client = MagicMock()
+    mock_client.get_phase_fields = AsyncMock(return_value={"phase_name": "Original"})
+    mock_client.update_phase = AsyncMock(return_value={"updatePhase": {}})
+    mock_client.update_phase_field = AsyncMock(return_value={"updatePhaseField": {}})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ) as get_client:
+        result = runner.invoke(app, args)
+    assert result.exit_code == 2
+    if colored:
+        assert "\x1b[" in result.stderr
+    error_text = " ".join(unstyle(result.stderr).replace("│", " ").split())
+    assert "--extra" in error_text
+    assert "'id'" in error_text
+    assert "dedicated argument" in error_text
+    get_client.assert_not_called()
+    mock_client.get_phase_fields.assert_not_awaited()
+    mock_client.update_phase.assert_not_awaited()
+    mock_client.update_phase_field.assert_not_awaited()
 
 
 def test_phase_delete_yes(runner, clean_pipefy_env, saved_cwd, oauth_env):
@@ -98,6 +164,41 @@ def test_field_list_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     mock_client.get_phase_fields.assert_awaited_once_with("1", required_only=False)
 
 
+@pytest.mark.parametrize(
+    ("reserved_key", "value"),
+    [("phase_id", "999"), ("label", "Unexpected label"), ("type", "number")],
+)
+def test_field_create_rejects_reserved_extra_keys(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, reserved_key, value
+):
+    oauth_env("fld-reserved")
+    mock_client = MagicMock()
+    mock_client.create_phase_field = AsyncMock(return_value={"createPhaseField": {}})
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ) as get_client:
+        result = runner.invoke(
+            app,
+            [
+                "field",
+                "create",
+                "--phase",
+                "2",
+                "--label",
+                "Owner",
+                "--type",
+                "assignee_select",
+                "--extra",
+                json.dumps({reserved_key: value}),
+            ],
+        )
+    assert result.exit_code == 2
+    assert reserved_key in result.stderr
+    get_client.assert_not_called()
+    mock_client.create_phase_field.assert_not_awaited()
+
+
 def test_field_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     oauth_env("fld-cr")
     mock_client = MagicMock()
@@ -122,7 +223,7 @@ def test_field_create_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
         )
     assert result.exit_code == 0
     mock_client.create_phase_field.assert_awaited_once_with(
-        "2", "Owner", "assignee_select"
+        CreatePhaseFieldInput(phase_id="2", label="Owner", type="assignee_select")
     )
 
 
@@ -142,15 +243,22 @@ def test_field_create_type_completion_offers_field_type_ids(runner):
     assert "short_text" not in result.output
 
 
-def test_field_update_forwards_extra_phase_id_for_slug_resolution(
-    runner, clean_pipefy_env, saved_cwd, oauth_env
+@pytest.mark.parametrize(
+    ("hints", "phase_id", "pipe_id"),
+    [
+        ({"phase_id": "343162749"}, "343162749", None),
+        ({"pipe_id": "pipe-context"}, None, "pipe-context"),
+        (
+            {"phase_id": "343162749", "pipe_id": "pipe-context"},
+            "343162749",
+            "pipe-context",
+        ),
+    ],
+)
+def test_field_update_forwards_extra_hints_for_slug_resolution(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, hints, phase_id, pipe_id
 ):
-    """``--extra '{"phase_id": ...}'`` reaches ``client.update_phase_field`` verbatim.
-
-    Locks the CLI side of the smoke-2026-05-15 slug-resolution fix: the SDK can only
-    map ``"priority"`` to its ``internal_id`` if the CLI forwards ``phase_id`` as a
-    keyword argument.
-    """
+    """Field resolution hints reach the SDK without entering the mutation input."""
     oauth_env("fld-upd")
     mock_client = MagicMock()
     mock_client.update_phase_field = AsyncMock(
@@ -167,13 +275,15 @@ def test_field_update_forwards_extra_phase_id_for_slug_resolution(
                 "update",
                 "priority",
                 "--extra",
-                '{"label": "Priority", "phase_id": "343162749"}',
+                json.dumps({"label": "Priority", **hints}),
                 "--json",
             ],
         )
     assert result.exit_code == 0, result.stdout
     mock_client.update_phase_field.assert_awaited_once_with(
-        "priority", label="Priority", phase_id="343162749"
+        UpdatePhaseFieldInput(id="priority", label="Priority"),
+        phase_id=phase_id,
+        pipe_id=pipe_id,
     )
 
 

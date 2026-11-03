@@ -46,9 +46,9 @@ The user asks to analyze or improve an existing process:
 
 2. **Sample recent cards** (last 30–50):
 
-   Operation: `get_cards pipe_id=<id> first=50 include_fields=true`
+   Operation: `get_records pipe_id=<id> first=50 include_fields=true order_by=[{"attribute": "CREATED_AT", "direction": "DESC"}]`
 
-   Look for: cards piling up in early phases, phases with 0 cards, fields left empty. `get_cards` selects no creation, update, or phase timestamps; the timed card read under the diagnosis framework does.
+   Keep the sort: without it the oldest cards come first, and the first page is no sample of recent work. Look for: cards piling up in early phases, phases with 0 cards, fields left empty. `get_records` selects `createdAt`, `updatedAt` and `finishedAt` but no phase timestamps; the timed card read under the diagnosis framework does.
 
 3. **Check automations:**
 
@@ -62,7 +62,7 @@ The user asks to analyze or improve an existing process:
 
    For each active agent (`disabledAt` is null), read its behaviors to see which phases it already acts on:
 
-   Operation: `get_ai_agent uuid=<AGENT_UUID>`
+   Operation: `get_ai_agent` with the agent's UUID
 
    Look for: no AI agents despite manual categorization or triage patterns, and hops an active behavior already covers (do not report those as manual).
 
@@ -70,9 +70,24 @@ The user asks to analyze or improve an existing process:
 
 ## Diagnosis framework
 
-Time-based signals need dates that `get_pipe` and `get_cards` do not return. Per-card signals (stuck in a phase for more than 7 days, no update in weeks) come from a timed card read: one `execute_graphql` query on the pipe's cards selecting `updated_at`, `current_phase_age`, and `phases_history` (`firstTimeIn`, `lastTimeOut`, `duration` in seconds per phase); the document is in the reference. It is a read with no confirmation, 25 cards per page (up to 50), so say how many cards the numbers come from.
+Time-based signals need phase dates that `get_pipe` and `get_records` do not return. Per-card signals (stuck in a phase for more than 7 days, no update in weeks) come from a timed card read: one `execute_graphql` query on the pipe's cards, with `variables` `{"pipeId": "<id>"}`:
 
-Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per week) need every card, because the `cards` query has no date filter and no documented order, so one page proves nothing about the cards it left out. Page the timed read until `hasNextPage` is false, or use a pipe report export (`pipefy-reports`) with `start_at_phase_<n>` and `end_at_phase_<n>` (`<n>` is a report index, not the phase id); the export needs an existing report (`get_pipe_reports`), and creating one with `create_pipe_report` is a write, so ask first. Without full coverage, say the signal was not checked; do not call a phase dead from a sample, and do not infer time from `cards_count`.
+```graphql
+query TimedCards($pipeId: ID!, $first: Int = 25, $after: String) {
+  cards(pipe_id: $pipeId, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    edges { node {
+      id done createdAt finished_at started_current_phase_at current_phase_age updated_at
+      current_phase { name }
+      phases_history { phase { name } firstTimeIn lastTimeOut duration }
+    } }
+  }
+}
+```
+
+`duration` is seconds per phase; `lastTimeOut` is null on the phase the card is in. The `cards` query returns the oldest cards first and takes no sort, so the first pages describe the pipe's oldest cards, not recent work: page to the end, or use a pipe report export for recent numbers. It is a read with no confirmation, 25 cards per page (up to 50), so say how many cards the numbers come from. Pass `"after": <pageInfo.endCursor>` in `variables` for the next page.
+
+Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per week) need every card, because the `cards` query returns the oldest cards first and takes no date filter or sort, so one page proves nothing about the cards it left out. Page the timed read until `hasNextPage` is false, or use a pipe report export (`pipefy-reports`) with `start_at_phase_<n>` and `end_at_phase_<n>` (`<n>` is a report index, not the phase id); the export needs an existing report (`get_pipe_reports`), and creating one with `create_pipe_report` is a write, so ask first. Without full coverage, say the signal was not checked; do not call a phase dead from a sample, and do not infer time from `cards_count`.
 
 | Signal | Opportunity |
 |--------|-------------|
@@ -103,7 +118,8 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 **Example: add a field condition**
 
 1. Identify a field that should only show when another field has a specific value.
-2. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
+2. Read the phase's current rules with `get_field_conditions(phase_id)`, so the new condition does not repeat or contradict one.
+3. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
 
    Operation: `create_field_condition phase_id=<PHASE_ID> name="Show follow-up" condition=<CONDITION_DICT> actions=<ACTION_DICTS>`
 
@@ -136,11 +152,11 @@ Keep Impact to one line. Do not invent volume, hourly cost, or lead time; name e
 
 - Each round produces a concrete visible change (new automation, field condition, phase cleanup).
 - The affected phase moves more cards: compare cards leaving it per week (`lastTimeOut` in the timed card read, or `end_at_phase_<n>` in a pipe report export) before and after the change, or ask the user.
-- No improvement causes a regression (verify with `get_pipe` and `get_cards` after each round).
+- No improvement causes a regression (verify with `get_pipe` and `get_records` after each round).
 
 ## Failure modes
 
-- **`get_cards` returns empty:** the pipe may have no cards yet. Analyze structure only, and recommend standing up intake (start form, portal, or an automation that creates cards) rather than removing the pipe.
+- **`get_records` returns no cards:** the pipe may have no cards yet. Analyze structure only, and recommend standing up intake (start form, portal, or an automation that creates cards) rather than removing the pipe.
 - **`create_automation` fails with unknown event:** use `get_automation_events` to list valid triggers.
 - **User pushes back on automation:** explain what the automation does in plain language before creating.
 

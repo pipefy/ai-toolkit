@@ -4,7 +4,9 @@ import uuid
 from typing import Any, Literal
 
 from pydantic import ConfigDict, TypeAdapter, ValidationError, with_config
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
+
+from pipefy_sdk.models.field_definition import FieldTypeId
 
 
 class CardSearch(TypedDict, total=False):
@@ -92,6 +94,38 @@ class RecordOrder(TypedDict, total=False):
     attribute: RecordAttribute
     field: str
     direction: Literal["ASC", "DESC"]
+
+
+@_FORBID_EXTRA
+class CreatePipePhase(TypedDict):
+    """A phase for ``create_pipe`` (Pipefy ``PhaseInput``)."""
+
+    name: str
+    done: NotRequired[bool]
+
+
+@_FORBID_EXTRA
+class CreatePipeStartFormField(TypedDict):
+    """A start form field for ``create_pipe`` (Pipefy ``PhaseFieldInput``)."""
+
+    label: str
+    type_id: FieldTypeId | str
+    description: NotRequired[str]
+    help: NotRequired[str]
+    required: NotRequired[bool]
+    editable: NotRequired[bool]
+    options: NotRequired[list[str]]
+
+
+@_FORBID_EXTRA
+class CreatePipeLabel(TypedDict):
+    """A label for ``create_pipe`` (Pipefy ``LabelInput``).
+
+    ``color`` is hex ``#RGB`` or ``#RRGGBB``.
+    """
+
+    name: str
+    color: str
 
 
 def _is_canonical_uuid(value: object) -> bool:

@@ -122,7 +122,7 @@ async def test_live_get_pipe_then_get_ai_agents(extract_payload):
     assert r_agents.is_error is False, r_agents
     agents_payload = extract_payload(r_agents)
     assert agents_payload.get("success") is True, agents_payload
-    assert "agents" in agents_payload
+    assert "agents" in agents_payload["data"]
 
 
 @pytest.mark.integration

@@ -104,11 +104,12 @@ Phases: [list]
 Start form fields: [list with types]
 Key automations: [list]
 Related processes: [list or "none"]
+Manual steps in Pipefy: [parts no operation creates, or "none"]
 Impact: [one line: time this design returns to the team against a fully manual run of the same flow; if a phase exists only for human triage, what an automation or an AI agent would change there. Do not start a pipe diagnosis.]
 Next step: [execute with pipes-and-cards skill? or more questions?]
 ```
 
-Keep Impact to one line. Do not invent volume, hourly cost, or lead time; name every missing number and ask for all of them in one question. For a fuller justification, read `pipefy-process-impact`.
+Manual steps name the parts of the design that only the Pipefy UI creates: phase connections other than the links a new phase gets to its neighbours (`pipefy-pipes-and-cards`), email templates (`pipefy-members-email-webhooks`), and rules that apply a label (`pipefy-automations`). Keep Impact to one line. Do not invent volume, hourly cost, or lead time; name every missing number and ask for all of them in one question. For a fuller justification, read `pipefy-process-impact`.
 
 ---
 

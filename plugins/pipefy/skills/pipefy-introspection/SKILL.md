@@ -151,15 +151,15 @@ execute_graphql query='query($id: ID!) { pipe(id: $id) { organization { id uuid 
 
 ### Recipe 5 — Update a select field's options after creation
 
-To set options at creation, pass `options` to `create_phase_field`. Use this recipe to change them later.
+To set options at creation, pass `options` to `create_phase_field`. To change them later, call `update_phase_field` with the field slug, `options`, and `phase_id`: a slug can repeat across phases, and `phase_id` picks the field on that phase. Use the mutation below only with the field's `uuid`, for the same reason. `label` is required on every `updatePhaseField`, so send the current one.
 
 ```
-execute_graphql query='mutation($id: ID!, $options: [String!]) { updatePhaseField(input: { id: $id, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-id>","options":["High","Medium","Low"]}'
+execute_graphql query='mutation($id: ID!, $uuid: ID, $label: String!, $options: [String!]) { updatePhaseField(input: { id: $id, uuid: $uuid, label: $label, options: $options }) { phase_field { id label options } } }' variables='{"id":"<field-slug>","uuid":"<field-uuid>","label":"<current label>","options":["High","Medium","Low"]}'
 ```
 
 ### Recipe 6 — Check phase transition rules
 
-When `move_card_to_phase` fails with "not a valid target phase":
+When `move_card_to_phase` fails with "not a valid target phase", call `get_phase_allowed_move_targets(phase_id)` with the card's current phase. The query below is the fallback:
 
 ```
 execute_graphql query='query($id: ID!) { phase(id: $id) { id name cards_can_be_moved_to_phases { id name } } }' variables='{"id":"<current-phase-id>"}'

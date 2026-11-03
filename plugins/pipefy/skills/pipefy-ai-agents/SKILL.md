@@ -25,7 +25,7 @@ For traditional automations and AI automations (prompt-driven), see `pipefy-auto
 | ------------ | ----------- | --------- |
 | `get_ai_agents` | Yes | List AI agents for a pipe (`repo_uuid` = pipe UUID, not numeric `id`). |
 | `get_ai_agent` | Yes | Full agent config including behaviors. |
-| `create_ai_agent` | No | Create a new conversational agent (active by default; `active=false` to start disabled). |
+| `create_ai_agent` | No | Create a new conversational agent (active by default; see [Active lifecycle](#active-lifecycle) to start disabled). |
 | `update_ai_agent` | No | **Full-replace** (not patch). Always send complete `behaviors`. Preserves disabled state. |
 | `delete_ai_agent` | No | **Destructive; review and approve first.** |
 | `toggle_ai_agent_status` | No | Explicit activate/deactivate. |
@@ -37,7 +37,7 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Active lifecycle
 
-- Agents are **active by default**. Create-active clears the API default disabled shell via the configure update (omits `disabledAt`). Create-inactive (`active=false`) sets `disabled_at` explicitly on create and the chained update.
+- Agents are **active by default**. Create-active clears the API default disabled shell via the configure update (omits `disabledAt`). Create-inactive (`disabled_at` set on the input to the current time, as an ISO-8601 UTC timestamp) sets `disabled_at` explicitly on create and the chained update.
 - Routine `update_ai_agent` **preserves** disabled state — it does not intentionally reactivate. Prefer passing `disabled_at` from a prior `get_ai_agent` (`disabledAt`) to skip the preserve re-read; when omitted, the SDK re-reads and re-sends.
 - Explicit activate/deactivate: `toggle_ai_agent_status`.
 - After create/update, check the response's `disabled_at` and `active` (`active` is true when `disabled_at` is null). On `get_ai_agent`, `disabledAt` null means active; `behaviors[].active` is not agent enablement. An agent with no active behavior is disabled by the API regardless of enablement flags.
@@ -185,7 +185,9 @@ Inside `actionParams.aiBehaviorParams` a behavior may also carry:
 }
 ```
 
-### 6 — Validate (recommended for complex behaviors)
+### 6 — Validate before every create and update
+
+A rejected update is not rolled back (see [Failure modes](#failure-modes)), so run this before every `create_ai_agent` and `update_ai_agent`, however small the change, and fix every problem it reports first.
 
 `validate_ai_agent_behaviors(pipe_id, behaviors)` checks:
 - Output field IDs (`fieldsAttributes[].fieldId`) exist in the pipe
@@ -200,7 +202,7 @@ Inside `actionParams.aiBehaviorParams` a behavior may also carry:
 
 ### 7 — Create the agent
 
-`create_ai_agent` with `name`, `repo_uuid`, `instruction`, and `behaviors`. One-call creation is preferred — avoids partial agent shells. Agents are **active by default**; set `active=false` to start disabled (see [Active lifecycle](#active-lifecycle)).
+`create_ai_agent` with `name`, `repo_uuid`, `instruction`, and `behaviors`. One-call creation is preferred — avoids partial agent shells. Agents are **active by default**; set `disabled_at` to the current time, as an ISO-8601 UTC timestamp, to start disabled (see [Active lifecycle](#active-lifecycle)).
 
 On create/update, slug `fieldId` values are resolved to numeric `internal_id`, `%{field:<slug>}` is rewritten to `%{field:<internal_id>}`, and `referencedFieldIds` is auto-populated when applicable. The SDK injects action `referenceId` values and `%{action:<uuid>}` placeholders for every surface; do not generate them yourself.
 
@@ -320,7 +322,7 @@ Per behavior you can give `template_params` (or `placeholders`) with `str → st
 ## Success criteria
 
 - Agent enablement matches the intended state: `get_ai_agent.disabledAt` is null when active; `behaviors[].active` does not establish agent enablement.
-- `validate_ai_agent_behaviors` reports no errors before creation.
+- `validate_ai_agent_behaviors` reports no errors before each create and update.
 - Agent appears in the Pipefy UI under the pipe's AI settings.
 
 ## Failure modes
@@ -330,7 +332,7 @@ Per behavior you can give `template_params` (or `placeholders`) with `str → st
 - **`RECORD_NOT_SAVED` does not name the cause.** `validate_ai_agent_behaviors` now names several of them — an unknown `event_id` (when the pipe's automation events load), and a `human_validation` or `mcp_tool` action with missing metadata — so run it first. The same message still covers payload errors the pre-flight cannot see, so rule those named causes out before you conclude the pipe does not support AI agent behaviors.
 - **Partial-failure recovery.** If `create_ai_agent` returns a UUID but reports failure, call `update_ai_agent(uuid, repo_uuid, name, instruction, behaviors)` — all five are required. Reuse the create `repo_uuid`; send the full behaviors list. Do NOT create a second agent. Update preserves disabled state; use `toggle_ai_agent_status` to change enablement.
 - **Cross-pipe `PERMISSION_DENIED`.** Behaviors with `create_connected_card` or cross-pipe `create_card` require the service account to be a member of **both** source and destination pipes. When it is not, the API returns a bare `PERMISSION_DENIED`. Recovery: `get_pipe_members` + `invite_members` on the destination pipe.
-- **Phase transition rule on `move_card`.** Destination must be reachable from the source phase (`cards_can_be_moved_to_phases`). Both `validate_ai_agent_behaviors` and `create_ai_agent` / `update_ai_agent` enrich this error with `valid_destinations` and a hint that transition rules are editable in the Pipefy UI only.
+- **Phase transition rule on `move_card`.** Destination must be reachable from the source phase (`cards_can_be_moved_to_phases`). Both `validate_ai_agent_behaviors` and `create_ai_agent` / `update_ai_agent` enrich this error with `valid_destinations` and a hint on how phases get connected and where to change the connections.
 - **Maximum 5 behaviors per agent.** Adding a 6th rejects the whole save.
 - **Ghost agents.** An agent listed by `get_ai_agents` may return "Agent not found" on `get_ai_agent` — a Pipefy backend artifact, persists across sessions, do not retry.
 - **GraphQL error hints.** When a dedicated read tool returns permission-denied or not-found, the `error.message` may cite concrete tools (e.g. `"Use 'get_ai_agents' to list agents..."`). Trust the hint; don't improvise alternative flows.

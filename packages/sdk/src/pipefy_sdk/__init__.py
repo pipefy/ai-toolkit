@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.5.5-beta.1"
+__version__ = "0.5.6-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
 from pipefy_sdk.exceptions import (
@@ -12,6 +12,7 @@ from pipefy_sdk.exceptions import (
     PipefyAPIError,
     PipefyError,
     PipefyRequestTimeoutError,
+    PipePhaseSetupError,
 )
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
@@ -50,6 +51,7 @@ from pipefy_sdk.models import (
     DeleteCommentInput,
     FieldTypeId,
     InboxEmailDraft,
+    InterfaceAction,
     InterfaceDataSource,
     MemberInvite,
     NonBlankStr,
@@ -92,6 +94,9 @@ from pipefy_sdk.services.types import (
     ActiveLlmProviderPayload,
     AiAgentGraphPayload,
     CardSearch,
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
     KnowledgeBaseAccessProbeResult,
     KnowledgeBaseDataLookupPayload,
     KnowledgeBaseDeleteResult,
@@ -150,6 +155,9 @@ __all__ = [
     "ConditionExpressionInput",
     "CreateAiAgentInput",
     "CreateAiAutomationInput",
+    "CreatePipeLabel",
+    "CreatePipePhase",
+    "CreatePipeStartFormField",
     "CreatePortalElementInput",
     "CreateSendTaskAutomationInput",
     "DataLookupCondition",
@@ -157,6 +165,7 @@ __all__ = [
     "FIELD_TYPE_IDS",
     "FieldTypeId",
     "InboxEmailDraft",
+    "InterfaceAction",
     "InterfaceDataSource",
     "GraphQLProblem",
     "GraphQLProblemKind",
@@ -194,6 +203,7 @@ __all__ = [
     "PipefyId",
     "PipefyRequestTimeoutError",
     "PipefySettings",
+    "PipePhaseSetupError",
     "RecordAttribute",
     "RecordFilter",
     "RECORDS_MAX_PAGE_SIZE",
