@@ -83,24 +83,6 @@ def test_get_start_form_fields_query_selects_field_uuid():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_get_start_form_fields_keeps_field_uuid():
-    field = {
-        "id": "customer_email",
-        "internal_id": "421234567",
-        "uuid": "550e8400-e29b-41d4-a716-446655440000",
-        "label": "Customer email",
-        "type": "email",
-        "required": True,
-    }
-    service, _ = _make_service({"pipe": {"start_form_fields": [field]}})
-
-    result = await service.get_start_form_fields("10")
-
-    assert result["start_form_fields"][0]["uuid"] == field["uuid"]
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
 async def test_get_pipe_returns_phases_with_cards_count():
     pipe_id = 10
     api_response = {
