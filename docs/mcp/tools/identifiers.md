@@ -83,7 +83,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 
 ### Tables and records
 - `table_id` and record ids are strings — numeric or an opaque token (e.g. `"fIVcd19N"`). Record field references use the field **slug**.
-- `search_tables`, `get_table`, and `get_tables` also return the table's numeric `internal_id` and each `table_fields[].uuid`.
+- `search_tables`, `get_table`, and `get_tables` also return the table's numeric `internal_id`. `get_table` and `get_tables` also return each `table_fields[].uuid`.
 
 ### LLM providers
 - List / dependencies / create / update / delete: `organization_uuid` (**UUID**).
