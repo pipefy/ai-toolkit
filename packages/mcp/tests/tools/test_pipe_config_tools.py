@@ -290,6 +290,45 @@ async def test_create_pipe_phase_setup_error_names_the_pipe(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("debug", [True, False])
+async def test_create_pipe_phase_setup_error_debug_suffix(
+    pipe_config_session, mock_pipe_config_client, extract_payload, debug
+):
+    cause = PipefyGraphQLError(
+        [
+            {
+                "message": "Phase not saved",
+                "extensions": {
+                    "code": "RECORD_INVALID",
+                    "correlation_id": "corr-123",
+                },
+            }
+        ]
+    )
+    error = PipePhaseSetupError(pipe_id="1", created_phases=[], reason=str(cause))
+    error.__cause__ = cause
+    mock_pipe_config_client.create_pipe.side_effect = error
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": [{"name": "Triage"}],
+                "debug": debug,
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["error"]["code"] == "PIPE_PHASE_SETUP_FAILED"
+    message = payload["error"]["message"]
+    assert message.startswith("Pipe 1 was created")
+    suffix = "(debug: codes=RECORD_INVALID; correlation_id=corr-123)"
+    assert message.endswith(suffix) is debug
+
+
+@pytest.mark.anyio
 async def test_create_pipe_rejects_blank_name(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):

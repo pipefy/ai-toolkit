@@ -204,8 +204,16 @@ class PipeConfigTools:
                     message=str(exc), code="INVALID_ARGUMENTS"
                 )
             except PipePhaseSetupError as exc:
+                cause = exc.__cause__
                 return build_pipe_tool_error_payload(
-                    message=str(exc),
+                    message=with_debug_suffix(
+                        str(exc),
+                        debug=debug,
+                        codes=extract_graphql_error_codes(cause) if cause else [],
+                        correlation_id=(
+                            extract_graphql_correlation_id(cause) if cause else None
+                        ),
+                    ),
                     code="PIPE_PHASE_SETUP_FAILED",
                     details={
                         "pipe_id": exc.pipe_id,
