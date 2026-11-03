@@ -8,6 +8,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+from collections.abc import Callable
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -17,6 +19,11 @@ from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 from release_github import GitHub
 from release_state import Release, ReleaseError, missing_uploads
+
+# PyPI serves its JSON and simple indexes through a CDN that can lag a
+# successful upload. Hash mismatches never wait; only absence does.
+PYPI_PROPAGATION_TIMEOUT_S = 120
+PYPI_POLL_INTERVAL_S = 10
 
 
 def file_hash(path: Path) -> str:
@@ -140,18 +147,54 @@ def stage_missing(
     return missing
 
 
+def wait_for_pypi(
+    release: Release,
+    *,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    """Wait for every original file to appear on PyPI, within the propagation window."""
+    deadline = clock() + PYPI_PROPAGATION_TIMEOUT_S
+    while True:
+        missing = missing_uploads(release.manifest, pypi_inventory(release.version))
+        if not missing:
+            return
+        if clock() >= deadline:
+            raise ReleaseError(
+                f"PyPI is incomplete after {PYPI_PROPAGATION_TIMEOUT_S}s: {missing!r}. "
+                "Resume after the upload or propagation failure is resolved."
+            )
+        sleep(PYPI_POLL_INTERVAL_S)
+
+
+def install_from_pypi(
+    requirements: list[str],
+    *,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    """Install from the public index, retrying while the simple index catches up."""
+    deadline = clock() + PYPI_PROPAGATION_TIMEOUT_S
+    while True:
+        try:
+            install_smoke(requirements)
+            return
+        except subprocess.CalledProcessError as exc:
+            if clock() >= deadline:
+                raise ReleaseError(
+                    f"Public PyPI installation failed after {PYPI_PROPAGATION_TIMEOUT_S}s: {requirements!r}"
+                ) from exc
+        sleep(PYPI_POLL_INTERVAL_S)
+
+
 def public_install(github: GitHub, release: Release) -> None:
     """Exercise both public package channels with the recorded version."""
-    uploaded = pypi_inventory(release.version)
-    if missing_uploads(release.manifest, uploaded):
-        raise ReleaseError(
-            "PyPI is incomplete. Resume after the upload or propagation failure is resolved."
-        )
+    wait_for_pypi(release)
     requirements = [
         f"{name}=={Version(release.version)}"
         for name in sorted(smoke_entry_points.PUBLISHED_DISTRIBUTIONS)
     ]
-    install_smoke(requirements)
+    install_from_pypi(requirements)
     published = github.api(f"releases/{release.release_id}")
     if published["draft"] or published["tag_name"] != release.tag:
         raise ReleaseError("The GitHub Release is not public at the recorded tag.")

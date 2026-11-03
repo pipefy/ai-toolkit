@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import fnmatch
 import re
+import time
 import tomllib
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import quote
 
@@ -212,8 +214,24 @@ def require_candidate(github: GitHub, release: Release, *, tagged: bool = True) 
         )
 
 
-def prepare_promotion(github: GitHub, release: Release) -> str:
-    pull = github.api(f"pulls/{release.pr}")
+# GitHub computes mergeability asynchronously and reports null meanwhile.
+MERGEABILITY_TIMEOUT_S = 60
+MERGEABILITY_POLL_INTERVAL_S = 3
+
+
+def prepare_promotion(
+    github: GitHub,
+    release: Release,
+    *,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> str:
+    deadline = clock() + MERGEABILITY_TIMEOUT_S
+    while True:
+        pull = github.api(f"pulls/{release.pr}")
+        if pull.get("mergeable") is not None or clock() >= deadline:
+            break
+        sleep(MERGEABILITY_POLL_INTERVAL_S)
     if not pull.get("merge_commit_sha") or pull.get("mergeable") is not True:
         raise ReleaseError(
             "GitHub did not produce a mergeable promotion commit. Resume after its merge calculation finishes."

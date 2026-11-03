@@ -61,6 +61,7 @@ class FakeGitHub(GitHub):
         self.change_main_before_update = ""
         self.main_updates = 0
         self.fail_latest_response = False
+        self.mergeable = [True]
 
     def next_sha(self):
         self.counter += 1
@@ -222,9 +223,12 @@ class FakeGitHub(GitHub):
                 ]
             }
         if path == "pulls/1":
+            mergeable = (
+                self.mergeable.pop(0) if len(self.mergeable) > 1 else self.mergeable[0]
+            )
             return {
                 "merge_commit_sha": "c" * 40,
-                "mergeable": True,
+                "mergeable": mergeable,
                 "merged": self.refs["heads/main"] == "c" * 40,
             }
         if path.startswith("releases/"):

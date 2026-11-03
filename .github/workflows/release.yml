@@ -44,5 +44,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist-pypi/
+          # A stale inventory read can stage a wheel PyPI already has. The
+          # staged bytes were hash-checked against the original manifest.
+          skip-existing: true
       - name: Test public installations and record publication
         run: uv run python scripts/release_pipeline.py complete

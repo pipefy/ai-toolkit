@@ -9,6 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
+import release_artifacts
 import release_checks
 import release_pipeline
 from release_artifacts import (
@@ -16,9 +17,10 @@ from release_artifacts import (
     original_manifest,
     restore_originals,
     stage_missing,
+    wait_for_pypi,
 )
 from release_commands import abandon
-from release_gates import finish_promotion, require_candidate
+from release_gates import finish_promotion, prepare_promotion, require_candidate
 from release_github import GitHubError, Journal
 from release_state import ReleaseError
 from release_support import FakeGitHub, candidate
@@ -274,3 +276,53 @@ def test_abandon_preserves_files_and_consumes_the_version(github):
     assert github.releases[1]["draft"] is True
     with pytest.raises(ReleaseError, match="already abandoned"):
         Journal(github).save(candidate())
+
+
+def test_public_verification_waits_for_pypi_propagation(monkeypatch):
+    manifest = {"one.whl": "a" * 64}
+    inventories = iter([{}, {}, manifest])
+    monkeypatch.setattr(
+        release_artifacts, "pypi_inventory", lambda version: next(inventories)
+    )
+    ticks = iter(range(0, 1000, 10))
+    slept = []
+    wait_for_pypi(
+        candidate(manifest=manifest), clock=lambda: next(ticks), sleep=slept.append
+    )
+    assert slept == [10, 10]
+
+
+def test_pypi_propagation_timeout_stops_for_review(monkeypatch):
+    monkeypatch.setattr(release_artifacts, "pypi_inventory", lambda version: {})
+    ticks = iter([0, 200])
+    with pytest.raises(ReleaseError, match="PyPI is incomplete"):
+        wait_for_pypi(
+            candidate(manifest={"one.whl": "a" * 64}),
+            clock=lambda: next(ticks),
+            sleep=lambda seconds: None,
+        )
+
+
+def test_mismatched_upload_never_waits_for_propagation(monkeypatch):
+    monkeypatch.setattr(
+        release_artifacts, "pypi_inventory", lambda version: {"one.whl": "b" * 64}
+    )
+    with pytest.raises(ReleaseError, match="differs from the original manifest"):
+        wait_for_pypi(
+            candidate(manifest={"one.whl": "a" * 64}),
+            clock=lambda: 0,
+            sleep=lambda seconds: pytest.fail("waited on a mismatch"),
+        )
+
+
+def test_promotion_waits_for_github_mergeability(github):
+    github.mergeable = [None, None, True]
+    ticks = iter(range(0, 100, 3))
+    slept = []
+    assert (
+        prepare_promotion(
+            github, candidate(), clock=lambda: next(ticks), sleep=slept.append
+        )
+        == "c" * 40
+    )
+    assert slept == [3, 3]
