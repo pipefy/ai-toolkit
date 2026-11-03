@@ -4,7 +4,15 @@ from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pipefy_sdk import FieldTypeId, PipefyClient, PipefyId
+from pipefy_sdk import (
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
+    FieldTypeId,
+    PipefyClient,
+    PipefyId,
+    PipePhaseSetupError,
+)
 from pipefy_sdk.graphql_inputs import (
     CreatePhaseFieldInput,
     UpdateLabelInput,
@@ -144,15 +152,34 @@ class PipeConfigTools:
             name: str,
             organization_id: PipefyId,
             ctx: Context,
+            phases: list[CreatePipePhase] | None = None,
+            start_form_fields: list[CreatePipeStartFormField] | None = None,
+            labels: list[CreatePipeLabel] | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """Create a new empty pipe in an organization.
+            """Create a pipe in an organization, with its phases, start form fields and labels in one call.
 
-            Add phases, fields, and labels with the dedicated tools after the pipe exists.
+            Without ``phases``, the pipe gets Pipefy's default phases Inbox, Doing and Done.
+            With ``phases``, it gets exactly those phases, in that order, each connected to
+            the phases beside it so cards can move between them. Mark the final phase
+            ``done: true``. The result lists the new phases, start form fields and labels
+            with their ids. Add fields to the other phases with ``create_phase_field``.
+
+            When setting up the phases fails after the pipe exists, the error code is
+            ``PIPE_PHASE_SETUP_FAILED`` and ``error.details`` holds ``pipe_id`` and the
+            phases created so far. Read the pipe with ``get_pipe``, then fix its phases
+            or delete it with ``delete_pipe``.
 
             Args:
                 name: Display name of the pipe.
                 organization_id: Organization ID that will own the pipe.
+                phases: Optional phases, in order: ``name`` (unique in the pipe) and
+                    optional ``done``.
+                start_form_fields: Optional start form fields: ``label``, ``type_id``
+                    and optional ``description``, ``help``, ``required``, ``editable``,
+                    ``options``.
+                labels: Optional labels: ``name`` and ``color`` (hex ``#RGB`` or
+                    ``#RRGGBB``).
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -165,7 +192,26 @@ class PipeConfigTools:
             if err is not None:
                 return err
             try:
-                raw = await client.create_pipe(name.strip(), org_id)
+                raw = await client.create_pipe(
+                    name.strip(),
+                    org_id,
+                    phases=phases,
+                    start_form_fields=start_form_fields,
+                    labels=labels,
+                )
+            except ValueError as exc:
+                return build_pipe_tool_error_payload(
+                    message=str(exc), code="INVALID_ARGUMENTS"
+                )
+            except PipePhaseSetupError as exc:
+                return build_pipe_tool_error_payload(
+                    message=str(exc),
+                    code="PIPE_PHASE_SETUP_FAILED",
+                    details={
+                        "pipe_id": exc.pipe_id,
+                        "created_phases": exc.created_phases,
+                    },
+                )
             except Exception as exc:  # noqa: BLE001
                 return handle_pipe_config_tool_graphql_error(
                     exc,
