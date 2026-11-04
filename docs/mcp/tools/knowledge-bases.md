@@ -82,6 +82,14 @@ You can also pass `fieldUuid` or `attribute` yourself, with the values above. A 
 
 A list field is a custom field of type `label_select`, `assignee_select`, `checklist_vertical`, `checklist_horizontal`, or `connector`, or the fixed field `labels` or `assignees`. In the records search, `contains` on a text field returns no records, so `ilike` is the substring match on an ordinary field. The Pipefy UI also writes `contains` only on list fields.
 
+For a static `contains` filter on fixed `labels`, call `get_pipe` with the source pipe's numeric ID. Replace `<label_id>` below with one `pipe.labels[].id` from the response. Set `value` to the ID as a string.
+
+```json
+[{"field": "labels", "attribute": "LABELS", "operator": "contains", "value": "<label_id>"}]
+```
+
+`attribute: "LABELS"` selects fixed labels even when a custom field has the slug `labels`.
+
 **A table has no phases.** A condition on `current_phase` saves on a table source, and the lookup then fails when the agent runs.
 
 **Reads never return `conditions`.** The API stores them but does not expose them on `get_ai_knowledge_base_data_lookup` (or on the create/update responses), so keep your lookup definition — including conditions — as the client-side source of truth.
