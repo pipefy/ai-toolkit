@@ -2007,14 +2007,14 @@ Usage: pipefy kb [OPTIONS] COMMAND [ARGS]...
 │                   (``validate_knowledge_base_access``).                      │
 │ plain-text        Knowledge base plain texts.                                │
 │ document          Knowledge base documents (one-shot PDF upload).            │
-│ data-lookup       Knowledge base data lookups (search cards in a source      │
-│                   pipe).                                                     │
+│ data-lookup       Knowledge base data lookups (search records in a source    │
+│                   pipe or table).                                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP kb/data-lookup
 Usage: pipefy kb data-lookup [OPTIONS] COMMAND [ARGS]...
 
- Knowledge base data lookups (search cards in a source pipe).
+ Knowledge base data lookups (search records in a source pipe or table).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -2039,8 +2039,9 @@ Usage: pipefy kb data-lookup create [OPTIONS]
  Gated on the read-access probe. The definition is validated client-side:
  ``--source-repo-id`` must be numeric, ``--output-fields`` takes 1-30 field
  IDs, and every condition is typed (static conditions need a string ``value``;
- AI-filled ones need the input trio). Reads never return conditions, so keep
- the definition you send as the source of truth.
+ AI-filled ones need the input trio). The lookup uses the records search, as
+ the Pipefy UI does, so it can read a pipe or a database table. Reads never
+ return conditions, so keep the definition you send as the source of truth.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe-uuid               TEXT  Pipe UUID (not the numeric ID; `pipefy    │
@@ -2050,22 +2051,25 @@ Usage: pipefy kb data-lookup create [OPTIONS]
 │                                    [required]                                │
 │ *  --description             TEXT  Description (required, 1-300 characters). │
 │                                    [required]                                │
-│ *  --source-repo-id          TEXT  Numeric ID of the source pipe to look up  │
-│                                    data from.                                │
+│ *  --source-repo-id          TEXT  Numeric ID of the source pipe, or the     │
+│                                    numeric internal_id of the source         │
+│                                    database table.                           │
 │                                    [required]                                │
 │ *  --output-fields           TEXT  JSON array of field IDs whose values      │
 │                                    matching records return (1-30).           │
 │                                    [required]                                │
 │ *  --conditions              TEXT  JSON array of condition objects. Each     │
-│                                    needs field + operator, and either a      │
-│                                    string value (static) or                  │
+│                                    needs field (the field slug) + operator,  │
+│                                    and either a string value (static) or     │
 │                                    "usingFillWithAi": true with              │
 │                                    inputName/inputType/inputDescription      │
-│                                    (AI-filled).                              │
+│                                    (AI-filled). The command sets fieldUuid   │
+│                                    or attribute from field, and rejects a    │
+│                                    slug that names two fields: set fieldUuid │
+│                                    or attribute on that condition. Use       │
+│                                    "ilike" for a substring match: "contains" │
+│                                    returns no records on a text field.       │
 │                                    [required]                                │
-│    --search-query            TEXT  Backend-defined search mode marker; leave │
-│                                    unset unless you know the backend value   │
-│                                    you need.                                 │
 │    --json            -j            Print machine-readable JSON to stdout.    │
 │    --help                          Show this message and exit.               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2116,8 +2120,10 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 
  Every update rewrites the stored definition with exactly what this call
  carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions`` are
- required every time, and omitting ``--search-query`` clears it. Only
- ``--name``/``--description`` are partial. Gated on the read-access probe.
+ required every time. Only ``--name``/``--description`` are partial. The update
+ writes the records search, as create does. There, a ``contains`` condition on
+ a text field returns no records, so change it to ``ilike`` when you resend the
+ definition. Gated on the read-access probe.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --id                      TEXT  Knowledge base data lookup ID to update.  │
@@ -2125,23 +2131,26 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 │ *  --pipe-uuid               TEXT  Pipe UUID (not the numeric ID; `pipefy    │
 │                                    pipe get` shows the uuid).                │
 │                                    [required]                                │
-│ *  --source-repo-id          TEXT  Numeric ID of the source pipe to look up  │
-│                                    data from.                                │
+│ *  --source-repo-id          TEXT  Numeric ID of the source pipe, or the     │
+│                                    numeric internal_id of the source         │
+│                                    database table.                           │
 │                                    [required]                                │
 │ *  --output-fields           TEXT  JSON array of field IDs whose values      │
 │                                    matching records return (1-30).           │
 │                                    [required]                                │
 │ *  --conditions              TEXT  JSON array of condition objects. Each     │
-│                                    needs field + operator, and either a      │
-│                                    string value (static) or                  │
+│                                    needs field (the field slug) + operator,  │
+│                                    and either a string value (static) or     │
 │                                    "usingFillWithAi": true with              │
 │                                    inputName/inputType/inputDescription      │
-│                                    (AI-filled). Pass the complete set, not a │
-│                                    delta.                                    │
+│                                    (AI-filled). The command sets fieldUuid   │
+│                                    or attribute from field, and rejects a    │
+│                                    slug that names two fields: set fieldUuid │
+│                                    or attribute on that condition. Use       │
+│                                    "ilike" for a substring match: "contains" │
+│                                    returns no records on a text field. Pass  │
+│                                    the complete set, not a delta.            │
 │                                    [required]                                │
-│    --search-query            TEXT  Backend-defined search mode marker; leave │
-│                                    unset unless you know the backend value   │
-│                                    you need. Omitted means cleared.          │
 │    --name                    TEXT  New name (1-80 characters).               │
 │    --description             TEXT  New description (1-300 characters).       │
 │    --json            -j            Print machine-readable JSON to stdout.    │

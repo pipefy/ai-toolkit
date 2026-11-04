@@ -14,7 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **SDK / MCP / CLI data lookups**: create and update write the records search, the same shape the Pipefy UI writes. This search is the only one that can read a database table, so a data lookup can now use a table as its source. `source_repo_id` takes a pipe ID or a table's numeric `internal_id`. Each condition gets `fieldUuid` (custom field) or `attribute` (fixed field) from its `field` slug. When a condition sets neither, the write reads the source's fields once. A slug fails before the write when it is not a field of the source. It also fails when it names two fields, such as a custom field labeled "Labels" (slug `labels`). A `source_repo_id` that the credential cannot read also fails before the write. An update of a lookup that used the older card search moves it to the records search. In that search `contains` on a text field returns no records, so use `ilike` for a substring match. `attribute` takes one of nine fixed values (`ID`, `TITLE`, `CREATOR`, `CREATED_AT`, `DUE_DATE`, `FINISHED_AT`, `CURRENT_PHASE`, `LABELS`, `ASSIGNEES`), and a condition that sets both `fieldUuid` and `attribute` fails.
 - **SDK / MCP / CLI knowledge bases**: plain text, document, and data lookup writes cap `name` at 80 characters and `description` at 300 characters. These are the limits the Pipefy UI forms enforce. The cap for `description` was 900, and `name` had no cap. An item over either cap cannot be saved from the UI until the user shortens it. A write over either cap fails with a `ValueError` before the mutation is sent, and the MCP tools and CLI commands return that message. Stored items do not change. An update that omits `name` or `description` keeps the stored value, whatever its length.
+
+### Removed
+
+- **SDK / MCP / CLI data lookups**: the `search_query` argument of `create_ai_knowledge_base_data_lookup` and `update_ai_knowledge_base_data_lookup`, and the `--search-query` option of `pipefy kb data-lookup create` and `update`. Every write now sets the search itself.
 
 ## [0.5.6-beta.1] - 2026-11-03
 

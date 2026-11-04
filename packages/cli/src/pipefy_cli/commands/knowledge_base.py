@@ -29,7 +29,7 @@ document_app = typer.Typer(
 )
 kb_app.add_typer(document_app, name="document")
 data_lookup_app = typer.Typer(
-    help="Knowledge base data lookups (search cards in a source pipe).",
+    help="Knowledge base data lookups (search records in a source pipe or table).",
     no_args_is_help=True,
 )
 kb_app.add_typer(data_lookup_app, name="data-lookup")
@@ -366,18 +366,20 @@ def kb_document_delete(
     run_cli_command(ctx, json_out, factory, exit_1_on_unsuccessful=True)
 
 
-_SOURCE_REPO_HELP = "Numeric ID of the source pipe to look up data from."
+_SOURCE_REPO_HELP = (
+    "Numeric ID of the source pipe, or the numeric internal_id of the source "
+    "database table."
+)
 _OUTPUT_FIELDS_HELP = (
     "JSON array of field IDs whose values matching records return (1-30)."
 )
 _CONDITIONS_HELP = (
-    "JSON array of condition objects. Each needs field + operator, and either "
-    'a string value (static) or "usingFillWithAi": true with '
-    "inputName/inputType/inputDescription (AI-filled)."
-)
-_SEARCH_QUERY_HELP = (
-    "Backend-defined search mode marker; leave unset unless you know the "
-    "backend value you need."
+    "JSON array of condition objects. Each needs field (the field slug) + "
+    'operator, and either a string value (static) or "usingFillWithAi": true '
+    "with inputName/inputType/inputDescription (AI-filled). The command sets "
+    "fieldUuid or attribute from field, and rejects a slug that names two "
+    'fields: set fieldUuid or attribute on that condition. Use "ilike" for a '
+    'substring match: "contains" returns no records on a text field.'
 )
 
 
@@ -441,9 +443,6 @@ def kb_data_lookup_create(
     source_repo_id: str = typer.Option(..., "--source-repo-id", help=_SOURCE_REPO_HELP),
     output_fields: str = typer.Option(..., "--output-fields", help=_OUTPUT_FIELDS_HELP),
     conditions: str = typer.Option(..., "--conditions", help=_CONDITIONS_HELP),
-    search_query: str | None = typer.Option(
-        None, "--search-query", help=_SEARCH_QUERY_HELP
-    ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."
     ),
@@ -453,8 +452,10 @@ def kb_data_lookup_create(
     Gated on the read-access probe. The definition is validated client-side:
     ``--source-repo-id`` must be numeric, ``--output-fields`` takes 1-30 field
     IDs, and every condition is typed (static conditions need a string
-    ``value``; AI-filled ones need the input trio). Reads never return
-    conditions, so keep the definition you send as the source of truth.
+    ``value``; AI-filled ones need the input trio). The lookup uses the
+    records search, as the Pipefy UI does, so it can read a pipe or a
+    database table. Reads never return conditions, so keep the definition
+    you send as the source of truth.
     """
     fields, condition_list = _parse_data_lookup_options(output_fields, conditions)
 
@@ -469,7 +470,6 @@ def kb_data_lookup_create(
             source_repo_id=source_repo_id,
             output_fields=fields,
             conditions=condition_list,
-            search_query=search_query,
         )
         return {"success": True, "knowledge_base_data_lookup": data_lookup}
 
@@ -490,9 +490,6 @@ def kb_data_lookup_update(
         "--conditions",
         help=_CONDITIONS_HELP + " Pass the complete set, not a delta.",
     ),
-    search_query: str | None = typer.Option(
-        None, "--search-query", help=_SEARCH_QUERY_HELP + " Omitted means cleared."
-    ),
     name: str | None = typer.Option(None, "--name", help="New name (1-80 characters)."),
     description: str | None = typer.Option(
         None, "--description", help="New description (1-300 characters)."
@@ -505,8 +502,10 @@ def kb_data_lookup_update(
 
     Every update rewrites the stored definition with exactly what this call
     carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions``
-    are required every time, and omitting ``--search-query`` clears it. Only
-    ``--name``/``--description`` are partial. Gated on the read-access probe.
+    are required every time. Only ``--name``/``--description`` are partial.
+    The update writes the records search, as create does. There, a
+    ``contains`` condition on a text field returns no records, so change it to
+    ``ilike`` when you resend the definition. Gated on the read-access probe.
     """
     fields, condition_list = _parse_data_lookup_options(output_fields, conditions)
 
@@ -520,7 +519,6 @@ def kb_data_lookup_update(
             source_repo_id=source_repo_id,
             output_fields=fields,
             conditions=condition_list,
-            search_query=search_query,
             name=name,
             description=description,
         )

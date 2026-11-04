@@ -17,9 +17,11 @@ Every stage raises :class:`KnowledgeBaseDocumentUploadError` tagged with the
 step that failed. The presign and S3 PUT primitives are shared with the
 attachment upload pipeline.
 
-Data lookups carry a full definition (source pipe, output fields, conditions)
-that the API stores but never returns on reads, and every update replaces that
-definition wholesale — see the data lookup methods for the resulting contract.
+Data lookups carry a full definition (source pipe or table, output fields,
+conditions) that the API stores but never returns on reads, and every update
+replaces that definition wholesale — see the data lookup methods for the
+resulting contract. Every write uses the records search, the same shape the
+Pipefy UI writes, because it is the only search that can read a table.
 """
 
 from __future__ import annotations
@@ -50,6 +52,7 @@ from pipefy_sdk.queries.knowledge_base_queries import (
     GET_AI_KNOWLEDGE_BASE_DOCUMENT_QUERY,
     GET_AI_KNOWLEDGE_BASE_PLAIN_TEXT_QUERY,
     GET_AI_KNOWLEDGE_BASES_QUERY,
+    GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY,
     GET_PIPE_ORGANIZATION_QUERY,
     UPDATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION,
     UPDATE_AI_KNOWLEDGE_BASE_DOCUMENT_MUTATION,
@@ -59,6 +62,12 @@ from pipefy_sdk.services.attachment_service import (
     _ALLOWED_UPLOAD_HOST_RE,
     HttpxS3Uploader,
     S3Uploader,
+)
+from pipefy_sdk.services.data_lookup_records import (
+    RECORDS_SEARCH_QUERY,
+    field_uuids_by_slug,
+    needs_source_fields,
+    to_records_conditions,
 )
 from pipefy_sdk.services.types import (
     KnowledgeBaseAccessProbeResult,
@@ -470,23 +479,26 @@ class KnowledgeBaseService:
         source_repo_id: str,
         output_fields: list[str],
         conditions: list[dict[str, Any] | DataLookupCondition],
-        search_query: str | None = None,
     ) -> KnowledgeBaseDataLookupPayload:
         """Create a pipe-scoped knowledge base data lookup.
 
         The definition is validated client-side (see
         :func:`_parse_data_lookup_definition`) before the mutation is sent.
+        The lookup uses the records search: each condition gets ``fieldUuid``
+        or ``attribute`` from its ``field`` slug, which takes one extra read of
+        the source's fields when a condition sets neither. A slug that matches
+        both a fixed field and a custom field, or two custom fields, fails
+        before the write.
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.
             name: Display name (required, 1-80 chars).
             description: Description (required, 1-300 chars).
-            source_repo_id: Numeric ID of the source pipe to look up data from.
+            source_repo_id: Numeric ID of the source pipe, or the numeric
+                ``internal_id`` of the source database table.
             output_fields: Field IDs returned from matching records (1-30).
             conditions: Record-filter conditions (at least one); dicts are
                 parsed into :class:`DataLookupCondition`.
-            search_query: Optional backend-defined search mode marker; leave
-                unset unless you know the backend value you need.
 
         Returns:
             The created data lookup dict (without ``conditions``).
@@ -497,9 +509,7 @@ class KnowledgeBaseService:
             "description": _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
             ),
-            **_parse_data_lookup_definition(
-                source_repo_id, output_fields, conditions, search_query
-            ),
+            **await self._records_definition(source_repo_id, output_fields, conditions),
         }
         response = await self._executor.execute_query(
             CREATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION, {"input": input_obj}
@@ -519,7 +529,6 @@ class KnowledgeBaseService:
         source_repo_id: str,
         output_fields: list[str],
         conditions: list[dict[str, Any] | DataLookupCondition],
-        search_query: str | None = None,
         name: str | None = None,
         description: str | None = None,
     ) -> KnowledgeBaseDataLookupPayload:
@@ -528,20 +537,20 @@ class KnowledgeBaseService:
         Every update rewrites the lookup's whole definition: the backend
         replaces the stored definition with exactly what the mutation carries,
         so the complete definition (``source_repo_id``, ``output_fields``,
-        ``conditions``) is required on every call and an omitted
-        ``search_query`` is cleared. Reads never return ``conditions``, so the
-        caller's own copy of the definition is the source of truth. Only
-        ``name``/``description`` may be omitted to keep their stored values.
+        ``conditions``) is required on every call. Reads never return
+        ``conditions``, so the caller's own copy of the definition is the
+        source of truth. Only ``name``/``description`` may be omitted to keep
+        their stored values. The update writes the records search, as create
+        does, also when the stored lookup used the older card search.
 
         Args:
             data_lookup_id: Data lookup ID to update.
             pipe_uuid: Pipe UUID (not the numeric id).
-            source_repo_id: Numeric ID of the source pipe (required — omitting
-                it would silently strip the source from the stored definition).
+            source_repo_id: Numeric ID of the source pipe or table
+                ``internal_id`` (required — omitting it would silently strip the
+                source from the stored definition).
             output_fields: Field IDs returned from matching records (1-30).
             conditions: Record-filter conditions (at least one).
-            search_query: Optional backend-defined search mode marker; omitted
-                means cleared.
             name: New name (1-80 chars when given; unset keeps stored value).
             description: New description (1-300 chars when given).
 
@@ -551,9 +560,6 @@ class KnowledgeBaseService:
         input_obj: dict[str, Any] = {
             "pipeUuid": _require_non_blank(pipe_uuid, "pipe_uuid"),
             "dataLookupId": _require_non_blank(data_lookup_id, "data_lookup_id"),
-            **_parse_data_lookup_definition(
-                source_repo_id, output_fields, conditions, search_query
-            ),
         }
         if name is not None:
             input_obj["name"] = _require_bounded(name, "name", MAX_KB_NAME_LENGTH)
@@ -561,6 +567,9 @@ class KnowledgeBaseService:
             input_obj["description"] = _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
             )
+        input_obj.update(
+            await self._records_definition(source_repo_id, output_fields, conditions)
+        )
         response = await self._executor.execute_query(
             UPDATE_AI_KNOWLEDGE_BASE_DATA_LOOKUP_MUTATION, {"input": input_obj}
         )
@@ -570,6 +579,30 @@ class KnowledgeBaseService:
             "knowledgeBaseDataLookup",
             "data lookup",
         )
+
+    async def _records_definition(
+        self,
+        source_repo_id: str,
+        output_fields: list[str],
+        conditions: list[dict[str, Any] | DataLookupCondition],
+    ) -> dict[str, Any]:
+        """Parse the definition and fill each condition's records search target."""
+        repo_id, fields, parsed = _parse_data_lookup_definition(
+            source_repo_id, output_fields, conditions
+        )
+        field_uuids: dict[str, set[str]] = {}
+        if needs_source_fields(parsed):
+            response = await self._executor.execute_query(
+                GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY, {"ids": [repo_id]}
+            )
+            field_uuids = field_uuids_by_slug(response, repo_id)
+        records_conditions = to_records_conditions(parsed, field_uuids, repo_id)
+        return {
+            "sourceRepoId": repo_id,
+            "outputFields": fields,
+            "conditions": [c.to_input() for c in records_conditions],
+            "searchQuery": RECORDS_SEARCH_QUERY,
+        }
 
     async def delete_ai_knowledge_base_data_lookup(
         self, data_lookup_id: str, pipe_uuid: str
@@ -738,16 +771,15 @@ def _parse_data_lookup_definition(
     source_repo_id: str,
     output_fields: list[str],
     conditions: list[dict[str, Any] | DataLookupCondition],
-    search_query: str | None,
-) -> dict[str, Any]:
-    """Parse a data lookup definition into the mutation's input fields.
+) -> tuple[str, list[str], list[DataLookupCondition]]:
+    """Parse a data lookup definition into its source id, output fields, and conditions.
 
     Enforced client-side because the backend under-validates in ways that only
     surface when an agent later runs the lookup:
 
-    - ``source_repo_id`` must be the numeric pipe ID. The API would accept a
-      pipe UUID on create, but the lookup then breaks when an agent runs it —
-      long after the write succeeded.
+    - ``source_repo_id`` must be the numeric pipe ID or table ``internal_id``.
+      The API would accept a pipe UUID on create, but the lookup then breaks
+      when an agent runs it — long after the write succeeded.
     - Static conditions must carry a string ``value`` (write-time validation
       only checks ``field``/``operator``; the runtime hard-fails on a missing
       or non-string value). AI-filled conditions need their input trio. Both
@@ -764,8 +796,9 @@ def _parse_data_lookup_definition(
     # characters (superscripts, other scripts) that are not a valid pipe ID.
     if not (repo_id.isascii() and repo_id.isdigit()):
         raise ValueError(
-            "source_repo_id must be the numeric pipe ID (a pipe UUID is "
-            "accepted by the API but breaks the lookup when an agent runs it)"
+            "source_repo_id must be the numeric pipe ID or the numeric table "
+            f"internal_id, got {repo_id!r}. The API accepts a UUID, but the "
+            "lookup then breaks when an agent runs it."
         )
     if not output_fields:
         raise ValueError("output_fields must contain at least one field ID")
@@ -790,14 +823,7 @@ def _parse_data_lookup_definition(
         except PydanticValidationError as exc:
             details = "; ".join(_condition_error_detail(err) for err in exc.errors())
             raise ValueError(f"conditions[{i}]: {details}") from exc
-    definition: dict[str, Any] = {
-        "sourceRepoId": repo_id,
-        "outputFields": fields,
-        "conditions": [c.to_input() for c in parsed_conditions],
-    }
-    if search_query is not None:
-        definition["searchQuery"] = _require_non_blank(search_query, "search_query")
-    return definition
+    return repo_id, fields, parsed_conditions
 
 
 def _condition_error_detail(error: dict[str, Any]) -> str:

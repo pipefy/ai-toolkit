@@ -18,8 +18,8 @@ Knowledge bases are the data sources an AI agent draws on. Each item's `id` is w
 | `update_ai_knowledge_base_document` | No | Metadata-only partial update by `document_id`: pass `name` and/or `description` (at least one). The PDF file cannot be replaced. |
 | `delete_ai_knowledge_base_document` | No | Deletes a document permanently. [Two-step](cross-cutting.md#destructive-operations): echo `confirmation_token` from the preview. |
 | `get_ai_knowledge_base_data_lookup` | Yes | Fetches one data lookup by `id`. The payload never includes `conditions` (see below). |
-| `create_ai_knowledge_base_data_lookup` | No | Creates a data lookup: a data source that searches cards in a source pipe by conditions and returns selected fields. `name` (1-80 chars), `description` (1-300 chars), `source_repo_id`, `output_fields`, and `conditions` are required. |
-| `update_ai_knowledge_base_data_lookup` | No | Replaces a data lookup's full definition: `source_repo_id`, `output_fields`, and `conditions` are required on every call; omitting `search_query` clears it. Only `name`/`description` are partial. |
+| `create_ai_knowledge_base_data_lookup` | No | Creates a data lookup: a data source that searches records in a source pipe or database table by conditions and returns selected fields. `name` (1-80 chars), `description` (1-300 chars), `source_repo_id`, `output_fields`, and `conditions` are required. |
+| `update_ai_knowledge_base_data_lookup` | No | Replaces a data lookup's full definition: `source_repo_id`, `output_fields`, and `conditions` are required on every call. Only `name`/`description` are partial. |
 | `delete_ai_knowledge_base_data_lookup` | No | Deletes a data lookup permanently. [Two-step](cross-cutting.md#destructive-operations): echo `confirmation_token` from the preview. |
 | `validate_knowledge_base_access` | Yes | Probes whether the current credential can read a pipe's knowledge bases, classifying failures into structured problems instead of opaque errors. |
 
@@ -27,7 +27,7 @@ Knowledge bases are the data sources an AI agent draws on. Each item's `id` is w
 
 > Full cross-tool map: [identifiers.md](identifiers.md#ai-agents-and-knowledge-bases).
 
-Every knowledge base operation is scoped by the pipe **UUID** (`pipe_uuid`), not the numeric pipe ID — this follows the Pipefy GraphQL API. `get_pipe` returns the `uuid` field; `get_ai_knowledge_bases` returns each item's `id` (a data-source UUID) for the by-id operations and for `dataSourceIds`. The one deliberate exception is a data lookup's `source_repo_id`, which is the **numeric** ID of the source pipe (see below).
+Every knowledge base operation is scoped by the pipe **UUID** (`pipe_uuid`), not the numeric pipe ID — this follows the Pipefy GraphQL API. `get_pipe` returns the `uuid` field; `get_ai_knowledge_bases` returns each item's `id` (a data-source UUID) for the by-id operations and for `dataSourceIds`. The one deliberate exception is a data lookup's `source_repo_id`, which is the **numeric** ID of the source pipe or the numeric `internal_id` of the source table (see below).
 
 ## Plain-text limits (enforced client-side)
 
@@ -57,22 +57,34 @@ Failures are tagged with the step that failed — `file_read`, `presigned_url`, 
 
 ## Data lookups (typed conditions, full-replacement updates)
 
-A data lookup lets an agent search cards in a **source pipe** by conditions and return the values of selected fields. Its definition has four parts: `source_repo_id` (the source pipe), `output_fields` (which field values matching records return), `conditions` (how records are filtered), and an optional `search_query`.
+A data lookup lets an agent search records in a **source pipe or database table** by conditions and return the values of selected fields. Its definition has three parts: `source_repo_id` (the source), `output_fields` (which field values matching records return), and `conditions` (how records are filtered).
 
 The toolkit validates the definition client-side because the API accepts shapes that only fail later, when an agent actually runs the lookup:
 
-- **`source_repo_id` must be the numeric pipe ID**, not a UUID. The API accepts a UUID at create time, but the lookup then breaks when an agent runs it — long after the write succeeded.
-- **`output_fields`**: 1-30 field IDs — start-form/phase field slugs (e.g. `customer_email`) plus static fields such as `id`, `title`, `current_phase`, `assignees`, `created_by`, `created_at`.
-- **`conditions`**: at least one object, each with `field` (a field ID as above) and `operator` (an opaque backend string, e.g. `"eq"`, `"contains"`). A condition is one of two shapes:
-  - **Static** — `value` is required and must be a string (the backend silently drops non-scalar values and the runtime rejects non-strings): `{"field": "title", "operator": "contains", "value": "urgent"}`.
+- **`source_repo_id` must be a numeric id**: the pipe ID for a pipe, or the table's `internal_id` (from `get_table` or `search_tables`) for a database table. The toolkit rejects a UUID or the table's alphanumeric `id`. The API accepts a UUID at create time, but the lookup then breaks when an agent runs it, long after the write succeeded.
+- **`output_fields`**: 1-30 field IDs — start-form/phase field slugs (e.g. `customer_email`) plus static fields such as `id`, `title`, `current_phase`, `assignees`, `created_by`, `created_at`. For a table, the slugs are the `table_fields[].id` values from `get_table`.
+- **`conditions`**: at least one object, each with `field` (a field ID as above) and `operator` (an opaque backend string, e.g. `"eq"`, `"ilike"`). A condition is one of two shapes:
+  - **Static** — `value` is required and must be a string (the backend silently drops non-scalar values and the runtime rejects non-strings): `{"field": "title", "operator": "ilike", "value": "urgent"}`.
   - **AI-filled** — `usingFillWithAi: true` with `inputName`, `inputType` (opaque, e.g. `"text"`, `"number"`), and `inputDescription`; `value` must be omitted (the AI asks the user for it at runtime): `{"field": "customer_email", "operator": "eq", "usingFillWithAi": true, "inputName": "Customer email", "inputType": "text", "inputDescription": "The customer's email address"}`.
 
-  Condition keys accept camelCase (as above) or snake_case; unknown keys are rejected so a typo cannot silently drop a constraint. A condition may also carry the optional passthrough keys `attribute` and `fieldUuid`, used by backend-specific search modes (`field` is still required — the backend rejects a condition without one).
-- **`search_query`** is a backend-defined search mode marker, not free text; leave it unset unless you know the backend value you need.
+  Condition keys accept camelCase (as above) or snake_case; unknown keys are rejected so a typo cannot silently drop a constraint.
+
+**Every write uses the records search.** Create and update write the same shape the Pipefy UI writes, and this search is the only one that can read a database table. Each condition names its target as `fieldUuid` (a custom field) or `attribute` (a fixed field), next to `field`. The toolkit sets it from `field`:
+
+- The fixed slugs `id`, `title`, `created_by`, `created_at`, `due_date`, `finished_at`, `current_phase`, `labels`, and `assignees` get the `attribute` `ID`, `TITLE`, `CREATOR`, `CREATED_AT`, `DUE_DATE`, `FINISHED_AT`, `CURRENT_PHASE`, `LABELS`, or `ASSIGNEES`.
+- Any other slug gets its field uuid.
+- The toolkit reads the source's fields once when a condition sets neither `fieldUuid` nor `attribute`. A `source_repo_id` that names no pipe or table the credential can read fails there, before the write.
+- A slug fails before the write when it is not a field of the source, or when it names two targets. Pipefy gives a custom field labeled "Labels" the slug `labels`, so that slug names both the fixed field and the custom field. For these, set `fieldUuid` (from `get_start_form_fields`, `get_phase_fields`, or `get_table`) or `attribute` on the condition.
+
+You can also pass `fieldUuid` or `attribute` yourself, with the values above. A condition takes one of the two, not both. The toolkit sends them as given and does not check them against the source.
+
+**Operators follow the records search.** `eq` matches an exact value and `ilike` matches a case-insensitive substring. `contains` returns no records on a text field such as `title`, so use `ilike` for a substring match.
+
+**A table has no phases.** A condition on `current_phase` saves on a table source, and the lookup then fails when the agent runs.
 
 **Reads never return `conditions`.** The API stores them but does not expose them on `get_ai_knowledge_base_data_lookup` (or on the create/update responses), so keep your lookup definition — including conditions — as the client-side source of truth.
 
-**Updates replace the whole definition.** The backend rewrites the stored definition with exactly what the update carries: `source_repo_id`, `output_fields`, and `conditions` are required on every `update_ai_knowledge_base_data_lookup` call (pass the complete condition set, not a delta), and omitting `search_query` clears it. Only `name`/`description` behave partially (omitted keeps the stored value).
+**Updates replace the whole definition.** The backend rewrites the stored definition with exactly what the update carries: `source_repo_id`, `output_fields`, and `conditions` are required on every `update_ai_knowledge_base_data_lookup` call (pass the complete condition set, not a delta). Only `name`/`description` behave partially (omitted keeps the stored value). An update of a lookup that used the older card search moves it to the records search. There, a `contains` condition on a text field returns no records, so change it to `ilike` when you resend the definition.
 
 ## Probe semantics and the write gate
 

@@ -10,6 +10,7 @@ ever being persisted.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -23,6 +24,20 @@ _FILL_WITH_AI_FIELDS = {
     "input_type": "inputType",
     "input_description": "inputDescription",
 }
+
+
+class DataLookupAttribute(StrEnum):
+    """Fixed card or record attribute a data lookup condition can filter on."""
+
+    ID = "ID"
+    TITLE = "TITLE"
+    CREATOR = "CREATOR"
+    CREATED_AT = "CREATED_AT"
+    DUE_DATE = "DUE_DATE"
+    FINISHED_AT = "FINISHED_AT"
+    CURRENT_PHASE = "CURRENT_PHASE"
+    LABELS = "LABELS"
+    ASSIGNEES = "ASSIGNEES"
 
 
 class DataLookupCondition(BaseModel):
@@ -41,11 +56,12 @@ class DataLookupCondition(BaseModel):
       (the runtime replaces it with the AI-provided input, so a static value
       here would be silently ignored).
 
-    ``operator`` is an opaque backend string (e.g. ``"eq"``, ``"contains"``);
-    ``input_type`` likewise (e.g. ``"text"``, ``"number"``). ``attribute`` and
-    ``field_uuid`` are optional passthrough keys used by backend-specific
-    search modes; ``field`` is required either way (the backend rejects a
-    condition without one).
+    ``operator`` is an opaque backend string (e.g. ``"eq"``, ``"ilike"``);
+    ``input_type`` likewise (e.g. ``"text"``, ``"number"``). ``field`` is the
+    field slug and is always required (the backend rejects a condition without
+    one). The agent searches by ``field_uuid`` for a custom field or by
+    ``attribute`` for a fixed one, so a condition carries at most one of the
+    two. The knowledge base service fills in the missing one from ``field``.
     """
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
@@ -59,11 +75,15 @@ class DataLookupCondition(BaseModel):
     input_description: NonBlankStr | None = Field(
         default=None, alias="inputDescription"
     )
-    attribute: NonBlankStr | None = None
+    attribute: DataLookupAttribute | None = None
     field_uuid: NonBlankStr | None = Field(default=None, alias="fieldUuid")
 
     @model_validator(mode="after")
     def _check_shape(self) -> DataLookupCondition:
+        if self.attribute is not None and self.field_uuid is not None:
+            raise ValueError(
+                "set fieldUuid (custom field) or attribute (fixed field), not both"
+            )
         if self.using_fill_with_ai:
             missing = [
                 alias
@@ -101,4 +121,4 @@ class DataLookupCondition(BaseModel):
 
     def to_input(self) -> dict[str, Any]:
         """Serialize to the GraphQL condition input (camelCase, no nulls)."""
-        return self.model_dump(by_alias=True, exclude_none=True)
+        return self.model_dump(mode="json", by_alias=True, exclude_none=True)

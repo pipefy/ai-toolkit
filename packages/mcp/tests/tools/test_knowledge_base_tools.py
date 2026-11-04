@@ -715,7 +715,6 @@ async def test_create_data_lookup_success(
         source_repo_id="303088927",
         output_fields=["title"],
         conditions=[STATIC_CONDITION],
-        search_query=None,
     )
 
 
@@ -774,7 +773,6 @@ async def test_update_data_lookup_success(
         source_repo_id="303088927",
         output_fields=["title"],
         conditions=[STATIC_CONDITION],
-        search_query=None,
         name="Renamed",
         description=None,
     )
