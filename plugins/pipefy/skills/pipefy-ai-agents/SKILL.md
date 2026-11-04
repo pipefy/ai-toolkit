@@ -259,6 +259,14 @@ A **data lookup** lets the agent search records in a source pipe or database tab
      "inputDescription": "The customer's email address"}]
    ```
 
+   For a static `contains` filter on fixed `labels`, call `get_pipe` with the source pipe's numeric ID. Replace `<label_id>` below with one `pipe.labels[].id` from the response. Set `value` to the ID as a string.
+
+   ```json
+   [{"field": "labels", "attribute": "LABELS", "operator": "contains", "value": "<label_id>"}]
+   ```
+
+   `attribute: "LABELS"` selects fixed labels even when a custom field has the slug `labels`.
+
 2. **Attach**: keep the returned `id` and attach it exactly as for the other kinds. **Also keep the definition you sent**: reads never return `conditions`, so your copy is the only complete record of the lookup.
 3. **Update replaces everything**: `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta). Only `name`/`description` keep their stored values when omitted. An update also moves a lookup that used the older card search to the records search. Change `contains` on an ordinary field to `ilike` when you resend the definition.
 
