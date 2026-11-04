@@ -11,7 +11,7 @@ Pipefy exposes several identifier forms, and different tools expect different on
 | **slug** | `"document_upload"` | A field's human-readable id (GraphQL `id` on a field row). Used to address a **card** field for a one-off edit. |
 | **internal_id** | `"421234567"` | A field's numeric id (GraphQL `internal_id` on a field row). Used by automations, field conditions, and AI prompt/behavior field references. |
 
-Discover ids with `list_organizations` (org id + uuid, no input needed), `search_pipes` / `get_pipe` (pipe id + uuid), and `get_start_form_fields` / `get_phase_fields` (a field's `id` = slug **and** `internal_id`).
+Discover ids with `list_organizations` (org id + uuid, no input needed) and `search_pipes` / `get_pipe` (pipe id + uuid). `get_start_form_fields` / `get_phase_fields` give a field's `id` (slug), `internal_id`, and `uuid`.
 
 ## The pipe has five argument names
 
@@ -51,9 +51,9 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 | Data-lookup `output_fields` / `conditions[].field` | **slug** (plus statics like `id`, `title`, `current_phase`) |
 | `set_interface_sources` `data_sources[].fieldKeys` | **uuid** from `get_interface_repo_fields`, plus built-in keys such as `title` (`get_interface_html_guidelines` lists them as `filters.fixedColumnNames`). In a source's `filters`, a custom field's `columnName` is `field-<uuid>`. |
 | `set_interface_actions` `actions[].fieldKeys` | keys from the `fieldKeys` of the action's own source (`get_interface_html` → `dataSources[].fieldKeys`): custom field **uuids** and built-in keys such as `title`. |
-| `get_records` `where.field` / `order_by[].field` | **uuid**, lowercase and hyphenated (a slug or any other form is rejected before the call). `get_phase_fields` returns it; for a start-form field, call it with `phase_id` set to `get_pipe` → `startFormPhaseId` |
+| `get_records` `where.field` / `order_by[].field` | **uuid**, lowercase and hyphenated (a slug or any other form is rejected before the call). `get_phase_fields` returns it, and `get_start_form_fields` returns it for a start-form field. |
 
-`get_phase_fields` / `get_start_form_fields` return both the `id` (slug) and the `internal_id` for each field, so you can pick the form the target surface needs. Only `get_phase_fields` also returns the field `uuid`.
+`get_phase_fields` / `get_start_form_fields` return the `id` (slug), the `internal_id`, and the `uuid` for each field, so you can pick the form the target surface needs.
 
 ### Phase fields (create vs update)
 
@@ -83,6 +83,7 @@ A field is addressed by **slug** for one-off card edits, and by **internal_id** 
 
 ### Tables and records
 - `table_id` and record ids are strings — numeric or an opaque token (e.g. `"fIVcd19N"`). Record field references use the field **slug**.
+- `search_tables`, `get_table`, and `get_tables` also return the table's numeric `internal_id`. `get_table` and `get_tables` also return each `table_fields[].uuid`.
 
 ### LLM providers
 - List / dependencies / create / update / delete: `organization_uuid` (**UUID**).

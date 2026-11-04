@@ -101,6 +101,8 @@ class TableTools:
                       - name: Organization name
                       - tables: Array of tables in the organization, each with:
                           - id: Table ID (use this for get_table, get_table_records, etc.)
+                          - internal_id: Numeric table ID (the form a data lookup's
+                                         ``source_repo_id`` takes)
                           - name: Table name
                           - description: Table description
                           - match_score: Match score (0-100) when table_name is provided,
@@ -143,7 +145,8 @@ class TableTools:
 
             Returns:
                 On success, a structured payload with ``success``, ``message``, and ``data``
-                (GraphQL ``table`` object: ``id``, ``name``, ``description``, ``table_fields``,
+                (GraphQL ``table`` object: ``id``, ``internal_id`` (numeric table ID),
+                ``name``, ``description``, ``table_fields`` (each with its ``uuid``),
                 ``authorization``). On validation or GraphQL errors, ``success: False`` with an
                 ``error`` message.
             """

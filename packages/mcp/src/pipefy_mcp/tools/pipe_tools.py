@@ -790,9 +790,8 @@ class PipeTools:
             ``pageInfo`` and ``edges`` in camelCase. ``where`` is a filter node
             (``attribute`` or ``field`` plus one operator) or ``and``/``or`` lists of
             nodes. ``field`` (in ``where`` and ``order_by``) must be the custom field
-            uuid from ``get_phase_fields``; for a start-form field, call
-            ``get_phase_fields`` with ``phase_id`` set to ``get_pipe``'s
-            ``startFormPhaseId``. CREATOR takes a user id and CREATOR_EMAIL an email.
+            uuid from ``get_phase_fields`` or, for a start-form field,
+            ``get_start_form_fields``. CREATOR takes a user id and CREATOR_EMAIL an email.
             On ASSIGNEES and LABELS, ``in`` matches any and ``contains`` matches all.
             ``like`` and ``ilike`` both ignore case and match each word of the value as
             a substring, in any order; ``%`` and ``_`` are literal characters, not
@@ -1257,6 +1256,7 @@ class PipeTools:
             Returns:
                 dict: Contains 'start_form_fields' array with field properties:
                       - id: Field identifier (slug) used when creating cards
+                      - uuid: Field UUID (the form ``get_records`` filters take)
                       - label: Display name of the field
                       - type: Field type (short_text, select, date, etc.)
                       - required: Whether the field is mandatory

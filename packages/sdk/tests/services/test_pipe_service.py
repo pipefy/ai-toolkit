@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from _shared.mock_clients import mock_executor
+from _shared.query_selection import selected_field_names
 from graphql import print_ast
 
 from pipefy_sdk.queries.pipe_queries import (
@@ -15,6 +16,7 @@ from pipefy_sdk.queries.pipe_queries import (
     GET_PHASE_FIELDS_QUERY,
     GET_PHASE_QUERY,
     GET_PIPE_QUERY,
+    GET_START_FORM_FIELDS_QUERY,
     SEARCH_PIPES_QUERY,
 )
 from pipefy_sdk.services.pipe_service import PipeService
@@ -64,6 +66,19 @@ def test_get_pipe_query_selects_index_on_phases():
     phases = next(s for s in pipe.selection_set.selections if s.name.value == "phases")
     names = {s.name.value for s in phases.selection_set.selections}
     assert "index" in names
+
+
+@pytest.mark.unit
+def test_get_pipe_query_selects_field_uuids():
+    assert "uuid" in selected_field_names(GET_PIPE_QUERY, "pipe", "start_form_fields")
+    assert "uuid" in selected_field_names(GET_PIPE_QUERY, "pipe", "phases", "fields")
+
+
+@pytest.mark.unit
+def test_get_start_form_fields_query_selects_field_uuid():
+    assert "uuid" in selected_field_names(
+        GET_START_FORM_FIELDS_QUERY, "pipe", "start_form_fields"
+    )
 
 
 @pytest.mark.unit

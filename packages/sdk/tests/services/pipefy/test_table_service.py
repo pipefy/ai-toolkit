@@ -3,6 +3,7 @@
 import pytest
 from _shared.mock_clients import mock_executor
 from _shared.pagination_test_defaults import DEFAULT_FIRST
+from _shared.query_selection import selected_field_names
 
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.queries.table_queries import (
@@ -32,6 +33,15 @@ def _make_service(return_value: dict):
 
 def _service_raising(exc: Exception) -> TableService:
     return TableService(executor=mock_executor(side_effect=exc))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("query", "root"), [(GET_TABLE_QUERY, "table"), (GET_TABLES_QUERY, "tables")]
+)
+def test_table_queries_select_internal_id_and_field_uuid(query, root):
+    assert "internal_id" in selected_field_names(query, root)
+    assert "uuid" in selected_field_names(query, root, "table_fields")
 
 
 @pytest.mark.unit
