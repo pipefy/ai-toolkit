@@ -106,7 +106,13 @@ def agent_create(
     data_sources: str | None = typer.Option(
         None,
         "--data-sources",
-        help="Optional JSON array of knowledge-source id strings.",
+        help=(
+            "Optional JSON array of knowledge-source id strings (the agent-level "
+            "data_source_ids). Put the knowledge base id in both the agent-level "
+            "data_source_ids and the behavior's dataSourceIds. With the id on the "
+            "behavior only, the agent fails to save. With the id on the agent "
+            "only, the behavior does not use it."
+        ),
     ),
     active: bool = typer.Option(
         True,
@@ -210,8 +216,12 @@ def agent_update(
         None,
         "--data-sources",
         help=(
-            "Optional JSON array of knowledge-source id strings. Omit to keep the "
-            "agent's current knowledge bases; pass '[]' to detach them all."
+            "Optional JSON array of knowledge-source id strings (the agent-level "
+            "data_source_ids). Omit to keep the agent's current knowledge bases; "
+            "pass '[]' to detach them all. Put the knowledge base id in both the "
+            "agent-level data_source_ids and the behavior's dataSourceIds. With "
+            "the id on the behavior only, the agent fails to save. With the id on "
+            "the agent only, the behavior does not use it."
         ),
     ),
     disabled_at: str | None = typer.Option(

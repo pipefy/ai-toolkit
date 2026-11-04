@@ -326,7 +326,10 @@ class AiAgentTools:
                     See example above for the full shape.
                     Discover via: ``get_automation_events(pipe_id)`` for ``event_id`` and
                     ``get_phase_fields(phase_id)`` for ``triggerFieldIds`` / ``destinationPhaseId``.
-                data_source_ids: Optional knowledge-source IDs (same as ``update_ai_agent``).
+                data_source_ids: Optional agent-level knowledge base IDs. Put the knowledge base
+                    ``id`` in both the agent-level ``data_source_ids`` and the behavior's
+                    ``dataSourceIds``. With the id on the behavior only, the agent fails to
+                    save. With the id on the agent only, the behavior does not use it.
                 active: When True (default), create enabled. When False, create inactive by
                     setting ``disabled_at`` (ISO-8601 UTC) on create and the chained update.
             """
@@ -469,7 +472,10 @@ class AiAgentTools:
                     (same interpolation as ``create_ai_agent``).
                     Discover via: ``get_automation_events(pipe_id)`` and ``get_phase_fields(phase_id)``.
                 data_source_ids: Optional list of data source IDs. Omit to keep the agent's current
-                    knowledge bases; pass ``[]`` to detach them all.
+                    knowledge bases; pass ``[]`` to detach them all. Put the knowledge base
+                    ``id`` in both the agent-level ``data_source_ids`` and the behavior's
+                    ``dataSourceIds``. With the id on the behavior only, the agent fails to
+                    save. With the id on the agent only, the behavior does not use it.
                 disabled_at: Optional ISO-8601 ``disabledAt`` from ``get_ai_agent``. Pass through to
                     skip the preserve re-read and avoid a toggle race. Omit to let the SDK preserve.
             """

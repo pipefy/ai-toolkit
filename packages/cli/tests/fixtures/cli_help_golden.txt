@@ -113,7 +113,16 @@ Usage: pipefy agent create [OPTIONS]
 │                                             validate-behaviors pre-flight.   │
 │                                             [required]                       │
 │    --data-sources                     TEXT  Optional JSON array of           │
-│                                             knowledge-source id strings.     │
+│                                             knowledge-source id strings (the │
+│                                             agent-level data_source_ids).    │
+│                                             Put the knowledge base id in     │
+│                                             both the agent-level             │
+│                                             data_source_ids and the          │
+│                                             behavior's dataSourceIds. With   │
+│                                             the id on the behavior only, the │
+│                                             agent fails to save. With the id │
+│                                             on the agent only, the behavior  │
+│                                             does not use it.                 │
 │    --active            --inactive           Create enabled (default) or      │
 │                                             inactive. --inactive sets        │
 │                                             disabled_at on create and the    │
@@ -248,10 +257,18 @@ Usage: pipefy agent update [OPTIONS]
 │                                             validate-behaviors pre-flight.   │
 │                                             [required]                       │
 │    --data-sources                     TEXT  Optional JSON array of           │
-│                                             knowledge-source id strings.     │
+│                                             knowledge-source id strings (the │
+│                                             agent-level data_source_ids).    │
 │                                             Omit to keep the agent's current │
 │                                             knowledge bases; pass '[]' to    │
-│                                             detach them all.                 │
+│                                             detach them all. Put the         │
+│                                             knowledge base id in both the    │
+│                                             agent-level data_source_ids and  │
+│                                             the behavior's dataSourceIds.    │
+│                                             With the id on the behavior      │
+│                                             only, the agent fails to save.   │
+│                                             With the id on the agent only,   │
+│                                             the behavior does not use it.    │
 │    --disabled-at                      TEXT  Optional ISO-8601 disabledAt     │
 │                                             from agent get. Pass through to  │
 │                                             skip the preserve re-read; omit  │
@@ -2281,8 +2298,9 @@ Usage: pipefy kb list [OPTIONS]
 
  List a pipe's knowledge base items (``get_ai_knowledge_bases``).
 
- Each item carries ``id`` (used in ``dataSourceIds``), ``type``, ``name``,
- ``description``, and ``updatedAt``. No pagination; the full list is returned.
+ Each item carries ``id`` (used in ``data_source_ids`` and ``dataSourceIds``),
+ ``type``, ``name``, ``description``, and ``updatedAt``. No pagination; the
+ full list is returned.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe-uuid          TEXT  Pipe UUID (not the numeric ID; `pipefy pipe    │

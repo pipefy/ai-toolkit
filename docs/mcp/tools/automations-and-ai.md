@@ -167,6 +167,8 @@ On **create**, if the caller omits `condition`, the MCP layer supplies `DEFAULT_
 | `update_ai_agent` | No | Replaces full agent config; send the complete `behaviors` list (1-5). Preserves disabled status (optional `disabled_at` pass-through from `get_ai_agent` skips the re-read). Use `toggle_ai_agent_status` to activate or deactivate. Success payload includes `disabled_at` / `active`. |
 | `toggle_ai_agent_status` | No | Enable/disable without resending configuration. |
 
+**Knowledge bases:** Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it.
+
 **Tip:** Pipefy UI **Description** maps to the API/tool field `instruction` (agent-level purpose). The per-behavior prompt in the UI maps to `actionParams.aiBehaviorParams.instruction` on each behavior (behavior-level).
 
 **Tip:** For `create_ai_agent` / `update_ai_agent`, each behavior must include `actionParams.aiBehaviorParams.actionsAttributes` with **at least one** action. The API returns *"The instructions must contain at least 1 action"* if this list is missing or empty.

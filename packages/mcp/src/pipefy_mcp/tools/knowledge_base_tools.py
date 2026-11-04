@@ -137,9 +137,10 @@ class KnowledgeBaseTools:
             ctx: Context,
             pipe_uuid: str,
         ) -> dict[str, Any]:
-            """List every knowledge base item on a pipe: plain texts, documents, and data lookups in one surface. Use this to discover the `dataSourceIds` values an AI agent or behavior can attach.
+            """List every knowledge base item on a pipe: plain texts, documents, and data lookups in one surface. Use this to discover the IDs an AI agent attaches in `data_source_ids` and `dataSourceIds`.
 
-            Each item carries `id` (the data-source ID used in `dataSourceIds`),
+            Each item carries `id` (the data-source ID used in `data_source_ids` and
+            `dataSourceIds`),
             `type`, `name`, `description`, and `updatedAt`. The `type` values are
             `knowledge_base_plain_texts`, `knowledge_base_documents`, and
             `data_lookups` (the data lookup discriminator is not prefixed). There
@@ -209,8 +210,11 @@ class KnowledgeBaseTools:
 
             Limits are enforced client-side to fail fast: `content` is 1-3500
             characters and `description` is 1-300 characters (both required). To
-            attach the result to an agent, pass the returned `id` in the agent's or
-            behavior's `dataSourceIds`.
+            attach the result to an agent, use the returned `id`. Put the
+            knowledge base `id` in both the agent-level `data_source_ids` and the
+            behavior's `dataSourceIds`. With the id on the behavior only, the agent
+            fails to save. With the id on the agent only, the behavior does not
+            use it.
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID).
@@ -407,7 +411,10 @@ class KnowledgeBaseTools:
             (case-insensitive) under 20 MiB, and `description` is 1-300
             characters (required). Indexing is asynchronous: the document may
             not be searchable by agents immediately. To attach it to an agent,
-            pass the returned `id` in the agent's or behavior's `dataSourceIds`.
+            use the returned `id`. Put the knowledge base `id` in both the
+            agent-level `data_source_ids` and the behavior's `dataSourceIds`. With
+            the id on the behavior only, the agent fails to save. With the id on
+            the agent only, the behavior does not use it.
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID).
@@ -632,8 +639,11 @@ class KnowledgeBaseTools:
             A table has no phases, so `current_phase` on a table source fails
             when the agent runs.
             Keep the full definition client-side: reads never return
-            `conditions`. To attach the result to an agent, pass the returned
-            `id` in the agent's or behavior's `dataSourceIds`.
+            `conditions`. To attach the result to an agent, use the returned
+            `id`. Put the knowledge base `id` in both the agent-level
+            `data_source_ids` and the behavior's `dataSourceIds`. With the id on
+            the behavior only, the agent fails to save. With the id on the agent
+            only, the behavior does not use it.
 
             Args:
                 pipe_uuid: Pipe UUID (not the numeric ID) that owns the lookup.

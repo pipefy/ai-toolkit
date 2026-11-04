@@ -2,7 +2,7 @@
 
 Pipe-scoped AI knowledge bases: list every item on a pipe, full CRUD for plain-text, document (PDF), and data lookup sources, and a read-access probe. **14 tools.**
 
-Knowledge bases are the data sources an AI agent draws on. Each item's `id` is what you attach to an agent or behavior via `dataSourceIds` (see [Automations & AI](automations-and-ai.md)): use `get_ai_knowledge_bases` to discover the IDs, then `validate_ai_agent_behaviors(data_source_ids=[...])` to check membership before writing the agent.
+Knowledge bases are the data sources an AI agent draws on. Each item's `id` is what you attach to an agent (see [Automations & AI](automations-and-ai.md)). Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it. Use `get_ai_knowledge_bases` to discover the IDs, then `validate_ai_agent_behaviors(data_source_ids=[...])` to check membership before writing the agent.
 
 ---
 

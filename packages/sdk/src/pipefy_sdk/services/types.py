@@ -346,8 +346,9 @@ class KnowledgeBasePayload(TypedDict, total=False):
 
     ``type`` is the JSON:API resource type carried through from the backend
     (e.g. ``knowledge_base_plain_texts``, ``knowledge_base_documents``,
-    ``data_lookups``); it can be null. ``id`` is the data-source UUID used to
-    attach the source to an agent/behavior via ``dataSourceIds``.
+    ``data_lookups``); it can be null. ``id`` is the data-source UUID that
+    attaches the source to an agent. Put the knowledge base ``id`` in both
+    the agent-level ``data_source_ids`` and the behavior's ``dataSourceIds``.
     """
 
     id: str

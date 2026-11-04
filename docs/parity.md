@@ -109,7 +109,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_ai_knowledge_base_data_lookup` | `pipefy kb data-lookup get` | shipped | Knowledge bases; pipe-scoped data lookup (`--id`, `--pipe-uuid`); the payload never includes `conditions` (the API does not expose them on reads). |
 | `get_ai_knowledge_base_document` | `pipefy kb document get` | shipped | Knowledge bases; pipe-scoped document metadata (`--id`, `--pipe-uuid`); `content` is the stored document URL, not the extracted text. |
 | `get_ai_knowledge_base_plain_text` | `pipefy kb plain-text get` | shipped | Knowledge bases; pipe-scoped plain text with content (`--id`, `--pipe-uuid`). |
-| `get_ai_knowledge_bases` | `pipefy kb list` | shipped | Knowledge bases; all items on a pipe (plain text, documents, data lookups) with `id` for `dataSourceIds` (`--pipe-uuid`; no pagination). |
+| `get_ai_knowledge_bases` | `pipefy kb list` | shipped | Knowledge bases; all items on a pipe (plain text, documents, data lookups) with `id` for `data_source_ids` and `dataSourceIds` (`--pipe-uuid`; no pagination). |
 | `get_automation` | `pipefy automation get` | shipped | — |
 | `get_automation_actions` | `pipefy automation actions list` | shipped | (`--pipe`). |
 | `get_automation_event_attributes` | `pipefy automation event-attributes` | shipped | Official ``field_map`` event-attribute token catalog. |

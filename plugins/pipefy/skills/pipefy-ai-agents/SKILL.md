@@ -161,7 +161,7 @@ Use real values from `get_pipe` / `get_start_form_fields` for your org. Placehol
 
 Inside `actionParams.aiBehaviorParams` a behavior may also carry:
 
-- **`capabilitiesAttributes`** — advanced tools the behavior can use. Each entry is exactly `{ "capabilityType": "<type>", "enabled": true|false }` (both keys required, no extra keys — bare strings or `{ "type": ... }` are rejected).
+- **`capabilitiesAttributes`**: advanced tools the behavior can use. Each entry is exactly `{ "capabilityType": "<type>", "enabled": true|false }` (both keys required, no extra keys). Bare strings or `{ "type": ... }` are rejected.
 
   | Product name | `capabilityType` |
   |---|---|
@@ -172,10 +172,10 @@ Inside `actionParams.aiBehaviorParams` a behavior may also carry:
   | Max effort | `max_effort` |
 
   `capabilityType` is not checked against a fixed set — any value passes through and the API validates the enum on write, so new capabilities work without a toolkit update. Validation checks **shape only, not entitlement** — a capability may still require organization-level enablement to have any effect, so a green pre-flight does not guarantee the capability is active for the org.
-- **`providerId`** / **`systemProviderId`** — pick the behavior's LLM provider. Set **at most one** (a behavior resolves to a single active provider). Discover valid IDs with `get_llm_providers`: each provider carries `type` — use `providerId` for a custom (`byom`) provider and `systemProviderId` for a Pipefy-managed (`system`) one. `get_default_llm_provider` shows what a behavior falls back to when neither is set. IDs are also visible in the organization's AI settings in the Pipefy UI.
+- **`providerId`** / **`systemProviderId`**: pick the behavior's LLM provider. Set **at most one** (a behavior resolves to a single active provider). Discover valid IDs with `get_llm_providers`: each provider carries `type`. Use `providerId` for a custom (`byom`) provider and `systemProviderId` for a Pipefy-managed (`system`) one. `get_default_llm_provider` shows what a behavior falls back to when neither is set. IDs are also visible in the organization's AI settings in the Pipefy UI.
 
   **Bring your own model (custom provider).** First probe `validate_llm_provider_access`: read access does not prove the stronger `manage_ai_providers` permission or eligible plan required for writes. Create a provider with `configuration_file_path` (a local JSON file) and use its `id` as `providerId`. For `update_llm_provider`, send the full configuration: retain `__REDACTED__` placeholders to preserve existing secrets or supply new values to rotate them. Check `get_llm_provider_dependencies` before `delete_llm_provider`; use `set_llm_provider_active_status` for activation. `set_default_llm_provider` takes exactly one of `provider_id` / `system_provider_id`; `reset_default_llm_provider` clears the default.
-- **`dataSourceIds`** — knowledge base sources the behavior can draw on. Each ID is a knowledge base item ID from `get_ai_knowledge_bases`. Agents also carry an agent-level `data_source_ids`; the two are unioned. See [Knowledge bases](#knowledge-bases-data-sources) below for the create → attach flow.
+- **`dataSourceIds`**: knowledge base sources the behavior can draw on. Each ID is a knowledge base item ID from `get_ai_knowledge_bases`. Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it. See [Knowledge bases](#knowledge-bases-data-sources) below for the create → attach flow.
 
 ```json
 {
@@ -220,7 +220,7 @@ On create/update, slug `fieldId` values are resolved to numeric `internal_id`, `
 
 ## Knowledge bases (data sources)
 
-Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by putting its ID in a behavior's `dataSourceIds` (or the agent-level `data_source_ids`). All knowledge base operations are scoped by the pipe **UUID** (`pipe_uuid`), not the numeric pipe ID — `get_pipe` returns the `uuid`.
+Knowledge bases are pipe-scoped data sources an agent draws on. Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it. All knowledge base operations are scoped by the pipe **UUID** (`pipe_uuid`), not the numeric pipe ID. `get_pipe` returns the `uuid`.
 
 | Operation | Read-only | Purpose |
 | ------------ | ----------- | --------- |
@@ -241,9 +241,9 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 
 ### Flow: validate-access → create plain text → attach
 
-1. **Probe access** — `validate_knowledge_base_access(pipe_uuid)`. A green result proves read access only (`read_ai_agents`), never the `manage_ai_agents` entitlement writes need.
-2. **Create the source** — `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `name` 1-80 chars, `content` 1-3500 chars, `description` 1-300 chars (all required). Keep the returned `id`.
-3. **Attach** — add that `id` to a behavior's `dataSourceIds` (or the agent-level `data_source_ids`) when calling `create_ai_agent` / `update_ai_agent`. Validate first with `validate_ai_agent_behaviors(pipe_id, behaviors, data_source_ids=[...])` — unknown IDs surface as warnings.
+1. **Probe access**: `validate_knowledge_base_access(pipe_uuid)`. A green result proves read access only (`read_ai_agents`), never the `manage_ai_agents` entitlement writes need.
+2. **Create the source**: `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `name` 1-80 chars, `content` 1-3500 chars, `description` 1-300 chars (all required). Keep the returned `id`.
+3. **Attach**: when calling `create_ai_agent` / `update_ai_agent`, attach that `id`. Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it. Validate first with `validate_ai_agent_behaviors(pipe_id, behaviors, data_source_ids=[...])` — unknown IDs surface as warnings.
 
 For a **PDF document**, use `create_ai_knowledge_base_document` with `pipe_uuid`, `name`, `description`, and `file_path` at step 2. Only `.pdf` is accepted, with a 20 MiB cap. Indexing is asynchronous, so the document may not be searchable immediately. Keep the returned `id` and attach it.
 
@@ -259,7 +259,7 @@ A **data lookup** lets the agent search records in a source pipe or database tab
      "inputDescription": "The customer's email address"}]
    ```
 
-2. **Attach**: keep the returned `id` and add it to `dataSourceIds`, exactly as for the other kinds. **Also keep the definition you sent**: reads never return `conditions`, so your copy is the only complete record of the lookup.
+2. **Attach**: keep the returned `id` and attach it exactly as for the other kinds. **Also keep the definition you sent**: reads never return `conditions`, so your copy is the only complete record of the lookup.
 3. **Update replaces everything**: `update_ai_knowledge_base_data_lookup` requires `source_repo_id`, `output_fields`, and `conditions` on every call (the complete condition set, not a delta). Only `name`/`description` keep their stored values when omitted. An update also moves a lookup that used the older card search to the records search. Change `contains` on an ordinary field to `ilike` when you resend the definition.
 
 ---

@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK / MCP / CLI data lookups**: the `search_query` argument of `create_ai_knowledge_base_data_lookup` and `update_ai_knowledge_base_data_lookup`, and the `--search-query` option of `pipefy kb data-lookup create` and `update`. Every write now sets the search itself.
 
+### Fixed
+
+- **MCP / CLI / skills knowledge bases**: the tool descriptions, CLI help, docs, and the `pipefy-ai-agents` skill said that one of two lists was enough for a knowledge base `id`. Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it.
+
 ## [0.5.6-beta.1] - 2026-11-03
 
 ### Added
