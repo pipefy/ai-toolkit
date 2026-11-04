@@ -65,8 +65,9 @@ from pipefy_sdk.services.attachment_service import (
 )
 from pipefy_sdk.services.data_lookup_records import (
     RECORDS_SEARCH_QUERY,
-    field_uuids_by_slug,
+    SourceFields,
     needs_source_fields,
+    source_fields_from_response,
     to_records_conditions,
 )
 from pipefy_sdk.services.types import (
@@ -485,10 +486,13 @@ class KnowledgeBaseService:
         The definition is validated client-side (see
         :func:`_parse_data_lookup_definition`) before the mutation is sent.
         The lookup uses the records search: each condition gets ``fieldUuid``
-        or ``attribute`` from its ``field`` slug, which takes one extra read of
-        the source's fields when a condition sets neither. A slug that matches
-        both a fixed field and a custom field, or two custom fields, fails
-        before the write.
+        or ``attribute`` from its ``field`` slug. One read of the source's
+        fields runs when a condition does not set ``attribute``. A slug that
+        matches both a fixed field and a custom field, or two custom fields,
+        fails before the write. So does a ``fieldUuid`` that is not a field of
+        the source. The operator must fit the field type: ``contains`` on a
+        list field (labels, assignees, checklists, connections), and ``eq``,
+        ``not_eq``, or ``ilike`` on any other field.
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.
@@ -590,13 +594,13 @@ class KnowledgeBaseService:
         repo_id, fields, parsed = _parse_data_lookup_definition(
             source_repo_id, output_fields, conditions
         )
-        field_uuids: dict[str, set[str]] = {}
+        source = SourceFields()
         if needs_source_fields(parsed):
             response = await self._executor.execute_query(
                 GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY, {"ids": [repo_id]}
             )
-            field_uuids = field_uuids_by_slug(response, repo_id)
-        records_conditions = to_records_conditions(parsed, field_uuids, repo_id)
+            source = source_fields_from_response(response, repo_id)
+        records_conditions = to_records_conditions(parsed, source, repo_id)
         return {
             "sourceRepoId": repo_id,
             "outputFields": fields,
@@ -783,13 +787,14 @@ def _parse_data_lookup_definition(
     - Static conditions must carry a string ``value`` (write-time validation
       only checks ``field``/``operator``; the runtime hard-fails on a missing
       or non-string value). AI-filled conditions need their input trio. Both
-      rules live on :class:`DataLookupCondition`.
+      rules live on :class:`DataLookupCondition`, as does the closed
+      :class:`DataLookupOperator` set.
     - ``output_fields`` must be non-empty (backend-enforced) and at most 30
       (backend cap), each entry a non-blank field ID.
 
     Raises:
-        ValueError: On any rule violation, with the offending index for
-            per-item failures.
+        ValueError: On any rule violation. The message names every failing
+            condition by its index, or the first failing output field.
     """
     repo_id = _require_non_blank(source_repo_id, "source_repo_id")
     # ASCII digits only: str.isdigit()/isdecimal() also accept Unicode digit
@@ -813,22 +818,35 @@ def _parse_data_lookup_definition(
     ]
     if not conditions:
         raise ValueError("conditions must contain at least one condition")
-    parsed_conditions: list[DataLookupCondition] = []
+    return repo_id, fields, _parse_conditions(conditions)
+
+
+def _parse_conditions(
+    conditions: list[dict[str, Any] | DataLookupCondition],
+) -> list[DataLookupCondition]:
+    """Parse every condition, naming each one that fails by its index."""
+    parsed: list[DataLookupCondition] = []
+    failures: list[str] = []
     for i, condition in enumerate(conditions):
         if isinstance(condition, DataLookupCondition):
-            parsed_conditions.append(condition)
+            parsed.append(condition)
             continue
         try:
-            parsed_conditions.append(DataLookupCondition.model_validate(condition))
+            parsed.append(DataLookupCondition.model_validate(condition))
         except PydanticValidationError as exc:
             details = "; ".join(_condition_error_detail(err) for err in exc.errors())
-            raise ValueError(f"conditions[{i}]: {details}") from exc
-    return repo_id, fields, parsed_conditions
+            failures.append(f"conditions[{i}]: {details}")
+    if failures:
+        raise ValueError("; ".join(failures))
+    return parsed
 
 
 def _condition_error_detail(error: dict[str, Any]) -> str:
     """One human line per pydantic error, without the pydantic URL noise."""
     location = ".".join(str(part) for part in error.get("loc", ()))
+    if error.get("type") == "enum":
+        expected = error.get("ctx", {}).get("expected", "")
+        return f"{location} {error.get('input')!r} is not valid. Use {expected}"
     message = error.get("msg", "invalid value")
     return f"{location}: {message}" if location else message
 

@@ -611,9 +611,12 @@ class KnowledgeBaseTools:
             (string `value` required) or AI-filled (`usingFillWithAi: true`
             with `inputName`, `inputType` (e.g. `"text"`, `"number"`), and
             `inputDescription`; no `value`). The lookup uses the records
-            search, the same one the Pipefy UI writes. In that search `eq`
-            matches an exact value and `ilike` a case-insensitive substring.
-            `contains` returns no records on a text field such as `title`.
+            search, the same one the Pipefy UI writes. `operator` is `eq`
+            (exact value), `not_eq`, or `ilike` (case-insensitive substring)
+            on an ordinary field, and `contains` on a list field (labels,
+            assignees, checklists, connections). Any other operator,
+            `contains` on an ordinary field, or another operator on a list
+            field fails before the write.
             The tool sets each condition's `fieldUuid` (custom field) or
             `attribute` (fixed field) from its `field`, so the slug is
             enough. The fixed slugs `id`, `title`, `created_by`,
@@ -624,9 +627,10 @@ class KnowledgeBaseTools:
             that is not a field of the source before the write. It also
             rejects a slug that names two targets, such as a custom field
             labeled "Labels" (Pipefy gives it the slug `labels`). For those,
-            set `fieldUuid` or `attribute` on the condition. A table has no
-            phases, so `current_phase` on a table source fails when the agent
-            runs.
+            set `fieldUuid` or `attribute` on the condition. A `fieldUuid`
+            that is not a field of the source also fails before the write.
+            A table has no phases, so `current_phase` on a table source fails
+            when the agent runs.
             Keep the full definition client-side: reads never return
             `conditions`. To attach the result to an agent, pass the returned
             `id` in the agent's or behavior's `dataSourceIds`.
@@ -689,8 +693,8 @@ class KnowledgeBaseTools:
             value). Field rules and the records search match
             `create_ai_knowledge_base_data_lookup`. An update also moves a
             lookup that used the older card search to the records search.
-            There, a `contains` condition on a text field returns no records,
-            so change it to `ilike` when you resend the definition.
+            Change `contains` on an ordinary field to `ilike` when you resend
+            the definition.
 
             Args:
                 data_lookup_id: Data lookup ID to update (from `get_ai_knowledge_bases`).

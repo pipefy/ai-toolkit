@@ -40,6 +40,21 @@ class DataLookupAttribute(StrEnum):
     ASSIGNEES = "ASSIGNEES"
 
 
+class DataLookupOperator(StrEnum):
+    """Operator of a data lookup condition.
+
+    ``eq`` and ``not_eq`` compare the whole value and ``ilike`` matches a
+    case-insensitive substring. ``contains`` matches an item of a list field
+    (labels, assignees, checklists, connections). The knowledge base service
+    checks each operator against the field type before the write.
+    """
+
+    EQ = "eq"
+    NOT_EQ = "not_eq"
+    CONTAINS = "contains"
+    ILIKE = "ilike"
+
+
 class DataLookupCondition(BaseModel):
     """One record-filter condition of a knowledge base data lookup.
 
@@ -56,8 +71,8 @@ class DataLookupCondition(BaseModel):
       (the runtime replaces it with the AI-provided input, so a static value
       here would be silently ignored).
 
-    ``operator`` is an opaque backend string (e.g. ``"eq"``, ``"ilike"``);
-    ``input_type`` likewise (e.g. ``"text"``, ``"number"``). ``field`` is the
+    ``operator`` is a :class:`DataLookupOperator`. ``input_type`` is an
+    opaque backend string (e.g. ``"text"``, ``"number"``). ``field`` is the
     field slug and is always required (the backend rejects a condition without
     one). The agent searches by ``field_uuid`` for a custom field or by
     ``attribute`` for a fixed one, so a condition carries at most one of the
@@ -67,7 +82,7 @@ class DataLookupCondition(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     field: NonBlankStr
-    operator: NonBlankStr
+    operator: DataLookupOperator
     value: NonBlankStr | None = None
     using_fill_with_ai: bool = Field(default=False, alias="usingFillWithAi")
     input_name: NonBlankStr | None = Field(default=None, alias="inputName")

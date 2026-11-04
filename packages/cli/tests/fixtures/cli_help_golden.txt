@@ -2066,9 +2066,17 @@ Usage: pipefy kb data-lookup create [OPTIONS]
 │                                    (AI-filled). The command sets fieldUuid   │
 │                                    or attribute from field, and rejects a    │
 │                                    slug that names two fields: set fieldUuid │
-│                                    or attribute on that condition. Use       │
-│                                    "ilike" for a substring match: "contains" │
-│                                    returns no records on a text field.       │
+│                                    or attribute on that condition. A         │
+│                                    fieldUuid that is not a field of the      │
+│                                    source also fails before the write.       │
+│                                    operator is "eq" (exact value), "not_eq", │
+│                                    or "ilike" (case-insensitive substring)   │
+│                                    on an ordinary field, and "contains" on a │
+│                                    list field (labels, assignees,            │
+│                                    checklists, connections). Any other       │
+│                                    operator, "contains" on an ordinary       │
+│                                    field, or another operator on a list      │
+│                                    field fails before the write.             │
 │                                    [required]                                │
 │    --json            -j            Print machine-readable JSON to stdout.    │
 │    --help                          Show this message and exit.               │
@@ -2120,9 +2128,9 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 
  Every update rewrites the stored definition with exactly what this call
  carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions`` are
- required every time. Only ``--name``/``--description`` are partial. The update
- writes the records search, as create does. There, a ``contains`` condition on
- a text field returns no records, so change it to ``ilike`` when you resend the
+ required every time. Only ``--name``/``--description`` are partial. An update
+ also moves a lookup that used the older card search to the records search.
+ Change ``contains`` on an ordinary field to ``ilike`` when you resend the
  definition. Gated on the read-access probe.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
@@ -2146,10 +2154,18 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 │                                    (AI-filled). The command sets fieldUuid   │
 │                                    or attribute from field, and rejects a    │
 │                                    slug that names two fields: set fieldUuid │
-│                                    or attribute on that condition. Use       │
-│                                    "ilike" for a substring match: "contains" │
-│                                    returns no records on a text field. Pass  │
-│                                    the complete set, not a delta.            │
+│                                    or attribute on that condition. A         │
+│                                    fieldUuid that is not a field of the      │
+│                                    source also fails before the write.       │
+│                                    operator is "eq" (exact value), "not_eq", │
+│                                    or "ilike" (case-insensitive substring)   │
+│                                    on an ordinary field, and "contains" on a │
+│                                    list field (labels, assignees,            │
+│                                    checklists, connections). Any other       │
+│                                    operator, "contains" on an ordinary       │
+│                                    field, or another operator on a list      │
+│                                    field fails before the write. Pass the    │
+│                                    complete set, not a delta.                │
 │                                    [required]                                │
 │    --name                    TEXT  New name (1-80 characters).               │
 │    --description             TEXT  New description (1-300 characters).       │

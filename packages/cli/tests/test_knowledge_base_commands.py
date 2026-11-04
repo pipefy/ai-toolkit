@@ -739,6 +739,26 @@ def test_kb_data_lookup_create_gated_on_denied_probe(
     mock_client.create_ai_knowledge_base_data_lookup.assert_not_awaited()
 
 
+def test_kb_data_lookup_create_operator_error_exits_2(
+    runner, clean_pipefy_env, saved_cwd, monkeypatch
+):
+    _env(monkeypatch)
+    mock_client = MagicMock()
+    mock_client.validate_knowledge_base_access = AsyncMock(return_value=GREEN_PROBE)
+    sdk_message = (
+        "conditions[0]: operator 'equals' is not valid. "
+        "Use 'eq', 'not_eq', 'contains' or 'ilike'"
+    )
+    mock_client.create_ai_knowledge_base_data_lookup = AsyncMock(
+        side_effect=ValueError(sdk_message)
+    )
+
+    with _client_patch(mock_client):
+        result = runner.invoke(app, [*_DATA_LOOKUP_CREATE_ARGS, "--json"])
+    assert result.exit_code == 2
+    assert sdk_message in (result.stdout + (result.stderr or ""))
+
+
 def test_kb_data_lookup_create_invalid_conditions_json_rejected(
     runner, clean_pipefy_env, saved_cwd, monkeypatch
 ):

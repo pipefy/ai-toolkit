@@ -746,6 +746,41 @@ async def test_create_data_lookup_definition_value_error_mapped(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("tool_name", ["create", "update"])
+async def test_data_lookup_operator_error_returned_verbatim(
+    kb_session, mock_kb_client, extract_payload, tool_name
+):
+    sdk_message = (
+        "conditions[0].operator 'contains' on field 'title': contains works only "
+        "on a list field (labels, assignees, checklists, connections). Use ilike "
+        "for a substring match, or eq for an exact value."
+    )
+    arguments = {
+        "pipe_uuid": "pipe-uuid-1",
+        "source_repo_id": "301234567",
+        "output_fields": ["title"],
+        "conditions": [{"field": "title", "operator": "contains", "value": "x"}],
+    }
+    if tool_name == "create":
+        arguments |= {"name": "Order lookup", "description": "Find orders"}
+        mock_kb_client.create_ai_knowledge_base_data_lookup = AsyncMock(
+            side_effect=ValueError(sdk_message)
+        )
+    else:
+        arguments["data_lookup_id"] = "kb-3"
+        mock_kb_client.update_ai_knowledge_base_data_lookup = AsyncMock(
+            side_effect=ValueError(sdk_message)
+        )
+    async with kb_session as session:
+        result = await session.call_tool(
+            f"{tool_name}_ai_knowledge_base_data_lookup", arguments
+        )
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert tool_error_message(payload) == sdk_message
+
+
+@pytest.mark.anyio
 async def test_update_data_lookup_success(
     kb_session, mock_kb_client, unified_envelope, extract_payload
 ):
