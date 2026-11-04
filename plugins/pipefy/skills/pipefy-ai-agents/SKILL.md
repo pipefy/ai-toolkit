@@ -46,7 +46,7 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Creation workflow (discover → validate → create → verify)
 
-**Consent:** create or suggest an AI agent only when the user explicitly asked for AI / an agent. If AI seems useful but was not requested, ask first — never introduce agents without being asked.
+**Consent:** create an AI agent only when the user asked for AI or for an agent. When an agent seems useful and the user did not ask for it, name it as an option with the reason and ask. Do not create it.
 
 Never guess event IDs, phase IDs, action types, or field IDs.
 

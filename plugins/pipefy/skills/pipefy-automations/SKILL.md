@@ -64,7 +64,7 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
 ## AI automations (prompt-driven)
 
-**Consent:** create or suggest an AI automation only when the user explicitly asked for AI. If it seems useful but was not requested, ask first — never introduce AI automations without being asked.
+**Consent:** create an AI automation only when the user asked for AI. When AI seems useful and the user did not ask for it, name it as an option with the reason and ask. Do not create it.
 
 | Operation | Purpose |
 | ------------ | --------- |
@@ -285,7 +285,7 @@ What to do with that intent:
    `sla_based` takes its parameter as `event_params.kindOfSla`, **camelCase**, even though `get_automation_events` reports it as `kind_of_sla`. Values are capitalized: `Expired`, `Late`, `Overdue`. Sending the catalog spelling fails with "Field is not defined on AutomationEventParamsInput". Shape the action with the `field_map` recipe below, including `inputMode`.
 3. **`update_card(label_ids=[...])` is a one-off correction, not automation.** It **replaces** the card's whole label list: include every id that should remain; do not send only the new one. Something has to run the call every time. Nothing persists as process behavior once the session ends. Use it to fix specific cards the user points at, and say so plainly. **Do not call it across a set of cards to stand in for the rule**, and do not loop it on a schedule: that makes the agent the runtime instead of the process.
 4. **Label CRUD is a different thing.** `create_label`, `update_label` and `delete_label` manage the label definitions on a pipe (name, color). None of them applies a label to a card, and none of them is the automation action.
-5. **Do not offer an AI automation or agent behavior as the alternative.** Some organizations forbid AI in their processes, and the [consent rule](#ai-automations-prompt-driven) applies here: propose AI only when the user explicitly asked for it.
+5. **Do not offer an AI automation or agent behavior as the alternative.** The field rule in item 2 carries the same signal, and a native rule comes before AI. Some organizations also forbid AI in their processes.
 
 ### `field_map` destination `fieldId`
 

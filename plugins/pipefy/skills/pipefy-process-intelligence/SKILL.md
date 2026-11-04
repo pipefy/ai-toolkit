@@ -94,10 +94,12 @@ Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per w
 | Cards stuck in a phase for >7 days | Add due date field + overdue automation |
 | Phase transitions always done by same person | Automate the transition condition |
 | Fields never filled in certain phases | Remove or make optional |
-| Same comment posted repeatedly | AI agent to auto-post based on trigger |
+| Same comment posted repeatedly | A native rule when a field test decides the comment. An AI agent on a card event, as an option, only when the comment needs judgment. |
 | No automation between intake and first action | Add "notify assignee" automation on card creation |
 | Large field count on start form | Move optional fields to later phases |
 | Phases with 0 cards over 90 days (whole pipe, not a sample) | Merge into a neighboring phase, or replace the hop with an automation or AI agent. Do not treat an empty phase as a reason to delete the pipe. |
+
+Choose the Pipefy part for each opportunity with the selection table and the rules under it in `pipefy-process-design` ("Choose the Pipefy part for each step"). Repetition alone does not prove a need for AI: a native rule covers a repeated step with a fixed test. An AI agent can act on a card event, such as a new card or a move to a phase, not only in a conversation. Do not create AI without an explicit yes from the user.
 
 ---
 
@@ -163,6 +165,6 @@ Keep Impact to one line. Do not invent volume, hourly cost, or lead time; name e
 ## See also
 
 - `pipefy-automations` — detailed automation creation guide.
-- `pipefy-ai-agents` — add conversational agents for user-facing automation.
+- `pipefy-ai-agents`: AI agents that act on a card event or in a conversation.
 - `pipefy-observability` — check credit and execution data to quantify improvement impact.
 - `pipefy-process-impact` for a fuller justification; this skill only emits the Impact line per round.

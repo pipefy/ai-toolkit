@@ -37,7 +37,7 @@ cost avoided per week ≈ hours returned per week × hourly cost   (only if the 
 ```
 
    Never fill a gap yourself. Lead time and time per phase come from the timed card read, weekly volume from the user or a pipe report export (see Measuring), never from `cards_count` or an undated sample.
-4. **Name the cheapest step that removes the hop.** A traditional automation when the decision reads from fields ("if value > X, move"). An AI agent or AI automation only when the hop needs reading free text, documents, or a conversation. iPaaS when the work lives in another app. One sentence on which and why. Do not stack rule and AI as "do both now"; mention the AI step as optional when a rule leaves part of the hop manual.
+4. **Name the cheapest step that removes the hop.** Choose the part with the selection table and the rules under it in `pipefy-process-design` ("Choose the Pipefy part for each step"). Give one sentence on which part and why. An AI agent can act on a card event, such as a new card or a move to a phase, not only in a conversation. Repetition alone does not prove a need for AI: a native rule covers a repeated step with a fixed test.
 5. **End with one thing**: the missing numbers in one short question, or the next step (the next hop, a measured export, or building it with the domain skill).
 
 ## Output
@@ -47,7 +47,7 @@ In the user's language, four lines, under 150 words unless they asked for a writ
 ```text
 Where it pays: [hop], [what covers it today, if anything]
 Arithmetic: [formula with numbers or named gaps] = [hours per week, or the gap]
-Step: [automation | AI agent | iPaaS], [one sentence on why this one]
+Step: [traditional automation | AI automation | AI agent | integration], [one sentence on why this one]
 Next: [one question, or one offer]
 ```
 
