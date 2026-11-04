@@ -11,9 +11,8 @@ knowledge base kind. Plain-text/document updates omit any field the caller
 leaves unset, but validate every field they do pass.
 
 Documents are created one-shot from a local PDF: read the file (``.pdf``
-extension and 20 MiB cap enforced here, because the backend skips both when the
-document arrives as a URL rather than a raw upload), mint a presigned URL,
-PUT the bytes, then run the create mutation with the persistent download URL.
+extension and 20 MiB cap enforced here), mint a presigned URL, PUT the bytes,
+then run the create mutation with the persistent download URL.
 Every stage raises :class:`KnowledgeBaseDocumentUploadError` tagged with the
 step that failed. The presign and S3 PUT primitives are shared with the
 attachment upload pipeline.
@@ -76,8 +75,6 @@ MAX_PLAIN_TEXT_CONTENT_LENGTH = 3500
 MAX_KB_NAME_LENGTH = 80
 MAX_KB_DESCRIPTION_LENGTH = 300
 
-# Document policy, enforced client-side because the backend skips PDF/size
-# validation when a document arrives as a URL (the only path these tools use).
 DOCUMENT_PDF_SUFFIX = ".pdf"
 MAX_DOCUMENT_SIZE_BYTES = 20 * 1024 * 1024
 DOCUMENT_CONTENT_TYPE = "application/pdf"
@@ -322,9 +319,9 @@ class KnowledgeBaseService:
         """Create a pipe-scoped knowledge base document from a local PDF (one-shot).
 
         The pipeline reads the local PDF (validating the ``.pdf`` extension and
-        the 20 MiB cap client-side, since the backend skips both on the URL
-        path), requests a presigned URL for the pipe's organization, PUTs the
-        bytes, and runs the create mutation with the persistent download URL.
+        the 20 MiB cap client-side), requests a presigned URL for the pipe's
+        organization, PUTs the bytes, and runs the create mutation with the
+        persistent download URL.
         Indexing is asynchronous: the document may not be searchable by agents
         immediately after this returns.
 
@@ -478,8 +475,7 @@ class KnowledgeBaseService:
         """Create a pipe-scoped knowledge base data lookup.
 
         The definition is validated client-side (see
-        :func:`_parse_data_lookup_definition`) because the backend accepts
-        several shapes that only fail later, when an agent runs the lookup.
+        :func:`_parse_data_lookup_definition`) before the mutation is sent.
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.

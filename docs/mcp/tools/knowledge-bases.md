@@ -43,7 +43,7 @@ On update, only the fields you pass are validated and sent; the others keep thei
 
 `create_ai_knowledge_base_document` takes a local `file_path` and does the whole upload in one call: read the file, request a presigned URL for the pipe's organization (resolved from the pipe UUID), PUT the bytes to S3, then run the create mutation with the persistent download URL. The MCP server reads the file as the user, so `file_path` is a local path (`~` is expanded); the create tool is therefore not exposed in the remote profile.
 
-Client-side checks fail fast — they are the only guardrail on this path, because the backend skips its own PDF and size validation when a document is supplied as a URL rather than a raw upload:
+Client-side checks fail fast, before the upload starts:
 
 - `file_path`: must be a `.pdf` (case-insensitive extension), under 20 MiB.
 - `name`: required, 1-80 characters.
