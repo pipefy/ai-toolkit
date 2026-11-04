@@ -885,7 +885,7 @@ DATA_LOOKUP_FULL = {
     "updatedAt": "2026-07-18T00:00:00Z",
 }
 
-STATIC_CONDITION = {"field": "title", "operator": "contains", "value": "urgent"}
+STATIC_CONDITION = {"field": "title", "operator": "ilike", "value": "urgent"}
 AI_CONDITION = {
     "field": "customer_email",
     "operator": "eq",
@@ -897,14 +897,22 @@ AI_CONDITION = {
 
 
 CUSTOMER_EMAIL_UUID = "550e8400-e29b-41d4-a716-446655440201"
+TAGS_UUID = "550e8400-e29b-41d4-a716-446655440202"
 SOURCE_FIELDS = {
     "pipes": [
         {
             "id": "301234567",
             "start_form_fields": [
-                {"id": "customer_email", "uuid": CUSTOMER_EMAIL_UUID}
+                {"id": "customer_email", "uuid": CUSTOMER_EMAIL_UUID, "type": "email"}
             ],
-            "phases": [{"fields": [{"id": "status", "uuid": "phase-field-uuid"}]}],
+            "phases": [
+                {
+                    "fields": [
+                        {"id": "status", "uuid": "phase-field-uuid", "type": "select"},
+                        {"id": "tags", "uuid": TAGS_UUID, "type": "label_select"},
+                    ]
+                }
+            ],
         }
     ]
 }
@@ -990,7 +998,7 @@ class TestCreateDataLookup:
                 "conditions": [
                     {
                         "field": "title",
-                        "operator": "contains",
+                        "operator": "ilike",
                         "value": "urgent",
                         "usingFillWithAi": False,
                         "attribute": "TITLE",
@@ -1047,7 +1055,7 @@ class TestCreateDataLookup:
         assert conditions[1]["attribute"] == "CREATOR"
 
     @pytest.mark.anyio
-    async def test_given_targets_skip_source_read(self):
+    async def test_given_attributes_skip_source_read(self):
         executor = _data_lookup_create_executor()
         service = self._service(executor)
 
@@ -1055,13 +1063,103 @@ class TestCreateDataLookup:
             service,
             conditions=[
                 {**STATIC_CONDITION, "attribute": "TITLE"},
-                {**AI_CONDITION, "fieldUuid": CUSTOMER_EMAIL_UUID},
+                {
+                    "field": "labels",
+                    "operator": "contains",
+                    "value": "x",
+                    "attribute": "LABELS",
+                },
             ],
         )
 
         assert executor.execute_query.await_count == 1
         _, variables = executor.execute_query.await_args.args
-        assert variables["input"]["conditions"][1]["fieldUuid"] == CUSTOMER_EMAIL_UUID
+        assert variables["input"]["conditions"][1]["attribute"] == "LABELS"
+
+    @pytest.mark.anyio
+    async def test_given_field_uuid_reads_source_once_for_its_type(self):
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+
+        await self._create(
+            service,
+            conditions=[
+                {**AI_CONDITION, "fieldUuid": CUSTOMER_EMAIL_UUID},
+                {
+                    "field": "tags",
+                    "operator": "contains",
+                    "value": "x",
+                    "fieldUuid": TAGS_UUID,
+                },
+            ],
+        )
+
+        assert executor.execute_query.await_count == 2
+        read_query, _ = executor.execute_query.await_args_list[0].args
+        assert read_query is GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY
+        _, variables = executor.execute_query.await_args.args
+        uuids = [c["fieldUuid"] for c in variables["input"]["conditions"]]
+        assert uuids == [CUSTOMER_EMAIL_UUID, TAGS_UUID]
+
+    @pytest.mark.anyio
+    async def test_contains_on_list_field_sent(self):
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+
+        await self._create(
+            service,
+            conditions=[
+                {"field": "tags", "operator": "contains", "value": "x"},
+                {"field": "assignees", "operator": "contains", "value": "y"},
+            ],
+        )
+
+        _, variables = executor.execute_query.await_args.args
+        conditions = variables["input"]["conditions"]
+        assert [c["operator"] for c in conditions] == ["contains", "contains"]
+        assert conditions[0]["fieldUuid"] == TAGS_UUID
+        assert conditions[1]["attribute"] == "ASSIGNEES"
+
+    @pytest.mark.anyio
+    async def test_contains_on_text_field_rejected_before_write(self):
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+
+        with pytest.raises(ValueError) as exc:
+            await self._create(
+                service,
+                conditions=[
+                    {**STATIC_CONDITION, "operator": "contains"},
+                    {"field": "tags", "operator": "eq", "value": "x"},
+                ],
+            )
+        message = str(exc.value)
+        assert "conditions[0].operator 'contains' on field 'title'" in message
+        assert "Use ilike" in message
+        assert "conditions[1].operator 'eq' on field 'tags'" in message
+        assert executor.execute_query.await_count == 1
+
+    @pytest.mark.anyio
+    async def test_unknown_operator_rejected_before_wire(self):
+        executor = mock_executor({})
+        service = self._service(executor)
+
+        with pytest.raises(ValueError) as exc:
+            await self._create(
+                service,
+                conditions=[
+                    {**STATIC_CONDITION, "operator": "equals"},
+                    dict(STATIC_CONDITION),
+                    {**AI_CONDITION, "operator": "neq"},
+                ],
+            )
+        message = str(exc.value)
+        assert "conditions[0]: operator 'equals' is not valid" in message
+        assert "'eq', 'not_eq', 'contains' or 'ilike'" in message
+        assert "conditions[1]" not in message
+        assert "conditions[2]: operator 'neq' is not valid" in message
+        assert message.isascii()
+        executor.execute_query.assert_not_awaited()
 
     @pytest.mark.anyio
     async def test_custom_field_with_fixed_slug_rejected_before_write(self):
@@ -1131,6 +1229,21 @@ class TestCreateDataLookup:
 
         _, variables = executor.execute_query.await_args.args
         assert variables["input"]["conditions"][0]["value"] == "urgent"
+
+    @pytest.mark.anyio
+    async def test_operator_enum_from_package_root_sent_as_string(self):
+        from pipefy_sdk import DataLookupCondition, DataLookupOperator
+
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+        condition = DataLookupCondition(
+            field="status", operator=DataLookupOperator.NOT_EQ, value="done"
+        )
+
+        await self._create(service, conditions=[condition])
+
+        _, variables = executor.execute_query.await_args.args
+        assert variables["input"]["conditions"][0]["operator"] == "not_eq"
 
     @pytest.mark.anyio
     async def test_uuid_source_repo_id_rejected_before_wire(self):
@@ -1305,7 +1418,7 @@ class TestUpdateDataLookup:
                 "conditions": [
                     {
                         "field": "title",
-                        "operator": "contains",
+                        "operator": "ilike",
                         "value": "urgent",
                         "usingFillWithAi": False,
                         "attribute": "TITLE",
@@ -1428,7 +1541,16 @@ class TestDeleteDataLookup:
 class TestDataLookupConditionEdgeCases:
     @pytest.mark.anyio
     async def test_given_targets_sent_as_given(self):
-        executor = _data_lookup_create_executor()
+        source = {
+            "pipes": [
+                {
+                    "start_form_fields": [
+                        {"id": "labels", "uuid": "f-uuid-1", "type": "short_text"}
+                    ]
+                }
+            ]
+        }
+        executor = mock_executor(side_effect=[source, _CREATE_RESPONSE])
         service = KnowledgeBaseService(executor=executor)
 
         await service.create_ai_knowledge_base_data_lookup(
@@ -1441,11 +1563,11 @@ class TestDataLookupConditionEdgeCases:
                 {
                     "field": "labels",
                     "attribute": "LABELS",
-                    "operator": "eq",
+                    "operator": "contains",
                     "value": "x",
                 },
                 {
-                    "field": "label",
+                    "field": "labels",
                     "fieldUuid": "f-uuid-1",
                     "operator": "eq",
                     "value": "y",

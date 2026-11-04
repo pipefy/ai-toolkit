@@ -43,7 +43,11 @@ from pipefy_sdk.models.comment import (
 )
 from pipefy_sdk.models.field_definition import FIELD_TYPE_IDS, FieldTypeId
 from pipefy_sdk.models.inbox_email import InboxEmailDraft
-from pipefy_sdk.models.knowledge_base import DataLookupAttribute, DataLookupCondition
+from pipefy_sdk.models.knowledge_base import (
+    DataLookupAttribute,
+    DataLookupCondition,
+    DataLookupOperator,
+)
 from pipefy_sdk.models.member_invite import MemberInvite
 from pipefy_sdk.models.portal import (
     CreatePortalElementInput,
@@ -81,6 +85,7 @@ __all__ = [
     "CreateSendTaskAutomationInput",
     "DataLookupAttribute",
     "DataLookupCondition",
+    "DataLookupOperator",
     "DeleteCommentInput",
     "FIELD_TYPE_IDS",
     "FieldTypeId",

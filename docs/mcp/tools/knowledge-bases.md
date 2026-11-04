@@ -63,7 +63,7 @@ The toolkit validates the definition client-side because the API accepts shapes 
 
 - **`source_repo_id` must be a numeric id**: the pipe ID for a pipe, or the table's `internal_id` (from `get_table` or `search_tables`) for a database table. The toolkit rejects a UUID or the table's alphanumeric `id`. The API accepts a UUID at create time, but the lookup then breaks when an agent runs it, long after the write succeeded.
 - **`output_fields`**: 1-30 field IDs — start-form/phase field slugs (e.g. `customer_email`) plus static fields such as `id`, `title`, `current_phase`, `assignees`, `created_by`, `created_at`. For a table, the slugs are the `table_fields[].id` values from `get_table`.
-- **`conditions`**: at least one object, each with `field` (a field ID as above) and `operator` (an opaque backend string, e.g. `"eq"`, `"ilike"`). A condition is one of two shapes:
+- **`conditions`**: at least one object, each with `field` (a field ID as above) and `operator` (see "Operators follow the field type" below). A condition is one of two shapes:
   - **Static** — `value` is required and must be a string (the backend silently drops non-scalar values and the runtime rejects non-strings): `{"field": "title", "operator": "ilike", "value": "urgent"}`.
   - **AI-filled** — `usingFillWithAi: true` with `inputName`, `inputType` (opaque, e.g. `"text"`, `"number"`), and `inputDescription`; `value` must be omitted (the AI asks the user for it at runtime): `{"field": "customer_email", "operator": "eq", "usingFillWithAi": true, "inputName": "Customer email", "inputType": "text", "inputDescription": "The customer's email address"}`.
 
@@ -73,18 +73,20 @@ The toolkit validates the definition client-side because the API accepts shapes 
 
 - The fixed slugs `id`, `title`, `created_by`, `created_at`, `due_date`, `finished_at`, `current_phase`, `labels`, and `assignees` get the `attribute` `ID`, `TITLE`, `CREATOR`, `CREATED_AT`, `DUE_DATE`, `FINISHED_AT`, `CURRENT_PHASE`, `LABELS`, or `ASSIGNEES`.
 - Any other slug gets its field uuid.
-- The toolkit reads the source's fields once when a condition sets neither `fieldUuid` nor `attribute`. A `source_repo_id` that names no pipe or table the credential can read fails there, before the write.
+- The toolkit reads the source's fields once when a condition does not set `attribute`. A `source_repo_id` that names no pipe or table the credential can read fails there, before the write.
 - A slug fails before the write when it is not a field of the source, or when it names two targets. Pipefy gives a custom field labeled "Labels" the slug `labels`, so that slug names both the fixed field and the custom field. For these, set `fieldUuid` (from `get_start_form_fields`, `get_phase_fields`, or `get_table`) or `attribute` on the condition.
 
-You can also pass `fieldUuid` or `attribute` yourself, with the values above. A condition takes one of the two, not both. The toolkit sends them as given and does not check them against the source.
+You can also pass `fieldUuid` or `attribute` yourself, with the values above. A condition takes one of the two, not both. The toolkit sends an `attribute` as given. It looks up a `fieldUuid` in the source's fields, because the operator check needs the field type. A `fieldUuid` that is not a field of the source also fails before the write.
 
-**Operators follow the records search.** `eq` matches an exact value and `ilike` matches a case-insensitive substring. `contains` returns no records on a text field such as `title`, so use `ilike` for a substring match.
+**Operators follow the field type.** `operator` is `eq` (exact value), `not_eq`, or `ilike` (case-insensitive substring) on an ordinary field, and `contains` on a list field (labels, assignees, checklists, connections). Any other operator, `contains` on an ordinary field, or another operator on a list field fails before the write. The error names every failing condition by its index.
+
+A list field is a custom field of type `label_select`, `assignee_select`, `checklist_vertical`, `checklist_horizontal`, or `connector`, or the fixed field `labels` or `assignees`. In the records search, `contains` on a text field returns no records, so `ilike` is the substring match on an ordinary field. The Pipefy UI also writes `contains` only on list fields.
 
 **A table has no phases.** A condition on `current_phase` saves on a table source, and the lookup then fails when the agent runs.
 
 **Reads never return `conditions`.** The API stores them but does not expose them on `get_ai_knowledge_base_data_lookup` (or on the create/update responses), so keep your lookup definition — including conditions — as the client-side source of truth.
 
-**Updates replace the whole definition.** The backend rewrites the stored definition with exactly what the update carries: `source_repo_id`, `output_fields`, and `conditions` are required on every `update_ai_knowledge_base_data_lookup` call (pass the complete condition set, not a delta). Only `name`/`description` behave partially (omitted keeps the stored value). An update of a lookup that used the older card search moves it to the records search. There, a `contains` condition on a text field returns no records, so change it to `ilike` when you resend the definition.
+**Updates replace the whole definition.** The backend rewrites the stored definition with exactly what the update carries: `source_repo_id`, `output_fields`, and `conditions` are required on every `update_ai_knowledge_base_data_lookup` call (pass the complete condition set, not a delta). Only `name`/`description` behave partially (omitted keeps the stored value). An update also moves a lookup that used the older card search to the records search. Change `contains` on an ordinary field to `ilike` when you resend the definition.
 
 ## Probe semantics and the write gate
 

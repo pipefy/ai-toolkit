@@ -378,8 +378,12 @@ _CONDITIONS_HELP = (
     'operator, and either a string value (static) or "usingFillWithAi": true '
     "with inputName/inputType/inputDescription (AI-filled). The command sets "
     "fieldUuid or attribute from field, and rejects a slug that names two "
-    'fields: set fieldUuid or attribute on that condition. Use "ilike" for a '
-    'substring match: "contains" returns no records on a text field.'
+    "fields: set fieldUuid or attribute on that condition. A fieldUuid that is "
+    'not a field of the source also fails before the write. operator is "eq" '
+    '(exact value), "not_eq", or "ilike" (case-insensitive substring) on an '
+    'ordinary field, and "contains" on a list field (labels, assignees, '
+    'checklists, connections). Any other operator, "contains" on an ordinary '
+    "field, or another operator on a list field fails before the write."
 )
 
 
@@ -503,9 +507,9 @@ def kb_data_lookup_update(
     Every update rewrites the stored definition with exactly what this call
     carries: ``--source-repo-id``, ``--output-fields``, and ``--conditions``
     are required every time. Only ``--name``/``--description`` are partial.
-    The update writes the records search, as create does. There, a
-    ``contains`` condition on a text field returns no records, so change it to
-    ``ilike`` when you resend the definition. Gated on the read-access probe.
+    An update also moves a lookup that used the older card search to the
+    records search. Change ``contains`` on an ordinary field to ``ilike`` when
+    you resend the definition. Gated on the read-access probe.
     """
     fields, condition_list = _parse_data_lookup_options(output_fields, conditions)
 

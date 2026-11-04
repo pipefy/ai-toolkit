@@ -246,11 +246,13 @@ GET_DATA_LOOKUP_SOURCE_FIELDS_QUERY = gql(
             start_form_fields {
                 id
                 uuid
+                type
             }
             phases {
                 fields {
                     id
                     uuid
+                    type
                 }
             }
         }
