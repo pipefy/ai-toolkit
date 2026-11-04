@@ -721,10 +721,11 @@ class AiAgentTools:
                     ``fieldId`` values (slug or ``internal_id``).
                 strict_unknown_action_types: When ``True`` (default), unknown ``actionType`` values
                     are reported in ``problems``. When ``False``, they appear in ``warnings`` only.
-                data_source_ids: Optional agent-level knowledge base IDs to attach. These are
-                    unioned with each behavior's ``actionParams.aiBehaviorParams.dataSourceIds``
-                    and checked against the pipe's knowledge bases (via ``get_ai_knowledge_bases``);
-                    unknown IDs produce **warnings** only (``valid`` stays true). If the knowledge
+                data_source_ids: Optional agent-level knowledge base IDs to attach. A behavior
+                    ``dataSourceIds`` entry that ``data_source_ids`` leaves out is a **problem**,
+                    because the agent fails to save. Without ``data_source_ids``, each behavior id
+                    is a warning. Every id is also checked against the pipe's knowledge bases (via
+                    ``get_ai_knowledge_bases``). Unknown IDs produce **warnings** only. If the knowledge
                     base list cannot be read, a single warning is added and the membership check is
                     skipped. Discover valid IDs via ``get_ai_knowledge_bases(pipe_uuid)``.
             """

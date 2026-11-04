@@ -99,7 +99,7 @@ A list field is a custom field of type `label_select`, `assignee_select`, `check
 
 ## Attaching a source to an agent
 
-`validate_ai_agent_behaviors` accepts an optional `data_source_ids` (agent-level). It is unioned with each behavior's `actionParams.aiBehaviorParams.dataSourceIds` and checked against the pipe's knowledge bases: IDs not present on the pipe produce **warnings only** (`valid` stays true). If the knowledge base list cannot be read, a single warning is added and the membership check is skipped — a read failure is never reported as a broken reference.
+`validate_ai_agent_behaviors` accepts an optional `data_source_ids` (agent-level). A behavior `dataSourceIds` entry that `data_source_ids` leaves out is a **problem**, because the agent fails to save. Without `data_source_ids`, each behavior id is a warning. Every id is also checked against the pipe's knowledge bases, and an id that is not on the pipe is a **warning only**. If the knowledge base list cannot be read, a single warning is added and the membership check is skipped. A read failure is never reported as a broken reference.
 
 ## Error classification
 

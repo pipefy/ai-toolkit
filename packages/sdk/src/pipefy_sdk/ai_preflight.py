@@ -21,6 +21,10 @@ from pipefy_sdk.ai_pipe_validation import (
 )
 from pipefy_sdk.behavior_placeholders import expand_behaviors_placeholders
 from pipefy_sdk.models import BehaviorInput
+from pipefy_sdk.models.ai_agent import (
+    KNOWLEDGE_BASE_ATTACH_RULE,
+    behavior_sources_missing_from_agent,
+)
 
 if TYPE_CHECKING:
     from pipefy_sdk.client import PipefyClient
@@ -274,6 +278,35 @@ def _collect_configured_data_source_ids(
     return configured
 
 
+def _behavior_only_source_findings(
+    behaviors: list[dict[str, Any]],
+    agent_data_source_ids: list[str] | None,
+) -> tuple[list[str], list[str]]:
+    """Return (problems, warnings) for behavior knowledge base ids the agent leaves out.
+
+    With ``agent_data_source_ids`` given, a behavior id outside it is a problem:
+    the save fails. Without it the agent-level list is unknown (an update can
+    keep the current one), so each behavior id is a warning.
+    """
+    behavior_source_ids = [_behavior_data_source_ids(b) for b in behaviors]
+    if agent_data_source_ids is None:
+        labels = behavior_sources_missing_from_agent(behavior_source_ids, ())
+        if not labels:
+            return [], []
+        return [], [
+            f"{', '.join(labels)}: pass data_source_ids to check these ids. "
+            f"{KNOWLEDGE_BASE_ATTACH_RULE}"
+        ]
+    agent_ids = {stripped for did in agent_data_source_ids if (stripped := did.strip())}
+    missing = behavior_sources_missing_from_agent(behavior_source_ids, agent_ids)
+    if not missing:
+        return [], []
+    return [
+        f"{', '.join(missing)}: not in the agent-level data_source_ids. "
+        f"{KNOWLEDGE_BASE_ATTACH_RULE}"
+    ], []
+
+
 async def _data_source_membership_warnings(
     client: PipefyClient,
     pipe_id: str,
@@ -335,11 +368,12 @@ async def validate_ai_agent_behaviors_sdk(
         pipe_id: Numeric pipe id for field/phase/relation context.
         behaviors: Raw behavior dicts (1-5).
         strict_unknown_action_types: When False, unknown action types become warnings only.
-        data_source_ids: Optional agent-level knowledge base ids. These are unioned
-            with each behavior's ``actionParams.aiBehaviorParams.dataSourceIds`` and
-            checked against the pipe's knowledge bases; unknown ids yield warnings
-            only (``valid`` stays true). A failed list probe skips the membership
-            check with a single warning.
+        data_source_ids: Optional agent-level knowledge base ids. A behavior
+            ``dataSourceIds`` entry that ``data_source_ids`` leaves out is a problem,
+            because the agent fails to save. Without ``data_source_ids``, each
+            behavior id is a warning. Every id is also checked against the pipe's
+            knowledge bases, and an unknown id is a warning only. A failed list
+            probe skips the membership check with a single warning.
     """
     pid = str(pipe_id).strip()
     if not pid:
@@ -489,6 +523,12 @@ async def validate_ai_agent_behaviors_sdk(
     )
     problems = [*problems, *transition_problems]
     warnings = [*tool_warnings, *helper_warnings]
+
+    source_problems, source_warnings = _behavior_only_source_findings(
+        behaviors, data_source_ids
+    )
+    problems = [*problems, *source_problems]
+    warnings = [*warnings, *source_warnings]
 
     configured_data_source_ids = _collect_configured_data_source_ids(
         behaviors, data_source_ids

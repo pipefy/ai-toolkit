@@ -299,12 +299,16 @@ Usage: pipefy agent validate-behaviors [OPTIONS]
 │                                               them as warnings only.         │
 │                                               [default: strict]              │
 │    --data-source-id                     TEXT  Agent-level knowledge base ID  │
-│                                               to attach (repeatable).        │
-│                                               Unioned with behavior-level    │
-│                                               dataSourceIds and checked      │
-│                                               against the pipe's knowledge   │
-│                                               bases; unknown IDs are         │
-│                                               warnings only.                 │
+│                                               to attach (repeatable). A      │
+│                                               behavior dataSourceIds entry   │
+│                                               that these IDs leave out is a  │
+│                                               problem, because the agent     │
+│                                               fails to save. Without this    │
+│                                               option, each behavior id is a  │
+│                                               warning. Every id is also      │
+│                                               checked against the pipe's     │
+│                                               knowledge bases, and an        │
+│                                               unknown id is a warning only.  │
 │    --json            -j                                                      │
 │    --help                                     Show this message and exit.    │
 ╰──────────────────────────────────────────────────────────────────────────────╯

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable, Sequence
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
@@ -433,6 +433,51 @@ def _expand_raw_behaviors(value: object) -> object:
     ]
 
 
+KNOWLEDGE_BASE_ATTACH_RULE = (
+    "Put each knowledge base id in both the agent-level data_source_ids and the "
+    "behavior's dataSourceIds. With the id on the behavior only, the agent fails "
+    "to save."
+)
+
+
+def behavior_sources_missing_from_agent(
+    behavior_source_ids: Sequence[Sequence[str]],
+    agent_source_ids: Collection[str],
+) -> list[str]:
+    """Label each behavior knowledge base id that the agent-level list leaves out.
+
+    Args:
+        behavior_source_ids: The ``dataSourceIds`` of each behavior, in behavior order.
+        agent_source_ids: The agent-level ``data_source_ids``.
+    """
+    return [
+        f"behaviors[{i}].dataSourceIds {source_id!r}"
+        for i, source_ids in enumerate(behavior_source_ids)
+        for source_id in source_ids
+        if source_id not in agent_source_ids
+    ]
+
+
+def _behavior_source_ids(behavior: BehaviorInput) -> list[str]:
+    params = (
+        behavior.action_params.ai_behavior_params if behavior.action_params else None
+    )
+    return list(params.data_source_ids or []) if params else []
+
+
+def _raise_for_behavior_only_sources(
+    behaviors: list[BehaviorInput], agent_source_ids: list[str]
+) -> None:
+    missing = behavior_sources_missing_from_agent(
+        [_behavior_source_ids(b) for b in behaviors], set(agent_source_ids)
+    )
+    if missing:
+        raise ValueError(
+            f"{', '.join(missing)}: not in the agent-level data_source_ids. "
+            f"{KNOWLEDGE_BASE_ATTACH_RULE}"
+        )
+
+
 _AgentInstruction = Annotated[str, BeforeValidator(_normalize_agent_instruction)]
 _AgentBehaviors = Annotated[
     list[BehaviorInput],
@@ -461,6 +506,11 @@ class CreateAiAgentInput(BaseModel):
     data_source_ids: list[str] = Field(default_factory=list)
     disabled_at: NonBlankStr | None = None
 
+    @model_validator(mode="after")
+    def behavior_sources_must_be_agent_sources(self) -> Self:
+        _raise_for_behavior_only_sources(self.behaviors, self.data_source_ids)
+        return self
+
 
 class UpdateAiAgentInput(BaseModel):
     """Validated input for updating an AI Agent.
@@ -488,3 +538,9 @@ class UpdateAiAgentInput(BaseModel):
     data_source_ids: list[str] | None = None
     disabled_at: NonBlankStr | None = None
     preserve_disabled_at: bool = True
+
+    @model_validator(mode="after")
+    def behavior_sources_must_be_agent_sources(self) -> Self:
+        if self.data_source_ids is not None:
+            _raise_for_behavior_only_sources(self.behaviors, self.data_source_ids)
+        return self
