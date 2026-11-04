@@ -1,18 +1,18 @@
 """Service for pipe-scoped AI knowledge bases: list, plain text/document/data lookup CRUD, probe.
 
 Client-side limits fail fast before the network call so callers get an
-actionable ``ValueError`` instead of a backend 422. The limits mirror the
-downstream ``DataSource``/``KnowledgeBasePlainText`` model validations:
-``content`` and ``name`` are required and ``content`` is capped at 3500 chars;
-``description`` is required (the GraphQL schema marks it optional, but the
-backend rejects a blank one) and capped at 900 chars — one shared rule for
-every knowledge base kind. Plain-text/document updates omit any field the
-caller leaves unset, but validate every field they do pass.
+actionable ``ValueError`` instead of a backend 422. The limits match the
+Pipefy UI forms: ``name`` is required and capped at 80 chars, ``description``
+is required and capped at 300 chars, and plain text ``content`` is capped at
+3500 chars. An item over them cannot be saved from the UI until the user
+shortens it. The GraphQL schema marks ``description`` optional, but the backend
+rejects a blank one. The same name and description rules apply to every
+knowledge base kind. Plain-text/document updates omit any field the caller
+leaves unset, but validate every field they do pass.
 
 Documents are created one-shot from a local PDF: read the file (``.pdf``
-extension and 20 MiB cap enforced here, because the backend skips both when the
-document arrives as a URL rather than a raw upload), mint a presigned URL,
-PUT the bytes, then run the create mutation with the persistent download URL.
+extension and 20 MiB cap enforced here), mint a presigned URL, PUT the bytes,
+then run the create mutation with the persistent download URL.
 Every stage raises :class:`KnowledgeBaseDocumentUploadError` tagged with the
 step that failed. The presign and S3 PUT primitives are shared with the
 attachment upload pipeline.
@@ -81,12 +81,9 @@ from pipefy_sdk.services.types import (
 
 MAX_PLAIN_TEXT_CONTENT_LENGTH = 3500
 
-# One shared cap for every knowledge base kind (plain text, document, data
-# lookup): the backend enforces it once, on the common ``DataSource`` model.
-MAX_KB_DESCRIPTION_LENGTH = 900
+MAX_KB_NAME_LENGTH = 80
+MAX_KB_DESCRIPTION_LENGTH = 300
 
-# Document policy, enforced client-side because the backend skips PDF/size
-# validation when a document arrives as a URL (the only path these tools use).
 DOCUMENT_PDF_SUFFIX = ".pdf"
 MAX_DOCUMENT_SIZE_BYTES = 20 * 1024 * 1024
 DOCUMENT_CONTENT_TYPE = "application/pdf"
@@ -110,7 +107,7 @@ def _require_non_blank(value: str, name: str) -> str:
 
 
 def _require_bounded(value: str, name: str, max_length: int) -> str:
-    """Require a non-blank, length-capped field (content/description on write)."""
+    """Require a non-blank, length-capped field (name/content/description on write)."""
     stripped = value.strip()
     if not stripped:
         raise ValueError(f"{name} must be a non-empty string")
@@ -197,16 +194,16 @@ class KnowledgeBaseService:
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id).
-            name: Display name (required, non-blank).
+            name: Display name (required, 1-80 chars).
             content: Plain text content (required, 1-3500 chars).
-            description: Description (required by the backend, 1-900 chars).
+            description: Description (required, 1-300 chars).
 
         Returns:
             The created plain text dict.
         """
         input_obj = {
             "pipeUuid": _require_non_blank(pipe_uuid, "pipe_uuid"),
-            "name": _require_non_blank(name, "name"),
+            "name": _require_bounded(name, "name", MAX_KB_NAME_LENGTH),
             "content": _require_bounded(
                 content, "content", MAX_PLAIN_TEXT_CONTENT_LENGTH
             ),
@@ -241,9 +238,9 @@ class KnowledgeBaseService:
         Args:
             plain_text_id: Plain text UUID to update.
             pipe_uuid: Pipe UUID (not the numeric id).
-            name: New name (non-blank when given).
+            name: New name (1-80 chars when given).
             content: New content (1-3500 chars when given).
-            description: New description (1-900 chars when given).
+            description: New description (1-300 chars when given).
 
         Returns:
             The updated plain text dict.
@@ -257,7 +254,7 @@ class KnowledgeBaseService:
             "plainTextId": _require_non_blank(plain_text_id, "plain_text_id"),
         }
         if name is not None:
-            input_obj["name"] = _require_non_blank(name, "name")
+            input_obj["name"] = _require_bounded(name, "name", MAX_KB_NAME_LENGTH)
         if content is not None:
             input_obj["content"] = _require_bounded(
                 content, "content", MAX_PLAIN_TEXT_CONTENT_LENGTH
@@ -331,16 +328,16 @@ class KnowledgeBaseService:
         """Create a pipe-scoped knowledge base document from a local PDF (one-shot).
 
         The pipeline reads the local PDF (validating the ``.pdf`` extension and
-        the 20 MiB cap client-side, since the backend skips both on the URL
-        path), requests a presigned URL for the pipe's organization, PUTs the
-        bytes, and runs the create mutation with the persistent download URL.
+        the 20 MiB cap client-side), requests a presigned URL for the pipe's
+        organization, PUTs the bytes, and runs the create mutation with the
+        persistent download URL.
         Indexing is asynchronous: the document may not be searchable by agents
         immediately after this returns.
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id).
-            name: Display name (required, non-blank).
-            description: Description (required by the backend, 1-900 chars).
+            name: Display name (required, 1-80 chars).
+            description: Description (required, 1-300 chars).
             file_path: Local path to a ``.pdf`` file (``~`` is expanded).
 
         Returns:
@@ -353,7 +350,7 @@ class KnowledgeBaseService:
                 ``s3_upload``/``kb_create``).
         """
         pipe_uuid = _require_non_blank(pipe_uuid, "pipe_uuid")
-        name = _require_non_blank(name, "name")
+        name = _require_bounded(name, "name", MAX_KB_NAME_LENGTH)
         description = _require_bounded(
             description, "description", MAX_KB_DESCRIPTION_LENGTH
         )
@@ -400,8 +397,8 @@ class KnowledgeBaseService:
         Args:
             document_id: Document ID to update.
             pipe_uuid: Pipe UUID (not the numeric id).
-            name: New name (non-blank when given).
-            description: New description (1-900 chars when given).
+            name: New name (1-80 chars when given).
+            description: New description (1-300 chars when given).
 
         Returns:
             The updated document dict.
@@ -413,7 +410,7 @@ class KnowledgeBaseService:
             "documentId": _require_non_blank(document_id, "document_id"),
         }
         if name is not None:
-            input_obj["name"] = _require_non_blank(name, "name")
+            input_obj["name"] = _require_bounded(name, "name", MAX_KB_NAME_LENGTH)
         if description is not None:
             input_obj["description"] = _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
@@ -486,8 +483,7 @@ class KnowledgeBaseService:
         """Create a pipe-scoped knowledge base data lookup.
 
         The definition is validated client-side (see
-        :func:`_parse_data_lookup_definition`) because the backend accepts
-        several shapes that only fail later, when an agent runs the lookup.
+        :func:`_parse_data_lookup_definition`) before the mutation is sent.
         The lookup uses the records search: each condition gets ``fieldUuid``
         or ``attribute`` from its ``field`` slug, which takes one extra read of
         the source's fields when a condition sets neither. A slug that matches
@@ -496,8 +492,8 @@ class KnowledgeBaseService:
 
         Args:
             pipe_uuid: Pipe UUID (not the numeric id) that owns the lookup.
-            name: Display name (required, non-blank).
-            description: Description (required by the backend, 1-900 chars).
+            name: Display name (required, 1-80 chars).
+            description: Description (required, 1-300 chars).
             source_repo_id: Numeric ID of the source pipe, or the numeric
                 ``internal_id`` of the source database table.
             output_fields: Field IDs returned from matching records (1-30).
@@ -509,7 +505,7 @@ class KnowledgeBaseService:
         """
         input_obj = {
             "pipeUuid": _require_non_blank(pipe_uuid, "pipe_uuid"),
-            "name": _require_non_blank(name, "name"),
+            "name": _require_bounded(name, "name", MAX_KB_NAME_LENGTH),
             "description": _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
             ),
@@ -555,8 +551,8 @@ class KnowledgeBaseService:
                 source from the stored definition).
             output_fields: Field IDs returned from matching records (1-30).
             conditions: Record-filter conditions (at least one).
-            name: New name (non-blank when given; unset keeps stored value).
-            description: New description (1-900 chars when given).
+            name: New name (1-80 chars when given; unset keeps stored value).
+            description: New description (1-300 chars when given).
 
         Returns:
             The updated data lookup dict (without ``conditions``).
@@ -566,7 +562,7 @@ class KnowledgeBaseService:
             "dataLookupId": _require_non_blank(data_lookup_id, "data_lookup_id"),
         }
         if name is not None:
-            input_obj["name"] = _require_non_blank(name, "name")
+            input_obj["name"] = _require_bounded(name, "name", MAX_KB_NAME_LENGTH)
         if description is not None:
             input_obj["description"] = _require_bounded(
                 description, "description", MAX_KB_DESCRIPTION_LENGTH
@@ -789,7 +785,7 @@ def _parse_data_lookup_definition(
       or non-string value). AI-filled conditions need their input trio. Both
       rules live on :class:`DataLookupCondition`.
     - ``output_fields`` must be non-empty (backend-enforced) and at most 30
-      (the backend ``DataLookup`` model cap), each entry a non-blank field ID.
+      (backend cap), each entry a non-blank field ID.
 
     Raises:
         ValueError: On any rule violation, with the offending index for

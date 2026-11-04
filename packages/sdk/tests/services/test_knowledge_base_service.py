@@ -13,6 +13,7 @@ from pipefy_sdk.queries.knowledge_base_queries import (
 from pipefy_sdk.services import knowledge_base_service as kb_module
 from pipefy_sdk.services.knowledge_base_service import (
     MAX_KB_DESCRIPTION_LENGTH,
+    MAX_KB_NAME_LENGTH,
     MAX_PLAIN_TEXT_CONTENT_LENGTH,
     KnowledgeBaseService,
 )
@@ -213,12 +214,26 @@ class TestCreatePlainText:
         executor = mock_executor({})
         service = KnowledgeBaseService(executor=executor)
 
-        with pytest.raises(ValueError, match="900"):
+        with pytest.raises(ValueError, match="300"):
             await service.create_ai_knowledge_base_plain_text(
                 "p",
                 name="n",
                 content="c",
                 description="y" * (MAX_KB_DESCRIPTION_LENGTH + 1),
+            )
+        executor.execute_query.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_name_over_limit_rejected(self):
+        executor = mock_executor({})
+        service = KnowledgeBaseService(executor=executor)
+
+        with pytest.raises(ValueError, match="80"):
+            await service.create_ai_knowledge_base_plain_text(
+                "p",
+                name="n" * (MAX_KB_NAME_LENGTH + 1),
+                content="c",
+                description="d",
             )
         executor.execute_query.assert_not_awaited()
 
@@ -296,6 +311,17 @@ class TestUpdatePlainText:
         with pytest.raises(ValueError, match="3500"):
             await service.update_ai_knowledge_base_plain_text(
                 "kb-1", "p", content="x" * (MAX_PLAIN_TEXT_CONTENT_LENGTH + 1)
+            )
+        executor.execute_query.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_name_over_limit_rejected(self):
+        executor = mock_executor({})
+        service = KnowledgeBaseService(executor=executor)
+
+        with pytest.raises(ValueError, match="80"):
+            await service.update_ai_knowledge_base_plain_text(
+                "kb-1", "p", name="n" * (MAX_KB_NAME_LENGTH + 1)
             )
         executor.execute_query.assert_not_awaited()
 
@@ -575,7 +601,7 @@ class TestCreateDocument:
         service = KnowledgeBaseService(executor=executor, s3_uploader=_FakeUploader())
         pdf = _write_pdf(tmp_path)
 
-        with pytest.raises(ValueError, match="900"):
+        with pytest.raises(ValueError, match="300"):
             await service.create_ai_knowledge_base_document(
                 "p",
                 name="n",
@@ -583,6 +609,23 @@ class TestCreateDocument:
                 file_path=pdf,
             )
         executor.execute_query.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_name_over_limit_rejected(self, tmp_path):
+        executor = _create_flow_executor()
+        uploader = _FakeUploader()
+        service = KnowledgeBaseService(executor=executor, s3_uploader=uploader)
+        pdf = _write_pdf(tmp_path)
+
+        with pytest.raises(ValueError, match="80"):
+            await service.create_ai_knowledge_base_document(
+                "p",
+                name="n" * (MAX_KB_NAME_LENGTH + 1),
+                description="d",
+                file_path=pdf,
+            )
+        executor.execute_query.assert_not_awaited()
+        assert uploader.calls == []
 
     @pytest.mark.anyio
     async def test_org_resolution_failure_tagged_presigned_url(self, tmp_path):
@@ -788,9 +831,20 @@ class TestUpdateDocument:
         executor = mock_executor({})
         service = KnowledgeBaseService(executor=executor)
 
-        with pytest.raises(ValueError, match="900"):
+        with pytest.raises(ValueError, match="300"):
             await service.update_ai_knowledge_base_document(
                 "kb-2", "p", description="y" * (MAX_KB_DESCRIPTION_LENGTH + 1)
+            )
+        executor.execute_query.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_name_over_limit_rejected(self):
+        executor = mock_executor({})
+        service = KnowledgeBaseService(executor=executor)
+
+        with pytest.raises(ValueError, match="80"):
+            await service.update_ai_knowledge_base_document(
+                "kb-2", "p", name="n" * (MAX_KB_NAME_LENGTH + 1)
             )
         executor.execute_query.assert_not_awaited()
 
@@ -1175,10 +1229,30 @@ class TestCreateDataLookup:
     async def test_over_limit_description_rejected(self):
         service = self._service(mock_executor({}))
 
-        with pytest.raises(ValueError, match="description"):
+        with pytest.raises(ValueError, match="description must be at most 300"):
             await self._create(
                 service, description="y" * (MAX_KB_DESCRIPTION_LENGTH + 1)
             )
+
+    @pytest.mark.anyio
+    async def test_description_at_ui_limit_sent(self):
+        executor = _source_read_then_create_executor()
+        service = self._service(executor)
+
+        description = "y" * MAX_KB_DESCRIPTION_LENGTH
+        await self._create(service, description=description)
+
+        _, variables = executor.execute_query.await_args.args
+        assert variables["input"]["description"] == description
+
+    @pytest.mark.anyio
+    async def test_over_limit_name_rejected(self):
+        executor = mock_executor({})
+        service = self._service(executor)
+
+        with pytest.raises(ValueError, match="name must be at most 80"):
+            await self._create(service, name="n" * (MAX_KB_NAME_LENGTH + 1))
+        executor.execute_query.assert_not_awaited()
 
     @pytest.mark.anyio
     async def test_null_mutation_payload_raises(self):
@@ -1305,6 +1379,22 @@ class TestUpdateDataLookup:
                 output_fields=["title"],
                 conditions=[dict(STATIC_CONDITION)],
                 description="y" * (MAX_KB_DESCRIPTION_LENGTH + 1),
+            )
+        executor.execute_query.assert_not_awaited()
+
+    @pytest.mark.anyio
+    async def test_over_limit_name_rejected(self):
+        executor = mock_executor({})
+        service = KnowledgeBaseService(executor=executor)
+
+        with pytest.raises(ValueError, match="name must be at most 80"):
+            await service.update_ai_knowledge_base_data_lookup(
+                "kb-3",
+                "p",
+                source_repo_id="301234567",
+                output_fields=["title"],
+                conditions=[dict(STATIC_CONDITION)],
+                name="n" * (MAX_KB_NAME_LENGTH + 1),
             )
         executor.execute_query.assert_not_awaited()
 

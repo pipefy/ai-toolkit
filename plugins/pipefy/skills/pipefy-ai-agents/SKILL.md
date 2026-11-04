@@ -226,15 +226,15 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 | ------------ | ----------- | --------- |
 | `get_ai_knowledge_bases` | Yes | List every item on a pipe (plain texts, documents, data lookups); each has an `id` for `dataSourceIds` and a `type` (`knowledge_base_plain_texts`, `knowledge_base_documents`, or `data_lookups`). |
 | `get_ai_knowledge_base_plain_text` | Yes | Fetch one plain text with its content. |
-| `create_ai_knowledge_base_plain_text` | No | Create a plain text (`name`, `content` 1-3500, `description` 1-900 — all required). |
+| `create_ai_knowledge_base_plain_text` | No | Create a plain text (`name` 1-80, `content` 1-3500, `description` 1-300, all required). |
 | `update_ai_knowledge_base_plain_text` | No | Partial update; send at least one of name/content/description. |
 | `delete_ai_knowledge_base_plain_text` | No | **Destructive; review and approve first.** |
 | `get_ai_knowledge_base_document` | Yes | Fetch one document's metadata (`content` is the stored URL, not text). |
-| `create_ai_knowledge_base_document` | No | Upload a PDF (`name`, `description` 1-900, `file_path`). `.pdf` + 20 MiB cap; indexing is asynchronous. |
+| `create_ai_knowledge_base_document` | No | Upload a PDF (`name` 1-80, `description` 1-300, `file_path`). `.pdf` + 20 MiB cap; indexing is asynchronous. |
 | `update_ai_knowledge_base_document` | No | Metadata-only update (name/description); no file replacement. |
 | `delete_ai_knowledge_base_document` | No | **Destructive; review and approve first.** |
 | `get_ai_knowledge_base_data_lookup` | Yes | Fetch one data lookup; the payload never includes `conditions` — keep the definition client-side. |
-| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name`, `description` 1-900, `source_repo_id` numeric pipe ID or table `internal_id`, `output_fields` 1-30, `conditions`, all required). |
+| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name` 1-80, `description` 1-300, `source_repo_id` numeric pipe ID or table `internal_id`, `output_fields` 1-30, `conditions`, all required). |
 | `update_ai_knowledge_base_data_lookup` | No | Full replacement: resend `source_repo_id`/`output_fields`/`conditions` every call; only name/description are partial. |
 | `delete_ai_knowledge_base_data_lookup` | No | **Destructive; review and approve first.** |
 | `validate_knowledge_base_access` | Yes | Probe read access before writes. |
@@ -242,7 +242,7 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 ### Flow: validate-access → create plain text → attach
 
 1. **Probe access** — `validate_knowledge_base_access(pipe_uuid)`. A green result proves read access only (`read_ai_agents`), never the `manage_ai_agents` entitlement writes need.
-2. **Create the source** — `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `content` 1-3500 chars, `description` 1-900 chars (both required). Keep the returned `id`.
+2. **Create the source** — `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `name` 1-80 chars, `content` 1-3500 chars, `description` 1-300 chars (all required). Keep the returned `id`.
 3. **Attach** — add that `id` to a behavior's `dataSourceIds` (or the agent-level `data_source_ids`) when calling `create_ai_agent` / `update_ai_agent`. Validate first with `validate_ai_agent_behaviors(pipe_id, behaviors, data_source_ids=[...])` — unknown IDs surface as warnings.
 
 For a **PDF document**, use `create_ai_knowledge_base_document` with `pipe_uuid`, `name`, `description`, and `file_path` at step 2. Only `.pdf` is accepted, with a 20 MiB cap. Indexing is asynchronous, so the document may not be searchable immediately. Keep the returned `id` and attach it.
