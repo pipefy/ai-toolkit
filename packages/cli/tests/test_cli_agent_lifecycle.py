@@ -334,3 +334,40 @@ def test_agent_update_passes_disabled_at_when_provided(
     body = json.loads(r.stdout)
     assert body["disabled_at"] == stub_disabled_at
     assert body["active"] is False
+
+
+def test_agent_create_rejects_behavior_source_missing_from_agent_list(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A behavior-only knowledge base id stops before any API call: the save would fail."""
+    oauth_env("ag-create-behavior-only-source")
+    behavior = json.loads(json.dumps(_AGENT_BEHAVIOR))
+    behavior["actionParams"]["aiBehaviorParams"]["dataSourceIds"] = ["kb-1"]
+    mock_client = MagicMock()
+    mock_client.create_ai_agent = AsyncMock()
+
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "agent",
+                "create",
+                "--repo-uuid",
+                "repo-uuid-1",
+                "--pipe",
+                "1",
+                "--name",
+                "Agent",
+                "--instruction",
+                "Be helpful.",
+                "--behaviors",
+                json.dumps([behavior]),
+            ],
+        )
+
+    assert r.exit_code == 2
+    assert "behaviors[0].dataSourceIds 'kb-1'" in r.stderr
+    mock_client.create_ai_agent.assert_not_called()

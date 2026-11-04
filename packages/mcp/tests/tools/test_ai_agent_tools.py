@@ -203,6 +203,30 @@ class TestCreateAiAgent:
         assert payload["success"] is False
         assert "at most one" in str(payload["error"])
 
+    async def test_rejects_behavior_source_missing_from_agent_list(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        behavior = minimal_behavior_dict(name="B1")
+        behavior["actionParams"]["aiBehaviorParams"]["dataSourceIds"] = ["kb-1"]
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_agent",
+                {
+                    "name": "Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [behavior],
+                },
+            )
+        assert result.is_error is False
+        mock_pipefy_client.create_ai_agent.assert_not_called()
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert "behaviors[0].dataSourceIds 'kb-1'" in str(payload["error"])
+
     async def test_create_and_configure_success(
         self,
         client_session,

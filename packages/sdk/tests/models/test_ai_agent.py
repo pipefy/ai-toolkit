@@ -914,3 +914,61 @@ def test_agent_input_expands_behaviors_from_any_iterable(wrap):
     )
     abp = inp.behaviors[0].action_params.ai_behavior_params
     assert abp.instruction == "Read %{field:123} and %{field:456}."
+
+
+def _behavior_with_sources(ids):
+    behavior = _make_behavior()
+    behavior["actionParams"]["aiBehaviorParams"]["dataSourceIds"] = ids
+    return behavior
+
+
+@pytest.mark.unit
+def test_create_ai_agent_input_rejects_behavior_source_missing_from_agent():
+    with pytest.raises(ValidationError) as excinfo:
+        CreateAiAgentInput(
+            name="My Agent",
+            repo_uuid="repo-123",
+            instruction="Purpose",
+            behaviors=[_behavior_with_sources(["ds-1"])],
+        )
+    message = str(excinfo.value)
+    assert "behaviors[0].dataSourceIds 'ds-1'" in message
+    assert "data_source_ids" in message
+
+
+@pytest.mark.unit
+def test_create_ai_agent_input_accepts_behavior_source_listed_on_agent():
+    inp = CreateAiAgentInput(
+        name="My Agent",
+        repo_uuid="repo-123",
+        instruction="Purpose",
+        behaviors=[_behavior_with_sources(["ds-1"])],
+        data_source_ids=["ds-1", "ds-2"],
+    )
+    assert inp.data_source_ids == ["ds-1", "ds-2"]
+
+
+@pytest.mark.unit
+def test_update_ai_agent_input_rejects_behavior_source_missing_from_given_agent_list():
+    with pytest.raises(ValidationError) as excinfo:
+        UpdateAiAgentInput(
+            uuid="agent-123",
+            name="My Agent",
+            repo_uuid="repo-456",
+            behaviors=[_make_behavior(), _behavior_with_sources(["ds-1", "ds-2"])],
+            data_source_ids=["ds-1"],
+        )
+    message = str(excinfo.value)
+    assert "behaviors[1].dataSourceIds 'ds-2'" in message
+    assert "dataSourceIds 'ds-1'" not in message
+
+
+@pytest.mark.unit
+def test_update_ai_agent_input_without_agent_list_keeps_behavior_sources():
+    inp = UpdateAiAgentInput(
+        uuid="agent-123",
+        name="My Agent",
+        repo_uuid="repo-456",
+        behaviors=[_behavior_with_sources(["ds-1"])],
+    )
+    assert inp.data_source_ids is None

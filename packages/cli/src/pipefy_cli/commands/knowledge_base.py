@@ -62,8 +62,8 @@ def kb_list(
 ) -> None:
     """List a pipe's knowledge base items (``get_ai_knowledge_bases``).
 
-    Each item carries ``id`` (used in ``dataSourceIds``), ``type``, ``name``,
-    ``description``, and ``updatedAt``. No pagination; the full list is returned.
+    Each item carries ``id`` (used in ``data_source_ids`` and ``dataSourceIds``),
+    ``type``, ``name``, ``description``, and ``updatedAt``. No pagination; the full list is returned.
     """
 
     async def factory(client: PipefyClient):

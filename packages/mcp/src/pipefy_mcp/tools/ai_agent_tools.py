@@ -326,7 +326,10 @@ class AiAgentTools:
                     See example above for the full shape.
                     Discover via: ``get_automation_events(pipe_id)`` for ``event_id`` and
                     ``get_phase_fields(phase_id)`` for ``triggerFieldIds`` / ``destinationPhaseId``.
-                data_source_ids: Optional knowledge-source IDs (same as ``update_ai_agent``).
+                data_source_ids: Optional agent-level knowledge base IDs. Put the knowledge base
+                    ``id`` in both the agent-level ``data_source_ids`` and the behavior's
+                    ``dataSourceIds``. With the id on the behavior only, the agent fails to
+                    save. With the id on the agent only, the behavior does not use it.
                 active: When True (default), create enabled. When False, create inactive by
                     setting ``disabled_at`` (ISO-8601 UTC) on create and the chained update.
             """
@@ -469,7 +472,10 @@ class AiAgentTools:
                     (same interpolation as ``create_ai_agent``).
                     Discover via: ``get_automation_events(pipe_id)`` and ``get_phase_fields(phase_id)``.
                 data_source_ids: Optional list of data source IDs. Omit to keep the agent's current
-                    knowledge bases; pass ``[]`` to detach them all.
+                    knowledge bases; pass ``[]`` to detach them all. Put the knowledge base
+                    ``id`` in both the agent-level ``data_source_ids`` and the behavior's
+                    ``dataSourceIds``. With the id on the behavior only, the agent fails to
+                    save. With the id on the agent only, the behavior does not use it.
                 disabled_at: Optional ISO-8601 ``disabledAt`` from ``get_ai_agent``. Pass through to
                     skip the preserve re-read and avoid a toggle race. Omit to let the SDK preserve.
             """
@@ -715,10 +721,11 @@ class AiAgentTools:
                     ``fieldId`` values (slug or ``internal_id``).
                 strict_unknown_action_types: When ``True`` (default), unknown ``actionType`` values
                     are reported in ``problems``. When ``False``, they appear in ``warnings`` only.
-                data_source_ids: Optional agent-level knowledge base IDs to attach. These are
-                    unioned with each behavior's ``actionParams.aiBehaviorParams.dataSourceIds``
-                    and checked against the pipe's knowledge bases (via ``get_ai_knowledge_bases``);
-                    unknown IDs produce **warnings** only (``valid`` stays true). If the knowledge
+                data_source_ids: Optional agent-level knowledge base IDs to attach. A behavior
+                    ``dataSourceIds`` entry that ``data_source_ids`` leaves out is a **problem**,
+                    because the agent fails to save. Without ``data_source_ids``, each behavior id
+                    is a warning. Every id is also checked against the pipe's knowledge bases (via
+                    ``get_ai_knowledge_bases``). Unknown IDs produce **warnings** only. If the knowledge
                     base list cannot be read, a single warning is added and the membership check is
                     skipped. Discover valid IDs via ``get_ai_knowledge_bases(pipe_uuid)``.
             """

@@ -2,7 +2,7 @@
 
 Pipe-scoped AI knowledge bases: list every item on a pipe, full CRUD for plain-text, document (PDF), and data lookup sources, and a read-access probe. **14 tools.**
 
-Knowledge bases are the data sources an AI agent draws on. Each item's `id` is what you attach to an agent or behavior via `dataSourceIds` (see [Automations & AI](automations-and-ai.md)): use `get_ai_knowledge_bases` to discover the IDs, then `validate_ai_agent_behaviors(data_source_ids=[...])` to check membership before writing the agent.
+Knowledge bases are the data sources an AI agent draws on. Each item's `id` is what you attach to an agent (see [Automations & AI](automations-and-ai.md)). Put the knowledge base `id` in both the agent-level `data_source_ids` and the behavior's `dataSourceIds`. With the id on the behavior only, the agent fails to save. With the id on the agent only, the behavior does not use it. Use `get_ai_knowledge_bases` to discover the IDs, then `validate_ai_agent_behaviors(data_source_ids=[...])` to check membership before writing the agent.
 
 ---
 
@@ -107,7 +107,7 @@ For a static `contains` filter on fixed `labels`, call `get_pipe` with the sourc
 
 ## Attaching a source to an agent
 
-`validate_ai_agent_behaviors` accepts an optional `data_source_ids` (agent-level). It is unioned with each behavior's `actionParams.aiBehaviorParams.dataSourceIds` and checked against the pipe's knowledge bases: IDs not present on the pipe produce **warnings only** (`valid` stays true). If the knowledge base list cannot be read, a single warning is added and the membership check is skipped — a read failure is never reported as a broken reference.
+`validate_ai_agent_behaviors` accepts an optional `data_source_ids` (agent-level). A behavior `dataSourceIds` entry that `data_source_ids` leaves out is a **problem**, because the agent fails to save. Without `data_source_ids`, each behavior id is a warning. Every id is also checked against the pipe's knowledge bases, and an id that is not on the pipe is a **warning only**. If the knowledge base list cannot be read, a single warning is added and the membership check is skipped. A read failure is never reported as a broken reference.
 
 ## Error classification
 

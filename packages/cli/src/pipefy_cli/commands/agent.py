@@ -106,7 +106,13 @@ def agent_create(
     data_sources: str | None = typer.Option(
         None,
         "--data-sources",
-        help="Optional JSON array of knowledge-source id strings.",
+        help=(
+            "Optional JSON array of knowledge-source id strings (the agent-level "
+            "data_source_ids). Put the knowledge base id in both the agent-level "
+            "data_source_ids and the behavior's dataSourceIds. With the id on the "
+            "behavior only, the agent fails to save. With the id on the agent "
+            "only, the behavior does not use it."
+        ),
     ),
     active: bool = typer.Option(
         True,
@@ -160,6 +166,7 @@ def agent_create(
             pipe.strip(),
             [b.model_dump(by_alias=True) for b in validated.behaviors],
             strict_unknown_action_types=strict_unknown,
+            data_source_ids=validated.data_source_ids,
         )
         _raise_if_preflight_blocks(pre)
         try:
@@ -210,8 +217,12 @@ def agent_update(
         None,
         "--data-sources",
         help=(
-            "Optional JSON array of knowledge-source id strings. Omit to keep the "
-            "agent's current knowledge bases; pass '[]' to detach them all."
+            "Optional JSON array of knowledge-source id strings (the agent-level "
+            "data_source_ids). Omit to keep the agent's current knowledge bases; "
+            "pass '[]' to detach them all. Put the knowledge base id in both the "
+            "agent-level data_source_ids and the behavior's dataSourceIds. With "
+            "the id on the behavior only, the agent fails to save. With the id on "
+            "the agent only, the behavior does not use it."
         ),
     ),
     disabled_at: str | None = typer.Option(
@@ -266,6 +277,7 @@ def agent_update(
             pipe.strip(),
             [b.model_dump(by_alias=True) for b in validated.behaviors],
             strict_unknown_action_types=strict_unknown,
+            data_source_ids=validated.data_source_ids,
         )
         _raise_if_preflight_blocks(pre)
         result = await client.update_ai_agent(validated)
@@ -377,9 +389,11 @@ def agent_validate_behaviors(
         [],
         "--data-source-id",
         help=(
-            "Agent-level knowledge base ID to attach (repeatable). Unioned with "
-            "behavior-level dataSourceIds and checked against the pipe's knowledge "
-            "bases; unknown IDs are warnings only."
+            "Agent-level knowledge base ID to attach (repeatable). A behavior "
+            "dataSourceIds entry that these IDs leave out is a problem, because the "
+            "agent fails to save. Without this option, each behavior id is a "
+            "warning. Every id is also checked against the pipe's knowledge bases, "
+            "and an unknown id is a warning only."
         ),
     ),
     json_out: bool = typer.Option(False, "--json", "-j"),

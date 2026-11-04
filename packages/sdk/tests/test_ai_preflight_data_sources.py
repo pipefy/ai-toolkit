@@ -154,7 +154,7 @@ class TestValidateFlowWithDataSources:
             client,
             EXAMPLE_PIPE_ID,
             [behavior],
-            data_source_ids=["kb-agent-missing"],
+            data_source_ids=["kb-known", "kb-agent-missing"],
         )
 
         assert result["valid"] is True
@@ -181,9 +181,53 @@ class TestValidateFlowWithDataSources:
         behavior = _clean_behavior_with_data_sources(["kb-b"])
 
         result = await validate_ai_agent_behaviors_sdk(
-            client, EXAMPLE_PIPE_ID, [behavior], data_source_ids=["kb-a"]
+            client, EXAMPLE_PIPE_ID, [behavior], data_source_ids=["kb-a", "kb-b"]
         )
 
         assert result["valid"] is True
         probe_warnings = [w for w in result["warnings"] if "probe failed" in w]
         assert len(probe_warnings) == 1
+
+
+class TestBehaviorSourcesMustBeAgentSources:
+    @pytest.mark.asyncio
+    async def test_behavior_id_missing_from_agent_list_is_problem(self):
+        client = _context_client(knowledge_bases=[{"id": "kb-known"}])
+        behavior = _clean_behavior_with_data_sources(["kb-known"])
+
+        result = await validate_ai_agent_behaviors_sdk(
+            client, EXAMPLE_PIPE_ID, [behavior], data_source_ids=[]
+        )
+
+        assert result["valid"] is False
+        assert any(
+            "behaviors[0].dataSourceIds 'kb-known'" in p and "data_source_ids" in p
+            for p in result["problems"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_behavior_id_on_agent_list_is_no_problem(self):
+        client = _context_client(knowledge_bases=[{"id": "kb-known"}])
+        behavior = _clean_behavior_with_data_sources(["kb-known"])
+
+        result = await validate_ai_agent_behaviors_sdk(
+            client, EXAMPLE_PIPE_ID, [behavior], data_source_ids=["kb-known"]
+        )
+
+        assert result["valid"] is True
+        assert not any("kb-known" in p for p in result["problems"])
+
+    @pytest.mark.asyncio
+    async def test_without_agent_list_behavior_id_is_warning(self):
+        client = _context_client(knowledge_bases=[{"id": "kb-known"}])
+        behavior = _clean_behavior_with_data_sources(["kb-known"])
+
+        result = await validate_ai_agent_behaviors_sdk(
+            client, EXAMPLE_PIPE_ID, [behavior]
+        )
+
+        assert result["valid"] is True
+        assert any(
+            "behaviors[0].dataSourceIds 'kb-known'" in w and "data_source_ids" in w
+            for w in result["warnings"]
+        )
