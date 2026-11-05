@@ -46,7 +46,7 @@ Dados:
   Motivo da recusa: texto longo, Análise ou Aprovação gerencial, quem recusa, obrigatório só quando o parecer ou a decisão é Recusar.
   Número do PO: texto curto, Aprovado, comprador, obrigatório.
 Escolhas de plataforma:
-  D1 a D4: automação tradicional (campo atualizado + condição sobre Valor e parecer). Alternativa: agente de IA. Motivo: a decisão lê campos e um valor fixo.
+  D1 a D4: automação tradicional (campo atualizado + condição sobre Valor e parecer). Alternativa: encaminhamento manual pelo responsável da fase. Motivo: a decisão lê campos e um valor fixo.
   Motivo da recusa: condição de campo (mostra e exige só na recusa). Alternativa: campo sempre visível.
   Lembrete: automação por prazo da fase (SLA). Alternativa: lembrete manual do gerente de compras.
 Restrições: sem IA (política do financeiro). Nenhum e-mail para fora da empresa.
