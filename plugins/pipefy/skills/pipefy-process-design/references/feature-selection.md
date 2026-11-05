@@ -25,7 +25,7 @@ Write one line for each step in Platform choices:
 
 - Name the work that the part removes. "Moves the card when the review is done" is a result. "Adds an automation" is not.
 - Name one alternative, also when the choice is clear. The user can then see what you did not choose.
-- When the choice is AI and the user did not say yes, write "option" in the line. Do not write it as a confirmed choice.
+- For an AI part, also write the test and the effect of a wrong output. Until the user says yes in the review, write "recommended, not confirmed" in the line. After the yes, write "confirmed".
 
 ---
 
@@ -44,20 +44,33 @@ Cost: low maintenance. A wrong rule moves or changes cards without a person. Ask
 
 ## AI automation
 
-- **Fixed output.** The output goes into fields that you can name before the build, such as a category, a summary, or a value from a document. When you cannot name the output fields, the step is not an AI automation.
-- **Test.** Ask for representative examples, such as 20 real documents, and the quality that the team accepts. The test is part of the choice.
+- **When to recommend it.** The step reads card fields or an attachment on one event. It writes a fixed output: a category, a summary, or a value from a document. Recommend an AI automation for that step. When a field test decides the step, recommend a traditional automation.
+- **Fixed output.** The output goes into fields that you can name before the build. When you cannot name the output fields, the step is not an AI automation.
+- **Test.** Ask for representative examples, such as 20 real documents, and the quality that the team accepts. The test is part of the recommendation.
 - **Wrong output.** Say what happens when the output is wrong: a person checks it in the next phase, or a field condition asks for a review.
 - **Credits.** An AI automation uses AI credits. Give the number of runs when the user knows the volume, so that the user can see the cost.
-- **Consent.** Name it as an option with the reason and the test. Do not record it as a confirmed choice without an explicit yes. See `pipefy-automations`.
+- **Trigger.** An AI automation runs on one card event, such as a new card or a move to a phase. When the step needs a trigger that an AI automation does not offer, recommend an AI agent. Before you promise a trigger, check the pair in `pipefy-automations`.
+- **Consent.** Ask about the recommendation with the review questions. The user's yes there is the explicit yes, and nobody asks again. Without that yes, the line stays "recommended, not confirmed".
 
 ---
 
 ## AI agent
 
-- **Start.** An agent can start on a card event, such as a new card or a move to a phase. It does not need a conversation.
+- **When to recommend it.** The step needs process context, an action that an AI automation cannot take, or a trigger that only an agent has. Recommend one agent with one responsibility for that step.
+- **Actions.** An agent can update a card, move a card, or create a card or a connected card. It can also create a table record and send an email template. It can ask a person to review the result (`human_validation`) and call a tool on an MCP server (`mcp_tool`).
+- **Start.** An agent starts on one of these triggers, without a conversation. See `pipefy-ai-agents`.
+  - A card enters a phase, or a card leaves a phase.
+  - A field is updated, or a card is created.
+  - An alert is triggered (`sla_based`).
+  - An email is received.
+  - All connected cards move to a phase.
+  - An HTTP response is received.
+  - An interface button is clicked.
+- **No schedule.** `scheduler` is never an agent trigger. For a step on a schedule, use a traditional automation or an integration flow.
 - **Scope.** Give one agent one responsibility. An agent has 1 to 5 behaviors. When the work needs more, split the responsibility.
 - **Action limits.** Name the actions the agent may take. An action that approves, rejects, pays, or sends a message outside the company needs a human review before it runs.
 - **Not an agent.** When one prompt with fixed output fields does the work, use an AI automation. It is less to maintain and easier to test.
+- **Consent.** The same rule as for an AI automation: the user's yes in the review confirms the agent.
 
 ---
 
@@ -99,9 +112,10 @@ Cost: low maintenance. A wrong rule moves or changes cards without a person. Ask
 | Case | First choice that is often wrong | Better choice | Why |
 |---|---|---|---|
 | The same manual step runs 200 times a week, and a field test decides it | AI automation | Traditional automation | Repeated work alone does not prove a need for AI. |
-| A document arrives, and the team reads two values from it | New AI agent | AI automation with two output fields, as an option | A fixed output does not need an agent. |
+| A document arrives, and the team reads two values from it | New AI agent | AI automation with two output fields, recommended | A fixed output does not need an agent. |
 | A rule routes most cases, and a small part stays manual | Rule and AI on the same step | Rule, with the AI step named as optional | Two parts on one step are hard to test and to maintain. |
-| The user said "no AI" | AI named as an option | No AI in Platform choices | The constraint removes the option. |
+| The user said "no AI" | AI recommended | No AI in Platform choices | The constraint removes the recommendation. |
+| An AI step must run every morning | AI agent on a schedule | A traditional automation or an integration flow on the schedule | `scheduler` is never an agent trigger. |
 | Two teams review at the same time | A separate pipe for each team | Two decision fields in one phase, with a join rule | One phase keeps one case. Use child cards in a separate pipe only when each review has its own cases and owners. |
 | A time limit must move the case to a new owner | A reminder | A deadline rule with the new owner named | A reminder only notifies. |
 | A rejection must notify a vendor outside the company | An automation that sends email | An email template made in the Pipefy interface, plus a rule, after a yes to external effects | The template is a manual step, and the email is an external effect. |

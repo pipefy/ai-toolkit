@@ -114,18 +114,29 @@ The specification holds business decisions, not Pipefy ids. The builder finds id
 | Data | For each field: name, type, source, author (role), the step where it is filled, and when it is required. | Design skill proposes. User confirms. | Yes, for a field that a decision reads | Only the fields that decisions and end states read. A field is required only when a decision reads it. |
 | Platform choices | For each step: the Pipefy part that does it, one alternative, the reason in one line, and the existing part to reuse. | Design skill | No | The least complex native option in the selection table. No AI without an explicit yes. |
 | Constraints | Limits the user states: no AI, no email outside the company, who may approve, data that must not leave Pipefy. | User | No | None stated. |
-| Authorization | One level: advise only, build inactive, activate, publish, or external effects allowed. For external effects, also state the build level and each permitted effect. | User | No | Advise only until the user requests a build. A build request defaults to build inactive. No external effects. |
-| Assumptions | Values that the design skill or the builder chose and the user did not confirm. | Design skill and builder | No for inactive creation. Activation waits for each business assumption that the rule reads. | Empty. The builder writes each assumption in the plan step that uses it. |
+| Authorization | One level: advise only, build, build inactive, publish, or external effects allowed. For external effects, also state the build level and each permitted effect. | User | No | Advise only until the user requests a build. A build request defaults to build. No external effects. |
+| Assumptions | Values that the design skill or the builder chose and the user did not confirm. | Design skill and builder | No. A rule that reads a business assumption starts inactive and waits for the user's answer. | Empty. The builder writes each assumption in the plan step that uses it. |
 | Pending items | Open decisions, each with the work or activation that it blocks. | Design skill and builder | Only the named work or activation | Empty. |
 | Acceptance examples | Two to five cases: input, expected path, final state. Include the boundary value, the empty value, and one exception. | Design skill proposes. User confirms. | No | One example for each decision branch, plus its boundary value and its empty value. The builder reports each example it did not check. |
 
 Authorization levels:
 
 - **Advise only.** No write. Use it when the user has not requested construction, or explicitly says to change nothing.
-- **Build inactive.** Create the parts. Automations and AI agents stay off, a sub-portal stays unpublished, and an integration flow stays a draft. Without permission for a named external effect, nothing sends data outside Pipefy.
-- **Activate.** Also switch on the automations and agents of this build, as the last step.
+- **Build.** Create the parts of a new process and activate its automations and AI agents. This is the default for a build request. A new pipe has no cards, so no rule runs before the first card. The builder checks each part with the acceptance examples before a real card arrives.
+- **Build inactive.** Create the parts, and keep every automation and AI agent inactive. Use it when the user asks for it.
 - **Publish.** Also publish what has a draft state: a sub-portal, an integration flow. Create an HTML interface only when the user asks for one by name.
 - **External effects allowed.** Permit only the effects that the user names: external email, member invitations, or a webhook. Record a separate build level. This permission does not activate or publish unrelated parts.
+
+Without the publish level, a sub-portal stays unpublished and an integration flow stays a draft. Without permission for a named external effect, nothing sends data outside Pipefy.
+
+At the build level, the builder creates these rules inactive. In this list, a rule is an automation or an AI agent.
+
+- A rule that the build adds to a pipe that existed before this conversation, when the pipe has cards that the rule can match.
+- A rule that runs on a time limit or a schedule, on a pipe that has cards.
+- A rule that reads an unconfirmed business assumption (a pending item).
+- A rule that moves a card through a phase connection that does not exist yet.
+
+For the first two kinds, the builder reads the rule again, compares it with the specification, and then activates it. For an automation, use the "Create disabled" step in `pipefy-automations`. An AI agent is active by default, so create it disabled (`pipefy-ai-agents`). A rule that reads an unconfirmed assumption waits for the user's answer. A rule that needs a missing phase connection waits for the connection.
 
 Rules that connect the design skill and the builder:
 
@@ -133,7 +144,7 @@ Rules that connect the design skill and the builder:
 - A complete specification gets no second questionnaire. The builder asks only about pending items.
 - A pending item blocks only the dependent work or activation. The builder continues the independent work.
 - If a rule reads an unconfirmed business assumption, record it as a pending item for that rule. Create it inactive. Activate it only after the user confirms the decision.
-- "No AI" in Constraints removes AI from Platform choices. AI enters Platform choices as confirmed only after an explicit yes from the user.
+- "No AI" in Constraints removes AI from Platform choices. AI enters Platform choices as confirmed only after an explicit yes from the user. The user's answer to the review question about AI is that yes.
 
 Specification template (one line for each field):
 
@@ -163,8 +174,8 @@ Use the least complex part that gives the result and the controls the user needs
 | Part | Choose it when | Ask before you choose it | Do not choose it when |
 |---|---|---|---|
 | Traditional automation | An event, a test on fields, and a supported action describe the step. | Does the native rule cover the whole requirement, including the exact boundary value and the empty value? | The step needs judgment that no field test can express. |
-| AI automation | The step reads or writes text into a fixed set of output fields, such as a category and a summary. | Can representative examples show the output quality that the team accepts? What happens when the output is wrong? | A field test already decides the step. |
-| AI agent | The step depends on context, and the agent has a set of allowed actions and a responsibility in the process. An agent can start on a card event, not only in a conversation. | Which context, which action limits, and which human review does this responsibility need? | One prompt with fixed output fields does the work. Use an AI automation. |
+| AI automation | The step reads card fields or an attachment on one event. It writes a fixed output: a category, a summary, or a value from a document. Recommend it for that step. | Which representative examples show the quality that the team accepts? What happens when the output is wrong? | A field test decides the step. Use a traditional automation. |
+| AI agent | The step needs process context, an action that an AI automation cannot take, or a trigger that only an agent has. Actions: move a card, create a card, ask a person to review the result, call a tool on an MCP server. Recommend one agent with one responsibility and 1 to 5 behaviors. | Which context, which action limits, and which human review does this responsibility need? | One prompt with fixed output fields does the work. Use an AI automation. The step runs on a schedule: `scheduler` is never an agent trigger. |
 | Integration | Another system owns the data or the action. | Is one call on a card event enough (a webhook)? Or does the work need several steps, a schedule, or routing (an integration flow)? | The external action happens one time only. Do not create a permanent flow for it. |
 | Human work, field condition, or formula | A person must judge with no fixed test, or automation costs more than it returns. A field condition shows or requires a field inside a phase. A formula field calculates a value from other fields. | Can a field condition, a formula, or a clear task for a named owner solve the problem? | A rule with a field test does the same work with less effort. |
 
@@ -175,13 +186,13 @@ Rules for the choice:
 - Repeated work alone does not prove a need for AI. A document to read does not prove a need for a new agent.
 - A missing automation or agent is not an improvement by itself. Some results need human work, a field condition, or a formula.
 - For each choice, write the work it removes, the alternative, and the cost: maintenance, credits when known, and the effect of an error.
-- When the user did not exclude AI, you can name an AI automation or an AI agent as an option. Give the reason and the test that shows it works. Do not build AI without an explicit yes from the user. Do not record AI as a confirmed choice without that yes.
+- When the user did not exclude AI and an AI row fits the step, recommend that AI part. Give the reason, the test, and what happens when the output is wrong. Ask about it with the review questions. The user's answer there is the explicit yes: do not ask again, and the builder does not ask again. Do not record AI as a confirmed choice without that yes.
 
 ---
 
 ## Review questions
 
-Use these questions to check a specification. Ask the user only the ones that change the build.
+Use these questions to check a specification. Ask the user only the ones that change the build, in one message. The user's answers confirm the specification, and they include the yes to each AI recommendation. Do not ask again before the build.
 
 | Question | It finds | Change in the specification |
 |---|---|---|
@@ -195,6 +206,8 @@ Use these questions to check a specification. Ask the user only the ones that ch
 | When work returns for correction, where does it return, who fixes it, and what lets it continue? | A loop with no exit | Exceptions get the return point, the owner, and the exit condition. Do not invent a retry limit. |
 | Is this the process today, the target process, or an optional improvement? | Proposals recorded as facts | Assumptions and Platform choices mark what the user did not confirm. |
 | Which Pipefy part does each step? Is each activity really a phase, and is each participant really a separate pipe? | Too many phases or pipes | Platform choices get one part for each step, with reuse. |
+| Do you accept AI for each step where the design recommends it? | AI recorded without a yes | A yes marks that AI line as confirmed. A no makes the alternative the choice. |
+| Does a rule go into a pipe that has cards today? Does a rule read an assumption that nobody confirmed? | A rule that acts on real cards before anyone checks it | Platform choices mark that rule to start inactive, with the reason. |
 
 ---
 
@@ -207,11 +220,11 @@ Process: <name>
 Pending items: <each open decision with the part it blocks, or "none">
 Manual steps: <parts that only the Pipefy interface creates, or "none">
 Impact: <one line: time this design returns to the team against a fully manual run of the same flow; if a phase exists only for human triage, what an automation or an AI agent would change there. Do not start a pipe diagnosis.>
-Next step: <one offer with a one-line reason. Nothing runs until the user says yes.>
+Next step: <one offer with a one-line reason. Nothing is built until the user says yes.>
 ```
 
 - Say that the specification is ready to build only when every blocking field has a value. Otherwise name each field that is missing.
-- When the user wants to build next, the next step is the handoff to `pipefy-building`, with the specification.
+- When the user wants to build next, the next step is the handoff to `pipefy-building`, with the specification. Say that the build activates the new parts, and name each rule that starts inactive, with the reason.
 
 Manual steps name the parts of the design that only the Pipefy UI creates:
 
