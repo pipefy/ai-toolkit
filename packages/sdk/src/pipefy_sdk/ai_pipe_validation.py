@@ -15,6 +15,7 @@ from pipefy_sdk.models import (
     AiBehaviorParams,
     BehaviorPayload,
 )
+from pipefy_sdk.models.ai_agent import AI_AGENT_UNSUPPORTED_EVENT_IDS
 
 if TYPE_CHECKING:
     from pipefy_sdk.client import PipefyClient
@@ -58,6 +59,10 @@ KNOWN_AI_ACTION_TYPES = frozenset(
         "update_card",
     }
 )
+
+# Fires when every connected card reaches a phase, so its to_phase_id is a phase of
+# the connected pipe, not of the pipe that owns the agent.
+ALL_CONNECTED_CARDS_EVENT_ID = "all_children_in_phase"
 
 # Default for ``pipe_event_ids``: the caller did not ask for eventId validation at all.
 # This is distinct from ``None`` or an empty set, which mean the caller tried to load the
@@ -123,21 +128,32 @@ def validate_behaviors_against_pipe(
         abp = _ai_behavior_params(b)
         attrs = (abp.actions_attributes if abp else None) or []
 
+        event_id = payload.event_id if payload else None
         ep = payload.event_params if payload else None
-        to_phase = ep.to_phase_id if ep else None
-        if to_phase and str(to_phase) not in pipe_phase_ids:
+        to_phase = str(ep.to_phase_id) if ep and ep.to_phase_id else ""
+        if event_id == ALL_CONNECTED_CARDS_EVENT_ID:
+            if to_phase in pipe_phase_ids:
+                warnings.append(
+                    f'{prefix}: eventParams.to_phase_id "{to_phase}" is a phase of '
+                    f"this pipe, but {ALL_CONNECTED_CARDS_EVENT_ID} expects a phase of "
+                    f"the connected pipe. Check the phase with get_pipe_relations "
+                    f"and get_pipe."
+                )
+        elif to_phase and to_phase not in pipe_phase_ids:
             problems.append(
                 f'{prefix}: eventParams.to_phase_id "{to_phase}" '
                 f"not found in pipe phases."
             )
 
-        event_id = payload.event_id if payload else None
         if event_id and pipe_event_ids is not _EVENT_CATALOG_UNSET:
             if pipe_event_ids:
                 if str(event_id) not in pipe_event_ids:
+                    agent_events = sorted(
+                        pipe_event_ids - AI_AGENT_UNSUPPORTED_EVENT_IDS
+                    )
                     problems.append(
                         f'{prefix}: eventId "{event_id}" is not an automation event '
-                        f"for this pipe. Valid events: {sorted(pipe_event_ids)}."
+                        f"for this pipe. Valid events: {agent_events}."
                     )
             else:
                 # The caller tried to load the catalog but it came back unavailable
