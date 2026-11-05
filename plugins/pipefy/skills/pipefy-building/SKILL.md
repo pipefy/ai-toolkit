@@ -79,10 +79,10 @@ Use this order when no catalog skill builds a whole process and the user supplie
 5. AI agents.
 6. Portal pages.
 
-- When a part has an inactive state, create it inactive. Activate it only when the user asks.
+- Activate the automations and AI agents of a new process, unless the user asks to keep them inactive (`build inactive`). Create a rule (an automation or an AI agent) inactive when its pipe already has cards that it can match. Do the same for a rule on a time limit or a schedule in a pipe with cards. Read that rule again, then activate it. Keep a rule inactive while it reads an unconfirmed assumption or needs a missing phase connection. Publish a sub-portal or an integration flow only when the user asks.
 - After each write, read the part again and compare it with the request.
 - When a part that matches the request exists, ask the user before you use it again.
-- Create an AI automation or an AI agent only after the user says yes to AI.
+- Create an AI automation or an AI agent only after the user says yes to AI. A confirmed AI line in the process specification is that yes, so do not ask again.
 - End with each part and its state, the manual steps, the inactive parts, and one "Next step".
 
 ## Product limits live in domain skills
