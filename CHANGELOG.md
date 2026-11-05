@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **SDK / MCP / CLI AI agents**: a behavior with `event_id` `scheduler` fails before any API call, in `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors`. The automation event catalog lists `scheduler`, but Pipefy rejects it on an AI agent. Before this fix, `validate_ai_agent_behaviors` reported it as valid, `create_ai_agent` left a disabled agent with no behaviors, and `update_ai_agent` could remove the agent's behaviors.
+- **SDK / MCP / CLI AI agents**: `validate_ai_agent_behaviors` no longer reports "not found in pipe phases" for an `all_children_in_phase` behavior. Its `to_phase_id` is a phase of the connected pipe, so the check does not look for it in the agent's pipe. When the id is a phase of the agent's pipe, the result has a warning.
+- **MCP / skills AI agents**: the `create_ai_agent` description, the AI agent tool reference, and the `pipefy-ai-agents` skill list every trigger that an AI agent accepts. Each trigger has its `eventParams` key. The new rows are `sla_based` (`kindOfSla`), `card_left_phase` (`fromPhaseId`), `card_inbox_received_email` (`inPhaseId`), `all_children_in_phase` (`to_phase_id`), `http_response_received` (`triggerAutomationId`), and `manually_triggered`.
+
 ### Changed
 
 - **SDK / MCP / CLI knowledge bases**: plain text, document, and data lookup writes cap `name` at 80 characters and `description` at 300 characters. These are the limits the Pipefy UI forms enforce. The cap for `description` was 900, and `name` had no cap. An item over either cap cannot be saved from the UI until the user shortens it. A write over either cap fails with a `ValueError` before the mutation is sent, and the MCP tools and CLI commands return that message. Stored items do not change. An update that omits `name` or `description` keeps the stored value, whatever its length.

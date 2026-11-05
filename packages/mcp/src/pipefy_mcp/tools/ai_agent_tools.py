@@ -287,12 +287,24 @@ class AiAgentTools:
             Pipefy-managed/system one).
 
             Optional ``eventParams`` per behavior (filters when the trigger fires):
-              - ``field_updated`` event → ``{"triggerFieldIds": ["<field_id>"]}`` to fire only on specific fields.
-              - ``card_moved`` event → ``{"to_phase_id": "<phase_id>"}`` to fire only when moving to a specific phase.
+              - ``card_moved`` → ``{"to_phase_id": "<phase_id>"}``: the phase the card enters.
+              - ``field_updated`` → ``{"triggerFieldIds": ["<field_id>"]}``: the fields whose change fires it.
+              - ``sla_based`` → ``{"kindOfSla": "Late"}``, or ``Expired``, or ``Overdue``.
+              - ``card_left_phase`` → ``{"fromPhaseId": "<phase_id>"}``: the phase the card leaves.
+              - ``card_inbox_received_email`` → ``{"inPhaseId": "<phase_id>"}``.
+              - ``all_children_in_phase`` → ``{"to_phase_id": "<phase_id>"}``: a phase of the
+                connected pipe that every connected card must reach.
+              - ``http_response_received`` → ``{"triggerAutomationId": "<automation_id>"}``: the
+                traditional automation that sends the HTTP request.
+              - ``card_created`` and ``manually_triggered`` take no ``eventParams``.
+            ``scheduler`` is in the ``get_automation_events`` catalog, but AI agents do not
+            accept it. The tool rejects it before any API call.
 
             Behavior keys accept both ``snake_case`` (``event_id``, ``event_params``,
             ``action_params``) and ``camelCase`` (``eventId``, ``eventParams``, ``actionParams``).
-            The canonical wire format is camelCase.
+            The canonical wire format is camelCase. ``eventParams`` keys also accept the
+            snake_case names that ``get_automation_events`` lists (``from_phase_id``,
+            ``kind_of_sla``).
 
             Important constraints:
               - **Full-replace save**: the API replaces the entire behaviors list on every call.
@@ -670,6 +682,9 @@ class AiAgentTools:
             For ``move_card`` with trigger ``card_moved`` and ``eventParams.to_phase_id``,
             the tool also checks that ``destinationPhaseId`` is allowed from that phase
             (``cards_can_be_moved_to_phases``).
+            For ``all_children_in_phase``, ``eventParams.to_phase_id`` is a phase of the
+            connected pipe, so the tool does not look for it in this pipe. A phase of this
+            pipe gives a **warning**.
             For ``create_table_record``, ``fieldsAttributes`` hold **table** field IDs — they are not
             validated against the source pipe; the tool adds a **warning** to verify IDs with
             ``get_table`` / ``get_table_record`` instead. ``send_email_template`` does not run
@@ -678,8 +693,9 @@ class AiAgentTools:
             Runs Pydantic model validation (same as the mutation tools) plus cross-references
             against live pipe data. Does not persist anything. Model validation rejects
             malformed ``capabilitiesAttributes`` entries (each must be
-            ``{"capabilityType": "<type>", "enabled": true|false}``) and a behavior that sets
-            both ``providerId`` and ``systemProviderId``. ``capabilityType`` values are not
+            ``{"capabilityType": "<type>", "enabled": true|false}``), a behavior that sets
+            both ``providerId`` and ``systemProviderId``, and ``event_id`` ``scheduler``,
+            which AI agents do not accept. ``capabilityType`` values are not
             checked against a known-enum set — any value passes through and the API validates
             the enum on write (capabilities may also require organization-level enablement).
 
