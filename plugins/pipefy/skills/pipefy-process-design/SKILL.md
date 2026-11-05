@@ -67,7 +67,7 @@ To diagnose an existing pipe, read `pipefy-process-intelligence`. To size the re
 
    | Operation | Read-only | Purpose |
    |-----------|-----------|---------|
-   | `search_pipes` | Yes | List the visible pipes. An empty `pipe_name` returns all of them. Compare the names yourself. |
+   | `search_pipes` | Yes | List pipes within the caller's memberships and the per-organization cap. Inspect `search_limits` before declaring reuse discovery complete. |
    | `get_organization` | Yes | Read the organization that holds the pipes. |
    | `get_pipe` | Yes | Read the phases and fields of a pipe that you can reuse. |
    | `get_automations` | Yes | Read the rules that already run in that pipe. |
@@ -114,24 +114,25 @@ The specification holds business decisions, not Pipefy ids. The builder finds id
 | Data | For each field: name, type, source, author (role), the step where it is filled, and when it is required. | Design skill proposes. User confirms. | Yes, for a field that a decision reads | Only the fields that decisions and end states read. A field is required only when a decision reads it. |
 | Platform choices | For each step: the Pipefy part that does it, one alternative, the reason in one line, and the existing part to reuse. | Design skill | No | The least complex native option in the selection table. No AI without an explicit yes. |
 | Constraints | Limits the user states: no AI, no email outside the company, who may approve, data that must not leave Pipefy. | User | No | None stated. |
-| Authorization | One level: advise only, build inactive, activate, publish, external effects allowed. Each level includes the levels before it, except advise only. | User | No | Build inactive. Advise only is never a default. |
-| Assumptions | Values that the design skill or the builder chose and the user did not confirm. | Design skill and builder | No | Empty. The builder writes each assumption in the plan step that uses it. |
-| Pending items | Open decisions, each with the part of the build that it blocks. | Design skill and builder | Only the part that reads it | Empty. |
+| Authorization | One level: advise only, build inactive, activate, publish, or external effects allowed. For external effects, also state the build level and each permitted effect. | User | No | Advise only until the user requests a build. A build request defaults to build inactive. No external effects. |
+| Assumptions | Values that the design skill or the builder chose and the user did not confirm. | Design skill and builder | No for inactive creation. Activation waits for each business assumption that the rule reads. | Empty. The builder writes each assumption in the plan step that uses it. |
+| Pending items | Open decisions, each with the work or activation that it blocks. | Design skill and builder | Only the named work or activation | Empty. |
 | Acceptance examples | Two to five cases: input, expected path, final state. Include the boundary value, the empty value, and one exception. | Design skill proposes. User confirms. | No | One example for each decision branch, plus its boundary value and its empty value. The builder reports each example it did not check. |
 
 Authorization levels:
 
-- **Advise only.** No write. Use it only when the user says to change nothing.
-- **Build inactive.** Create the parts. Automations and AI agents stay off, a sub-portal stays unpublished, and an integration flow stays a draft. Nothing sends data outside Pipefy.
+- **Advise only.** No write. Use it when the user has not requested construction, or explicitly says to change nothing.
+- **Build inactive.** Create the parts. Automations and AI agents stay off, a sub-portal stays unpublished, and an integration flow stays a draft. Without permission for a named external effect, nothing sends data outside Pipefy.
 - **Activate.** Also switch on the automations and agents of this build, as the last step.
 - **Publish.** Also publish what has a draft state: a sub-portal, an integration flow. Create an HTML interface only when the user asks for one by name.
-- **External effects allowed.** Also send email outside the company, invite members, and create a webhook to another system. The specification names each effect.
+- **External effects allowed.** Permit only the effects that the user names: external email, member invitations, or a webhook. Record a separate build level. This permission does not activate or publish unrelated parts.
 
 Rules that connect the design skill and the builder:
 
 - A specification holds no ids. Do not invent an id to make a specification look complete.
 - A complete specification gets no second questionnaire. The builder asks only about pending items.
-- A pending item blocks only the work that reads it. The builder builds the rest.
+- A pending item blocks only the dependent work or activation. The builder continues the independent work.
+- If a rule reads an unconfirmed business assumption, record it as a pending item for that rule. Create it inactive. Activate it only after the user confirms the decision.
 - "No AI" in Constraints removes AI from Platform choices. AI enters Platform choices as confirmed only after an explicit yes from the user.
 
 Specification template (one line for each field):
