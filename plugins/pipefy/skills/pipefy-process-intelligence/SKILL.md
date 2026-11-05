@@ -94,7 +94,7 @@ Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per w
 | Cards stuck in a phase for >7 days | Add due date field + overdue automation |
 | Phase transitions always done by same person | Automate the transition condition |
 | Fields never filled in certain phases | Remove or make optional |
-| Same comment posted repeatedly | A native rule when a field test decides the comment. An AI agent on a card event, as an option, only when the comment needs judgment. |
+| Same comment posted repeatedly | A native rule only when a field test and an available comment action cover the step (`get_automation_actions`). Otherwise, report the limitation or keep the comment manual. Offer a field update only if it carries the same signal and the user accepts that change. An AI agent on a card event is an option when judgment is needed and the action is supported. |
 | No automation between intake and first action | Add "notify assignee" automation on card creation |
 | Large field count on start form | Move optional fields to later phases |
 | Phases with 0 cards over 90 days (whole pipe, not a sample) | Merge into a neighboring phase, or replace the hop with an automation or AI agent. Do not treat an empty phase as a reason to delete the pipe. |

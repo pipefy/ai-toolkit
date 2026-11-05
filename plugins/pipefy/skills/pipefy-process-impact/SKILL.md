@@ -47,7 +47,7 @@ In the user's language, four lines, under 150 words unless they asked for a writ
 ```text
 Where it pays: [hop], [what covers it today, if anything]
 Arithmetic: [formula with numbers or named gaps] = [hours per week, or the gap]
-Step: [traditional automation | AI automation | AI agent | integration], [one sentence on why this one]
+Step: [part from the selection table], [one sentence on why this one]
 Next: [one question, or one offer]
 ```
 
