@@ -64,7 +64,12 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
 ## AI automations (prompt-driven)
 
-**Consent:** create an AI automation only when the user asked for AI. When AI seems useful and the user did not ask for it, name it as an option with the reason and ask. Do not create it.
+**Consent:** create an AI automation only after an explicit yes from the user.
+
+- A request for AI is a yes.
+- An AI automation line that the user confirmed in a `pipefy-process-design` specification is a yes. Do not ask again.
+- Without a yes, use the selection table in `pipefy-process-design` ("Choose the Pipefy part for each step"). When it points at an AI automation, recommend it. Give the reason, the test, and the effect of a wrong output. Ask, and create it only after the yes.
+- When the user says "no AI", do not recommend AI.
 
 | Operation | Purpose |
 | ------------ | --------- |

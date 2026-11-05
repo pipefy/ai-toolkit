@@ -94,12 +94,12 @@ Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per w
 | Cards stuck in a phase for >7 days | Add due date field + overdue automation |
 | Phase transitions always done by same person | Automate the transition condition |
 | Fields never filled in certain phases | Remove or make optional |
-| Same comment posted repeatedly | A native rule only when a field test and an available comment action cover the step (`get_automation_actions`). Otherwise, report the limitation or keep the comment manual. Offer a field update only if it carries the same signal and the user accepts that change. An AI agent on a card event is an option when judgment is needed and the action is supported. |
+| Same comment posted repeatedly | A native rule only when a field test and an available comment action cover the step (`get_automation_actions`). When judgment decides the comment and an agent action covers it, recommend an AI agent on a card event. Otherwise, report the limitation or keep the comment manual. Offer a field update only if it carries the same signal and the user accepts that change. |
 | No automation between intake and first action | Add "notify assignee" automation on card creation |
 | Large field count on start form | Move optional fields to later phases |
 | Phases with 0 cards over 90 days (whole pipe, not a sample) | Merge into a neighboring phase, or replace the hop with an automation or AI agent. Do not treat an empty phase as a reason to delete the pipe. |
 
-Choose the Pipefy part for each opportunity with the selection table and the rules under it in `pipefy-process-design` ("Choose the Pipefy part for each step"). Repetition alone does not prove a need for AI: a native rule covers a repeated step with a fixed test. An AI agent can act on a card event, such as a new card or a move to a phase, not only in a conversation. Do not create AI without an explicit yes from the user.
+Choose the Pipefy part for each opportunity with the selection table and the rules under it in `pipefy-process-design` ("Choose the Pipefy part for each step"). Repetition alone does not prove a need for AI: a native rule covers a repeated step with a fixed test. An AI agent can act on a card event, such as a new card or a move to a phase, not only in a conversation. When the table points at an AI automation or an AI agent, recommend it. Give the reason, the test, and the effect of a wrong output. Create it only after an explicit yes from the user. When the user says "no AI", do not recommend AI.
 
 ---
 
@@ -111,7 +111,7 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 1. Identify the manual step and its trigger.
 2. Call `get_automation_events` and `get_automation_actions` for the pipe; select a supported event and action.
-3. Create the automation:
+3. The pipe already has cards that the rule can match. Create the automation inactive, and activate it only in step 4:
 
    Operation: `create_automation pipe_id=<id> name="Automate manual step" trigger_id=<EVENT_ID> action_id=<ACTION_ID> active=false`
 
