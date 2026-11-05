@@ -74,7 +74,7 @@ Call `get_pipe(pipe_id)` and extract:
 | An alert is triggered | `sla_based` | `{"kindOfSla": "Late"}`, or `Expired`, or `Overdue` |
 | A card leaves a phase | `card_left_phase` | `{"fromPhaseId": "<phase_id>"}` |
 | An email is received | `card_inbox_received_email` | `{"inPhaseId": "<phase_id>"}` |
-| All connected cards are moved to a phase | `all_children_in_phase` | `{"to_phase_id": "<connected_pipe_phase_id>"}` |
+| All connected cards are moved to a phase | `all_children_in_phase` | `{"to_phase_id": "<phase_id>"}` |
 | An HTTP response is received | `http_response_received` | `{"triggerAutomationId": "<automation_id>"}` |
 | An interface button is clicked | `manually_triggered` | None |
 
@@ -82,7 +82,7 @@ For `card_moved` and `field_updated`, you MUST include `event_params`. Omitting 
 
 - `get_automation_events` lists the parameters in snake_case (`from_phase_id`, `kind_of_sla`). The table shows the spelling that the API reads. The toolkit accepts both spellings and sends the API spelling.
 - `scheduler` is on the event list, but AI agents do not accept it. `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors` reject it before any API call.
-- For `all_children_in_phase`, `to_phase_id` is a phase of the connected pipe: the phase that every connected card must reach. Find the connected pipe with `get_pipe_relations` and its phases with `get_pipe`. `validate_ai_agent_behaviors` does not look for this phase in the agent's own pipe. It gives a warning when the id is a phase of that pipe.
+- For `all_children_in_phase`, use a phase from the agent's pipe. Read its phases with `get_pipe`. `validate_ai_agent_behaviors` rejects a phase outside that pipe.
 - For `http_response_received`, `triggerAutomationId` is the id of the traditional automation that sends the HTTP request. Check the id with `get_automation` first.
 
 ### 4 — Discover valid action types

@@ -459,9 +459,7 @@ def _all_children_behavior(to_phase_id: str) -> dict:
 
 
 @pytest.mark.unit
-def test_validate_behaviors_accepts_connected_pipe_phase_for_all_children_in_phase() -> (
-    None
-):
+def test_all_children_in_phase_rejects_phase_outside_agent_pipe():
     problems, warnings = validate_behaviors_against_pipe(
         [_all_children_behavior("connected-pipe-phase")],
         pipe_id=EXAMPLE_PIPE_ID,
@@ -470,14 +468,13 @@ def test_validate_behaviors_accepts_connected_pipe_phase_for_all_children_in_pha
         related_pipe_ids=set(),
         pipe_event_ids={"all_children_in_phase"},
     )
-    assert problems == []
+    assert len(problems) == 1
+    assert "not found in pipe phases" in problems[0]
     assert warnings == []
 
 
 @pytest.mark.unit
-def test_validate_behaviors_warns_when_all_children_in_phase_names_own_pipe_phase() -> (
-    None
-):
+def test_all_children_in_phase_accepts_own_pipe_phase_without_warning():
     problems, warnings = validate_behaviors_against_pipe(
         [_all_children_behavior(EXAMPLE_PHASE_ID)],
         pipe_id=EXAMPLE_PIPE_ID,
@@ -487,9 +484,7 @@ def test_validate_behaviors_warns_when_all_children_in_phase_names_own_pipe_phas
         pipe_event_ids={"all_children_in_phase"},
     )
     assert problems == []
-    assert len(warnings) == 1
-    assert EXAMPLE_PHASE_ID in warnings[0]
-    assert "connected pipe" in warnings[0]
+    assert warnings == []
 
 
 @pytest.mark.unit

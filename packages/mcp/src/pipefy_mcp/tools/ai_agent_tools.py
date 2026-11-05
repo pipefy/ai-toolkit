@@ -292,8 +292,8 @@ class AiAgentTools:
               - ``sla_based`` → ``{"kindOfSla": "Late"}``, or ``Expired``, or ``Overdue``.
               - ``card_left_phase`` → ``{"fromPhaseId": "<phase_id>"}``: the phase the card leaves.
               - ``card_inbox_received_email`` → ``{"inPhaseId": "<phase_id>"}``.
-              - ``all_children_in_phase`` → ``{"to_phase_id": "<phase_id>"}``: a phase of the
-                connected pipe that every connected card must reach.
+              - ``all_children_in_phase`` → ``{"to_phase_id": "<phase_id>"}``: a phase of
+                the agent's pipe.
               - ``http_response_received`` → ``{"triggerAutomationId": "<automation_id>"}``: the
                 traditional automation that sends the HTTP request.
               - ``card_created`` and ``manually_triggered`` take no ``eventParams``.
@@ -682,9 +682,8 @@ class AiAgentTools:
             For ``move_card`` with trigger ``card_moved`` and ``eventParams.to_phase_id``,
             the tool also checks that ``destinationPhaseId`` is allowed from that phase
             (``cards_can_be_moved_to_phases``).
-            For ``all_children_in_phase``, ``eventParams.to_phase_id`` is a phase of the
-            connected pipe, so the tool does not look for it in this pipe. A phase of this
-            pipe gives a **warning**.
+            For ``all_children_in_phase``, ``eventParams.to_phase_id`` must be a phase
+            of this pipe.
             For ``create_table_record``, ``fieldsAttributes`` hold **table** field IDs — they are not
             validated against the source pipe; the tool adds a **warning** to verify IDs with
             ``get_table`` / ``get_table_record`` instead. ``send_email_template`` does not run
