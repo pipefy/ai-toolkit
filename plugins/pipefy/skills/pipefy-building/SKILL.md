@@ -70,7 +70,7 @@ Some requests use a build verb but ask for something else:
 
 ## Whole-process builds
 
-Use this order when no catalog skill builds a whole process and the user supplied no build method. Read each domain skill when you get to its part.
+Use this order when no catalog skill builds a whole process and the user supplied no build method. When a part needs another part's ID, create that other part first. Read each domain skill when you get to its part.
 
 1. Pipe and phases.
 2. Fields and field conditions.
