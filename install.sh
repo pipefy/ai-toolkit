@@ -92,7 +92,8 @@ Options:
                       alphas; pass the tag to install one of those on purpose.
   --prefix <dir>      Pass through as UV_TOOL_DIR for uv tool install.
   --allow-root        Allow running as root (refuses by default).
-  --dry-run           Print commands without executing them.
+  --dry-run           Print commands without executing them. Requires python3
+                      to read release metadata without installing Python.
   -h, --help          Show this help.
 
 Examples:
@@ -387,8 +388,7 @@ github_api_get() {
     url="$1"
     token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
     if [ -n "$token" ]; then
-        curl -fsSL \
-            -H "Authorization: Bearer $token" \
+        printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -fsSL --config - \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "$url"
@@ -399,37 +399,66 @@ github_api_get() {
     fi
 }
 
+# Use structural JSON parsing so authenticated API responses cannot select drafts.
+release_json() {
+    if command -v python3 >/dev/null 2>&1; then
+        set -- python3 -c "$RELEASE_JSON_SCRIPT" "$@"
+    elif [ "$DRY_RUN" -eq 0 ]; then
+        set -- uv run --no-project --no-config python -c "$RELEASE_JSON_SCRIPT" "$@"
+    else
+        err "python3 is required to resolve releases during a dry run."
+    fi
+    "$@"
+}
+
+RELEASE_JSON_SCRIPT='
+import json, re, sys
+value = json.load(sys.stdin)
+if sys.argv[1] == "select":
+    alpha = re.compile(r"^v?[0-9]+\.[0-9]+\.[0-9]+[-_.]?(a|alpha)\.?[0-9]+$", re.I)
+    for release in value:
+        tag = release["tag_name"]
+        if not release.get("draft", False) and not alpha.fullmatch(tag):
+            print(tag)
+            break
+    else:
+        sys.exit(3 if len(value) == 100 else 4)
+else:
+    if value.get("draft"):
+        sys.exit("The selected GitHub Release is a draft.")
+    if value["tag_name"] != sys.argv[2]:
+        sys.exit("GitHub returned a different release tag.")
+    for asset in value["assets"]:
+        url = asset["browser_download_url"]
+        if url.startswith("https://") and url.endswith(".whl"):
+            print(url)
+'
+
 resolve_release() {
     if [ -n "$TAG" ]; then
         say "Using --version: $TAG"
     else
-        say "Resolving latest release from GitHub..."
-        # The releases list is newest-first, so the first non-alpha tag in it is
-        # the newest release a default install should get. Filtering by tag
-        # shape (rather than the API's `prerelease` flag) keeps this working
-        # while the whole line is still pre-1.0 betas, which must stay
-        # installable.
-        list_url="https://api.github.com/repos/$REPO/releases?per_page=30"
-        list=$(github_api_get "$list_url") \
-            || err "Failed to reach GitHub API: $list_url"
-        # -i so the spelling agrees with the release tooling's own classifier
-        # (scripts/bump_version.py prerelease_track), which is case-insensitive.
-        TAG=$(printf '%s' "$list" \
-            | grep '"tag_name"' \
-            | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/' \
-            | grep -Eiv '^v?[0-9]+\.[0-9]+\.[0-9]+[-_.]?(a|alpha)\.?[0-9]+$' \
-            | head -n 1)
-        [ -n "$TAG" ] || err "GitHub returned no non-alpha releases for $REPO"
+        say "Resolving latest public release from GitHub..."
+        page=1
+        while [ -z "$TAG" ]; do
+            list_url="https://api.github.com/repos/$REPO/releases?per_page=100&page=$page"
+            list=$(github_api_get "$list_url") \
+                || err "Failed to reach GitHub API: $list_url"
+            select_status=0
+            TAG=$(printf '%s' "$list" | release_json select) || select_status=$?
+            case "$select_status" in
+                0) ;;
+                3) page=$((page + 1)) ;;
+                4) err "GitHub returned no public non-alpha releases for $REPO" ;;
+                *) err "GitHub returned an invalid release list for $REPO" ;;
+            esac
+        done
         say "Resolved tag: $TAG"
     fi
-    # Fetch the chosen release on its own so the wheel URLs below come from that
-    # tag only, never from a neighbour in the list above.
     api_url="https://api.github.com/repos/$REPO/releases/tags/$TAG"
     body=$(github_api_get "$api_url") || err "Failed to reach GitHub API: $api_url"
-    WHEEL_URLS=$(printf '%s' "$body" \
-        | grep '"browser_download_url"' \
-        | grep -oE 'https://[^"]+\.whl' \
-        || true)
+    WHEEL_URLS=$(printf '%s' "$body" | release_json wheels "$TAG") \
+        || err "Release $TAG is unavailable for installation"
     [ -n "$WHEEL_URLS" ] || err "Release $TAG has no wheel assets at $api_url"
     say "Wheels in $TAG:"
     printf '%s\n' "$WHEEL_URLS" | sed 's/^/  /'
@@ -484,7 +513,7 @@ install_skills() {
     fi
     if confirm "Install Pipefy skills via 'npx skills add'?"; then
         _is_before=$(skills_present)
-        run npx skills add "$REPO" -y
+        run npx skills add "https://github.com/$REPO/tree/$TAG" -y
         receipt_skills "$_is_before"
     fi
 }

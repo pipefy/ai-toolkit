@@ -25,7 +25,7 @@ Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-t
 | [`response-typing.md`](response-typing.md) | When to parse a GraphQL response into a validating model vs. leave it a `TypedDict` |
 | [`ipaas.md`](ipaas.md) | iPaaS (Advanced Automations) tools: meta-tool pattern, flow overview, vocabulary |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing skills (Markdown playbooks) |
-| [`../RELEASE.md`](../RELEASE.md) | Versioning and GitHub Releases |
+| [Release guide](contributing/how-to/release.md) | Manual releases, publication recovery, and promotion to `main` |
 | [`../TERMS.md`](../TERMS.md) | Repository terms notice (license, platform terms, disclaimers) |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability disclosure |
 | [`compliance/COMPLIANCE.template.md`](compliance/COMPLIANCE.template.md) | Stub for per-blueprint `COMPLIANCE.md` / AI Compliance Card |

@@ -4,7 +4,7 @@
 
 ## Status
 
-Workspace-internal in v0.1; publishing **`pipefy`** to PyPI is gated separately from CLI/MCP (see **`RELEASE.md`** Trusted Publishing notes).
+The SDK distribution is `pipefy`. It shares a release version with the other workspace packages. See the [release guide](../../docs/contributing/how-to/release.md) for publication prerequisites.
 
 ## Usage (within the monorepo)
 

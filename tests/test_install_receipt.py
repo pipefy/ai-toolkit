@@ -309,6 +309,57 @@ def test_a_finished_install_writes_one_complete_record(tmp_path):
     assert str(_receipt(home)) in result.stdout
 
 
+@pytest.mark.parametrize("tag", [None, "v0.5.0-alpha.7", "v0.4.0"])
+def test_skills_use_the_same_tag_as_the_selected_packages(tmp_path, tag):
+    home = _home(tmp_path)
+    stub = _stub_path(tmp_path, home)
+    args = ("--yes", "--client", "none")
+    if tag:
+        args += ("--version", tag)
+        release = json.loads(_RELEASE)
+        release["tag_name"] = tag
+        (tmp_path / "stubstate" / "release.json").write_text(json.dumps(release))
+    result = _install(tmp_path, home, stub, args=args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    selected = tag or _TAG
+    assert (
+        f"npx skills add https://github.com/pipefy/ai-toolkit/tree/{selected} -y"
+        in result.stderr
+    )
+    assert f"release_tag={selected}" in _lines(home)
+
+
+def test_authenticated_installer_skips_draft_releases(tmp_path):
+    home = _home(tmp_path)
+    stub = _stub_path(tmp_path, home)
+    releases = [{"tag_name": "v1.0.0", "draft": True}, *json.loads(_RELEASES)]
+    (tmp_path / "stubstate" / "releases.json").write_text(json.dumps(releases))
+    result = _install(
+        tmp_path,
+        home,
+        stub,
+        args=("--yes", "--client", "none"),
+        env_extra={"GH_TOKEN": "test-token"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"release_tag={_TAG}" in _lines(home)
+    assert "test-token" not in result.stdout + result.stderr
+
+
+def test_installer_rejects_an_explicit_draft_before_installing_tools(tmp_path):
+    home = _home(tmp_path)
+    stub = _stub_path(tmp_path, home)
+    release = json.loads(_RELEASE)
+    release["draft"] = True
+    (tmp_path / "stubstate" / "release.json").write_text(json.dumps(release))
+    result = _install(
+        tmp_path, home, stub, args=("--yes", "--client", "none", "--version", _TAG)
+    )
+    assert result.returncode != 0
+    assert "is a draft" in result.stderr
+    assert "uv_tool=pipefy-cli" not in _lines(home)
+
+
 def test_a_prefix_is_recorded_and_installs_land_under_it(tmp_path):
     home = _home(tmp_path)
     stub = _stub_path(tmp_path, home)

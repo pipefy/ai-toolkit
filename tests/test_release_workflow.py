@@ -1,10 +1,4 @@
-"""Release workflow drift guard: nothing publishes before the artifacts are checked.
-
-The step order *is* the contract. A smoke install that runs after ``Create GitHub
-Release`` leaves a published Release advertising wheels that cannot start, and
-withdrawing one is manual work. The workflow states that boundary in a comment;
-a comment is documentation, so the ordering is asserted here as well.
-"""
+"""Keep the external upload action behind the package installation gate."""
 
 from __future__ import annotations
 
@@ -13,8 +7,8 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _RELEASE_YML = _REPO_ROOT / ".github" / "workflows" / "release.yml"
 
-_SMOKE_STEP = "Smoke install staged wheels (clean venv)"
-_PUBLISH_STEPS = ("Create GitHub Release", "Upload to PyPI")
+_SMOKE_STEP = "Restore or build original packages and test installation"
+_PUBLISH_STEPS = ("Upload missing original files to PyPI",)
 
 
 def _step_index(workflow: str, name: str) -> int:
