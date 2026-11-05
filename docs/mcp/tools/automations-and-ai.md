@@ -223,6 +223,15 @@ Optional inside `actionParams.aiBehaviorParams`:
 |---|---|---|
 | `field_updated` | `triggerFieldIds` | Fire only when specific fields change |
 | `card_moved` | `to_phase_id` | Fire only when card moves to a specific phase |
+| `sla_based` | `kindOfSla` | Fire on one alert kind: `Late`, `Expired`, or `Overdue` |
+| `card_left_phase` | `fromPhaseId` | Fire only when the card leaves a specific phase |
+| `card_inbox_received_email` | `inPhaseId` | Fire only when the card is in a specific phase |
+| `all_children_in_phase` | `to_phase_id` | A phase of the agent's pipe |
+| `http_response_received` | `triggerAutomationId` | The traditional automation that sends the HTTP request |
+
+`card_created` and `manually_triggered` take no `eventParams`. `scheduler` is in the `get_automation_events` catalog, but AI agents do not accept it: `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors` reject it before any API call.
+
+For `all_children_in_phase`, use a phase from the agent's pipe. Read its phases with `get_pipe`. `validate_ai_agent_behaviors` rejects a phase outside that pipe.
 
 ### AI Agent read & delete
 
