@@ -84,6 +84,7 @@ For `card_moved` and `field_updated`, you MUST include `event_params`. Omitting 
 - `scheduler` is on the event list, but AI agents do not accept it. `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors` reject it before any API call.
 - For `all_children_in_phase`, use a phase from the agent's pipe. Read its phases with `get_pipe`. `validate_ai_agent_behaviors` rejects a phase outside that pipe.
 - For `http_response_received`, `triggerAutomationId` is the id of the traditional automation that sends the HTTP request. Check the id with `get_automation` first.
+- For `manually_triggered`, the "interface button" is a `button`/`automationButton` element on a Pipefy **Interface** page (a portal, outside the pipe) wired to a `triggerAutomation` action naming this behavior's automation id — building it is a separate workflow (see `pipefy-portal-setup`). For a quick test or demo, the closest card-level equivalent is a `field_updated` trigger on a single-option checklist field (e.g. one option named "Run"): checking it fires the behavior without building an Interface.
 
 ### 4 — Discover valid action types
 
