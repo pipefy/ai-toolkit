@@ -94,10 +94,12 @@ Whole-pipe signals (a phase with no card in 90 days, cards leaving a phase per w
 | Cards stuck in a phase for >7 days | Add due date field + overdue automation |
 | Phase transitions always done by same person | Automate the transition condition |
 | Fields never filled in certain phases | Remove or make optional |
-| Same comment posted repeatedly | AI agent to auto-post based on trigger |
+| Same comment posted repeatedly | A native rule only when a field test and an available comment action cover the step (`get_automation_actions`). When judgment decides the comment and an agent action covers it, recommend an AI agent on a card event. Otherwise, report the limitation or keep the comment manual. Offer a field update only if it carries the same signal and the user accepts that change. |
 | No automation between intake and first action | Add "notify assignee" automation on card creation |
 | Large field count on start form | Move optional fields to later phases |
 | Phases with 0 cards over 90 days (whole pipe, not a sample) | Merge into a neighboring phase, or replace the hop with an automation or AI agent. Do not treat an empty phase as a reason to delete the pipe. |
+
+Choose the Pipefy part for each opportunity with the selection table and the rules under it in `pipefy-process-design` ("Choose the Pipefy part for each step"). Repetition alone does not prove a need for AI: a native rule covers a repeated step with a fixed test. An AI agent can act on a card event, such as a new card or a move to a phase, not only in a conversation. When the table points at an AI automation or an AI agent, recommend it. Give the reason, the test, and the effect of a wrong output. A confirmed AI line in the specification is the user's yes. Without that yes or a request for AI, ask before creation. Do not ask again after a yes. "No AI" removes AI from the recommendations and the build, even after an earlier yes.
 
 ---
 
@@ -109,11 +111,15 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 1. Identify the manual step and its trigger.
 2. Call `get_automation_events` and `get_automation_actions` for the pipe; select a supported event and action.
-3. Create the automation:
+3. The pipe existed before this conversation and has cards that the rule can match.
+   Create the automation inactive, then activate it in step 4 unless another off case applies.
+   Use "Start state" in `pipefy-automations` for the off cases:
 
    Operation: `create_automation pipe_id=<id> name="Automate manual step" trigger_id=<EVENT_ID> action_id=<ACTION_ID> active=false`
 
-4. Verify the rule before activating it, then report the actual event and action used. If the desired event or action is unavailable, report the limitation instead of guessing an ID.
+4. Read the rule and compare it with the request.
+   If it matches and no other off case applies, activate it in this build without another question.
+   Report the actual event and action. If either is unavailable, report the limitation instead of an invented ID.
 
 **Example: add a field condition**
 
@@ -163,6 +169,6 @@ Keep Impact to one line. Do not invent volume, hourly cost, or lead time; name e
 ## See also
 
 - `pipefy-automations` — detailed automation creation guide.
-- `pipefy-ai-agents` — add conversational agents for user-facing automation.
+- `pipefy-ai-agents`: AI agents that act on a card event or in a conversation.
 - `pipefy-observability` — check credit and execution data to quantify improvement impact.
 - `pipefy-process-impact` for a fuller justification; this skill only emits the Impact line per round.

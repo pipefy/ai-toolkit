@@ -6,6 +6,8 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 |---|---|
 | `get_ai_agents` | `pipefy agent list` |
 | `get_ai_agent` | `pipefy agent get` |
+| `get_ai_agent_logs` | `pipefy agent logs list` |
+| `get_card` | `pipefy card get --include-fields` |
 | `create_ai_agent` | `pipefy agent create` |
 | `update_ai_agent` | `pipefy agent update` |
 | `delete_ai_agent` | `pipefy agent delete` |
@@ -28,6 +30,31 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 | `update_ai_knowledge_base_data_lookup` | `pipefy kb data-lookup update` |
 | `delete_ai_knowledge_base_data_lookup` | `pipefy kb data-lookup delete` |
 | `validate_knowledge_base_access` | `pipefy kb validate-access` |
+
+## Check acceptance results
+
+Use the pipe UUID for `PIPE_UUID` and the numeric card ID for `CARD_ID`.
+List execution logs without `--status`:
+
+```bash
+pipefy agent logs list --repo PIPE_UUID --first 30 --json
+```
+
+Read `aiAgentLogsByRepo.nodes`. Match `cardId`, `agentUuid`, and `createdAt` to the test execution.
+If `aiAgentLogsByRepo.pageInfo.hasNextPage` is true, replace `CURSOR` with its `endCursor`:
+
+```bash
+pipefy agent logs list --repo PIPE_UUID --first 30 --after CURSOR --json
+```
+
+Continue through the pages. Apply the terminal-status checks in `SKILL.md` before reading the card results:
+
+```bash
+pipefy card get CARD_ID --include-fields --json
+```
+
+Compare `card.fields` and `card.current_phase` with each expected outcome before cleanup.
+An absent or empty required output does not pass acceptance.
 
 ## Write controls and flags
 
