@@ -147,8 +147,8 @@ create_automation pipe_id=67890 name="Summarize intake" trigger_id=card_created 
 
 4. Read the created rule with `get_ai_automation`.
    Make sure that `active` is false and the prompt, fields, event, and condition match the request.
-5. Test the saved prompt with `simulate_automation` on acceptance cards. Use the saved event and action parameters.
-   Follow "Steps: simulate an AI automation" below. If the output differs from the expected result, keep the rule off.
+5. Test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation).
+   If the output differs from the expected result, keep the rule off.
 6. For a temporary off case, use `update_ai_automation` with `active=true` after the read and acceptance tests.
    Keep the rule off if another off case still applies. Read the rule again after activation.
 
@@ -240,15 +240,15 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
 
 `simulate_automation` is **AI-only** today (only `generate_with_ai` `action_id` is accepted). For non-AI rules, watch `get_automation_logs` after the trigger fires.
 
-1. Read a working rule first: `get_automation automation_id=<id>` — copy `event_params` and `action_params` verbatim.
-2. Simulate on a real sample card. Send the `event_id`, `event_params`, and `action_params` from step 1.
-   The example rule uses `card_created`, which has no `event_params`:
+1. Read the saved rule with `get_automation automation_id=<id>`. Keep its `event_id`. Use only its saved `aiParams` inside `action_params`.
+2. Build `event_params` from the saved non-null values, without `phase`. For `card_created`, omit `event_params`.
+3. Simulate on a sample card with those inputs. The example rule uses `card_created`:
 
    ```
    simulate_automation pipe_id=67890 action_id=generate_with_ai sample_card_id=456 event_id=card_created action_params={"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}}
    ```
 
-3. Read the immediate result. It may contain `simulation_id` + `status:"processing"` with null `simulationResult`. Keep the ID and read the simulation again through `execute_graphql`; calling `simulate_automation` again starts a new simulation:
+4. Read the immediate result. It can contain `simulation_id`, `status:"processing"`, and a null `simulationResult`. Keep the ID. Each `simulate_automation` call starts a new simulation. Read the existing simulation through `execute_graphql`:
 
    ```graphql
    query { automationSimulation(simulationId: "<simulation_id>") { status simulationResult details { errorType message } } }
@@ -383,7 +383,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 - **`create_send_task_automation` fires immediately when `active=true`.** Pass `active=false` first if you want to wire it up before the rule starts firing. The 2026-04-16 orphaned-task incident is the cautionary tale.
 - **`update_automation` API asymmetry.** `create_automation` takes a top-level `active` param; `update_automation` requires `extra_input={"active": false}`. Pass `active` through `extra_input` when toggling on an existing rule.
 - **`action_repo_id` semantics.** For cross-pipe actions (`create_connected_card`, `create_card` into another pipe), this is the **destination** pipe, not the source.
-- **Simulation reuses real rule params.** Before simulating, call `get_automation` to read `event_params` and `action_params` of a working rule and pass them verbatim. Don't hand-craft params.
+- For simulation inputs, follow [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). Use only the saved input fields. Remove response-only metadata.
 - **`field_map` uses slug in `fieldId`.** Preflight rejects non-numeric `fieldId` before GraphQL; slugs (e.g. `due_date`) used to surface as `INTERNAL_SERVER_ERROR`. Recovery: `get_start_form_fields` / `get_phase_fields` → use `internal_id`.
 - **Unknown `field_map` `fieldId`.** `create_automation` preflight fails with the offending id when the destination field is not on the action pipe. Re-discover ids on `action_repo_id` (not only the trigger pipe for cross-pipe actions).
 - **Used `update_card_field` operation for a rule.** That tool updates one card by **slug**; automations need `create_automation` + `field_map` with numeric `fieldId`.
