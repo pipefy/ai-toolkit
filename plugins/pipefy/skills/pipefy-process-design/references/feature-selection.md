@@ -25,7 +25,7 @@ Write one line for each step in Platform choices:
 
 - Name the work that the part removes. "Moves the card when the review is done" is a result. "Adds an automation" is not.
 - Name one alternative, also when the choice is clear. The user can then see what you did not choose.
-- For an AI part, also write the test and the effect of a wrong output. Until the user says yes in the review, write "recommended, not confirmed" in the line. After the yes, write "confirmed".
+- For an AI part, also write the test and the effect of a wrong output. Until the user confirms the specification, write "recommended, not confirmed" in the line. After that confirmation, write "confirmed".
 
 ---
 
@@ -33,7 +33,7 @@ Write one line for each step in Platform choices:
 
 - **Boundary values.** The native number tests are "greater than" and "less than". A rule for "5,000.00 or more" uses "greater than 4,999.99", or the other path uses "less than 5,000.00". Write the boundary result in Decisions so that the builder can test it.
 - **Empty values.** Give the empty case its own result. Make the field required in the phase that collects it, or add a rule with the `blank` test.
-- **Phase moves.** A move rule needs a connection between the two phases. A new pipe connects each phase only to the phases beside it. Other connections are a manual step in the Pipefy interface. See `pipefy-pipes-and-cards`.
+- **Phase moves.** A move rule needs a connection between the two phases. A new pipe connects each phase only to the phases beside it. Other connections are a manual step in the Pipefy interface. Keep the dependent rule off until the connection exists. If creation fails even with `active=false`, record `skipped` instead of `created inactive`. See `pipefy-pipes-and-cards`.
 - **Labels.** No automation action applies a label to a card. Propose a status field that a rule fills, or a manual step. See `pipefy-automations`.
 - **Email.** A rule that sends email needs an email template. Only the Pipefy interface creates a template. Email to an address outside the company is an external effect.
 - **Event and action pairs.** Not every event works with every action. Before you promise a rule, check the pair in `pipefy-automations`.
@@ -50,7 +50,7 @@ Cost: low maintenance. A wrong rule moves or changes cards without a person. Ask
 - **Wrong output.** Say what happens when the output is wrong: a person checks it in the next phase, or a field condition asks for a review.
 - **Credits.** An AI automation uses AI credits. Give the number of runs when the user knows the volume, so that the user can see the cost.
 - **Trigger.** An AI automation runs on one card event, such as a new card or a move to a phase. When the step needs a trigger that an AI automation does not offer, recommend an AI agent. Before you promise a trigger, check the pair in `pipefy-automations`.
-- **Consent.** Ask about the recommendation with the review questions. The user's yes there is the explicit yes, and nobody asks again. Without that yes, the line stays "recommended, not confirmed".
+- **Consent.** Include the recommendation in the specification. The user's confirmation of that specification is the yes. Nobody asks again for that AI part. Without confirmation, the line stays "recommended, not confirmed".
 
 ---
 
@@ -70,7 +70,7 @@ Cost: low maintenance. A wrong rule moves or changes cards without a person. Ask
 - **Scope.** Give one agent one responsibility. An agent has 1 to 5 behaviors. When the work needs more, split the responsibility.
 - **Action limits.** Name the actions the agent may take. An action that approves, rejects, pays, or sends a message outside the company needs a human review before it runs.
 - **Not an agent.** When one prompt with fixed output fields does the work, use an AI automation. It is less to maintain and easier to test.
-- **Consent.** The same rule as for an AI automation: the user's yes in the review confirms the agent.
+- **Consent.** The user's confirmation of the specification authorizes its AI agent recommendation, as it does for an AI automation.
 
 ---
 
@@ -113,7 +113,7 @@ Cost: low maintenance. A wrong rule moves or changes cards without a person. Ask
 |---|---|---|---|
 | The same manual step runs 200 times a week, and a field test decides it | AI automation | Traditional automation | Repeated work alone does not prove a need for AI. |
 | A document arrives, and the team reads two values from it | New AI agent | AI automation with two output fields, recommended | A fixed output does not need an agent. |
-| A rule routes most cases, and a small part stays manual | Rule and AI on the same step | Rule, with the AI step named as optional | Two parts on one step are hard to test and to maintain. |
+| A rule routes most cases, and a small part stays manual | Rule and AI on the same step | Keep the rule. Describe the remaining work as another step. Recommend AI there when its criteria apply. | Each step has one part. The user can assess the remaining work separately. |
 | The user said "no AI" | AI recommended | No AI in Platform choices | The constraint removes the recommendation. |
 | An AI step must run every morning | AI agent on a schedule | A traditional automation or an integration flow on the schedule | `scheduler` is never an agent trigger. |
 | Two teams review at the same time | A separate pipe for each team | Two decision fields in one phase, with a join rule | One phase keeps one case. Use child cards in a separate pipe only when each review has its own cases and owners. |

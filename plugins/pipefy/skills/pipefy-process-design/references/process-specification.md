@@ -75,10 +75,10 @@ What a builder does with it:
      - Aguardando documento to Análise.
      - Aprovação gerencial to Aprovado, and Aprovação gerencial to Recusado.
 4. It asks about P1 and P2 in one message, each with a proposed answer. The low-value approval rule stays inactive while P2 is open.
-5. It builds the pipe with its phases and start form first. Then it builds the phase fields and the field condition for Motivo da recusa. Last, it builds the rules and the reminder. D1 and D4 each need two rules, one for each destination.
+5. Its build plan includes acceptance cards and their cleanup for approval. It builds the pipe, phases, and start form first. Then it builds the phase fields and the field condition for Motivo da recusa. Last, it builds the rules and the reminder. D1 and D4 each need two rules, one for each destination.
 6. It reads back each rule and the field condition, compares them with the specification, and names each difference.
 7. It builds no AI, because of the constraint. The authorization is "construir" (build), and the pipe is new, so no card exists yet. It activates the manager rule and the reminder. Five rules stay inactive, because each one moves a card through a missing phase connection. The low-value approval rule also waits for P2.
-8. It checks A2 on a test card, because the manager rule is active. It names the test card in the report.
+8. It tests A2 on the acceptance card from the approved plan, without external effects. It deletes that card through the approved cleanup. It records the result and the cleanup in the report. The reminder remains untested and pending.
 
 Questions that the builder returns, in the user's language:
 
@@ -99,12 +99,17 @@ Automation Parecer Falta documento pausa (<id>): created inactive (phase connect
 Automation Gerente aprova (<id>): created inactive (phase connection)
 Automation Gerente recusa (<id>): created inactive (phase connection)
 Automation Lembrete de Análise (<id>): created active
-Test card A2 (<id>): moved to Aprovação gerencial
+Test card A2 (<id>): moved to Aprovação gerencial, then deleted through approved cleanup
+Reminder acceptance: pending, not executed
 Manual steps: six phase connections, from Análise to Aprovado and five more. Only the Pipefy interface creates them.
-Next step: create the six phase connections. The builder then activates four inactive rules. The low-value approval rule also waits for P2.
+Next step: create the six phase connections. Then activate four inactive rules and test the remaining acceptance cases. The low-value approval rule also waits for P2. Test the reminder before declaring the process ready.
 ```
 
-The process is ready only in part. Five rules stay inactive until the phase connections exist, and the low-value approval rule also waits for P2. A2 ran on a test card. A1 and A5 are checked by a read of the rule and the condition. They did not run. A3 is covered by the required field. A4 depends on the phase connections.
+The process is not ready for real cards. Five rules stay inactive until the phase connections exist. The low-value approval rule also waits for P2. A2 passed on an acceptance card, and the approved cleanup deleted it. The builder inspected A1 and A5 through the rule and condition reads, but did not execute them. A3 is covered by the required field.
+
+A4 depends on the phase connections. The reminder also needs an acceptance test.
+
+The move rules in this example use `field_updated`. For `card_moved` move rules, creation can fail on a missing connection even with `active=false`. In that case, report `skipped` until the connection exists. Do not report `created inactive` for a rule that creation rejected.
 
 ---
 
@@ -153,7 +158,7 @@ Platform choices:
   Reminder at 3 days: automation on the phase time limit. Alternative: a manual follow-up.
   Read the tax id and the expiry date from the tax certificate: AI automation, recommended. Alternative: the analyst reads the certificate.
     Reason: the step reads a document on one event and writes two fields. Test: 20 sample certificates read correctly.
-    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed. The user did not answer the AI review question.
+    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed. The user did not confirm the specification with this recommendation.
   Email to the vendor on rejection: email template and an automation that sends it. This is an external effect.
 Constraints: only the Legal reviewer approves legal terms. Bank data does not leave Pipefy.
 Authorization: build ("build it"). External effects: not allowed.
@@ -178,11 +183,11 @@ What a builder does with it:
    - D2 uses `card_moved`, filtered to Reviews, and `number_less_than` 10000. It does not depend on `field_updated` from start-form population. A2 checks that 10,000.00 goes to Finance.
    - D4 fires on a change to either decision field. The rule lists both fields as its trigger fields.
    - It checks the phase moves with `get_phase_allowed_move_targets`. Three moves skip a neighbor phase: Document check to On hold, Reviews to Rejected, On hold to Document check. It lists them as a manual step.
-4. It does not build the AI automation, because the user did not say yes. It lists the recommendation as an offer in the report.
+4. It does not build the AI automation until the user confirms the specification with that recommendation. It records the missing confirmation as pending.
 5. It does not create the vendor email. External effects are not allowed, and only the Pipefy interface creates an email template.
 6. It does not create the deadline rule, because P1 blocks it. It builds the rest.
 7. Authorization is "build", and the pipe is new, so it activates each rule that can run now: D2 and the reminder. D3 stays inactive until the user confirms P2. D4 moves a card from Reviews to Rejected, a phase connection that does not exist yet, so D4 also stays inactive.
-8. It reads back each rule and compares it with the specification. It names each difference.
+8. It reads each rule again and compares it with the specification. It names each difference. It records every untested acceptance example as pending. The process is not ready for real cards until the pending work and acceptance tests finish.
 
 Questions that the builder returns, in one message with the build plan:
 
