@@ -58,6 +58,7 @@ For a written case, expand each line into a short paragraph and add an "Assumpti
 - Report time returned to the team on repetitive hops. Asked how many people the change removes, answer in hours and say that decision is theirs.
 - Do not recommend deleting a pipe, cutting seats or credits, or moving work off Pipefy. A quiet pipe is a process with no trigger or a duplicate: ask which, then cover its hops. Delete only when the user asks for that pipe by name, and then move the work into the pipe that remains.
 - Rule before AI. Existing coverage is value already delivered: size it, do not replace it. Credits an active agent spends are the cost of work it already does, not a line to cut.
+- "No AI" removes AI from the recommendations and the proposed build, even after an earlier yes.
 - `get_ai_agents` takes the pipe `uuid` from `get_pipe`, not the numeric id; a numeric id returns a permission error. With the uuid and still a permission error, say agent coverage is unknown and do not call the hop manual on that basis.
 
 ## Measuring

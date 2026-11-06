@@ -64,12 +64,24 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
 ## AI automations (prompt-driven)
 
-**Consent:** create an AI automation only after an explicit yes from the user.
+Choose the part before you apply the consent rule, including when the user already agreed to AI.
+Use `pipefy-process-design` ("Choose the Pipefy part for each step") for every step.
+
+- Use a native rule when an event, a field test, and a supported action cover the step.
+- Recommend an AI automation for one event that reads card fields or an attachment and writes a fixed output.
+  The output is a category, a summary, or an extracted value.
+- Recommend an AI agent when the step needs process context, actions, or an agent-only trigger.
+  Give it one responsibility and 1 to 5 behaviors.
+
+Do not put a native rule and AI on the same step.
+Give each AI recommendation a reason, a test, and the effect of a wrong output.
+
+Create AI only after the user's yes:
 
 - A request for AI is a yes.
-- An AI automation line that the user confirmed in a `pipefy-process-design` specification is a yes. Do not ask again.
-- Without a yes, use the selection table in `pipefy-process-design` ("Choose the Pipefy part for each step"). When it points at an AI automation, recommend it. Give the reason, the test, and the effect of a wrong output. Ask, and create it only after the yes.
-- When the user says "no AI", do not recommend AI.
+- A confirmed AI line in a `pipefy-process-design` specification is a yes. Do not ask again.
+- Without either yes, ask before you create AI.
+- "No AI" removes AI from the recommendations and the build, even after an earlier yes.
 
 | Operation | Purpose |
 | ------------ | --------- |
@@ -102,7 +114,11 @@ Logs, usage, and job exports for automations live in `pipefy-observability` (`ge
 
    Returns `valid:true|false`, `problems`, `warnings`, `field_map`. Catches mistakes in one read-only call vs 2–3 failed mutation roundtrips.
 
-4. **Create the automation** (only if `valid:true`): use the selected event ID, pipe ID, prompt, output field IDs, and a name. MCP accepts these as `event_id`, `pipe_id`, `prompt`, `field_ids`, and `name`; the SDK takes a `CreateAiAutomationInput` containing them. See the active surface reference for invocation syntax.
+4. If `valid:true`, create the automation in the state from "Start state".
+   For an active rule, use `create_ai_automation` with the selected event, pipe, prompt, output fields, and name.
+   MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, and `name`. The SDK takes a `CreateAiAutomationInput` with those values.
+   For an inactive rule, use "Create an AI automation inactive" below.
+5. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
 
 ---
 
