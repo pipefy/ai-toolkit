@@ -79,11 +79,11 @@ Use this order when no catalog skill builds a whole process and the user supplie
 5. AI agents.
 6. Portal pages.
 
-- Activate the automations and AI agents of a new process, unless the user asks to keep them inactive (`build inactive`). Create a rule (an automation or an AI agent) inactive when its pipe already has cards that it can match. Do the same for a rule on a time limit or a schedule in a pipe with cards. Read that rule again, then activate it. Keep a rule inactive while it reads an unconfirmed assumption or needs a missing phase connection. Publish a sub-portal or an integration flow only when the user asks.
-- After each write, read the part again and compare it with the request.
+- Use `build` by default: activate the automations and AI agents of a new process. For `build inactive`, keep them off. A rule is an automation or an AI agent. Create a rule off when its pipe existed before this conversation and has cards that match its event and conditions. Also create time or scheduled rules off in pipes with cards. Read these rules again, then activate them within the approved build. Keep a rule off while it reads an unconfirmed assumption or needs a missing phase connection. If a missing connection prevents creation, report the rule as skipped. To create a rule off, follow "Start state" in `pipefy-automations` and "Active lifecycle" in `pipefy-ai-agents`. Publish sub-portals or integration flows only with permission. Each external effect needs its own permission.
+- After each write, read the part again and compare it with the request. Include acceptance cards and their cleanup in the approved build for a new pipe. Test without external effects before real cards arrive. Never activate a part that the user asked to keep off, or that waits for an assumption or a connection. Report an unavailable test as pending.
 - When a part that matches the request exists, ask the user before you use it again.
-- Create an AI automation or an AI agent only after the user says yes to AI. A confirmed AI line in the process specification is that yes, so do not ask again.
-- End with each part and its state, the manual steps, the inactive parts, and one "Next step".
+- Choose each part with "Choose the Pipefy part for each step" in `pipefy-process-design`, before you ask about AI. Use a native rule first. Recommend AI for each step that an AI row fits. A request for AI is a yes. A confirmed AI line in the specification is also a yes. Ask about AI only when neither applies. "No AI" removes every AI part, including one previously accepted.
+- End with each part and its state, the manual steps, the inactive parts, and one "Next step". Say ready only after the applicable acceptance checks pass and no required part remains pending.
 
 ## Product limits live in domain skills
 
