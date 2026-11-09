@@ -24,16 +24,16 @@ Other paths to an org id, when you already have context:
 
 `pipesCount` is the org-wide total: every pipe in the organization. Pipe listings are membership scoped: `search_pipes`, and `organization { pipes }` through `execute_graphql`, return only the pipes the calling identity is a member of. The two numbers answer different questions, so they routinely differ. In one organization a listing returned 46 pipes while `pipesCount` reported 274. Role does not widen the listing: a `super_admin` gets the same membership-scoped result as anyone else.
 
-Truncation is a second, independent cause of a short list. `search_pipes` caps results per organization (`max_pipes_per_org`, 1 to 500, and 500 is the default) and sets `pipes_truncated` on the org entry. A pipe can be missing because the identity is not a member of it, because the cap cut it, or both.
+`search_pipes` also caps results per organization (`max_pipes_per_org`, 1 to 500, with 500 as the default). It omits null pipe rows from the API response. A pipe can be absent because of membership, the cap, or a null row. The SDK sets `pipes_truncated` on the organization when it applies the cap or omits a null row.
 
-When unfiltered, `pipes_truncated` does not separate those two causes. It is conservative: it is also set whenever `pipesCount` exceeds the number of pipes returned, which is true of every membership-scoped unfiltered listing. So a `true` flag on its own is not evidence that the cap cut anything, and on an org where the identity is a member of few pipes it will be `true` no matter how high the cap goes.
+Without a name filter, `pipes_truncated` also becomes true when `pipesCount` exceeds the returned count. If `pipesCount` is absent, reaching the cap also sets the flag. The flag does not identify the cause of an incomplete result. Raising the cap does not recover null rows or change membership.
 
-With a name filter, `pipesCount` is omitted and the flag is set only when matching pipes exceeded the cap. On that path `pipes_truncated: true` means the cap cut matching pipes.
+With a name filter, the response omits `pipesCount`. The organization flag becomes true when matching pipes exceed the cap or the API supplies a null pipe row. `search_limits.pipes_truncated` also becomes true for null rows, even when no organization has a matching pipe.
 
 What to do:
 
 - Treat `pipesCount` as a total, not as the expected size of a listing. Do not compare the two to decide whether a call failed.
-- Read `search_limits.max_pipes_per_org` before acting on `pipes_truncated`. Raising the cap only helps if the applied cap is below 500 and the returned count reached it. When unfiltered, if the applied cap is already 500 and the list is well under it, the cap cut nothing and membership is the cause. With a name filter, treat `true` as the cap having cut matching pipes.
+- Read `search_limits.max_pipes_per_org` and the returned count before acting on `pipes_truncated`. Raising the cap helps only when the applied cap is below 500 and the returned count reached it. A true flag alone does not prove that the cap removed pipes.
 - To see more pipes, list from an identity with broader access, or add the identity to the pipes it needs.
 - For a wider read through `execute_graphql`, `organization { pipes(include_publics: true) }` adds pipes that are public inside the organization but that the identity is not a member of. The toolkit tools do not expose this argument. Even the widened list normally stays below `pipesCount`, so it does not reconcile the two numbers.
 

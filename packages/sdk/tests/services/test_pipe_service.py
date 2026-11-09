@@ -3,12 +3,15 @@
 Tests validate the pipe-related operations without requiring real API credentials.
 """
 
+from __future__ import annotations
+
 from unittest.mock import AsyncMock
 
 import pytest
 from _shared.mock_clients import mock_executor
 from graphql import print_ast
 
+from pipefy_sdk.graphql_executor import PipefyGraphQLError
 from pipefy_sdk.queries.pipe_queries import (
     GET_PHASE_ALLOWED_MOVES_QUERY,
     GET_PHASE_CARDS_QUERY,
@@ -239,6 +242,99 @@ async def test_search_pipes_without_name_returns_all(mock_organizations: list[di
         SEARCH_PIPES_QUERY,
         {"nameSearch": None},
     )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pipe_name", [None, "Test"])
+async def test_search_pipes_skips_null_rows_and_reports_incomplete_results(pipe_name):
+    pipes = [None, {"id": "1", "name": "Test pipe"}, None]
+    service, executor = _make_service(
+        {"organizations": [{"id": "org", "name": "Org", "pipes": pipes}]}
+    )
+
+    result = await service.search_pipes(pipe_name=pipe_name)
+
+    row = result["organizations"][0]
+    assert [pipe["id"] for pipe in row["pipes"]] == ["1"]
+    assert row["pipes_truncated"] is True
+    assert result["search_limits"]["pipes_truncated"] is True
+    if pipe_name:
+        assert row["pipes"][0]["match_score"] == 100.0
+    executor.execute_query.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pipe_name", [None, "Test"])
+@pytest.mark.parametrize("pipes", [[None, None], None])
+async def test_search_pipes_handles_lists_without_available_pipes(pipe_name, pipes):
+    service, _ = _make_service(
+        {"organizations": [{"id": "org", "name": "Org", "pipes": pipes}]}
+    )
+
+    result = await service.search_pipes(pipe_name=pipe_name)
+
+    assert len(result["organizations"]) == (0 if pipe_name else 1)
+    assert all(not org["pipes"] for org in result["organizations"])
+    assert result["search_limits"]["pipes_truncated"] is (pipes is not None)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_search_pipes_null_rows_do_not_use_the_result_cap():
+    pipes = [None, {"id": "1", "name": "First"}, {"id": "2", "name": "Second"}]
+    service, _ = _make_service(
+        {
+            "organizations": [
+                {"id": "org", "name": "Org", "pipesCount": 3, "pipes": pipes}
+            ]
+        }
+    )
+
+    result = await service.search_pipes(max_pipes_per_org=2)
+
+    row = result["organizations"][0]
+    assert [pipe["id"] for pipe in row["pipes"]] == ["1", "2"]
+    assert row["pipesCount"] == 3
+    assert row["pipes_truncated"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_search_pipes_keeps_fuzzy_ranking_and_caps_with_null_rows():
+    pipes = [
+        None,
+        {"id": "typo", "name": "Purchsing"},
+        {"id": "exact", "name": "Purchasing"},
+        {"id": "other", "name": "Billing"},
+        {"id": "extra", "name": "Purchase"},
+    ]
+    service, _ = _make_service(
+        {"organizations": [{"id": "org", "name": "Org", "pipes": pipes}]}
+    )
+
+    result = await service.search_pipes("Purchasing", max_pipes_per_org=2)
+
+    row = result["organizations"][0]
+    assert [pipe["id"] for pipe in row["pipes"]] == ["exact", "typo"]
+    assert row["pipes"][0]["match_score"] > row["pipes"][1]["match_score"]
+    assert row["pipes_truncated"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pipe_name", [None, "Test"])
+async def test_search_pipes_propagates_executor_errors(pipe_name):
+    service, executor = _make_service({})
+    failure = PipefyGraphQLError([{"message": "Upstream request failed"}])
+    executor.execute_query.side_effect = failure
+
+    with pytest.raises(PipefyGraphQLError) as raised:
+        await service.search_pipes(pipe_name=pipe_name)
+
+    assert raised.value is failure
+    executor.execute_query.assert_awaited_once()
 
 
 @pytest.mark.unit
