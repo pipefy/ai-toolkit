@@ -26,10 +26,11 @@ Do not use this skill as a delivery playbook. When the user already has a buildi
 
 - A build method that the user supplies decides how to build. So does a skill in your catalog that builds a whole process from a specification.
 - When a request to build a whole process has an open business decision, read `pipefy-process-design` first. Examples: who approves, which value routes a case, what happens on a rejection. A verb such as "create" does not remove the open decision.
+- A confirmed specification goes to the build, also when it lacks one business value. The builder records that value as a pending item, asks the user, and continues the work that does not depend on it. It does not send the specification back to `pipefy-process-design`.
 
 ## Find the kind of request
 
-1. **One part.** The user asks for one part, such as a field, a phase, an automation, an agent, or a portal page. Read the domain skill for that part in the [routing table](#routing-table).
+1. **One part.** The user asks for one part, such as a field, a phase, an automation, an agent, or a portal page. Read the domain skill for that part in the [routing table](#routing-table). Apply the [rules for every build](#rules-for-every-build).
 2. **A whole process.** The user asks for a process with many parts, with or without a specification.
    - When a business decision that changes the build is open, read `pipefy-process-design` first.
    - When a skill in your catalog builds a whole process from a specification, read that skill. Give it the specification.
@@ -68,9 +69,20 @@ Some requests use a build verb but ask for something else:
 | A dedicated operation fails or does not exist | `pipefy-introspection` (first fallback) |
 | The introspection skill did not solve the problem | `pipefy-api-fallback` (last fallback) |
 
+## Rules for every build
+
+These rules apply to a request for one part and to a whole process.
+
+- Before the first write, resolve the target. When the user names it by id or link, read it. Otherwise, search with `search_pipes`, `search_tables`, or `list_portals`. Search with the main word of the requested name, not only the full name. Ask the user before you write into an object that existed before this conversation. Do not ask when the user named that object by id or link, or when the confirmed specification names it as the part to reuse. A name that only matches the request is not a confirmation. When the name matches objects in more than one organization, ask which one. An object that this conversation created needs no question.
+- Four authorization levels set what you can write. With `advise only`, write nothing. With `build`, the default, create the parts and activate the automations and AI agents of a new process. With `build inactive`, create the parts and keep every automation and AI agent off. With `publish`, also publish sub-portals and integration flows. Without `publish`, keep a sub-portal unpublished and an integration flow as a draft. Each external effect needs its own permission.
+- A rule is an automation or an AI agent. At the `build` level, some rules start off or stay skipped. "Start state" in `pipefy-automations` and "Active lifecycle" in `pipefy-ai-agents` list those cases and say when to activate each rule.
+- After each write, read the part again and compare it with the request. The owning domain skill defines the component's verification steps. Never activate a part that the user asked to keep off, or that waits for an assumption or a connection. Report an unavailable test as pending.
+- Choose each part with "Choose the Pipefy part for each step" in `pipefy-process-design`, before you ask about AI. Use a native rule first. Recommend AI for each step that an AI row fits. The user can ask for a specific part when the table points at another one. An example is an AI part for a step that a native rule covers. In that case, recommend the part from the table, and build the part that the user picks. A request for AI is a yes. A confirmed AI line in the specification is also a yes. Ask about AI only when neither applies. "No AI" removes every AI part, including one previously accepted. Each step that loses its AI part uses its recorded alternative.
+- End with each part and its state, the manual steps, the inactive parts, and one "Next step". Say ready only after the applicable acceptance checks pass and no required part remains pending.
+
 ## Whole-process builds
 
-Use this order when no catalog skill builds a whole process and the user supplied no build method. When a part needs another part's ID, create that other part first. Read each domain skill when you get to its part.
+Use this order when no catalog skill builds a whole process and the user supplied no build method. When a part needs another part's ID, create that other part first. Read each domain skill when you get to its part. Apply the [rules for every build](#rules-for-every-build).
 
 1. Pipe and phases.
 2. Fields and field conditions.
@@ -78,13 +90,6 @@ Use this order when no catalog skill builds a whole process and the user supplie
 4. Automations and integrations.
 5. AI agents.
 6. Portal pages.
-
-- Four authorization levels set what you can write. With `advise only`, write nothing. With `build`, the default, create the parts and activate the automations and AI agents of a new process. With `build inactive`, create the parts and keep every automation and AI agent off. With `publish`, also publish sub-portals and integration flows. Without `publish`, keep a sub-portal unpublished and an integration flow as a draft. Each external effect needs its own permission.
-- A rule is an automation or an AI agent. At the `build` level, some rules start off or stay skipped. "Start state" in `pipefy-automations` and "Active lifecycle" in `pipefy-ai-agents` list those cases and say when to activate each rule.
-- After each write, read the part again and compare it with the request. The owning domain skill defines the component's verification steps. Never activate a part that the user asked to keep off, or that waits for an assumption or a connection. Report an unavailable test as pending.
-- Before the first write, find the target with `search_pipes`, `search_tables`, or `list_portals`. Ask the user before you write into an object that existed before this conversation, unless the confirmed specification names it as the part to reuse. A name that matches the request is not a confirmation. An object that this conversation created needs no question.
-- Choose each part with "Choose the Pipefy part for each step" in `pipefy-process-design`, before you ask about AI. Use a native rule first. Recommend AI for each step that an AI row fits. The user can ask for a specific AI part for a step that a native rule covers. In that case, recommend the native rule and build the part that the user picks. A request for AI is a yes. A confirmed AI line in the specification is also a yes. Ask about AI only when neither applies. "No AI" removes every AI part, including one previously accepted.
-- End with each part and its state, the manual steps, the inactive parts, and one "Next step". Say ready only after the applicable acceptance checks pass and no required part remains pending.
 
 ## Product limits live in domain skills
 
