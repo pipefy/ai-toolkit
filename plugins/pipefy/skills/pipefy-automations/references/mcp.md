@@ -12,8 +12,16 @@ An invalid `create_automation` phase transition returns `success: false` with a 
 
 Invalid `field_map` field IDs fail before GraphQL with `success: false` and the offending ID.
 
-For the validated AI automation in the shared workflow, call `create_ai_automation` with `name`, `event_id`, `pipe_id`, `prompt`, and `field_ids`:
+For a validated AI automation that starts on, call `create_ai_automation` with `name`, `event_id`, `pipe_id`, `prompt`, and `field_ids`. This tool always creates an active rule:
 
 ```text
 create_ai_automation name="Summarize intake" event_id="card_created" pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"]
+```
+
+## Create an AI automation inactive
+
+For an AI automation that must start off, do not call `create_ai_automation`. Follow the shared "Create an AI automation inactive" recipe, which uses `create_automation` with `active=false`. The success response holds the new id in `automation.id`. Read the rule with `get_ai_automation`. Activate it only when the shared recipe permits activation:
+
+```text
+update_ai_automation automation_id=<automation.id> active=true
 ```
