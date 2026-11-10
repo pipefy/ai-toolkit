@@ -119,6 +119,9 @@ class PipeService:
                   sorted by match score (best matches first).
                   May include ``search_limits`` describing caps applied.
 
+                  The result omits null pipe rows. If the API supplies a null row,
+                  ``pipes_truncated`` marks the search as incomplete.
+
                   When ``pipe_name`` is omitted, per-org ``pipes_truncated`` and
                   ``search_limits.pipes_truncated`` are True when:
 
@@ -146,7 +149,8 @@ class PipeService:
         if not stripped:
             organizations: list[dict] = []
             for org in raw_orgs:
-                pipes = list(org.get("pipes") or [])
+                raw_pipes = list(org.get("pipes") or [])
+                pipes = [pipe for pipe in raw_pipes if pipe is not None]
                 pipes_count = optional_int(org.get("pipesCount"))
                 len_p = len(pipes)
                 over_cap = len_p > per_org_cap
@@ -157,7 +161,10 @@ class PipeService:
                     pipes_count is None and len_p >= per_org_cap and len_p > 0
                 )
                 truncated = (
-                    over_cap or fewer_than_reported_total or at_cap_without_total
+                    len(raw_pipes) != len_p
+                    or over_cap
+                    or fewer_than_reported_total
+                    or at_cap_without_total
                 )
                 if over_cap:
                     pipes = pipes[:per_org_cap]
@@ -178,7 +185,12 @@ class PipeService:
 
         for org in raw_orgs:
             matching_pipes = []
-            for pipe in org.get("pipes", []):
+            has_null_rows = False
+            for pipe in org.get("pipes") or []:
+                if pipe is None:
+                    has_null_rows = True
+                    limits["pipes_truncated"] = True
+                    continue
                 pipe_display_name = pipe.get("name", "")
                 if stripped.lower() in pipe_display_name.lower():
                     matching_pipes.append((100.0, pipe))
@@ -200,7 +212,7 @@ class PipeService:
                         for score, pipe in sliced
                     ],
                 }
-                if len(matching_pipes) > per_org_cap:
+                if has_null_rows or len(matching_pipes) > per_org_cap:
                     entry["pipes_truncated"] = True
                     limits["pipes_truncated"] = True
                 filtered_orgs.append(entry)
