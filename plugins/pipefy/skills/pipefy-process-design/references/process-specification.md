@@ -46,9 +46,9 @@ Dados:
   Motivo da recusa: texto longo, Análise ou Aprovação gerencial, quem recusa, obrigatório só quando o parecer ou a decisão é Recusar.
   Número do PO: texto curto, Aprovado, comprador, obrigatório.
 Escolhas de plataforma:
-  D1 a D4: automação tradicional (campo atualizado + condição sobre Valor e parecer). Alternativa: encaminhamento manual pelo responsável da fase. Motivo: a decisão lê campos e um valor fixo.
+  D1 a D4: automação tradicional (campo atualizado + condição sobre Valor e parecer). Alternativa: encaminhamento manual pelo responsável da fase. Motivo: a decisão lê campos e um valor fixo. Estado inicial: ligada, exceto a regra de D1 que aprova abaixo de R$ 5.000,00, desligada até P2.
   Motivo da recusa: condição de campo (mostra e exige só na recusa). Alternativa: campo sempre visível.
-  Lembrete: automação por prazo da fase (SLA). Alternativa: lembrete manual do gerente de compras.
+  Lembrete: automação por prazo da fase (SLA). Alternativa: lembrete manual do gerente de compras. Estado inicial: ligada.
 Restrições: sem IA (política do financeiro). Nenhum e-mail para fora da empresa.
 Autorização: construir.
 Premissas: abaixo de R$ 5.000,00, compras aprova sem gerente.
@@ -56,7 +56,7 @@ Pendências:
   P1. Quem recebe o lembrete de Análise nas férias do comprador. Bloqueia só o destinatário substituto do lembrete.
   P2. Confirmar se compras aprova abaixo de R$ 5.000,00 sem gerente. Bloqueia só a ativação da regra de aprovação abaixo desse valor.
 Exemplos de aceitação:
-  A1. Valor 4.999,99, parecer Aprovar -> Aprovado, sem passar pelo gerente.
+  A1. Depois de P2 confirmada: Valor 4.999,99, parecer Aprovar -> Aprovado, sem passar pelo gerente.
   A2. Valor 5.000,00, parecer Aprovar -> Aprovação gerencial.
   A3. Parecer Recusar, motivo preenchido -> Recusado.
   A4. Parecer Falta documento -> Aguardando documento; depois do anexo, volta a Análise.
@@ -106,15 +106,15 @@ Data:
   Certificate expiry date: date, Document check, the AI automation or the procurement analyst (see P3), not required.
 Platform choices:
   D2: traditional automation when a card enters Reviews, with a spend condition. It sets Finance decision to Not required below 10,000.00.
-    Alternative: the Finance reviewer sets the field.
+    Alternative: the Finance reviewer sets the field. Start state: on.
   D3, D4: traditional automations on a decision field update, with conditions. Alternative: child cards in a separate review pipe.
-    Reason: two fields in one phase hold both results, and the rules read fields.
+    Reason: two fields in one phase hold both results, and the rules read fields. Start state: D4 on. D3 off until P2.
   Rejection reason: field condition. Alternative: a field that is always visible.
-  Reminder at 3 days: automation on the phase time limit. Alternative: a manual follow-up.
+  Reminder at 3 days: automation on the phase time limit. Alternative: a manual follow-up. Start state: on.
   Read the tax id and the expiry date from the tax certificate: AI automation, recommended. Alternative: the analyst reads the certificate.
     Reason: the step reads a document on one event and writes two fields. Test: 20 sample certificates read correctly.
-    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed (P3). The user did not confirm the specification with this recommendation.
-  Email to the vendor on rejection: email template and an automation that sends it. This is an external effect, and Authorization does not permit it (P4).
+    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed (P3). The user did not confirm the specification with this recommendation. Start state: not created until P3.
+  Email to the vendor on rejection: email template and an automation that sends it. This is an external effect, and Authorization does not permit it (P4). Start state: not created until P4.
 Constraints: only the Legal reviewer approves legal terms. Bank data does not leave Pipefy.
 Authorization: build ("build it"). External effects: not allowed.
 Assumptions: Finance = Not required counts as a Finance result in the join.

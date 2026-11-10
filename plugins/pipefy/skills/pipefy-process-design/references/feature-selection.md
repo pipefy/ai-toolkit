@@ -20,12 +20,13 @@ Contents:
 Write one line for each step in Platform choices:
 
 ```text
-<step>: <part>. Alternative: <part>. Reason: <one line>. Cost: <maintenance, credits when known, effect of an error>. Reuse: <existing part, or "none">.
+<step>: <part>. Alternative: <part>. Reason: <one line>. Cost: <maintenance, credits when known, effect of an error>. Reuse: <existing part, or "none">. Start state: <on, off until <reason>, or not created until <pending item>>.
 ```
 
 - Name the work that the part removes. "Moves the card when the review is done" is a result. "Adds an automation" is not.
 - Name one alternative, also when the choice is clear. The user can then see what you did not choose.
 - For an AI part, also write the test and the effect of a wrong output. Until the user confirms the specification, write "recommended, not confirmed" in the line. After that confirmation, write "confirmed".
+- For a rule (an automation or an AI agent), write the start state from the inactive cases under "Authorization levels" in the skill. When an open answer blocks the creation of the rule, write "not created until" and the pending item. Other parts have no start state.
 
 ---
 
