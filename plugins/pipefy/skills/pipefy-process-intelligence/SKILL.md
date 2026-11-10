@@ -111,15 +111,11 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 1. Identify the manual step and its trigger.
 2. Call `get_automation_events` and `get_automation_actions` for the pipe; select a supported event and action.
-3. The pipe existed before this conversation and has cards that the rule can match.
-   Create the automation inactive, then activate it in step 4 unless another off case applies.
-   Use "Start state" in `pipefy-automations` for the off cases:
+3. Create the automation in the state from "Start state" in `pipefy-automations`. When the pipe has cards that the rule can match, create the automation inactive, then activate it in step 4 unless another off case applies. This example shows that inactive case:
 
    Operation: `create_automation pipe_id=<id> name="Automate manual step" trigger_id=<EVENT_ID> action_id=<ACTION_ID> active=false`
 
-4. Read the rule and compare it with the request.
-   If it matches and no other off case applies, activate it in this build without another question.
-   Report the actual event and action. If either is unavailable, report the limitation instead of an invented ID.
+4. Read the rule and compare it with the request. If it matches and no other off case applies, activate it in this build without another question. Report the actual event and action. If either is unavailable, report the limitation instead of an invented ID.
 
 **Example: add a field condition**
 

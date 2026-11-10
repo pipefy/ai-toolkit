@@ -37,8 +37,10 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Active lifecycle
 
-A build request defaults to `build`. Agents for a process created in this conversation start on.
-Test each agent with acceptance cards before real cards arrive.
+A build request defaults to `build`. The `build` and `build inactive` levels apply with or without a `pipefy-process-design` specification. Without a specification, the request that you restated to the user is the reference for each check in this section. Agents for a process created in this conversation start on. Test each agent with acceptance cards before real cards arrive.
+
+In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests and the log checks in "Verify", delete the acceptance cards with the usual delete confirmation.
+
 Create an agent off only in these cases:
 
 - The user asks for `build inactive`, in any words.
@@ -47,15 +49,11 @@ Create an agent off only in these cases:
 - A behavior reads a business assumption that the user did not confirm.
 - A move needs a phase connection that does not exist.
 
-For the existing-card and time-limit cases, read the saved agent and compare it with the specification.
-If no other off case applies, activate the agent in the same build. Do not ask for another yes.
-Keep an agent off when the user asked for it, until the user permits activation.
-Keep an agent with a pending assumption off until the user confirms that assumption.
-Keep an agent with a missing connection off until that connection exists.
-Activate only when none of these conditions still requires an off state.
-If the tool rejects a missing connection, skip that agent until the connection exists.
-An agent never uses `scheduler`. Use a traditional automation or an integration flow for a schedule.
-Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
+For the existing-card and time-limit cases, read the saved agent and compare it with the specification, or with the restated request when no specification exists. If no other off case applies, activate the agent in the same build. Do not ask for another yes.
+
+Keep an agent off when the user asked for it, until the user permits activation. Keep an agent with a pending assumption off until the user confirms that assumption. Keep an agent with a missing connection off until that connection exists. Activate only when none of these conditions still requires an off state. If the tool rejects a missing connection, skip that agent until the connection exists.
+
+An agent never uses `scheduler`. Use a traditional automation or an integration flow for a schedule. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
 
 - Agents are **active by default**. Create-active clears the API default disabled shell via the configure update (omits `disabledAt`). Create-inactive (`disabled_at` set on the input to the current time, as an ISO-8601 UTC timestamp) sets `disabled_at` explicitly on create and the chained update.
 - Routine `update_ai_agent` **preserves** disabled state — it does not intentionally reactivate. Prefer passing `disabled_at` from a prior `get_ai_agent` (`disabledAt`) to skip the preserve re-read; when omitted, the SDK re-reads and re-sends.
@@ -66,17 +64,7 @@ Each webhook, email outside the company, or member invitation still needs its ow
 
 ## Creation workflow (discover → validate → create → verify)
 
-Choose the part before you apply the consent rule, including when the user already agreed to AI.
-Use `pipefy-process-design` ("Choose the Pipefy part for each step") for every step.
-
-- Use a native rule when an event, a field test, and a supported action cover the step.
-- Recommend an AI automation for one event that reads card fields or an attachment and writes a fixed output.
-  The output is a category, a summary, or an extracted value.
-- Recommend an AI agent when the step needs process context, actions, or an agent-only trigger.
-  Give it one responsibility and 1 to 5 behaviors.
-
-Do not put a native rule and AI on the same step.
-Give each AI recommendation a reason, a test, and the effect of a wrong output.
+Choose the part for each step with "Choose the Pipefy part for each step" in `pipefy-process-design`, then apply the consent rule. The user can ask for a specific AI part for a step that a native rule covers. In that case, recommend the native rule and build the part that the user picks.
 
 Create AI only after the user's yes:
 
@@ -266,13 +254,9 @@ On create/update, slug `fieldId` values are resolved to numeric `internal_id`, `
 
 `get_ai_agent(uuid)` to confirm behaviors and enablement (`disabledAt` null means active). Do not treat `behaviors[].active` as agent enablement; never assume inactive without confirmation.
 
-Before removing acceptance cards, call `get_ai_agent_logs(repo_uuid=<pipe_uuid>)` without a `status` filter.
-Read `aiAgentLogsByRepo.nodes` from the returned data. Match `cardId`, `agentUuid`, and `createdAt` to the test execution.
-If `pageInfo.hasNextPage` is true, pass `pageInfo.endCursor` as `after` and continue.
-Wait until the matching execution has terminal `status`: `success` or `failed`. Keep acceptance cards while execution is `processing`.
-Then call `get_card` with `include_fields=true`. Compare the stored output fields and phase with each expected outcome.
-An absent or empty required output does not pass acceptance.
-Missing or `processing` executions remain pending. A `failed` execution or an incorrect result does not pass acceptance.
+Before removing acceptance cards, call `get_ai_agent_logs(repo_uuid=<pipe_uuid>)` without a `status` filter. Read `aiAgentLogsByRepo.nodes` from the returned data. Match `cardId`, `agentUuid`, and `createdAt` to the test execution. If `pageInfo.hasNextPage` is true, pass `pageInfo.endCursor` as `after` and continue.
+
+Wait until the matching execution has terminal `status`: `success` or `failed`. Keep acceptance cards while execution is `processing`. Then call `get_card` with `include_fields=true`. Compare the stored output fields and phase with each expected outcome. An absent or empty required output does not pass acceptance. Missing or `processing` executions remain pending. A `failed` execution or an incorrect result does not pass acceptance.
 
 ---
 

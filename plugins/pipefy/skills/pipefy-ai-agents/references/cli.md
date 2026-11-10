@@ -33,15 +33,13 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 
 ## Check acceptance results
 
-Use the pipe UUID for `PIPE_UUID` and the numeric card ID for `CARD_ID`.
-List execution logs without `--status`:
+Use the pipe UUID for `PIPE_UUID` and the numeric card ID for `CARD_ID`. List execution logs without `--status`:
 
 ```bash
 pipefy agent logs list --repo PIPE_UUID --first 30 --json
 ```
 
-Read `aiAgentLogsByRepo.nodes`. Match `cardId`, `agentUuid`, and `createdAt` to the test execution.
-If `aiAgentLogsByRepo.pageInfo.hasNextPage` is true, replace `CURSOR` with its `endCursor`:
+Read `aiAgentLogsByRepo.nodes`. Match `cardId`, `agentUuid`, and `createdAt` to the test execution. If `aiAgentLogsByRepo.pageInfo.hasNextPage` is true, replace `CURSOR` with its `endCursor`:
 
 ```bash
 pipefy agent logs list --repo PIPE_UUID --first 30 --after CURSOR --json
@@ -53,8 +51,7 @@ Continue through the pages. Apply the terminal-status checks in `SKILL.md` befor
 pipefy card get CARD_ID --include-fields --json
 ```
 
-Compare `card.fields` and `card.current_phase` with each expected outcome before cleanup.
-An absent or empty required output does not pass acceptance.
+Compare `card.fields` and `card.current_phase` with each expected outcome before cleanup. An absent or empty required output does not pass acceptance.
 
 ## Write controls and flags
 
