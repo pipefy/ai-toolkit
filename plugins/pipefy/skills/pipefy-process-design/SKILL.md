@@ -54,7 +54,7 @@ To diagnose an existing pipe, read `pipefy-process-intelligence`. To size the re
 ## Ask in proportion to what is missing
 
 - When the user brings a specification, do not interview. Compare it with the specification fields. Equal content in another format counts. Do not ask the user to rewrite it.
-- A default from the [specification table](#process-specification) counts as a value. Record each default that you use, and each value that you added, as an assumption. A rule that reads an assumption starts inactive until the user confirms it.
+- A default from the [specification table](#process-specification) counts as a value. Record each default that you use, and each value that you added, as an assumption. A rule that reads an assumption starts inactive until the user confirms it. The user's confirmation of the specification confirms its assumptions, except each one that the user keeps open.
 - When every blocking field has a value, return the specification in the contract format.
 - When a blocking field has no value and no default, ask only for that field. Ask all of them in one message, with a proposed answer for each.
 - Do not ask again about a decision that the user or the specification already settled.
@@ -111,7 +111,7 @@ The specification holds business decisions, not Pipefy ids. The builder finds id
 | Steps and owners | The ordered states of a case. Each state has one owner (a role), the person who decides, and the person who handles its exceptions. | Design skill proposes. User confirms. | Yes | The phases the user named. The owner is the role the user named, else the pipe members. |
 | Decisions | For each branch: the field it reads, the operator, and the value. Also the destination, the result at the exact boundary value, and the result for an empty field. When the field cannot be empty, give the reason. | User | Yes, but only for the branch | No automatic rule. A person in that phase decides. |
 | Parallel work | The steps that run at the same time, and the join rule: all results, any result, or a stated combination. Also what happens to open work when one result ends the case. | User | No | No parallel work. Steps run in sequence. |
-| Exceptions | Rejection: ends the case, or pauses it until someone fixes it. Time: a reminder only notifies, a deadline moves, escalates or reassigns. Correction: return point, owner, and the condition to continue. | User | No | A rejection pauses the case in an on-hold phase. A time limit is a reminder. A correction returns to the step that owns the missing data. No retry limit. |
+| Exceptions | Rejection: ends the case, or pauses it until someone fixes it. Time: a reminder only notifies, a deadline moves, escalates or reassigns. Correction: return point, owner, and the condition to continue. | User | No | A refusal ends the case in the refusal end phase from End states. A time limit is a reminder. A correction returns to the step that owns the missing data. No retry limit. |
 | Data | For each field: name, type, source, author (role), the step where it is filled, and when it is required. | Design skill proposes. User confirms. | Yes, for a field that a decision reads | Only the fields that decisions and end states read. A field is required only when a decision reads it. |
 | Platform choices | For each step: the Pipefy part that does it, one alternative, the reason in one line, and the existing part to reuse. For each rule: the start state (on or off) and the reason for an off state. | Design skill | No | The least complex native option in the selection table. No AI without an explicit yes. |
 | Constraints | Limits the user states: no AI, no email outside the company, who may approve, data that must not leave Pipefy. | User | No | None stated. |
@@ -149,6 +149,7 @@ Rules that connect the design skill and the builder:
 - A specification holds no ids. Do not invent an id to make a specification look complete.
 - A complete specification gets no second questionnaire. The builder asks only about pending items.
 - A pending item blocks only the dependent work or activation. The builder continues the independent work.
+- The user's confirmation of the specification also confirms each listed assumption, unless the user keeps it open. Record an assumption that stays open as a pending item, with the work or activation that it blocks.
 - If a rule reads an unconfirmed business assumption, record it as a pending item for that rule. Create it inactive. Activate it only after the user confirms the decision.
 - "No AI" in Constraints removes AI from Platform choices. AI enters Platform choices as confirmed only after an explicit yes from the user. The user's confirmation of the specification is that yes for its AI recommendations.
 

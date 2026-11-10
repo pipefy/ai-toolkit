@@ -110,7 +110,7 @@ Create AI only after the user's yes:
 Use this recipe when "Start state" requires an inactive AI automation. `create_ai_automation` has no `active` input. It creates an active rule. Do not create an active rule and then disable it. Use one `create_automation` call with `active=false`.
 
 1. Read the input and output field `internal_id` values from the pipe.
-2. Run `validate_ai_automation_prompt` with the `pipe_id`, the prompt, the output `field_ids`, and the selected `event_id`. The `event_id` check catches an event that the pipe does not have, because `create_automation` does not run the event checks of `create_ai_automation`. Do not use `scheduler`: `create_ai_automation` rejects it as an AI automation event. Continue only when `valid` is true.
+2. Run `validate_ai_automation_prompt` with the `pipe_id`, the prompt, the output `field_ids`, and the selected `event_id`. The `event_id` check catches an event that the pipe does not have, because `create_automation` does not run the event checks of `create_ai_automation`. Do not use `scheduler`: `create_ai_automation` rejects it as an AI automation event, but `validate_ai_automation_prompt` accepts it, so this rule is the only check. Continue only when `valid` is true.
 
    ```text
    validate_ai_automation_prompt pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"] event_id=card_created
@@ -124,7 +124,7 @@ The ids below are examples. Replace them with ids from the pipe. This example us
 create_automation pipe_id=67890 name="Summarize intake" trigger_id=card_created action_id=generate_with_ai active=false extra_input={"action_params":{"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}},"condition":{"expressions":[{"structure_id":0,"field_address":"","operation":"","value":""}],"expressions_structure":[[0]]}}
 ```
 
-4. Read the created rule with `get_ai_automation`. Make sure that `active` is false and the prompt, fields, event, and condition match the request.
+4. Read the created rule with `get_ai_automation`. Make sure that `active` is false and the prompt, fields, event, and condition match the request. The default condition from the example reads back as empty `expressions` and `expressions_structure` lists. That is a match.
 5. Test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
 6. For a temporary off case, use `update_ai_automation` with `active=true` after the read and acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
 
