@@ -15,6 +15,7 @@ Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-t
 | Doc | Role |
 |-----|------|
 | [`install.md`](install.md) | Every install path in full, switching between them, tool-surface selection, and testing the Claude Code plugin from a checkout |
+| [`trust.md`](trust.md) | Hosts the toolkit calls, request headers, and files an install or login writes |
 | [`config.md`](config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain |
 | [`cli/auth.md`](cli/auth.md) | CLI credential precedence, `pipefy auth login`, troubleshooting |
 | [`uninstall.md`](uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels |
@@ -25,6 +26,7 @@ Human-facing guides for the **[pipefy/ai-toolkit](https://github.com/pipefy/ai-t
 | [`response-typing.md`](response-typing.md) | When to parse a GraphQL response into a validating model vs. leave it a `TypedDict` |
 | [`ipaas.md`](ipaas.md) | iPaaS (Advanced Automations) tools: meta-tool pattern, flow overview, vocabulary |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing skills (Markdown playbooks) |
+| [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Community standards for issues, pull requests, and discussions |
 | [`../RELEASE.md`](../RELEASE.md) | Versioning and GitHub Releases |
 | [`../TERMS.md`](../TERMS.md) | Repository terms notice (license, platform terms, disclaimers) |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability disclosure |

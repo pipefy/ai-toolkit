@@ -11,7 +11,7 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#installation">Installation</a> •
-  <a href="#what-the-toolkit-connects-to-and-installs">What it connects to</a> •
+  <a href="#what-it-connects-to">What it connects to</a> •
   <a href="#mcp-server">MCP server</a> •
   <a href="#command-line-interface">CLI</a> •
   <a href="#agent-skills">Agent skills</a> •
@@ -24,7 +24,9 @@
 
 ## Overview
 
-Connect Claude Code, Cursor, and other AI agents to Pipefy. The toolkit has an MCP server, a CLI, and a GraphQL SDK that call Pipefy's API with the permissions of the account you sign in with, plus agent skills for common Pipefy workflows.
+Connect Claude Code, Cursor, and other AI agents to Pipefy.
+
+The toolkit has an MCP server, a CLI, and a GraphQL SDK. Those three call Pipefy's API with the signed-in account's permissions. Agent skills cover common Pipefy workflows.
 
 | Component | Package / path | Purpose |
 |-----------|----------------|---------|
@@ -33,7 +35,8 @@ Connect Claude Code, Cursor, and other AI agents to Pipefy. The toolkit has an M
 | **SDK** | `pipefy` | GraphQL client, services, and models shared by the MCP server and the CLI. |
 | **Skills** | [`plugins/pipefy/skills/`](plugins/pipefy/skills/) | Markdown playbooks (Anthropic Skills format) for common Pipefy workflows. |
 
-Feedback and issues: [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues) · **dev@pipefy.com**
+- **Feedback:** [GitHub Issues](https://github.com/pipefy/ai-toolkit/issues)
+- **Email:** **dev@pipefy.com**
 
 ---
 
@@ -43,50 +46,47 @@ Pick the row for your client and run its command. Flags, caveats, and the remain
 
 | You are in | Path | Start with |
 |---|---|---|
-| Claude Code, fastest start | [Hosted MCP](docs/install.md#1-hosted-mcp-claude-code) | `claude mcp add --transport http --scope user --client-id pipefy-mcp pipefy https://mcp.pipefy.com/mcp` |
-| Claude Code, with skills, slash commands, and the CLI | [Claude Code plugin](docs/install.md#2-claude-code-plugin) | `/plugin install pipefy --marketplace pipefy/ai-toolkit` (Claude Code 2.1.275 or later; the install guide has the two-step form for older versions); `/pipefy:install` adds the CLI and `/pipefy:pipefy-login` signs it in |
-| Cursor | [Cursor Marketplace plugin](docs/install.md#6-cursor-marketplace-plugin) | Install **Pipefy** from the Cursor Marketplace |
-| Cursor, Claude Desktop, or Codex on macOS or Linux, when you need the local-file tools or the CLI | [Quick-install script](docs/install.md#3-quick-install-script) | Run the install script with `--client cursor`, `claude-desktop`, or `codex` |
-| A terminal, a script, or CI | [CLI only](docs/install.md#4-cli-only) | `uv tool install pipefy-cli`, then `pipefy auth login` |
-| Any Markdown-aware agent, playbooks only | [Skills only](docs/install.md#5-skills-only) | `npx skills add pipefy/ai-toolkit` |
+| **Claude Code, fastest start** | [Hosted MCP](docs/install.md#1-hosted-mcp-claude-code) | `claude mcp add --transport http --scope user --client-id pipefy-mcp pipefy https://mcp.pipefy.com/mcp` |
+| **Claude Code, with skills, slash commands, and the CLI** | [Claude Code plugin](docs/install.md#2-claude-code-plugin) | `/plugin install pipefy --marketplace pipefy/ai-toolkit` for Claude Code 2.1.275 or later. The install guide has the two-step form for older versions. `/pipefy:install` adds the CLI. `/pipefy:pipefy-login` signs it in. |
+| **Cursor** | [Cursor Marketplace plugin](docs/install.md#6-cursor-marketplace-plugin) | Install **Pipefy** from the Cursor Marketplace |
+| **Cursor, Claude Desktop, or Codex on macOS or Linux, when you need the local-file tools or the CLI** | [Quick-install script](docs/install.md#3-quick-install-script) | Run the install script with `--client cursor`, `claude-desktop`, or `codex` |
+| **A terminal, a script, or CI** | [CLI only](docs/install.md#4-cli-only) | `uv tool install pipefy-cli`, then `pipefy auth login` |
+| **Any Markdown-aware agent, playbooks only** | [Skills only](docs/install.md#5-skills-only) | `npx skills add pipefy/ai-toolkit` |
 
-Register exactly one Pipefy MCP server at a time: the hosted URL, a local server, or a plugin. The [scan command](docs/install.md#uninstalling-and-switching-between-paths) reports what a machine already has and changes nothing. Removing or switching paths: [`docs/uninstall.md`](docs/uninstall.md).
-
-The hosted server signs you in through your client's OAuth prompt. The local paths use `pipefy auth login` (browser OAuth), a service account for unattended use, or a `PIPEFY_TOKEN`. Reference: [`docs/config.md`](docs/config.md) and [`docs/cli/auth.md`](docs/cli/auth.md).
+- **One MCP server.** Register exactly one Pipefy MCP server at a time. Use the hosted URL, a local server, or a plugin. The [scan command](docs/install.md#uninstalling-and-switching-between-paths) reports what a machine already has. It changes nothing. To remove or switch paths, see [`docs/uninstall.md`](docs/uninstall.md).
+- **Sign-in.** The hosted server uses your client's OAuth prompt. Local paths use `pipefy auth login` (browser OAuth), a service account for unattended use, or a `PIPEFY_TOKEN`. See [`docs/config.md`](docs/config.md) and [`docs/cli/auth.md`](docs/cli/auth.md).
 
 ---
 
-## What the toolkit connects to and installs
+## What it connects to
 
-Network traffic goes to Pipefy hosts and to the storage URLs Pipefy issues, except during installation and when you pass a URL to download:
+- **Pipefy hosts and storage URLs.** The toolkit calls Pipefy hosts and the storage URLs Pipefy issues.
+- **Client headers.** Requests carry a client name and version. The toolkit sends no other telemetry.
+- **What an install can add.** An install can add uv, the CLI, a local MCP server, one client config entry, skills, and a keychain session.
+- **Third-party skills telemetry.** The `skills` tool sends its own telemetry unless the environment contains `DISABLE_TELEMETRY` or `DO_NOT_TRACK`.
 
-- **`app.pipefy.com`** (or the host in `PIPEFY_BASE_URL`; `api.pipefy.com` answers the same way): Pipefy's GraphQL API, called with the permissions of the signed-in user, service account, or `PIPEFY_TOKEN`. The `pipefy-api-fallback` skill, used only after the MCP tools and introspection fail, has the agent call this API directly with `curl`, reading the service account or token from `PIPEFY_*` environment variables after telling you which one it will use. GraphQL requests carry `User-Agent: pipefy-sdk/<version> (<surface>)`, `X-Client-Name`, and `X-Client-Version`; the MCP server also reports where it runs (`(mcp; local)` or `(mcp; hosted)` and `X-Client-Deployment`). The toolkit sends no other telemetry.
-- **`mcp.pipefy.com`**: Pipefy's hosted MCP server, used by the Hosted MCP path and both plugins. Sign-in is browser OAuth with the public client id `pipefy-mcp`.
-- **`signin.pipefy.com`** (or the issuer in `PIPEFY_AUTH_URL`): `pipefy auth login` opens your browser and receives the redirect on `127.0.0.1`. The CLI and the local MCP server refresh that session here, and `pipefy auth logout` revokes it. These requests carry `User-Agent: pipefy-auth/<version>`, `X-Client-Name: auth`, and `X-Client-Version`.
-- **`ipaas.pipefy.com`** (or the host in `PIPEFY_IPAAS_URL`): the iPaaS (Advanced Automations) tools.
-- **File transfers**: attachment and knowledge-base uploads go to presigned storage URLs that Pipefy issues. A `file_url` you pass is downloaded by the tool, or by Pipefy's server on the hosted path. Report and job exports download from signed Pipefy links.
-
-What the installers and `pipefy auth login` add to your machine:
-
-- **Quick-install script** (macOS and Linux): asks before installing [`uv`](https://docs.astral.sh/uv/) from `astral.sh` when it is missing; uv's installer may add `~/.local/bin` to your shell profile. Reads the newest non-alpha release (or the `--version` tag) from the GitHub API and runs `uv tool install` for `pipefy-cli` and `pipefy-mcp-server` with that release's wheels, including its `pipefy`, `pipefy-auth`, and `pipefy-infra` wheels. Third-party dependencies come from PyPI, and uv may download a Python 3.11+ interpreter when it finds none. With `--client cursor`, `claude-desktop`, or `codex`, writes a `pipefy` entry into that client's config unless one exists. Records the run in `~/.local/state/pipefy/install-receipt` for `uninstall.sh`, and asks before running `npx skills add` (skip with `--no-skills`).
-- **`/pipefy:install`** (Claude Code plugin): asks before running `uv tool install --force pipefy-cli` from PyPI.
-- **Scan command** (`pipefy-toolkit-setup` skill and [`docs/uninstall.md`](docs/uninstall.md)): downloads `uninstall.sh` from this repository on GitHub and runs it with `--scan`, which reads every source listed under [Scope](docs/uninstall.md#scope), the OS keychain included, and prints what it found. It changes nothing.
-- **`npx skills add`**: downloads the third-party `skills` tool from npm and this repository from GitHub, then installs the skills for your agent. The `skills` tool sends its own usage telemetry to `skills.sh` unless `DISABLE_TELEMETRY` or `DO_NOT_TRACK` is set.
-- **`pipefy auth login`**: stores the session through Python `keyring`, normally in the OS keychain. With `PIPEFY_KEYCHAIN_BACKEND=file` it is a plaintext file, `keyring.cfg`, in the Pipefy config folder. On a machine where `keyring` finds no OS keychain, it can fall back to its own plaintext file, `python_keyring/keyring_pass.cfg` in the user data folder (`~/.local/share` on Linux). Login and token refresh also keep a lock file, `refresh.lock`, in the Pipefy config folder (`~/.config/pipefy`, or `%APPDATA%\pipefy` on Windows).
+Hosts, headers, and files: [`docs/trust.md`](docs/trust.md).
 
 ---
 
 ## MCP server
 
-The local server registers the full catalog (canonical names: `PIPEFY_TOOL_NAMES` in [`registry.py`](packages/mcp/src/pipefy_mcp/tools/registry.py)). The hosted URL serves the remote-safe surface: everything except the tools that read a file from your machine (knowledge-base document upload, custom LLM-provider create and update). There, the attachment tools take a `file_url` instead of a `file_path`.
-
-Per-domain tool reference: [`docs/mcp/`](docs/mcp/README.md). Shared conventions: [`docs/mcp/tools/cross-cutting.md`](docs/mcp/tools/cross-cutting.md). Narrowing the local server to a subset of tools: [Choosing a tool surface](docs/install.md#choosing-a-tool-surface).
+- **Local server.** It registers the full catalog. Canonical names are `PIPEFY_TOOL_NAMES` in [`registry.py`](packages/mcp/src/pipefy_mcp/tools/registry.py).
+- **Hosted server.** `https://mcp.pipefy.com/mcp` serves the remote-safe surface. It omits tools that read a file on your machine. Those tools are knowledge-base document upload, and custom LLM-provider create and update.
+- **Attachments on the hosted server.** Attachment tools take a `file_url` instead of a `file_path`.
+- **Tool reference:** [`docs/mcp/`](docs/mcp/README.md)
+- **Shared conventions:** [`docs/mcp/tools/cross-cutting.md`](docs/mcp/tools/cross-cutting.md)
+- **Narrow the local server:** [Choosing a tool surface](docs/install.md#choosing-a-tool-surface)
 
 ---
 
 ## Command-line interface
 
-The `pipefy` CLI mirrors the MCP capabilities that [`docs/parity.md`](docs/parity.md) marks as shipped. Most commands print Rich tables by default and JSON with `--json`. On destructive commands, `--yes` skips the prompt; without it, interactive confirmation still runs. `pipefy graphql exec` refuses a mutation unless `--yes` is set.
+- The `pipefy` CLI mirrors the MCP capabilities that [`docs/parity.md`](docs/parity.md) marks as shipped.
+- Most commands print Rich tables by default and JSON with `--json`.
+- On destructive commands, `--yes` skips the prompt.
+- Without `--yes`, interactive confirmation still runs.
+- `pipefy graphql exec` refuses a mutation unless the command includes `--yes`.
 
 ```sh
 pipefy pipe list --json
@@ -94,13 +94,16 @@ pipefy card get 123456789
 pipefy introspect query pipe
 ```
 
-Guides: [`docs/cli/`](docs/cli/README.md) and [`packages/cli/README.md`](packages/cli/README.md).
+- **Guides:** [`docs/cli/`](docs/cli/README.md) and [`packages/cli/README.md`](packages/cli/README.md)
 
 ---
 
 ## Agent skills
 
-[`plugins/pipefy/skills/`](plugins/pipefy/skills/) holds workflow playbooks (prerequisites, tool tables, steps, success criteria) for any agent that reads Markdown. Catalog: [`plugins/pipefy/README.md`](plugins/pipefy/README.md). Authoring guide: [`plugins/AGENTS.md`](plugins/AGENTS.md).
+- [`plugins/pipefy/skills/`](plugins/pipefy/skills/) holds workflow playbooks for any agent that reads Markdown.
+- Each playbook has prerequisites, a tool table, steps, and success criteria.
+- **Catalog:** [`plugins/pipefy/README.md`](plugins/pipefy/README.md)
+- **Authoring guide:** [`plugins/AGENTS.md`](plugins/AGENTS.md)
 
 ---
 
@@ -109,11 +112,12 @@ Guides: [`docs/cli/`](docs/cli/README.md) and [`packages/cli/README.md`](package
 | Document | Description |
 |----------|-------------|
 | [`docs/install.md`](docs/install.md) | Every install path in full, switching between them, tool-surface selection, and testing the Claude Code plugin from a checkout. |
+| [`docs/trust.md`](docs/trust.md) | Hosts the toolkit calls, request headers, and files an install or login writes. |
 | [`docs/README.md`](docs/README.md) | Index of docs by surface (MCP, CLI, SDK) and shared guides. |
 | [`docs/config.md`](docs/config.md) | `PIPEFY_*` environment variables, `config.toml` schema and path, precedence chain. |
 | [`docs/parity.md`](docs/parity.md) | MCP tool ↔ CLI command matrix. |
 | [`docs/uninstall.md`](docs/uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. |
-| [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users; configuration remains compatible. |
+| [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users. Configuration remains compatible. |
 | [`AGENTS.md`](AGENTS.md) | Repository layout, development workflow, and guidelines for contributors and agents. |
 | [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
 
@@ -121,20 +125,22 @@ Guides: [`docs/cli/`](docs/cli/README.md) and [`packages/cli/README.md`](package
 
 ## Contributing
 
-Contributions are welcome via issues and pull requests. Commits must include a [DCO](https://developercertificate.org/) sign-off (`git commit -s`). Skills: [`CONTRIBUTING.md`](CONTRIBUTING.md). MCP, CLI, and SDK: [`AGENTS.md`](AGENTS.md). For a field type the tools do not map, open an issue with the field type and the expected behavior.
+You can contribute through an issue or a pull request. Each commit needs a [DCO](https://developercertificate.org/) sign-off (`git commit -s`).
+
+- **Skills.** Playbook rules, frontmatter, and review steps are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **MCP, CLI, and SDK.** Repository layout, tests, and new capabilities are in [`AGENTS.md`](AGENTS.md).
+- **Field types.** If the tools do not map a field type, open an issue with that type and the behavior you expect.
 
 ---
 
 ## Legal
 
-This toolkit (MCP server, CLI, SDK, and skill/blueprint playbooks) is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for trademark reservations.
+This toolkit is under the [Apache License 2.0](LICENSE), and use of Pipefy is governed by Pipefy's terms. Read [TERMS.md](TERMS.md) for the full notice.
 
-Your access to and use of the Pipefy platform through this toolkit is governed by the [Pipefy Solutions Terms and Conditions](https://www.pipefy.com/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/termos-e-condicoes/)) and, for AI features, by the Pipefy AI Additional Terms (to be published and incorporated by reference into those terms), including their acceptable use provisions. Using this toolkit requires a Pipefy account; nothing in the Apache 2.0 license grants rights to the Pipefy service.
+- **License.** The MCP server, the CLI, the SDK, and the skill and blueprint playbooks are under that license. Pipefy keeps its trademarks. See [NOTICE](NOTICE).
+- **Platform terms.** Your use of the Pipefy platform through this toolkit is governed by the [Pipefy Solutions Terms and Conditions](https://www.pipefy.com/terms-and-conditions/) ([versão em português](https://www.pipefy.com/pt-br/termos-e-condicoes/)). AI features also follow the Pipefy AI Additional Terms. Those terms are not published yet, and they will be incorporated by reference into the platform terms, including their acceptable use provisions. You need a Pipefy account. The Apache 2.0 license grants no rights to the Pipefy service.
+- **Templates.** Skills and blueprints are configurable templates for general informational purposes. They are not legal, HR, financial, tax, or other professional advice. Qualified professionals must review, configure, and validate them before production use. Each published blueprint ships with a `COMPLIANCE.md` that states the intended purpose, out-of-scope uses, AI risk classification, and default human-oversight settings. See [`docs/compliance/COMPLIANCE.template.md`](docs/compliance/COMPLIANCE.template.md).
+- **AI output.** Outputs from AI features may contain errors or omissions. Review each output on your own before you rely on it.
+- **Beta.** Pre-1.0 releases are provided "AS IS", without warranties of any kind. They may change or be discontinued at any time.
 
-**Templates, not advice.** Skills and blueprints are configurable templates provided for general informational purposes. They do not constitute legal, HR, financial, tax, or other professional advice, and must be reviewed, configured, and validated by qualified professionals before production use. Each published blueprint ships with a `COMPLIANCE.md` describing its intended purpose, out-of-scope uses, AI risk classification, and default human-oversight settings (see [`docs/compliance/COMPLIANCE.template.md`](docs/compliance/COMPLIANCE.template.md)).
-
-**AI-generated output.** Outputs produced by AI features may contain errors or omissions and must be independently verified before being relied upon.
-
-**Beta software.** Pre-1.0 releases are provided "AS IS", without warranties of any kind, and may change or be discontinued at any time. See the full disclaimer in [TERMS.md](TERMS.md).
-
-Security reports: see [SECURITY.md](SECURITY.md). Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Report security issues through [SECURITY.md](SECURITY.md). Community standards are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
