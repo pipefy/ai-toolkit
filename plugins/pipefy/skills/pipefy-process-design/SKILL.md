@@ -54,7 +54,7 @@ To diagnose an existing pipe, read `pipefy-process-intelligence`. To size the re
 ## Ask in proportion to what is missing
 
 - When the user brings a specification, do not interview. Compare it with the specification fields. Equal content in another format counts. Do not ask the user to rewrite it.
-- A default from the [specification table](#process-specification) counts as a value. Record each default that you use, and each value that you added, as an assumption. A rule that reads an assumption starts inactive until the user confirms it. The user's confirmation of the specification confirms its assumptions, except each one that the user keeps open.
+- A default from the [specification table](#process-specification) counts as a value. Record each default that you use, and each value that you added, as an assumption. A rule that reads an assumption starts inactive until the user confirms it.
 - When every blocking field has a value, return the specification in the contract format.
 - When a blocking field has no value and no default, ask only for that field. Ask all of them in one message, with a proposed answer for each.
 - Do not ask again about a decision that the user or the specification already settled.
