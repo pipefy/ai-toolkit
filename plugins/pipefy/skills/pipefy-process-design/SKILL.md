@@ -117,7 +117,7 @@ The specification holds business decisions, not Pipefy ids. The builder finds id
 | Constraints | Limits the user states: no AI, no email outside the company, who may approve, data that must not leave Pipefy. | User | No | None stated. |
 | Authorization | One level: advise only, build, build inactive, or publish. List each permitted external effect separately. | User | No | Advise only until the user requests a build. A build request defaults to build. No external effects. |
 | Assumptions | Values that the design skill chose and the user did not confirm, including each default from this table. | Design skill | No. A rule that reads a business assumption starts inactive and waits for the user's answer. | Empty. Link each assumption to its dependent work. |
-| Pending items | Open decisions, each with the work or activation that it blocks. After a build, each rule that is `created inactive` or `skipped`, with the reason and the next action. | Design skill and builder | Only the named work or activation | Empty. |
+| Pending items | Open decisions, each with the work or activation that it blocks. After a build, each rule that is `created inactive`, `skipped`, or `not created`, with the reason and the next action. | Design skill and builder | Only the named work or activation | Empty. |
 | Acceptance examples | Two to five cases: input, expected path, final state. Include the boundary value, the empty value when the field can be empty, and one exception. | Design skill proposes. User confirms. | No | One example for each decision branch, plus its boundary value and, when the field can be empty, its empty value. The builder reports each example it did not check. |
 
 Authorization levels:
@@ -140,7 +140,7 @@ At the build level, the builder creates these rules inactive. In this list, a ru
 
 For the first two kinds, read the rule again. Compare it with the specification. If it matches and no other off case applies, activate it without another yes. An inactive request, an unconfirmed assumption, or a missing connection keeps the rule off.
 
-For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. Record each rule that the builder creates inactive as `created inactive` in Pending items, with the reason and the next action. If a missing connection prevents creation even with `active=false`, record the rule as `skipped` in Pending items, with the same details. Wait for the connection before creating the rule. Never report a rejected creation as `created inactive`.
+For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. Record each rule that the builder creates inactive as `created inactive` in Pending items, with the reason and the next action. If a missing connection prevents creation even with `active=false`, record the rule as `skipped` in Pending items, with the same details. Wait for the connection before creating the rule. Never report a rejected creation as `created inactive`. The builder does not create a rule that needs a business value that the specification does not hold. Record that rule as `not created` in Pending items. Give the missing value as the reason and the user's answer as the next action.
 
 The specification records acceptance examples and pending work. Report an unchecked example as pending. Do not declare the process ready until its acceptance examples pass and no required work remains.
 
@@ -231,7 +231,7 @@ Next step: <one offer with a one-line reason. Nothing is built until the user sa
 ```
 
 - Say that the specification is ready to build only when every blocking field has a value. Otherwise name each field that is missing.
-- When the user wants to build next, give `pipefy-building` the specification. State that the build activates the new parts. Name each rule that starts inactive or stays skipped, with its reason and next action, from Platform choices and Pending items.
+- When the user wants to build next, give `pipefy-building` the specification. State that the build activates the new parts. Name each rule that starts inactive, stays skipped, or is not created, with its reason and next action, from Platform choices and Pending items.
 
 Manual steps name the parts of the design that only the Pipefy UI creates:
 
