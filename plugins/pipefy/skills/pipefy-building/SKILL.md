@@ -71,8 +71,6 @@ Some requests use a build verb but ask for something else:
 
 ## Rules for every build
 
-These rules apply to a request for one part and to a whole process.
-
 - Before the first write, resolve the target. When the user names it by id or link, read it. Otherwise, search with `search_pipes`, `search_tables`, or `list_portals`. Search with the main word of the requested name, not only the full name. Ask the user before you write into an object that existed before this conversation. Do not ask when the user named that object by id or link, or when the confirmed specification names it as the part to reuse. A name that only matches the request is not a confirmation. When the name matches objects in more than one organization, ask which one. An object that this conversation created needs no question.
 - Four authorization levels set what you can write. With `advise only`, write nothing. With `build`, the default, create the parts and activate the automations and AI agents of a new process. With `build inactive`, create the parts and keep every automation and AI agent off. With `publish`, also publish sub-portals and integration flows. Without `publish`, keep a sub-portal unpublished and an integration flow as a draft. Each external effect needs its own permission.
 - A rule is an automation or an AI agent. At the `build` level, some rules start off or stay skipped. "Start state" in `pipefy-automations` and "Active lifecycle" in `pipefy-ai-agents` list those cases and say when to activate each rule. A rule that needs a business value that nobody gave is not created until the user answers.
