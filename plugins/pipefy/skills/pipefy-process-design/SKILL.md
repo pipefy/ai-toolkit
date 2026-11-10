@@ -54,8 +54,9 @@ To diagnose an existing pipe, read `pipefy-process-intelligence`. To size the re
 ## Ask in proportion to what is missing
 
 - When the user brings a specification, do not interview. Compare it with the specification fields. Equal content in another format counts. Do not ask the user to rewrite it.
-- When every blocking field has a value, return the specification in the contract format. Mark each value that you added as an assumption.
-- When a blocking field has no value, ask only for that field. Ask all of them in one message, with a proposed answer for each.
+- A default from the [specification table](#process-specification) counts as a value. Record each default that you use, and each value that you added, as an assumption. A rule that reads an assumption starts inactive until the user confirms it.
+- When every blocking field has a value, return the specification in the contract format.
+- When a blocking field has no value and no default, ask only for that field. Ask all of them in one message, with a proposed answer for each.
 - Do not ask again about a decision that the user or the specification already settled.
 - Keep the user's names for phases, fields, and roles.
 - When the user does not know the process, propose a structure and two alternatives. Ask 5 questions or fewer in a turn. Each question has a proposed answer.
@@ -100,7 +101,7 @@ Read [references/feature-selection.md](references/feature-selection.md) when two
 
 ## Process specification
 
-The specification holds business decisions, not Pipefy ids. The builder finds ids and product limits when it builds. The builder never finds a business decision: it returns the decision to the user as a question.
+The specification holds business decisions, not Pipefy ids. The builder finds ids and product limits when it builds. The builder does not choose a business value and does not add assumptions. When the build needs a business value that the specification does not hold, the builder records it as a pending item and asks the user. It continues the work that does not depend on that value.
 
 | Field | What it holds | Who writes it | Blocks the build | Default when absent |
 |---|---|---|---|---|
@@ -108,21 +109,21 @@ The specification holds business decisions, not Pipefy ids. The builder finds id
 | Start trigger | What creates a case: a start form, an email, another pipe, a portal page. | User | Yes | A requester fills the start form. |
 | End states | Each result that closes a case, with what the case must hold at that point. | User | Yes | One end phase for success. Add one end phase for refusal when a step can refuse. |
 | Steps and owners | The ordered states of a case. Each state has one owner (a role), the person who decides, and the person who handles its exceptions. | Design skill proposes. User confirms. | Yes | The phases the user named. The owner is the role the user named, else the pipe members. |
-| Decisions | For each branch: the field it reads, the operator, and the value. Also the result at the exact boundary value, the result for an empty field, and the destination. | User | Yes, but only for the branch | No automatic rule. A person in that phase decides. |
+| Decisions | For each branch: the field it reads, the operator, and the value. Also the destination, the result at the exact boundary value, and the result for an empty field. When the field cannot be empty, give the reason. | User | Yes, but only for the branch | No automatic rule. A person in that phase decides. |
 | Parallel work | The steps that run at the same time, and the join rule: all results, any result, or a stated combination. Also what happens to open work when one result ends the case. | User | No | No parallel work. Steps run in sequence. |
 | Exceptions | Rejection: ends the case, or pauses it until someone fixes it. Time: a reminder only notifies, a deadline moves, escalates or reassigns. Correction: return point, owner, and the condition to continue. | User | No | A rejection pauses the case in an on-hold phase. A time limit is a reminder. A correction returns to the step that owns the missing data. No retry limit. |
 | Data | For each field: name, type, source, author (role), the step where it is filled, and when it is required. | Design skill proposes. User confirms. | Yes, for a field that a decision reads | Only the fields that decisions and end states read. A field is required only when a decision reads it. |
-| Platform choices | For each step: the Pipefy part that does it, one alternative, the reason in one line, and the existing part to reuse. | Design skill | No | The least complex native option in the selection table. No AI without an explicit yes. |
+| Platform choices | For each step: the Pipefy part that does it, one alternative, the reason in one line, and the existing part to reuse. For each rule: the start state (on or off) and the reason for an off state. | Design skill | No | The least complex native option in the selection table. No AI without an explicit yes. |
 | Constraints | Limits the user states: no AI, no email outside the company, who may approve, data that must not leave Pipefy. | User | No | None stated. |
 | Authorization | One level: advise only, build, build inactive, or publish. List each permitted external effect separately. | User | No | Advise only until the user requests a build. A build request defaults to build. No external effects. |
-| Assumptions | Values that the design skill or the builder chose and the user did not confirm. | Design skill and builder | No. A rule that reads a business assumption starts inactive and waits for the user's answer. | Empty. Link each assumption to its dependent work. |
-| Pending items | Open decisions, each with the work or activation that it blocks. | Design skill and builder | Only the named work or activation | Empty. |
-| Acceptance examples | Two to five cases: input, expected path, final state. Include the boundary value, the empty value, and one exception. | Design skill proposes. User confirms. | No | One example for each decision branch, plus its boundary value and its empty value. The builder reports each example it did not check. |
+| Assumptions | Values that the design skill chose and the user did not confirm, including each default from this table. | Design skill | No. A rule that reads a business assumption starts inactive and waits for the user's answer. | Empty. Link each assumption to its dependent work. |
+| Pending items | Open decisions, each with the work or activation that it blocks. After a build, each rule that is `created inactive` or `skipped`, with the reason and the next action. | Design skill and builder | Only the named work or activation | Empty. |
+| Acceptance examples | Two to five cases: input, expected path, final state. Include the boundary value, the empty value when the field can be empty, and one exception. | Design skill proposes. User confirms. | No | One example for each decision branch, plus its boundary value and, when the field can be empty, its empty value. The builder reports each example it did not check. |
 
 Authorization levels:
 
 - **Advise only.** No write. Use it when the user has not requested construction, or explicitly says to change nothing.
-- **Build.** Create the parts of a new process with its automations and AI agents on. This is the default for a build request. A new pipe starts without cards.
+- **Build.** Create the parts of a new process with its automations and AI agents on. This is the default for a build request. A new pipe starts without cards. Acceptance cards that the builder creates do not count as cards for the inactive cases below. The builder deletes them after the tests, with the usual delete confirmation.
 - **Build inactive.** Create the parts, and keep every automation and AI agent inactive. Use it when the user asks for it.
 - **Publish.** Also publish what has a draft state: a sub-portal, an integration flow. Create an HTML interface only when the user asks for one by name.
 
@@ -139,7 +140,7 @@ At the build level, the builder creates these rules inactive. In this list, a ru
 
 For the first two kinds, read the rule again. Compare it with the specification. If it matches and no other off case applies, activate it without another yes. An inactive request, an unconfirmed assumption, or a missing connection keeps the rule off.
 
-For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. If a missing connection prevents creation even with `active=false`, record `skipped`. Wait for the connection before creating the rule. Never report a rejected creation as `created inactive`.
+For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. Record each rule that the builder creates inactive as `created inactive` in Pending items, with the reason and the next action. If a missing connection prevents creation even with `active=false`, record the rule as `skipped` in Pending items, with the same details. Wait for the connection before creating the rule. Never report a rejected creation as `created inactive`.
 
 The specification records acceptance examples and pending work. Report an unchecked example as pending. Do not declare the process ready until its acceptance examples pass and no required work remains.
 
@@ -202,7 +203,7 @@ Use these questions to check a specification. Ask the user only the ones that ch
 | Question | It finds | Change in the specification |
 |---|---|---|
 | What creates a case? Can a case start in another way, such as an email or another pipe? | A start path with no data rules | Start trigger lists each source and the data it must bring. |
-| For each decision, what happens at the exact boundary value, and when the field is empty? | A branch with no result at the edge | Decisions get the boundary result and the empty result. Acceptance examples test both. |
+| For each decision, what happens at the exact boundary value, and when the field is empty? | A branch with no result at the edge | Decisions get the boundary result and the empty result, or the reason the field cannot be empty. Acceptance examples test each result that can happen. |
 | Can two conditions be true at the same time, or can a case match no condition? | Overlaps and gaps | Decisions get one result for each case, plus a default path. |
 | Does work run at the same time? Does the next step need all results, any result, or a stated combination? | A missing join rule | Parallel work gets its join rule. |
 | When one parallel result ends the case, what happens to the open work? | Open work with no owner | Parallel work gets its cancellation rule. |
@@ -229,7 +230,7 @@ Next step: <one offer with a one-line reason. Nothing is built until the user sa
 ```
 
 - Say that the specification is ready to build only when every blocking field has a value. Otherwise name each field that is missing.
-- When the user wants to build next, give `pipefy-building` the specification. State that the build activates the new parts. Name each rule that starts inactive or stays skipped, with its reason and next action.
+- When the user wants to build next, give `pipefy-building` the specification. State that the build activates the new parts. Name each rule that starts inactive or stays skipped, with its reason and next action, from Platform choices and Pending items.
 
 Manual steps name the parts of the design that only the Pipefy UI creates:
 

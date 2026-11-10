@@ -33,16 +33,19 @@ Use `--condition` on `pipefy automation create` and `pipefy automation update` f
 
 ## Create an AI automation inactive
 
-Use the shared "Create an AI automation inactive" recipe before this command.
-Replace the example pipe and field ids with ids from the pipe.
-Use the selected event and its parameters:
+Use the shared "Create an AI automation inactive" recipe before this command. Run the prompt check with the selected event:
+
+```bash
+pipefy ai-automation validate-prompt --pipe 67890 --prompt "Summarize %{900000102} into the summary field." --field-ids '["900000101"]' --event-id card_created --json
+```
+
+Replace the example pipe and field ids with ids from the pipe. Use the selected event and its parameters:
 
 ```bash
 pipefy automation create --pipe 67890 --name "Summarize intake" --event-id card_created --action-id generate_with_ai --no-active --extra '{"action_params":{"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}},"condition":{"expressions":[{"structure_id":0,"field_address":"","operation":"","value":""}],"expressions_structure":[[0]]}}' --json
 ```
 
-Read the returned `createAutomation.automation.id` with `pipefy ai-automation get <automation_id>`.
-Activate it only when the shared recipe permits activation:
+The response holds the new id in `createAutomation.automation.id`. Read the rule with `pipefy ai-automation get <automation_id>`. Activate it only when the shared recipe permits activation:
 
 ```bash
 pipefy ai-automation update <automation_id> --pipe 67890 --patch-active --json
