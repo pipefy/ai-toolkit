@@ -64,14 +64,14 @@ An agent never uses `scheduler`. Use a traditional automation or an integration 
 
 ## Creation workflow (discover → validate → create → verify)
 
-Choose the part for each step with "Choose the Pipefy part for each step" in `pipefy-process-design`, then apply the consent rule. The user can ask for a specific AI part for a step that a native rule covers. In that case, recommend the native rule and build the part that the user picks.
+Choose the part for each step with "Choose the Pipefy part for each step" in `pipefy-process-design`, then apply the consent rule. The user can ask for a specific part when the table points at another one. An example is an AI part for a step that a native rule covers. In that case, recommend the part from the table, and build the part that the user picks.
 
 Create AI only after the user's yes:
 
 - A request for AI or for an agent is a yes.
 - A confirmed AI line in a `pipefy-process-design` specification is a yes. Do not ask again.
 - Without either yes, ask before you create AI.
-- "No AI" removes AI from the recommendations and the build, even after an earlier yes.
+- "No AI" removes AI from the recommendations and the build, even after an earlier yes. Each step that loses its AI part uses its recorded alternative.
 
 Never guess event IDs, phase IDs, action types, or field IDs.
 
