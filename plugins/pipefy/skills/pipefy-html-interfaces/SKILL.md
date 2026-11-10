@@ -110,7 +110,7 @@ If the user asks for a "page" and it is unclear whether they mean a standalone H
    set_interface_sources interface_uuid=<interface_uuid> page_id=<page_id> element_id=<element_id> data_sources=[...]
    ```
 
-3. **Declare actions** if the new HTML has `data-pfy-action` buttons or `data-pfy-editable` fields. Send the complete list, the current `metadata.actions` plus the new ones: it replaces them, and `[]` removes them all. Each action names a source by `sourceId` (`openRecord`, `triggerAutomation`) or a source's repo by `repoId` (`openStartForm`); `dataPfyVocabulary` in the guidelines describes each kind. Pass `editable=true` only when the user wants viewers to save field edits.
+3. **Declare actions** if the new HTML has `data-pfy-action` buttons or `data-pfy-editable` fields. Send the complete list, the current `metadata.actions` plus the new ones: it replaces them, and `[]` removes them all. Each action names a source by `sourceId` (`openRecord`, `triggerAutomation`) or a source's repo by `repoId` (`openStartForm`), except `openCard`, which names neither and links an `<a>` to its record's card; `dataPfyVocabulary` in the guidelines describes each kind. Pass `editable=true` only when the user wants viewers to save field edits.
 
    ```text
    set_interface_actions interface_uuid=<interface_uuid> page_id=<page_id> element_id=<element_id> actions=[{"actionId": "approve", "kind": "triggerAutomation", "sourceId": "requests", "automationIds": [<automation_id>]}]
@@ -142,7 +142,7 @@ If the user asks for a "page" and it is unclear whether they mean a standalone H
 - **A repo is missing from `list_interface_repos`.** It is unpublished, or the caller is not its admin. An empty list can also mean the organization id is wrong: the listing does not report an unknown organization or interface.
 - **`get_interface_html` refuses the interface.** It is a grid-layout portal or sub-portal; use `pipefy-portal-setup`.
 - **Unsure what a source update stored.** `set_interface_sources` returns the sources as sent, not as stored. Read them back with `get_interface_html`.
-- **A button runs no action.** Its `data-pfy-action` names no declared action (the button then ends with `data-pfy-state="error"`), or an `openRecord` or `triggerAutomation` button sits outside a record. Compare the HTML with the element's `metadata.actions` from `get_interface_html`.
+- **A button runs no action.** Its `data-pfy-action` names no declared action (the button then ends with `data-pfy-state="error"`), an `openRecord` or `triggerAutomation` button sits outside a record, or an `openCard` is not an `<a>` inside a record. Compare the HTML with the element's `metadata.actions` from `get_interface_html`.
 - **An action was rejected.** A `sourceId` or `repoId` the element does not declare, or `fieldKeys` outside the source, is refused before the update and nothing is stored. Set the sources first, then the actions.
 - **A source update is refused because of an action.** Every element update rechecks the stored actions, so one whose source, page or automation is gone blocks it. Change or drop that action with `set_interface_actions`, then retry.
 

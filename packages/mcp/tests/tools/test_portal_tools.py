@@ -3738,7 +3738,7 @@ async def test_set_interface_actions_sends_parsed_actions_and_returns_them(
             [{**_ACTIONS[0], "kind": "openUrl"}],
             "actions[0].kind: Input tag 'openUrl' found using 'kind' does not "
             "match any of the expected tags: 'openStartForm', 'openRecord', "
-            "'triggerAutomation'",
+            "'triggerAutomation', 'openCard'",
         ),
         (
             [{**_ACTIONS[0], "display": "page"}],

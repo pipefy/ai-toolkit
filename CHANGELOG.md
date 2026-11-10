@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SDK / MCP / CLI `openCard` interface action**: `set_interface_actions` accepts `{actionId, kind: "openCard"}`, which turns an `<a data-pfy-action>` inside a record into a link to that record's card. It names no source, though the element still needs at least one, and any other key is dropped, as the API ignores it. `OpenCardAction` joins the `InterfaceAction` union and `INTERFACE_ACTION_KINDS`, so a stored `openCard` action now parses when the list is read back.
+
 ### Fixed
 
 - **SDK / MCP / CLI AI agents**: a behavior with `event_id` `scheduler` fails before any API call, in `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors`. The automation event catalog lists `scheduler`, but Pipefy rejects it on an AI agent. Before this fix, `validate_ai_agent_behaviors` reported it as valid, `create_ai_agent` left a disabled agent with no behaviors, and `update_ai_agent` could remove the agent's behaviors.

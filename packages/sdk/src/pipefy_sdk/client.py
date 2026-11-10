@@ -2293,9 +2293,9 @@ class PipefyClient:
         Args:
             page_id: Page holding the element.
             element_id: The page's ``customCode`` element.
-            actions: The complete action list (``openStartForm``, ``openRecord``
-                or ``triggerAutomation``, each with an ``actionId``); ``[]``
-                removes them all.
+            actions: The complete action list (``openStartForm``, ``openRecord``,
+                ``triggerAutomation`` or ``openCard``, each with an ``actionId``);
+                ``[]`` removes them all.
             interface_uuid: HTML interface holding the page.
             editable: Whether viewers can save edits to ``data-pfy-editable``
                 fields; ``None`` keeps the stored flag.
