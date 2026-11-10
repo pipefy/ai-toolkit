@@ -29,7 +29,7 @@ Decisões:
   D1. Parecer de compras = Aprovar e Valor >= R$ 5.000,00 -> Aprovação gerencial.
       Valor exatamente R$ 5.000,00 sobe ao gerente.
       Valor < R$ 5.000,00 -> Aprovado sem gerente.
-      Valor vazio -> volta a Solicitação com a tarefa "informar valor".
+      Valor vazio: não acontece, o formulário inicial exige o valor.
   D2. Parecer de compras = Recusar -> Recusado.
   D3. Parecer de compras = Falta documento -> Aguardando documento.
   D4. Decisão do gerente = Aprovar -> Aprovado. Recusar -> Recusado.
@@ -58,7 +58,7 @@ Pendências:
 Exemplos de aceitação:
   A1. Valor 4.999,99, parecer Aprovar -> Aprovado, sem passar pelo gerente.
   A2. Valor 5.000,00, parecer Aprovar -> Aprovação gerencial.
-  A3. Valor vazio -> volta a Solicitação com a tarefa "informar valor".
+  A3. Parecer Recusar, motivo preenchido -> Recusado.
   A4. Parecer Falta documento -> Aguardando documento; depois do anexo, volta a Análise.
   A5. Gerente escolhe Recusar sem motivo -> o card não sai da fase.
 ```
@@ -102,6 +102,8 @@ Data:
   Finance decision: select (Approved, Rejected, Not required), Reviews, Finance reviewer or the D2 rule.
   Rejection reason: long text, Reviews, the reviewer who rejects, required when a decision is Rejected.
   Vendor code: short text, Vendor setup, procurement analyst, required.
+  Tax id: short text, Document check, the AI automation or the procurement analyst (see P3), not required.
+  Certificate expiry date: date, Document check, the AI automation or the procurement analyst (see P3), not required.
 Platform choices:
   D2: traditional automation when a card enters Reviews, with a spend condition. It sets Finance decision to Not required below 10,000.00.
     Alternative: the Finance reviewer sets the field.
@@ -111,14 +113,16 @@ Platform choices:
   Reminder at 3 days: automation on the phase time limit. Alternative: a manual follow-up.
   Read the tax id and the expiry date from the tax certificate: AI automation, recommended. Alternative: the analyst reads the certificate.
     Reason: the step reads a document on one event and writes two fields. Test: 20 sample certificates read correctly.
-    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed. The user did not confirm the specification with this recommendation.
-  Email to the vendor on rejection: email template and an automation that sends it. This is an external effect.
+    Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed (P3). The user did not confirm the specification with this recommendation.
+  Email to the vendor on rejection: email template and an automation that sends it. This is an external effect, and Authorization does not permit it (P4).
 Constraints: only the Legal reviewer approves legal terms. Bank data does not leave Pipefy.
 Authorization: build ("build it"). External effects: not allowed.
 Assumptions: Finance = Not required counts as a Finance result in the join.
 Pending items:
   P1. Who owns the case at the 7-day deadline. Blocks only the deadline rule.
   P2. Does Not required count as a Finance result in the join? Blocks only D3 activation.
+  P3. Confirm the AI automation that reads the tax certificate. Blocks only that AI automation. Until then, the procurement analyst fills Tax id and Certificate expiry date.
+  P4. Permit the email to the vendor on rejection. Blocks only the email automation. The email template is a manual step in the Pipefy interface.
 Acceptance examples:
   A1. After P2 is confirmed: spend 9,999.99, Legal Approved -> Vendor setup. Finance is Not required.
   A2. Spend 10,000.00, Legal Approved, Finance empty -> the case stays in Reviews.
