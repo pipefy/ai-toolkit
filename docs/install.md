@@ -2,6 +2,8 @@
 
 Pick a path based on your client and whether you need the full tool set. The root [`README.md`](../README.md) has the first command for each path. This page has each path in full with its common flags and caveats, how to switch between paths, plus [tool-surface selection](#choosing-a-tool-surface) and [testing the Claude Code plugin from a checkout](#test-the-claude-code-plugin-from-a-local-checkout).
 
+Read [`trust.md`](trust.md) for hosts, request headers, and files an install writes.
+
 - In Cursor and want the fastest start with no local setup? → **Cursor Marketplace plugin**.
 - In Claude Code and want the fastest start with no local setup? → **Hosted MCP**.
 - In Claude Code and want the CLI, `/pipefy:*` slash commands, or skills on the hosted MCP? → **Claude Code plugin**.
