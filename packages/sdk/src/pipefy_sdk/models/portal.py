@@ -474,7 +474,8 @@ class TriggerAutomationAction(_InterfaceAction):
 class OpenCardAction(_InterfaceAction):
     """Links an ``<a>`` inside a record to that record's card, whatever its source.
 
-    Other keys are dropped, as the API ignores them, so a stored one still reads back.
+    The SDK drops any other key, because an ``openCard`` action uses none. A list
+    read from the element can then be sent back as it is.
     """
 
     model_config = ConfigDict(extra="ignore")

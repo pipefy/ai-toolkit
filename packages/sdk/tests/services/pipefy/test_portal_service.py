@@ -3481,15 +3481,20 @@ async def test_set_interface_actions_ignores_a_stored_source_without_an_id() -> 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_set_interface_actions_on_an_element_with_no_sources_says_to_set_them() -> (
-    None
-):
+@pytest.mark.parametrize(
+    "action",
+    [_APPROVE_ACTION, {"actionId": "open-card", "kind": "openCard"}],
+    ids=["names a source", "openCard"],
+)
+async def test_set_interface_actions_on_an_element_with_no_sources_says_to_set_them(
+    action: dict,
+) -> None:
     service, _interfaces_executor = _set_sources_service(
         _html_interface_with_custom_code()
     )
 
     with pytest.raises(ValueError, match="has no data sources"):
-        await _set_request_actions(service, [_APPROVE_ACTION])
+        await _set_request_actions(service, [action])
 
 
 @pytest.mark.unit
