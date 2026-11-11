@@ -111,6 +111,7 @@ Platform choices:
     Reason: two fields in one phase hold both results, and the rules read fields. Start state: D4 on. D3 off until P2.
   Rejection reason: field condition. Alternative: a field that is always visible.
   Reminder at 3 days: automation on the phase time limit. Alternative: a manual follow-up. Start state: on.
+  Deadline at 7 days: automation on the phase time limit. Alternative: the procurement analyst moves the case to the new owner. Start state: not created until P1.
   Read the tax id and the expiry date from the tax certificate: AI automation, recommended. Alternative: the analyst reads the certificate.
     Reason: the step reads a document on one event and writes two fields. Test: 20 sample certificates read correctly.
     Wrong output: a wrong date goes to the analyst. State: recommended, not confirmed (P3). The user did not confirm the specification with this recommendation. Start state: not created until P3.
