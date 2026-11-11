@@ -37,6 +37,24 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Active lifecycle
 
+A build request defaults to `build`. The `build` and `build inactive` levels apply with or without a `pipefy-process-design` specification. Without a specification, the request that you restated to the user is the reference for each check in this section. Agents for a process created in this conversation start on. Test each agent with acceptance cards before real cards arrive.
+
+In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests and the log checks in "Verify", delete the acceptance cards with the usual delete confirmation.
+
+Create an agent off only in these cases:
+
+- The user asks for `build inactive`, in any words.
+- The pipe existed before this conversation and has cards that the agent can match.
+- A behavior uses a time limit in a pipe with cards.
+- A behavior reads a business assumption that the user did not confirm.
+- A move needs a phase connection that does not exist.
+
+For the existing-card and time-limit cases, read the saved agent and compare it with the specification, or with the restated request when no specification exists. If no other off case applies, activate the agent in the same build. Do not ask for another yes.
+
+Keep an agent off when the user asked for it, until the user permits activation. Keep an agent with a pending assumption off until the user confirms that assumption. Keep an agent with a missing connection off until that connection exists. Activate only when none of these conditions still requires an off state. If the tool rejects a missing connection, skip that agent until the connection exists.
+
+An agent never uses `scheduler`. Use a traditional automation or an integration flow for a schedule. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
+
 - Agents are **active by default**. Create-active clears the API default disabled shell via the configure update (omits `disabledAt`). Create-inactive (`disabled_at` set on the input to the current time, as an ISO-8601 UTC timestamp) sets `disabled_at` explicitly on create and the chained update.
 - Routine `update_ai_agent` **preserves** disabled state — it does not intentionally reactivate. Prefer passing `disabled_at` from a prior `get_ai_agent` (`disabledAt`) to skip the preserve re-read; when omitted, the SDK re-reads and re-sends.
 - Explicit activate/deactivate: `toggle_ai_agent_status`.
@@ -46,7 +64,14 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Creation workflow (discover → validate → create → verify)
 
-**Consent:** create or suggest an AI agent only when the user explicitly asked for AI / an agent. If AI seems useful but was not requested, ask first — never introduce agents without being asked.
+Choose the part for each step with "Choose the Pipefy part for each step" in `pipefy-process-design`, then apply the consent rule. The user can ask for a specific part when the table points at another one. An example is an AI part for a step that a native rule covers. In that case, recommend the part from the table, and build the part that the user picks.
+
+Create AI only after the user's yes:
+
+- A request for AI or for an agent is a yes.
+- A confirmed AI line in a `pipefy-process-design` specification is a yes. Do not ask again.
+- Without either yes, ask before you create AI.
+- "No AI" removes AI from the recommendations and the build, even after an earlier yes. Each step that loses its AI part uses its recorded alternative.
 
 Never guess event IDs, phase IDs, action types, or field IDs.
 
@@ -106,6 +131,8 @@ For `card_moved` and `field_updated`, you MUST include `event_params`. Omitting 
 Leave `pipeId` and `tableId` out of an action that does not need them. Never send either as an empty string: Pipefy reads it as an id you cannot access and rejects the agent with "references a pipe or table you do not have access to". Any `pipeId` or `tableId` you send must be in the same organization, and one where the caller can create cards.
 
 ### 5 — Build the behavior dict
+
+Name each conditional action in the behavior instruction. State when the agent must run it and when the agent must skip it. Test both outcomes.
 
 ```json
 {
@@ -226,6 +253,10 @@ On create/update, slug `fieldId` values are resolved to numeric `internal_id`, `
 ### 9 — Verify
 
 `get_ai_agent(uuid)` to confirm behaviors and enablement (`disabledAt` null means active). Do not treat `behaviors[].active` as agent enablement; never assume inactive without confirmation.
+
+Before removing acceptance cards, call `get_ai_agent_logs(repo_uuid=<pipe_uuid>)` without a `status` filter. Read `aiAgentLogsByRepo.nodes` from the returned data. Match `cardId`, `agentUuid`, and `createdAt` to the test execution. If `pageInfo.hasNextPage` is true, pass `pageInfo.endCursor` as `after` and continue.
+
+Wait until the matching execution has terminal `status`: `success` or `failed`. Keep acceptance cards while execution is `processing`. Then call `get_card` with `include_fields=true`. Compare the stored output fields and phase with each expected outcome. An absent or empty required output does not pass acceptance. Missing or `processing` executions remain pending. A `failed` execution or an incorrect result does not pass acceptance.
 
 ---
 
