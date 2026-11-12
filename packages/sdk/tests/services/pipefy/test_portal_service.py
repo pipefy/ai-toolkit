@@ -3445,6 +3445,18 @@ async def test_set_interface_actions_open_record_without_field_keys_is_sent() ->
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_set_interface_actions_open_card_names_no_source_and_is_sent() -> None:
+    service, interfaces_executor = _set_sources_service(_interface_with_sources())
+    action = {"actionId": "open-card", "kind": "openCard"}
+
+    await _set_request_actions(service, [action])
+
+    sent = json.loads(_sent_update_input(interfaces_executor)["metadata"])
+    assert sent["actions"] == [action]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_set_interface_actions_ignores_a_stored_source_without_an_id() -> None:
     """A read source may carry a null id; it is no action's target and is not listed."""
     service, _interfaces_executor = _set_sources_service(
@@ -3469,15 +3481,20 @@ async def test_set_interface_actions_ignores_a_stored_source_without_an_id() -> 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_set_interface_actions_on_an_element_with_no_sources_says_to_set_them() -> (
-    None
-):
+@pytest.mark.parametrize(
+    "action",
+    [_APPROVE_ACTION, {"actionId": "open-card", "kind": "openCard"}],
+    ids=["names a source", "openCard"],
+)
+async def test_set_interface_actions_on_an_element_with_no_sources_says_to_set_them(
+    action: dict,
+) -> None:
     service, _interfaces_executor = _set_sources_service(
         _html_interface_with_custom_code()
     )
 
     with pytest.raises(ValueError, match="has no data sources"):
-        await _set_request_actions(service, [_APPROVE_ACTION])
+        await _set_request_actions(service, [action])
 
 
 @pytest.mark.unit

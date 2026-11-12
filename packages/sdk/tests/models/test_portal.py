@@ -16,6 +16,7 @@ from pipefy_sdk.models.portal import (
     InterfaceActions,
     InterfaceDataSource,
     InterfaceDataSources,
+    OpenCardAction,
     OpenRecordAction,
     OpenStartFormAction,
     PortalElementType,
@@ -704,18 +705,20 @@ _TRIGGER_AUTOMATION = {
     "automationIds": ["301"],
     "label": "Approve",
 }
+_OPEN_CARD = {"actionId": "open-card", "kind": "openCard"}
 
 
 @pytest.mark.unit
 def test_interface_actions_parses_each_kind_by_its_kind_key() -> None:
     actions = InterfaceActions.model_validate(
-        [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION]
+        [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION, _OPEN_CARD]
     )
 
     assert [type(action) for action in actions.root] == [
         OpenStartFormAction,
         OpenRecordAction,
         TriggerAutomationAction,
+        OpenCardAction,
     ]
 
 
@@ -723,7 +726,7 @@ def test_interface_actions_parses_each_kind_by_its_kind_key() -> None:
 def test_interface_actions_dump_round_trips_the_api_keys_without_unset_options() -> (
     None
 ):
-    actions = [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION]
+    actions = [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION, _OPEN_CARD]
 
     assert (
         InterfaceActions.model_validate(actions).model_dump(
@@ -731,6 +734,15 @@ def test_interface_actions_dump_round_trips_the_api_keys_without_unset_options()
         )
         == actions
     )
+
+
+@pytest.mark.unit
+def test_interface_actions_open_card_drops_keys_the_api_ignores() -> None:
+    actions = InterfaceActions.model_validate(
+        [{**_OPEN_CARD, "sourceId": "open-requests"}]
+    )
+
+    assert actions.model_dump(by_alias=True, exclude_none=True) == [_OPEN_CARD]
 
 
 @pytest.mark.unit
@@ -877,4 +889,5 @@ def test_interface_action_kinds_lists_every_action_kind() -> None:
         "openStartForm",
         "openRecord",
         "triggerAutomation",
+        "openCard",
     )
