@@ -68,6 +68,8 @@ Type the slash commands **in order** (the model cannot invoke `/plugin …` for 
 
 ## 3. Quick-install script
 
+The installer selects a public release and uses the same tag for its packages and skills. It excludes drafts and skips alphas unless `--version` selects one. Release metadata parsing uses `python3`, or Python through `uv` if needed. A `--dry-run` requires an existing `python3` installation.
+
 **Pick this when:** you need the local-file tools or the CLI, or you're on Claude Desktop or Codex. One command installs the CLI and the local MCP server from the release wheels, optionally adds skills, and registers the server in your client config. In Cursor, prefer the [Marketplace plugin](#6-cursor-marketplace-plugin) unless you need that local surface.
 
 ```sh

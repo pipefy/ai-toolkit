@@ -119,7 +119,7 @@ pipefy introspect query pipe
 | [`docs/uninstall.md`](docs/uninstall.md) | `uninstall.sh --scan` and teardown, and switching between the hosted, local, and plugin channels. |
 | [`docs/MIGRATION.md`](docs/MIGRATION.md) | Notes for existing MCP users. Configuration remains compatible. |
 | [`AGENTS.md`](AGENTS.md) | Repository layout, development workflow, and guidelines for contributors and agents. |
-| [`RELEASE.md`](RELEASE.md) | Versioning and release process. |
+| [Release guide](docs/contributing/how-to/release.md) | Versioning and release process. `RELEASE.md` remains the entry point for agents. |
 
 ---
 

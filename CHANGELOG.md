@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`install.sh`**: packages and skills now come from the same selected GitHub Release tag (`npx skills add https://github.com/pipefy/ai-toolkit/tree/TAG`), so `npx skills update` keeps them at that tag until a newer install. The installer excludes draft releases, including on authenticated calls, and reads release metadata with `python3`, or with Python through `uv` when `python3` is absent. `--dry-run` requires `python3`.
+- **Release process**: a maintainer starts each release manually from a frozen candidate commit on `release/vX`. The workflow publishes and tests the original packages before the release command promotes the candidate to `main`, so normal releases no longer need a back-merge. The guide moved to `docs/contributing/how-to/release.md`; `RELEASE.md` points to it. The back-merge workflow is removed.
+
 ## [0.5.7-beta.1] - 2026-11-13
 
 ### Added
