@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.7-beta.1] - 2026-11-13
+
 ### Added
 
 - **SDK / MCP / CLI `openCard` interface action**: `set_interface_actions` accepts `{actionId, kind: "openCard"}`, which turns an `<a data-pfy-action>` inside a record into a link to that record's card. `OpenCardAction` joins the `InterfaceAction` union and `INTERFACE_ACTION_KINDS`. It names no source, though the element still needs at least one. The SDK drops any other key, because an `openCard` action uses none. A list that holds a stored `openCard` action can now be sent back to `set_interface_actions`.
