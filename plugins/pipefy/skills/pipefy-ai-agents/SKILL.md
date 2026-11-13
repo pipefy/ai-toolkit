@@ -37,6 +37,24 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Active lifecycle
 
+A build request defaults to `build`. The `build` and `build inactive` levels apply with or without a `pipefy-process-design` specification. Without a specification, the request that you restated to the user is the reference for each check in this section. Agents for a process created in this conversation start on. Test each agent with acceptance cards before real cards arrive.
+
+In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests and the log checks in "Verify", delete the acceptance cards with the usual delete confirmation.
+
+Create an agent off only in these cases:
+
+- The user asks for `build inactive`, in any words.
+- The pipe existed before this conversation and has cards that the agent can match.
+- A behavior uses a time limit in a pipe with cards.
+- A behavior reads a business assumption that the user did not confirm.
+- A move needs a phase connection that does not exist.
+
+For the existing-card and time-limit cases, read the saved agent and compare it with the specification, or with the restated request when no specification exists. If no other off case applies, activate the agent in the same build. Do not ask for another yes.
+
+Keep an agent off when the user asked for it, until the user permits activation. Keep an agent with a pending assumption off until the user confirms that assumption. Keep an agent with a missing connection off until that connection exists. Activate only when none of these conditions still requires an off state. If the tool rejects a missing connection, skip that agent until the connection exists.
+
+An agent never uses `scheduler`. Use a traditional automation or an integration flow for a schedule. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
+
 - Agents are **active by default**. Create-active clears the API default disabled shell via the configure update (omits `disabledAt`). Create-inactive (`disabled_at` set on the input to the current time, as an ISO-8601 UTC timestamp) sets `disabled_at` explicitly on create and the chained update.
 - Routine `update_ai_agent` **preserves** disabled state — it does not intentionally reactivate. Prefer passing `disabled_at` from a prior `get_ai_agent` (`disabledAt`) to skip the preserve re-read; when omitted, the SDK re-reads and re-sends.
 - Explicit activate/deactivate: `toggle_ai_agent_status`.
@@ -46,7 +64,14 @@ Execution logs live in `pipefy-observability` (`get_ai_agent_logs`, `get_ai_agen
 
 ## Creation workflow (discover → validate → create → verify)
 
-**Consent:** create or suggest an AI agent only when the user explicitly asked for AI / an agent. If AI seems useful but was not requested, ask first — never introduce agents without being asked.
+Choose the part for each step with "Choose the Pipefy part for each step" in `pipefy-process-design`, then apply the consent rule. The user can ask for a specific part when the table points at another one. An example is an AI part for a step that a native rule covers. In that case, recommend the part from the table, and build the part that the user picks.
+
+Create AI only after the user's yes:
+
+- A request for AI or for an agent is a yes.
+- A confirmed AI line in a `pipefy-process-design` specification is a yes. Do not ask again.
+- Without either yes, ask before you create AI.
+- "No AI" removes AI from the recommendations and the build, even after an earlier yes. Each step that loses its AI part uses its recorded alternative.
 
 Never guess event IDs, phase IDs, action types, or field IDs.
 
@@ -64,16 +89,27 @@ Call `get_pipe(pipe_id)` and extract:
 
 ### 3 — Discover valid trigger events
 
-`get_automation_events(pipe_id)`. Common events:
+`get_automation_events(pipe_id)` lists the trigger events. An AI agent behavior accepts every event on that list except `scheduler`. The table maps each trigger that the Pipefy UI shows under "Every time..." to its `event_id`:
 
-| Event (`event_id` value) | `event_params` required | Example |
-|------------|-------------------------|---------|
-| card_created | None | `{}` |
-| card_moved | `{"to_phase_id":"<phase_id>"}` | Fires only when card enters that phase. |
-| field_updated | `{"triggerFieldIds":["<field_id>", ...]}` | Fires only when those fields change. |
-| manually_triggered | None | User clicks button on card. |
+| Pipefy UI trigger | `event_id` | `event_params` |
+|---|---|---|
+| A card enters a phase | `card_moved` | `{"to_phase_id": "<phase_id>"}` |
+| A field is updated | `field_updated` | `{"triggerFieldIds": ["<field_id>", ...]}` |
+| A card is created | `card_created` | None |
+| An alert is triggered | `sla_based` | `{"kindOfSla": "Late"}`, or `Expired`, or `Overdue` |
+| A card leaves a phase | `card_left_phase` | `{"fromPhaseId": "<phase_id>"}` |
+| An email is received | `card_inbox_received_email` | `{"inPhaseId": "<phase_id>"}` |
+| All connected cards are moved to a phase | `all_children_in_phase` | `{"to_phase_id": "<phase_id>"}` |
+| An HTTP response is received | `http_response_received` | `{"triggerAutomationId": "<automation_id>"}` |
+| An interface button is clicked | `manually_triggered` | None |
 
 For `card_moved` and `field_updated`, you MUST include `event_params`. Omitting it makes the behavior fire on every occurrence.
+
+- `get_automation_events` lists the parameters in snake_case (`from_phase_id`, `kind_of_sla`). The table shows the spelling that the API reads. The toolkit accepts both spellings and sends the API spelling.
+- `scheduler` is on the event list, but AI agents do not accept it. `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors` reject it before any API call.
+- For `all_children_in_phase`, use a phase from the agent's pipe. Read its phases with `get_pipe`. `validate_ai_agent_behaviors` rejects a phase outside that pipe.
+- For `http_response_received`, `triggerAutomationId` is the id of the traditional automation that sends the HTTP request. Check the id with `get_automation` first.
+- For `manually_triggered`, the "interface button" is a `button`/`automationButton` element on a Pipefy **Interface** page (a portal, outside the pipe) wired to a `triggerAutomation` action naming this behavior's automation id — building it is a separate workflow (see `pipefy-portal-setup`). For a quick test or demo, the closest card-level equivalent is a `field_updated` trigger on a single-option checklist field (e.g. one option named "Run"): checking it fires the behavior without building an Interface.
 
 ### 4 — Discover valid action types
 
@@ -95,6 +131,8 @@ For `card_moved` and `field_updated`, you MUST include `event_params`. Omitting 
 Leave `pipeId` and `tableId` out of an action that does not need them. Never send either as an empty string: Pipefy reads it as an id you cannot access and rejects the agent with "references a pipe or table you do not have access to". Any `pipeId` or `tableId` you send must be in the same organization, and one where the caller can create cards.
 
 ### 5 — Build the behavior dict
+
+Name each conditional action in the behavior instruction. State when the agent must run it and when the agent must skip it. Test both outcomes.
 
 ```json
 {
@@ -216,6 +254,10 @@ On create/update, slug `fieldId` values are resolved to numeric `internal_id`, `
 
 `get_ai_agent(uuid)` to confirm behaviors and enablement (`disabledAt` null means active). Do not treat `behaviors[].active` as agent enablement; never assume inactive without confirmation.
 
+Before removing acceptance cards, call `get_ai_agent_logs(repo_uuid=<pipe_uuid>)` without a `status` filter. Read `aiAgentLogsByRepo.nodes` from the returned data. Match `cardId`, `agentUuid`, and `createdAt` to the test execution. If `pageInfo.hasNextPage` is true, pass `pageInfo.endCursor` as `after` and continue.
+
+Wait until the matching execution has terminal `status`: `success` or `failed`. Keep acceptance cards while execution is `processing`. Then call `get_card` with `include_fields=true`. Compare the stored output fields and phase with each expected outcome. An absent or empty required output does not pass acceptance. Missing or `processing` executions remain pending. A `failed` execution or an incorrect result does not pass acceptance.
+
 ---
 
 ## Knowledge bases (data sources)
@@ -226,15 +268,15 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 | ------------ | ----------- | --------- |
 | `get_ai_knowledge_bases` | Yes | List every item on a pipe (plain texts, documents, data lookups); each has an `id` for `dataSourceIds` and a `type` (`knowledge_base_plain_texts`, `knowledge_base_documents`, or `data_lookups`). |
 | `get_ai_knowledge_base_plain_text` | Yes | Fetch one plain text with its content. |
-| `create_ai_knowledge_base_plain_text` | No | Create a plain text (`name`, `content` 1-3500, `description` 1-900 — all required). |
+| `create_ai_knowledge_base_plain_text` | No | Create a plain text (`name` 1-80, `content` 1-3500, `description` 1-300, all required). |
 | `update_ai_knowledge_base_plain_text` | No | Partial update; send at least one of name/content/description. |
 | `delete_ai_knowledge_base_plain_text` | No | **Destructive; review and approve first.** |
 | `get_ai_knowledge_base_document` | Yes | Fetch one document's metadata (`content` is the stored URL, not text). |
-| `create_ai_knowledge_base_document` | No | Upload a PDF (`name`, `description` 1-900, `file_path`). `.pdf` + 20 MiB cap; indexing is asynchronous. |
+| `create_ai_knowledge_base_document` | No | Upload a PDF (`name` 1-80, `description` 1-300, `file_path`). `.pdf` + 20 MiB cap; indexing is asynchronous. |
 | `update_ai_knowledge_base_document` | No | Metadata-only update (name/description); no file replacement. |
 | `delete_ai_knowledge_base_document` | No | **Destructive; review and approve first.** |
 | `get_ai_knowledge_base_data_lookup` | Yes | Fetch one data lookup; the payload never includes `conditions` — keep the definition client-side. |
-| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name`, `description` 1-900, `source_repo_id` numeric pipe ID, `output_fields` 1-30, `conditions` — all required). |
+| `create_ai_knowledge_base_data_lookup` | No | Create a data lookup (`name` 1-80, `description` 1-300, `source_repo_id` numeric pipe ID, `output_fields` 1-30, `conditions`, all required). |
 | `update_ai_knowledge_base_data_lookup` | No | Full replacement: resend `source_repo_id`/`output_fields`/`conditions` every call; omitted `search_query` clears it; only name/description are partial. |
 | `delete_ai_knowledge_base_data_lookup` | No | **Destructive; review and approve first.** |
 | `validate_knowledge_base_access` | Yes | Probe read access before writes. |
@@ -242,7 +284,7 @@ Knowledge bases are pipe-scoped data sources an agent draws on. Attach one by pu
 ### Flow: validate-access → create plain text → attach
 
 1. **Probe access** — `validate_knowledge_base_access(pipe_uuid)`. A green result proves read access only (`read_ai_agents`), never the `manage_ai_agents` entitlement writes need.
-2. **Create the source** — `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `content` 1-3500 chars, `description` 1-900 chars (both required). Keep the returned `id`.
+2. **Create the source** — `create_ai_knowledge_base_plain_text(pipe_uuid, name, content, description)`. Limits fail fast client-side: `name` 1-80 chars, `content` 1-3500 chars, `description` 1-300 chars (all required). Keep the returned `id`.
 3. **Attach** — add that `id` to a behavior's `dataSourceIds` (or the agent-level `data_source_ids`) when calling `create_ai_agent` / `update_ai_agent`. Validate first with `validate_ai_agent_behaviors(pipe_id, behaviors, data_source_ids=[...])` — unknown IDs surface as warnings.
 
 For a **PDF document**, use `create_ai_knowledge_base_document` with `pipe_uuid`, `name`, `description`, and `file_path` at step 2. Only `.pdf` is accepted, with a 20 MiB cap. Indexing is asynchronous, so the document may not be searchable immediately. Keep the returned `id` and attach it.

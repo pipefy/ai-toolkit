@@ -5,7 +5,14 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from pipefy_sdk.models.ai_automation import (
     AutomationEventParamsInput,
@@ -15,6 +22,10 @@ from pipefy_sdk.models.validators import NonBlankStr
 
 ACTION_ID_AI_BEHAVIOR = "ai_behavior"
 MAX_BEHAVIORS = 5
+
+# The automation event catalog lists these events, and its actionsBlacklist does not
+# exclude ai_behavior, but Pipefy rejects them when it saves an agent.
+AI_AGENT_UNSUPPORTED_EVENT_IDS = frozenset({"scheduler"})
 
 # actionTypes that require pipeId + fieldsAttributes in metadata
 _CARD_FIELD_ACTION_TYPES = frozenset(
@@ -360,6 +371,18 @@ class BehaviorInput(BaseModel):
     action_params: AiBehaviorActionParams | None = Field(
         default=None, alias="actionParams"
     )
+
+    @field_validator("event_id")
+    @classmethod
+    def event_must_be_available_for_ai_agents(cls, value: str) -> str:
+        """Reject catalog events that Pipefy refuses on an AI agent behavior."""
+        if value in AI_AGENT_UNSUPPORTED_EVENT_IDS:
+            raise ValueError(
+                f'eventId "{value}" is not available for AI agent behaviors. '
+                "Pipefy rejects it when it saves the agent. "
+                "Pick another event from get_automation_events."
+            )
+        return value
 
     @model_validator(mode="after")
     def ai_behavior_must_include_at_least_one_action(self) -> Self:

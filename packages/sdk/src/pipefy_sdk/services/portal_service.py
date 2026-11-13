@@ -28,6 +28,7 @@ from pipefy_sdk.models.portal import (
     InterfaceActions,
     InterfaceDataSource,
     InterfaceDataSources,
+    OpenCardAction,
     OpenRecordAction,
     OpenStartFormAction,
     PortalColor,
@@ -452,6 +453,8 @@ def _unknown_action_references(
     problems: list[str] = []
     for index, action in enumerate(actions.root):
         where = f"actions[{index}]"
+        if isinstance(action, OpenCardAction):
+            continue
         if isinstance(action, OpenStartFormAction):
             if action.repo_id not in repo_ids:
                 problems.append(
@@ -857,9 +860,9 @@ class PortalService:
                 Each action has ``actionId`` (the value of the HTML's
                 ``data-pfy-action``) and ``kind``: ``openStartForm`` with
                 ``repoId``, ``openRecord`` with ``sourceId`` and optional
-                ``display``, ``fieldKeys`` and ``pageId``, or
+                ``display``, ``fieldKeys`` and ``pageId``,
                 ``triggerAutomation`` with ``sourceId``, ``automationIds`` and
-                optional ``label``.
+                optional ``label``, or ``openCard`` with no other key.
             interface_uuid: HTML interface holding the page.
             editable: Whether viewers can save edits to the element's
                 ``data-pfy-editable`` fields; ``None`` keeps the stored flag.
@@ -894,7 +897,7 @@ class PortalService:
         if parsed.root and not element.get("dataSources"):
             msg = (
                 f"Element '{element_id}' has no data sources, and every action "
-                "names one. Add the element's sources first."
+                "needs one. Add the element's sources first."
             )
             raise ValueError(msg)
         problems = _unknown_action_references(parsed, element)

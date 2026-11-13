@@ -60,6 +60,8 @@ Regulated domains (`legal`, `human-resources`, `finance`, `compliance`, or any s
 
 To start a new skill, copy [`.github/skill-template/pipefy-skill-template/`](../.github/skill-template/pipefy-skill-template/) (see [`.github/skill-template/README.md`](../.github/skill-template/README.md)). The inline skeleton below matches that file.
 
+A new skill also needs a row in the routing table of `pipefy-building`. Without that row, `tests/test_building_router.py` fails.
+
 ---
 
 ## SKILL.md template

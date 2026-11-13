@@ -201,6 +201,36 @@ def test_behavior_input_rejects_empty_actions_attributes():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("event_id", ["scheduler", " scheduler "])
+def test_behavior_input_rejects_scheduler_event(event_id):
+    with pytest.raises(
+        ValidationError,
+        match='eventId "scheduler" is not available for AI agent behaviors',
+    ):
+        BehaviorInput.model_validate(minimal_behavior_dict(event_id=event_id))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "event_id",
+    [
+        "card_created",
+        "card_moved",
+        "field_updated",
+        "sla_based",
+        "card_left_phase",
+        "card_inbox_received_email",
+        "all_children_in_phase",
+        "http_response_received",
+        "manually_triggered",
+    ],
+)
+def test_behavior_input_accepts_events_the_agent_ui_offers(event_id):
+    behavior = BehaviorInput.model_validate(minimal_behavior_dict(event_id=event_id))
+    assert behavior.event_id == event_id
+
+
+@pytest.mark.unit
 def test_behavior_input_accepts_condition_and_action_params():
     condition = {"expressions": []}
     payload = minimal_behavior_dict()

@@ -127,12 +127,14 @@ def kb_plain_text_get(
 def kb_plain_text_create(
     ctx: typer.Context,
     pipe_uuid: str = typer.Option(..., "--pipe-uuid", help=_PIPE_UUID_HELP),
-    name: str = typer.Option(..., "--name", help="Display name (required)."),
+    name: str = typer.Option(
+        ..., "--name", help="Display name (required, 1-80 characters)."
+    ),
     content: str = typer.Option(
         ..., "--content", help="Plain text content (required, 1-3500 characters)."
     ),
     description: str = typer.Option(
-        ..., "--description", help="Description (required, 1-900 characters)."
+        ..., "--description", help="Description (required, 1-300 characters)."
     ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."
@@ -142,7 +144,7 @@ def kb_plain_text_create(
 
     Gated on the read-access probe: fails with the classified problem if the
     credential cannot read the pipe's knowledge bases. Client-side limits
-    (content 1-3500, description 1-900) fail fast before the mutation is sent.
+    (name 1-80, content 1-3500, description 1-300) fail fast before the mutation is sent.
     """
 
     async def factory(client: PipefyClient):
@@ -164,12 +166,12 @@ def kb_plain_text_update(
         ..., "--id", help="Knowledge base plain text ID to update."
     ),
     pipe_uuid: str = typer.Option(..., "--pipe-uuid", help=_PIPE_UUID_HELP),
-    name: str | None = typer.Option(None, "--name", help="New name (non-blank)."),
+    name: str | None = typer.Option(None, "--name", help="New name (1-80 characters)."),
     content: str | None = typer.Option(
         None, "--content", help="New content (1-3500 characters)."
     ),
     description: str | None = typer.Option(
-        None, "--description", help="New description (1-900 characters)."
+        None, "--description", help="New description (1-300 characters)."
     ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."
@@ -262,9 +264,11 @@ def kb_document_create(
         "-f",
         help="Local .pdf file to upload (<=20 MiB). Supports ~ expansion.",
     ),
-    name: str = typer.Option(..., "--name", help="Display name (required)."),
+    name: str = typer.Option(
+        ..., "--name", help="Display name (required, 1-80 characters)."
+    ),
     description: str = typer.Option(
-        ..., "--description", help="Description (required, 1-900 characters)."
+        ..., "--description", help="Description (required, 1-300 characters)."
     ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."
@@ -274,7 +278,7 @@ def kb_document_create(
 
     One-shot: presigned URL, S3 PUT, then the create mutation. Gated on the
     read-access probe. Client-side checks fail fast (``.pdf`` extension, 20 MiB
-    cap, description 1-900). Indexing is asynchronous, so the document may not be
+    cap, name 1-80, description 1-300). Indexing is asynchronous, so the document may not be
     searchable by agents immediately.
     """
 
@@ -310,9 +314,9 @@ def kb_document_update(
         ..., "--id", help="Knowledge base document ID to update."
     ),
     pipe_uuid: str = typer.Option(..., "--pipe-uuid", help=_PIPE_UUID_HELP),
-    name: str | None = typer.Option(None, "--name", help="New name (non-blank)."),
+    name: str | None = typer.Option(None, "--name", help="New name (1-80 characters)."),
     description: str | None = typer.Option(
-        None, "--description", help="New description (1-900 characters)."
+        None, "--description", help="New description (1-300 characters)."
     ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."
@@ -428,9 +432,11 @@ def kb_data_lookup_get(
 def kb_data_lookup_create(
     ctx: typer.Context,
     pipe_uuid: str = typer.Option(..., "--pipe-uuid", help=_PIPE_UUID_HELP),
-    name: str = typer.Option(..., "--name", help="Display name (required)."),
+    name: str = typer.Option(
+        ..., "--name", help="Display name (required, 1-80 characters)."
+    ),
     description: str = typer.Option(
-        ..., "--description", help="Description (required, 1-900 characters)."
+        ..., "--description", help="Description (required, 1-300 characters)."
     ),
     source_repo_id: str = typer.Option(..., "--source-repo-id", help=_SOURCE_REPO_HELP),
     output_fields: str = typer.Option(..., "--output-fields", help=_OUTPUT_FIELDS_HELP),
@@ -487,9 +493,9 @@ def kb_data_lookup_update(
     search_query: str | None = typer.Option(
         None, "--search-query", help=_SEARCH_QUERY_HELP + " Omitted means cleared."
     ),
-    name: str | None = typer.Option(None, "--name", help="New name (non-blank)."),
+    name: str | None = typer.Option(None, "--name", help="New name (1-80 characters)."),
     description: str | None = typer.Option(
-        None, "--description", help="New description (1-900 characters)."
+        None, "--description", help="New description (1-300 characters)."
     ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print machine-readable JSON to stdout."

@@ -471,14 +471,33 @@ class TriggerAutomationAction(_InterfaceAction):
     label: str | None = None
 
 
+class OpenCardAction(_InterfaceAction):
+    """Links an ``<a>`` inside a record to that record's card, whatever its source.
+
+    The SDK drops any other key, because an ``openCard`` action uses none. A list
+    read from the element can then be sent back as it is.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    kind: Literal["openCard"]
+
+
+_ACTION_MODELS = (
+    OpenStartFormAction,
+    OpenRecordAction,
+    TriggerAutomationAction,
+    OpenCardAction,
+)
+
 InterfaceAction = Annotated[
-    OpenStartFormAction | OpenRecordAction | TriggerAutomationAction,
+    OpenStartFormAction | OpenRecordAction | TriggerAutomationAction | OpenCardAction,
     Field(discriminator="kind"),
 ]
 
 INTERFACE_ACTION_KINDS: tuple[str, ...] = tuple(
     kind
-    for action in (OpenStartFormAction, OpenRecordAction, TriggerAutomationAction)
+    for action in _ACTION_MODELS
     for kind in get_args(action.model_fields["kind"].annotation)
 )
 
@@ -517,6 +536,7 @@ __all__ = [
     "InterfaceActions",
     "InterfaceDataSource",
     "InterfaceDataSources",
+    "OpenCardAction",
     "OpenRecordAction",
     "OpenStartFormAction",
     "PortalColor",

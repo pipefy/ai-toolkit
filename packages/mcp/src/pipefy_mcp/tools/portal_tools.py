@@ -398,11 +398,16 @@ class PortalTools:
               repo, each a string of digits) and optional ``label``. Example: ``{"actionId": "approve",
               "kind": "triggerAutomation", "sourceId": "open-requests",
               "automationIds": ["301"]}``.
+            - ``openCard``: no other key. It makes an ``<a>`` a link to its
+              record's card, from any source; leave out ``href``, ``target``
+              and ``rel``. Example: ``{"actionId": "open-card", "kind":
+              "openCard"}``.
 
-            ``openRecord`` and ``triggerAutomation`` act on a record, so their
-            button goes inside a record (a ``data-pfy-row`` clone, or a source
-            container with ``data-pfy-record``); ``get_interface_html_guidelines``
-            describes both in ``dataPfyVocabulary``. At most 50 actions.
+            ``openRecord``, ``triggerAutomation`` and ``openCard`` act on a
+            record, so their trigger goes inside a record (a ``data-pfy-row``
+            clone, or a source container with ``data-pfy-record``);
+            ``get_interface_html_guidelines`` describes each in
+            ``dataPfyVocabulary``. At most 50 actions.
 
             ``editable`` turns on viewer edits for the element's
             ``data-pfy-editable`` fields; ``dataPfyVocabulary`` in

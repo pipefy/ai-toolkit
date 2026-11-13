@@ -8,6 +8,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.7-beta.1] - 2026-11-13
+
+### Added
+
+- **SDK / MCP / CLI `openCard` interface action**: `set_interface_actions` accepts `{actionId, kind: "openCard"}`, which turns an `<a data-pfy-action>` inside a record into a link to that record's card. `OpenCardAction` joins the `InterfaceAction` union and `INTERFACE_ACTION_KINDS`. It names no source, though the element still needs at least one. The SDK drops any other key, because an `openCard` action uses none. A list that holds a stored `openCard` action can now be sent back to `set_interface_actions`.
+
+### Fixed
+
+- **SDK / MCP / CLI AI agents**: a behavior with `event_id` `scheduler` fails before any API call, in `create_ai_agent`, `update_ai_agent`, and `validate_ai_agent_behaviors`. The automation event catalog lists `scheduler`, but Pipefy rejects it on an AI agent. Before this fix, `validate_ai_agent_behaviors` reported it as valid, `create_ai_agent` left a disabled agent with no behaviors, and `update_ai_agent` could remove the agent's behaviors.
+- **MCP / skills AI agents**: the `create_ai_agent` description, the AI agent tool reference, and the `pipefy-ai-agents` skill list every trigger that an AI agent accepts. Each trigger has its `eventParams` key. The new rows are `sla_based` (`kindOfSla`), `card_left_phase` (`fromPhaseId`), `card_inbox_received_email` (`inPhaseId`), `all_children_in_phase` (`to_phase_id`), `http_response_received` (`triggerAutomationId`), and `manually_triggered`.
+
+### Changed
+
+- **Skill `pipefy-building`**: the router sorts a build request into one part, a whole process, or the user's own build method. A whole process with an open business decision goes to `pipefy-process-design` first. A confirmed specification that lacks one value goes to the build, which asks the user for that value. A new "Rules for every build" section gives the four authorization levels, with `build` as the default, and the target check. Before the first write, the agent finds the target. It asks before it writes into an object from before the conversation. It does not ask when the user named that object by id or link, or when the confirmed specification names it for reuse. A "Whole-process builds" section gives the build order.
+- **Skill `pipefy-process-design`**: the skill returns a 14-field process specification and writes nothing to Pipefy. Authorization has four levels (`advise only`, `build`, `build inactive`, `publish`), and each external effect needs its own permission. A build request defaults to `build`, so the automations and AI agents of a new process start on. The skill records each default from the specification table as an assumption, and a rule that reads an unconfirmed assumption starts off. The builder does not add assumptions: it asks the user for a missing business value. Confirmation of the specification authorizes its AI recommendations.
+- **Skills `pipefy-automations` and `pipefy-ai-agents`, start state and AI consent**: "Start state" in `pipefy-automations` and "Active lifecycle" in `pipefy-ai-agents` list when a build creates a rule off, with or without a specification. Acceptance cards do not count as cards for those cases. `create_ai_automation` always creates an active rule, so a new recipe creates an inactive AI automation with one `create_automation` call. The MCP and CLI references show where the new id is and how to activate the rule. The simulation recipe sends only the saved input parameters. A `field_updated` rule limited to one phase stays off until a supported condition holds that limit. Both skills choose the part with the selection table in `pipefy-process-design`, then apply the consent rule. A request for AI, or a confirmed AI line in the specification, is the user's yes, and "No AI" removes AI from the build. Agent acceptance waits for a terminal execution status in the logs, then compares the saved card fields and phase with the expected result.
+- **Skills `pipefy-process-impact` and `pipefy-process-intelligence`, part selection**: both skills choose each part with the selection table in `pipefy-process-design`, and "No AI" removes AI from their recommendations. The improvement example in `pipefy-process-intelligence` creates a rule off only when the pipe has cards that the rule can match.
+- **SDK / MCP / CLI knowledge bases**: plain text, document, and data lookup writes cap `name` at 80 characters and `description` at 300 characters. These are the limits the Pipefy UI forms enforce. The cap for `description` was 900, and `name` had no cap. An item over either cap cannot be saved from the UI until the user shortens it. A write over either cap fails with a `ValueError` before the mutation is sent, and the MCP tools and CLI commands return that message. Stored items do not change. An update that omits `name` or `description` keeps the stored value, whatever its length.
+
 ## [0.5.6-beta.1] - 2026-11-03
 
 ### Added

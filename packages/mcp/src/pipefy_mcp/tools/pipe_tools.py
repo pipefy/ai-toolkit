@@ -1473,6 +1473,9 @@ class PipeTools:
             if ``pipesCount`` exceeds the number of pipes returned, or if ``pipesCount``
             is missing and the org returned ``max_pipes_per_org`` pipes (conservative:
             the full org list may be larger).
+            Both search modes omit null pipe rows from the API response.
+            A null row sets ``search_limits.pipes_truncated`` to True.
+            It also sets ``pipes_truncated`` on the organization if that organization is returned.
 
             Results are also membership shaped: each organization returns only the
             pipes the calling identity is a member of, so the list can fall below
