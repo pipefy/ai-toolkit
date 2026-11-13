@@ -1,12 +1,12 @@
-"""Shared copy for phase transition validation (UI rules vs GraphQL read-only)."""
+"""Shared copy for phase transition rules: how phases get connected and how to read them."""
 
 from __future__ import annotations
 
 TRANSITION_RULES_HINT = (
-    "Phase transition rules are configured in the Pipefy UI "
-    "(Pipe settings -> Phase -> Connections) and are not editable via API. "
-    "Use get_phase_allowed_move_targets on the source phase to list valid destinations "
-    "(GraphQL field phase.cards_can_be_moved_to_phases)."
+    "Phase transition rules (Pipe settings -> Phase -> Connections) set where a card "
+    "can move. create_phase connects a new phase to the phases beside it; change other "
+    "connections in the Pipefy UI. Use get_phase_allowed_move_targets on the source "
+    "phase to list valid destinations (GraphQL field phase.cards_can_be_moved_to_phases)."
 )
 
 

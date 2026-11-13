@@ -4,7 +4,15 @@ from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pipefy_sdk import FieldTypeId, PipefyClient, PipefyId
+from pipefy_sdk import (
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
+    FieldTypeId,
+    PipefyClient,
+    PipefyId,
+    PipePhaseSetupError,
+)
 from pipefy_sdk.graphql_inputs import (
     CreatePhaseFieldInput,
     UpdateLabelInput,
@@ -144,15 +152,34 @@ class PipeConfigTools:
             name: str,
             organization_id: PipefyId,
             ctx: Context,
+            phases: list[CreatePipePhase] | None = None,
+            start_form_fields: list[CreatePipeStartFormField] | None = None,
+            labels: list[CreatePipeLabel] | None = None,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """Create a new empty pipe in an organization.
+            """Create a pipe in an organization, with its phases, start form fields and labels in one call.
 
-            Add phases, fields, and labels with the dedicated tools after the pipe exists.
+            Without ``phases``, the pipe gets Pipefy's default phases Inbox, Doing and Done.
+            With ``phases``, it gets exactly those phases, in that order, each connected to
+            the phases beside it so cards can move between them. Mark the final phase
+            ``done: true``. The result lists the new phases, start form fields and labels
+            with their ids. Add fields to the other phases with ``create_phase_field``.
+
+            When setting up the phases fails after the pipe exists, the error code is
+            ``PIPE_PHASE_SETUP_FAILED`` and ``error.details`` holds ``pipe_id`` and the
+            phases created so far. Read the pipe with ``get_pipe``, then fix its phases
+            or delete it with ``delete_pipe``.
 
             Args:
                 name: Display name of the pipe.
                 organization_id: Organization ID that will own the pipe.
+                phases: Optional phases, in order: ``name`` (unique in the pipe) and
+                    optional ``done``.
+                start_form_fields: Optional start form fields: ``label``, ``type_id``
+                    and optional ``description``, ``help``, ``required``, ``editable``,
+                    ``options``.
+                labels: Optional labels: ``name`` and ``color`` (hex ``#RGB`` or
+                    ``#RRGGBB``).
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -165,7 +192,34 @@ class PipeConfigTools:
             if err is not None:
                 return err
             try:
-                raw = await client.create_pipe(name.strip(), org_id)
+                raw = await client.create_pipe(
+                    name.strip(),
+                    org_id,
+                    phases=phases,
+                    start_form_fields=start_form_fields,
+                    labels=labels,
+                )
+            except ValueError as exc:
+                return build_pipe_tool_error_payload(
+                    message=str(exc), code="INVALID_ARGUMENTS"
+                )
+            except PipePhaseSetupError as exc:
+                cause = exc.__cause__
+                return build_pipe_tool_error_payload(
+                    message=with_debug_suffix(
+                        str(exc),
+                        debug=debug,
+                        codes=extract_graphql_error_codes(cause) if cause else [],
+                        correlation_id=(
+                            extract_graphql_correlation_id(cause) if cause else None
+                        ),
+                    ),
+                    code="PIPE_PHASE_SETUP_FAILED",
+                    details={
+                        "pipe_id": exc.pipe_id,
+                        "created_phases": exc.created_phases,
+                    },
+                )
             except Exception as exc:  # noqa: BLE001
                 return handle_pipe_config_tool_graphql_error(
                     exc,
@@ -412,8 +466,8 @@ class PipeConfigTools:
 
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
-            to avoid trial-and-error moves. Transition rules are configured in the
-            Pipefy UI and are not editable via API.
+            to avoid trial-and-error moves. ``create_phase`` connects a new phase to
+            the phases beside it; other connections are changed in the Pipefy UI.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -597,11 +651,11 @@ class PipeConfigTools:
         ) -> dict[str, Any]:
             """Create a phase in a pipe.
 
-            Phase Connections / ``allowed_phases`` (the move-transition rules)
-            are configured in the Pipefy UI and are not editable via API. Call
-            ``get_phase_allowed_move_targets`` on the source phase to read its
-            current move targets before a move. The success payload repeats this
-            as a ``connection_hint`` key.
+            The new phase is connected to the phases beside it in ``index`` order,
+            so cards can move between them. Call ``get_phase_allowed_move_targets``
+            on the new phase and its neighbors to read the result, and change the
+            connections in the Pipefy UI when they need changes. The success
+            payload repeats this as a ``connection_hint`` key.
 
             Args:
                 pipe_id: Pipe that will contain the phase.
@@ -614,9 +668,8 @@ class PipeConfigTools:
                     are 1, 2 and 3, and 0 omits the phase from ``get_pipe``
                     phases. ``get_pipe`` returns each key as
                     ``phases[].index``, in ascending order.
-                    Index only sets order - it does not configure Phase
-                    Connections / ``allowed_phases`` (UI-only); call
-                    ``get_phase_allowed_move_targets`` before moves.
+                    The phases beside the new phase in this order are the
+                    phases it is connected to.
                 description: Optional phase description.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
@@ -678,8 +731,8 @@ class PipeConfigTools:
             name (resolved via get_phase_fields). Values identical to the current state
             are accepted but result in a no-op API call.
 
-            Updating a phase does not configure its Phase Connections /
-            ``allowed_phases`` (UI-only, not editable via API). Call
+            Updating a phase does not change its Phase Connections /
+            ``allowed_phases``; change them in the Pipefy UI. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 

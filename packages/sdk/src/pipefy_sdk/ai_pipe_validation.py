@@ -15,6 +15,7 @@ from pipefy_sdk.models import (
     AiBehaviorParams,
     BehaviorPayload,
 )
+from pipefy_sdk.models.ai_agent import AI_AGENT_UNSUPPORTED_EVENT_IDS
 
 if TYPE_CHECKING:
     from pipefy_sdk.client import PipefyClient
@@ -135,9 +136,12 @@ def validate_behaviors_against_pipe(
         if event_id and pipe_event_ids is not _EVENT_CATALOG_UNSET:
             if pipe_event_ids:
                 if str(event_id) not in pipe_event_ids:
+                    agent_events = sorted(
+                        pipe_event_ids - AI_AGENT_UNSUPPORTED_EVENT_IDS
+                    )
                     problems.append(
                         f'{prefix}: eventId "{event_id}" is not an automation event '
-                        f"for this pipe. Valid events: {sorted(pipe_event_ids)}."
+                        f"for this pipe. Valid events: {agent_events}."
                     )
             else:
                 # The caller tried to load the catalog but it came back unavailable

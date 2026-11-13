@@ -15,7 +15,11 @@ from pipefy_sdk.exceptions import (
     HtmlViolation,
     PortalPermissionError,
 )
-from pipefy_sdk.models.portal import parse_portal_page_layout
+from pipefy_sdk.models.portal import (
+    OpenRecordAction,
+    TriggerAutomationAction,
+    parse_portal_page_layout,
+)
 
 from pipefy_cli.main import app
 
@@ -3875,3 +3879,244 @@ def test_html_interface_set_sources_source_access_denied_shows_clean_message_exi
         "Permission denied for a data source: you can bind only the pipes and "
         "tables 'portal html-interface repos' returns for this interface."
     )
+
+
+_SET_ACTIONS_ARGV = [
+    "portal",
+    "html-interface",
+    "set-actions",
+    "--interface-uuid",
+    "html-uuid-1",
+    "--page-id",
+    "page-1",
+    "--element-id",
+    "el-1",
+]
+_CLI_ACTIONS = [
+    {
+        "actionId": "details",
+        "kind": "openRecord",
+        "sourceId": "open-requests",
+        "fieldKeys": ["title"],
+    },
+    {
+        "actionId": "approve",
+        "kind": "triggerAutomation",
+        "sourceId": "open-requests",
+        "automationIds": ["301"],
+    },
+]
+
+
+def _invoke_set_actions(runner, mock_client, *extra: str):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(app, [*_SET_ACTIONS_ARGV, *extra])
+
+
+@pytest.mark.parametrize(
+    ("flags", "editable"),
+    [([], None), (["--editable"], True), (["--no-editable"], False)],
+    ids=["keep editable", "set editable", "clear editable"],
+)
+def test_html_interface_set_actions_forwards_parsed_actions_and_editable(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, flags, editable
+):
+    """The SDK gets the parsed action models, not the raw dicts."""
+    oauth_env("html-interface-set-actions")
+    set_result = {
+        "id": "el-1",
+        "uuid": "el-1",
+        "actions": _CLI_ACTIONS,
+        "editable": bool(editable),
+    }
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(return_value=set_result)
+
+    result = _invoke_set_actions(
+        runner, mock_client, "--actions", json.dumps(_CLI_ACTIONS), *flags, "--json"
+    )
+
+    assert result.exit_code == 0, result.stdout + (result.stderr or "")
+    assert json.loads(result.stdout) == set_result
+    mock_client.set_interface_actions.assert_awaited_once_with(
+        "page-1",
+        "el-1",
+        [
+            OpenRecordAction(
+                action_id="details",
+                kind="openRecord",
+                source_id="open-requests",
+                field_keys=["title"],
+            ),
+            TriggerAutomationAction(
+                action_id="approve",
+                kind="triggerAutomation",
+                source_id="open-requests",
+                automation_ids=["301"],
+            ),
+        ],
+        interface_uuid="html-uuid-1",
+        editable=editable,
+    )
+
+
+@pytest.mark.parametrize(
+    ("actions", "fragment"),
+    [
+        ("{}", "JSON array"),
+        (json.dumps([{**_CLI_ACTIONS[0], "kind": "openUrl"}]), "openUrl"),
+        (
+            json.dumps([_CLI_ACTIONS[0], {**_CLI_ACTIONS[1], "actionId": "details"}]),
+            "own actionId",
+        ),
+    ],
+    ids=["not an array", "unknown kind", "repeated action id"],
+)
+def test_html_interface_set_actions_rejects_invalid_actions_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, actions, fragment
+):
+    oauth_env("html-interface-set-actions-invalid")
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock()
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", actions)
+
+    assert result.exit_code == 2
+    assert fragment in result.stderr
+    mock_client.set_interface_actions.assert_not_called()
+
+
+def test_html_interface_set_actions_unknown_reference_shows_sdk_message_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """A sourceId the element lacks is bad input: the SDK message, exit 2."""
+    oauth_env("html-interface-set-actions-unknown-source")
+    message = (
+        "actions[0].sourceId: 'closed-requests' is not a data source of this "
+        "element; its sources are: open-requests"
+    )
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(side_effect=ValueError(message))
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", "[]")
+
+    assert result.exit_code == 2
+    assert result.stderr.strip() == message
+
+
+def test_html_interface_set_actions_grid_interface_names_cli_command_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-actions-grid-interface")
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(
+        side_effect=ValueError(
+            "Interface 'html-uuid-1' is not an HTML interface; "
+            "use get_portal to read its elements."
+        )
+    )
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", "[]")
+
+    assert result.exit_code == 2
+    assert result.stderr.strip() == (
+        "Interface 'html-uuid-1' is not an HTML interface; "
+        "use `pipefy portal get` to read its elements."
+    )
+
+
+def test_html_interface_set_actions_unknown_interface_shows_clean_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("html-interface-set-actions-not-found")
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": "Couldn't find the interface"}])
+    )
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", "[]")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "No HTML interface has uuid 'html-uuid-1'."
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            PipefyGraphQLError([{"message": "Permission denied"}]),
+            "Permission denied for a data source of this element: you can set "
+            "its actions only when you can bind every pipe and table its "
+            "sources read, as 'portal html-interface repos' returns them for "
+            "this interface.",
+        ),
+        (
+            PipefyGraphQLError(
+                [
+                    {
+                        "message": "Permission denied",
+                        "extensions": {"code": "PERMISSION_DENIED"},
+                    }
+                ]
+            ),
+            "Permission denied. Request organization permissions such as "
+            "`create_portal` or `manage_portals` from your admin.",
+        ),
+    ],
+    ids=["source repo refused", "interface refused"],
+)
+def test_html_interface_set_actions_permission_denied_shows_guidance_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, error, message
+):
+    """Both refusals are a permission denial, so they share exit code 2."""
+    oauth_env("html-interface-set-actions-denied")
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(side_effect=error)
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", "[]")
+
+    assert result.exit_code == 2
+    assert result.stderr.strip() == message
+
+
+def test_html_interface_set_actions_api_refusal_passes_its_message_exit_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    """An action the API refuses keeps the API's own text and exit code."""
+    oauth_env("html-interface-set-actions-api-refusal")
+    message = (
+        "Action approve lists automationIds that are not manually triggered "
+        "automations of its source's repo: 9"
+    )
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock(
+        side_effect=PipefyGraphQLError([{"message": message}])
+    )
+
+    result = _invoke_set_actions(runner, mock_client, "--actions", "[]")
+
+    assert result.exit_code == 1
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize("option", ["--interface-uuid", "--page-id", "--element-id"])
+def test_html_interface_set_actions_rejects_blank_id_exit_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, option
+):
+    oauth_env("html-interface-set-actions-blank-id")
+    mock_client = MagicMock()
+    mock_client.set_interface_actions = AsyncMock()
+    argv = list(_SET_ACTIONS_ARGV)
+    argv[argv.index(option) + 1] = "   "
+
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        result = runner.invoke(app, [*argv, "--actions", "[]"])
+
+    assert result.exit_code == 2
+    mock_client.set_interface_actions.assert_not_called()

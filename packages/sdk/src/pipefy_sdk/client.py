@@ -61,6 +61,7 @@ from pipefy_sdk.models.attachment import (
 from pipefy_sdk.models.inbox_email import InboxEmailDraft
 from pipefy_sdk.models.knowledge_base import DataLookupCondition
 from pipefy_sdk.models.portal import (
+    InterfaceAction,
     InterfaceDataSource,
     PortalColor,
     PortalPageLayoutRow,
@@ -2262,10 +2263,65 @@ class PipefyClient:
                 or the update reports ``success=false``.
             PortalPermissionError: The caller cannot update the interface.
             PipefyGraphQLError: The caller cannot manage a repo that a new or
-                widened source reads; nothing is stored.
+                widened source reads, or an action in the element's
+                ``metadata.actions`` no longer passes the API's checks (it names
+                a source the list drops, or a deleted page or automation).
+                Nothing is stored; change or drop that action with
+                ``set_interface_actions`` first.
         """
         return await self._portal_service.set_interface_sources(
             page_id, element_id, data_sources, interface_uuid=interface_uuid
+        )
+
+    async def set_interface_actions(
+        self,
+        page_id: str,
+        element_id: str,
+        actions: list[InterfaceAction | dict[str, Any]],
+        *,
+        interface_uuid: str,
+        editable: bool | None = None,
+    ) -> dict[str, Any]:
+        """Replace the actions of an HTML interface's ``customCode`` element.
+
+        The actions are stored as ``metadata.actions``; the element's other
+        metadata keys and its data sources are read and sent back unchanged, and
+        ``editable`` is kept unless passed. Each action's ``sourceId`` or ``repoId``
+        must name one of the element's sources, so call ``set_interface_sources``
+        first.
+
+        Args:
+            page_id: Page holding the element.
+            element_id: The page's ``customCode`` element.
+            actions: The complete action list (``openStartForm``, ``openRecord``,
+                ``triggerAutomation`` or ``openCard``, each with an ``actionId``);
+                ``[]`` removes them all.
+            interface_uuid: HTML interface holding the page.
+            editable: Whether viewers can save edits to ``data-pfy-editable``
+                fields; ``None`` keeps the stored flag.
+
+        Returns:
+            The element ``id`` (and ``uuid``), the ``actions`` and the ``editable``
+            flag as sent, once the update reports success; they are not read
+            back. Call ``get_html_interface`` for the stored ``metadata.actions``.
+
+        Raises:
+            pydantic.ValidationError: ``actions`` breaks an action rule; nothing is
+                sent.
+            ValueError: The element is not on page ``page_id``, is not
+                ``customCode``, lacks a source or repo an action names, or the
+                update reports ``success=false``.
+            PortalPermissionError: The caller cannot update the interface.
+            PipefyGraphQLError: No interface has ``interface_uuid``, or the API
+                refused an action (for example an automation id that is not
+                manually triggered); nothing is stored.
+        """
+        return await self._portal_service.set_interface_actions(
+            page_id,
+            element_id,
+            actions,
+            interface_uuid=interface_uuid,
+            editable=editable,
         )
 
     async def get_interface_html_guidelines(

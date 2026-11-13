@@ -438,6 +438,72 @@ def test_validate_behaviors_rejects_event_id_not_offered_by_pipe() -> None:
 
 
 @pytest.mark.unit
+def test_validate_behaviors_unknown_event_message_omits_events_agents_reject() -> None:
+    problems, _ = validate_behaviors_against_pipe(
+        [_behavior_with_event("not_a_real_event")],
+        pipe_id=EXAMPLE_PIPE_ID,
+        pipe_field_ids=set(),
+        pipe_phase_ids=set(),
+        related_pipe_ids=set(),
+        pipe_event_ids={"card_created", "scheduler"},
+    )
+    assert len(problems) == 1
+    assert "card_created" in problems[0]
+    assert "scheduler" not in problems[0]
+
+
+def _all_children_behavior(to_phase_id: str) -> dict:
+    behavior = _behavior_with_event("all_children_in_phase")
+    behavior["event_params"] = {"to_phase_id": to_phase_id}
+    return behavior
+
+
+@pytest.mark.unit
+def test_all_children_in_phase_rejects_phase_outside_agent_pipe():
+    problems, warnings = validate_behaviors_against_pipe(
+        [_all_children_behavior("connected-pipe-phase")],
+        pipe_id=EXAMPLE_PIPE_ID,
+        pipe_field_ids=set(),
+        pipe_phase_ids={EXAMPLE_PHASE_ID},
+        related_pipe_ids=set(),
+        pipe_event_ids={"all_children_in_phase"},
+    )
+    assert len(problems) == 1
+    assert "not found in pipe phases" in problems[0]
+    assert warnings == []
+
+
+@pytest.mark.unit
+def test_all_children_in_phase_accepts_own_pipe_phase_without_warning():
+    problems, warnings = validate_behaviors_against_pipe(
+        [_all_children_behavior(EXAMPLE_PHASE_ID)],
+        pipe_id=EXAMPLE_PIPE_ID,
+        pipe_field_ids=set(),
+        pipe_phase_ids={EXAMPLE_PHASE_ID},
+        related_pipe_ids=set(),
+        pipe_event_ids={"all_children_in_phase"},
+    )
+    assert problems == []
+    assert warnings == []
+
+
+@pytest.mark.unit
+def test_validate_behaviors_rejects_card_moved_phase_outside_pipe() -> None:
+    behavior = _behavior_with_event("card_moved")
+    behavior["event_params"] = {"to_phase_id": "connected-pipe-phase"}
+    problems, _ = validate_behaviors_against_pipe(
+        [behavior],
+        pipe_id=EXAMPLE_PIPE_ID,
+        pipe_field_ids=set(),
+        pipe_phase_ids={EXAMPLE_PHASE_ID},
+        related_pipe_ids=set(),
+        pipe_event_ids={"card_moved"},
+    )
+    assert len(problems) == 1
+    assert "not found in pipe phases" in problems[0]
+
+
+@pytest.mark.unit
 def test_validate_behaviors_accepts_event_id_offered_by_pipe() -> None:
     problems, _ = validate_behaviors_against_pipe(
         [_behavior_with_event("card_created")],

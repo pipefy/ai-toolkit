@@ -203,6 +203,28 @@ class TestCreateAiAgent:
         assert payload["success"] is False
         assert "at most one" in str(payload["error"])
 
+    async def test_rejects_scheduler_event_before_creating_the_agent(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_agent",
+                {
+                    "name": "Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Purpose",
+                    "behaviors": [minimal_behavior_dict(event_id="scheduler")],
+                },
+            )
+        assert result.is_error is False
+        mock_pipefy_client.create_ai_agent.assert_not_called()
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert 'eventId "scheduler" is not available' in str(payload["error"])
+
     async def test_create_and_configure_success(
         self,
         client_session,
@@ -556,6 +578,29 @@ class TestUpdateAiAgent:
         payload = extract_payload(result)
         assert payload["success"] is False
         assert "error" in payload
+
+    async def test_rejects_scheduler_event_before_replacing_behaviors(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "update_ai_agent",
+                {
+                    "uuid": "agent-uuid",
+                    "name": "Agent",
+                    "repo_uuid": "repo-456",
+                    "instruction": "Do things",
+                    "behaviors": [minimal_behavior_dict(event_id="scheduler")],
+                },
+            )
+        assert result.is_error is False
+        mock_pipefy_client.update_ai_agent.assert_not_called()
+        payload = extract_payload(result)
+        assert payload["success"] is False
+        assert 'eventId "scheduler" is not available' in str(payload["error"])
 
     async def test_blank_uuid_returns_error_before_api_call(
         self,
@@ -1724,6 +1769,27 @@ class TestValidateAiAgentBehaviorsErrorPaths:
         assert any(
             "event_id" in p.lower() or "eventid" in p.lower()
             for p in payload["problems"]
+        )
+
+    async def test_scheduler_event_is_a_problem(
+        self,
+        client_session,
+        mock_pipefy_client,
+        extract_payload,
+    ):
+        async with client_session as session:
+            result = await session.call_tool(
+                "validate_ai_agent_behaviors",
+                {
+                    "pipe_id": "1",
+                    "behaviors": [minimal_behavior_dict(event_id="scheduler")],
+                },
+            )
+        payload = extract_payload(result)
+        assert payload["success"] is True
+        assert payload["valid"] is False
+        assert any(
+            'eventId "scheduler" is not available' in p for p in payload["problems"]
         )
 
     async def test_pydantic_validation_missing_name_hint(

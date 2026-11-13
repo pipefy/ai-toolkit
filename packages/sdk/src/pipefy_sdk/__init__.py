@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.5.5-beta.1"
+__version__ = "0.5.7-beta.1"
 
 from pipefy_sdk.client import PipefyClient, PipefyEngine
 from pipefy_sdk.exceptions import (
@@ -51,6 +51,7 @@ from pipefy_sdk.models import (
     DeleteCommentInput,
     FieldTypeId,
     InboxEmailDraft,
+    InterfaceAction,
     InterfaceDataSource,
     MemberInvite,
     NonBlankStr,
@@ -164,6 +165,7 @@ __all__ = [
     "FIELD_TYPE_IDS",
     "FieldTypeId",
     "InboxEmailDraft",
+    "InterfaceAction",
     "InterfaceDataSource",
     "GraphQLProblem",
     "GraphQLProblemKind",

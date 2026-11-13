@@ -2046,8 +2046,9 @@ Usage: pipefy kb data-lookup create [OPTIONS]
 │ *  --pipe-uuid               TEXT  Pipe UUID (not the numeric ID; `pipefy    │
 │                                    pipe get` shows the uuid).                │
 │                                    [required]                                │
-│ *  --name                    TEXT  Display name (required). [required]       │
-│ *  --description             TEXT  Description (required, 1-900 characters). │
+│ *  --name                    TEXT  Display name (required, 1-80 characters). │
+│                                    [required]                                │
+│ *  --description             TEXT  Description (required, 1-300 characters). │
 │                                    [required]                                │
 │ *  --source-repo-id          TEXT  Numeric ID of the source pipe to look up  │
 │                                    data from.                                │
@@ -2141,8 +2142,8 @@ Usage: pipefy kb data-lookup update [OPTIONS]
 │    --search-query            TEXT  Backend-defined search mode marker; leave │
 │                                    unset unless you know the backend value   │
 │                                    you need. Omitted means cleared.          │
-│    --name                    TEXT  New name (non-blank).                     │
-│    --description             TEXT  New description (1-900 characters).       │
+│    --name                    TEXT  New name (1-80 characters).               │
+│    --description             TEXT  New description (1-300 characters).       │
 │    --json            -j            Print machine-readable JSON to stdout.    │
 │    --help                          Show this message and exit.               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2174,8 +2175,8 @@ Usage: pipefy kb document create [OPTIONS]
 
  One-shot: presigned URL, S3 PUT, then the create mutation. Gated on the
  read-access probe. Client-side checks fail fast (``.pdf`` extension, 20 MiB
- cap, description 1-900). Indexing is asynchronous, so the document may not be
- searchable by agents immediately.
+ cap, name 1-80, description 1-300). Indexing is asynchronous, so the document
+ may not be searchable by agents immediately.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe-uuid            TEXT  Pipe UUID (not the numeric ID; `pipefy pipe  │
@@ -2184,8 +2185,9 @@ Usage: pipefy kb document create [OPTIONS]
 │ *  --file         -f      PATH  Local .pdf file to upload (<=20 MiB).        │
 │                                 Supports ~ expansion.                        │
 │                                 [required]                                   │
-│ *  --name                 TEXT  Display name (required). [required]          │
-│ *  --description          TEXT  Description (required, 1-900 characters).    │
+│ *  --name                 TEXT  Display name (required, 1-80 characters).    │
+│                                 [required]                                   │
+│ *  --description          TEXT  Description (required, 1-300 characters).    │
 │                                 [required]                                   │
 │    --json         -j            Print machine-readable JSON to stdout.       │
 │    --help                       Show this message and exit.                  │
@@ -2243,8 +2245,8 @@ Usage: pipefy kb document update [OPTIONS]
 │ *  --pipe-uuid            TEXT  Pipe UUID (not the numeric ID; `pipefy pipe  │
 │                                 get` shows the uuid).                        │
 │                                 [required]                                   │
-│    --name                 TEXT  New name (non-blank).                        │
-│    --description          TEXT  New description (1-900 characters).          │
+│    --name                 TEXT  New name (1-80 characters).                  │
+│    --description          TEXT  New description (1-300 characters).          │
 │    --json         -j            Print machine-readable JSON to stdout.       │
 │    --help                       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2290,18 +2292,20 @@ Usage: pipefy kb plain-text create [OPTIONS]
  Create a knowledge base plain text (``create_ai_knowledge_base_plain_text``).
 
  Gated on the read-access probe: fails with the classified problem if the
- credential cannot read the pipe's knowledge bases. Client-side limits (content
- 1-3500, description 1-900) fail fast before the mutation is sent.
+ credential cannot read the pipe's knowledge bases. Client-side limits (name
+ 1-80, content 1-3500, description 1-300) fail fast before the mutation is
+ sent.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --pipe-uuid            TEXT  Pipe UUID (not the numeric ID; `pipefy pipe  │
 │                                 get` shows the uuid).                        │
 │                                 [required]                                   │
-│ *  --name                 TEXT  Display name (required). [required]          │
+│ *  --name                 TEXT  Display name (required, 1-80 characters).    │
+│                                 [required]                                   │
 │ *  --content              TEXT  Plain text content (required, 1-3500         │
 │                                 characters).                                 │
 │                                 [required]                                   │
-│ *  --description          TEXT  Description (required, 1-900 characters).    │
+│ *  --description          TEXT  Description (required, 1-300 characters).    │
 │                                 [required]                                   │
 │    --json         -j            Print machine-readable JSON to stdout.       │
 │    --help                       Show this message and exit.                  │
@@ -2358,9 +2362,9 @@ Usage: pipefy kb plain-text update [OPTIONS]
 │ *  --pipe-uuid            TEXT  Pipe UUID (not the numeric ID; `pipefy pipe  │
 │                                 get` shows the uuid).                        │
 │                                 [required]                                   │
-│    --name                 TEXT  New name (non-blank).                        │
+│    --name                 TEXT  New name (1-80 characters).                  │
 │    --content              TEXT  New content (1-3500 characters).             │
-│    --description          TEXT  New description (1-900 characters).          │
+│    --description          TEXT  New description (1-300 characters).          │
 │    --json         -j            Print machine-readable JSON to stdout.       │
 │    --help                       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -2748,7 +2752,8 @@ Usage: pipefy pipe [OPTIONS] COMMAND [ARGS]...
 │              (``get_start_form_fields``).                                    │
 │ list         Search pipes across organizations (same as MCP                  │
 │              ``search_pipes``).                                              │
-│ create       Create an empty pipe in an organization.                        │
+│ create       Create a pipe, optionally with its phases, start form fields    │
+│              and labels.                                                     │
 │ update       Update pipe settings (pass at least one attribute).             │
 │ delete       Delete a pipe permanently.                                      │
 │ clone        Clone a pipe from a template pipe id.                           │
@@ -2772,15 +2777,31 @@ Usage: pipefy pipe clone [OPTIONS] TEMPLATE_PIPE_ID
 ### HELP pipe/create
 Usage: pipefy pipe create [OPTIONS] NAME
 
- Create an empty pipe in an organization.
+ Create a pipe, optionally with its phases, start form fields and labels.
+
+ Without ``--phases`` the pipe gets the default phases Inbox, Doing and Done.
+ With it, the pipe gets exactly those phases, in order, each connected to the
+ phases beside it. The result lists the new phases, fields and labels with ids.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    name      TEXT  Display name for the new pipe. [required]               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ *  --org           TEXT  Organization id that will own the pipe. [required]  │
-│    --json  -j                                                                │
-│    --help                Show this message and exit.                         │
+│ *  --org                        TEXT  Organization id that will own the      │
+│                                       pipe.                                  │
+│                                       [required]                             │
+│    --phases                     TEXT  JSON array of phases in order, e.g.    │
+│                                       [{"name": "Triage"}, {"name": "Done",  │
+│                                       "done": true}]. Replaces the default   │
+│                                       phases.                                │
+│    --start-form-fields          TEXT  JSON array of start form fields:       │
+│                                       label, type_id, and optional           │
+│                                       description, help, required, editable, │
+│                                       options.                               │
+│    --labels                     TEXT  JSON array of labels: name and color   │
+│                                       (hex #RGB or #RRGGBB).                 │
+│    --json               -j                                                   │
+│    --help                             Show this message and exit.            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP pipe/delete
@@ -3056,6 +3077,7 @@ Usage: pipefy portal html-interface [OPTIONS] COMMAND [ARGS]...
 │               source.                                                        │
 │ set-sources   Replace the data sources of an HTML interface's customCode     │
 │               element.                                                       │
+│ set-actions   Replace the actions of an HTML interface's customCode element. │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/html-interface/create
@@ -3169,6 +3191,36 @@ Usage: pipefy portal html-interface repos [OPTIONS]
 │    --repo-name                TEXT  Case-insensitive part of the repo name.  │
 │    --json             -j            Print machine-readable JSON to stdout.   │
 │    --help                           Show this message and exit.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP portal/html-interface/set-actions
+Usage: pipefy portal html-interface set-actions [OPTIONS]
+
+ Replace the actions of an HTML interface's customCode element.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --interface-uuid                       TEXT  HTML interface holding the   │
+│                                                 page.                        │
+│                                                 [required]                   │
+│ *  --page-id                              TEXT  Page holding the element.    │
+│                                                 [required]                   │
+│ *  --element-id                           TEXT  The page's customCode        │
+│                                                 element.                     │
+│                                                 [required]                   │
+│ *  --actions                              TEXT  JSON array, the element's    │
+│                                                 complete action list         │
+│                                                 (actionId, kind and the      │
+│                                                 kind's keys); '[]' removes   │
+│                                                 them all.                    │
+│                                                 [required]                   │
+│    --editable            --no-editable          Whether viewers can save     │
+│                                                 edits to the element's       │
+│                                                 data-pfy-editable fields;    │
+│                                                 omit to keep the current     │
+│                                                 value.                       │
+│    --json            -j                         Print machine-readable JSON  │
+│                                                 to stdout.                   │
+│    --help                                       Show this message and exit.  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP portal/html-interface/set-sources
@@ -3693,6 +3745,7 @@ Usage: pipefy relation pipe update [OPTIONS] RELATION_ID
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --name   -n      TEXT  New relation name. [required]                      │
 │    --extra          TEXT  JSON object merged into UpdatePipeRelationInput.   │
+│                           Flags left out keep their current values.          │
 │    --json   -j                                                               │
 │    --help                 Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯

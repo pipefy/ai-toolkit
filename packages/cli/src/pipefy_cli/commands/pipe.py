@@ -2,22 +2,45 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import typer
-from pipefy_sdk import PipefyClient
+from pipefy_sdk import (
+    CreatePipeLabel,
+    CreatePipePhase,
+    CreatePipeStartFormField,
+    PipefyClient,
+)
 from pipefy_sdk.graphql_inputs import (
     UpdatePipeInput,
+    describe_input_rejection,
 )
+from pydantic import TypeAdapter, ValidationError
 
 from pipefy_cli.commands._common import (
     ID_POSITIONAL_CONTEXT_SETTINGS,
     confirm_destructive,
     graphql_input_or_bad_parameter,
     parse_json_object,
+    parse_json_value,
     resource_id_argument,
     run_cli_command,
 )
 
 pipe_app = typer.Typer(help="Pipe operations.", no_args_is_help=True)
+
+
+def _json_items(raw: str | None, option_name: str, item: Any) -> list[Any] | None:
+    """Parse a JSON array option into ``item`` dicts, rejecting unknown keys."""
+    parsed = parse_json_value(raw, option_name)
+    if parsed is None:
+        return None
+    try:
+        return TypeAdapter(list[item]).validate_python(parsed)
+    except ValidationError as exc:
+        raise typer.BadParameter(
+            f"{option_name}: {describe_input_rejection(exc)}."
+        ) from exc
 
 
 @pipe_app.command("get", context_settings=ID_POSITIONAL_CONTEXT_SETTINGS)
@@ -98,17 +121,54 @@ def pipe_create(
         "--org",
         help="Organization id that will own the pipe.",
     ),
+    phases: str | None = typer.Option(
+        None,
+        "--phases",
+        help=(
+            'JSON array of phases in order, e.g. [{"name": "Triage"}, '
+            '{"name": "Done", "done": true}]. Replaces the default phases.'
+        ),
+    ),
+    start_form_fields: str | None = typer.Option(
+        None,
+        "--start-form-fields",
+        help=(
+            "JSON array of start form fields: label, type_id, and optional "
+            "description, help, required, editable, options."
+        ),
+    ),
+    labels: str | None = typer.Option(
+        None,
+        "--labels",
+        help="JSON array of labels: name and color (hex #RGB or #RRGGBB).",
+    ),
     json_out: bool = typer.Option(False, "--json", "-j"),
 ) -> None:
-    """Create an empty pipe in an organization."""
+    """Create a pipe, optionally with its phases, start form fields and labels.
+
+    Without ``--phases`` the pipe gets the default phases Inbox, Doing and Done.
+    With it, the pipe gets exactly those phases, in order, each connected to the
+    phases beside it. The result lists the new phases, fields and labels with ids.
+    """
 
     stripped = name.strip()
     if not stripped:
         typer.echo("Pipe name must be non-empty.", err=True)
         raise typer.Exit(2)
+    phase_list = _json_items(phases, "--phases", CreatePipePhase)
+    field_list = _json_items(
+        start_form_fields, "--start-form-fields", CreatePipeStartFormField
+    )
+    label_list = _json_items(labels, "--labels", CreatePipeLabel)
 
     async def factory(client: PipefyClient):
-        return await client.create_pipe(stripped, org_id)
+        return await client.create_pipe(
+            stripped,
+            org_id,
+            phases=phase_list,
+            start_form_fields=field_list,
+            labels=label_list,
+        )
 
     run_cli_command(ctx, json_out, factory)
 

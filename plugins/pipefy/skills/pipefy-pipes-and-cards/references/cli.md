@@ -12,7 +12,7 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 | `clone_pipe` | `pipefy pipe clone <id>` |
 | `get_pipe_members` | `pipefy member list --pipe <id>` |
 
-CLI: `pipefy pipe create "Customer Onboarding" --org 300123456`
+CLI: `pipefy pipe create "Customer Onboarding" --org 300123456 --phases '[{"name": "Kickoff"}, {"name": "Setup"}, {"name": "Live", "done": true}]' --start-form-fields '[{"label": "Customer name", "type_id": "short_text", "required": true}]'`
 
 | Operation | CLI |
 |---|---|

@@ -1237,7 +1237,7 @@ dev = [
 
 [[package]]
 name = "pipefy-workspace"
-version = "0.5.5b1"
+version = "0.5.7b1"
 source = { virtual = "." }
 
 [package.dev-dependencies]

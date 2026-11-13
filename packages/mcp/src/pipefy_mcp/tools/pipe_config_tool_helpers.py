@@ -97,8 +97,8 @@ def build_pipe_mutation_success_payload(
     Args:
         label: Short summary shown as ``message``.
         data: Full mutation response subtree (not a JSON string).
-        connection_hint: Optional advisory that this call did not configure phase
-            Connections (UI-only). Callers pass ``TRANSITION_RULES_HINT`` so the
+        connection_hint: Optional advisory on phase Connections after a phase
+            write. Callers pass ``TRANSITION_RULES_HINT`` so the
             same copy is reused rather than duplicated; omitted keeps the key off
             the envelope for mutations where it does not apply.
     """

@@ -107,3 +107,24 @@ This document reinforces the rules already in `AGENTS.md`; four points are worth
 - "Invert only where there is payoff" is a statement about where the seam sits (domain to infrastructure), not a relaxation of the rule to depend on abstractions you own. Direct concrete imports in the domain remain an inversion violation.
 - "Contract tests at ports" is not a preference for mocks. The real-infrastructure preference stands; the port contract is the shared spec a fake and the real adapter must both satisfy.
 - A free factory maps or assembles; it does not take over invariant enforcement. The domain type's constructor still self-guarantees.
+
+## Planned SDK import rename (`pipefy_sdk` to `pipefy`)
+
+The SDK distribution is named `pipefy`, while its import module is still `pipefy_sdk`. All code imports `pipefy_sdk` today because `packages/sdk/src/pipefy` does not exist yet.
+
+When the migration starts, move the real code under `src/pipefy/` and leave a `sys.modules` alias in `src/pipefy_sdk/__init__.py` so both names point to the same module object:
+
+```python
+import sys
+
+import pipefy as _pipefy
+
+sys.modules[__name__] = _pipefy
+```
+
+Follow these steps during that migration:
+
+- Alias `sys.modules` directly. Do not write `from pipefy import *`, which creates duplicate class objects and breaks `isinstance` and singletons.
+- Add a lint guard as soon as `src/pipefy/` lands so new code imports `pipefy` and the `pipefy_sdk` surface only shrinks.
+- Migrate existing `pipefy_sdk` call sites in small batches.
+- On completion, delete the shim, repoint the ruff `TID251` rules (`pipefy_sdk.services` and `pipefy_sdk.queries` to `pipefy.services` and `pipefy.queries`), move `__version__` into `pipefy/__init__.py`, and rename `packages/sdk` to `packages/pipefy`.

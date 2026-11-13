@@ -10,11 +10,17 @@ from _shared.fixture_ids import EXAMPLE_PIPE_REPO_ID
 from pydantic import ValidationError
 
 from pipefy_sdk.models.portal import (
+    INTERFACE_ACTION_KINDS,
     CreatePortalElementInput,
     DeletePortalElementInput,
+    InterfaceActions,
     InterfaceDataSource,
     InterfaceDataSources,
+    OpenCardAction,
+    OpenRecordAction,
+    OpenStartFormAction,
     PortalElementType,
+    TriggerAutomationAction,
     UpdatePortalElementInput,
     UpdatePortalInput,
 )
@@ -679,3 +685,209 @@ def test_interface_data_sources_rejects_a_repeated_id_or_name(
 ) -> None:
     with pytest.raises(ValidationError, match=message):
         InterfaceDataSources.model_validate([_source(), _source(**second)])
+
+
+_OPEN_START_FORM = {
+    "actionId": "new-request",
+    "kind": "openStartForm",
+    "repoId": EXAMPLE_PIPE_REPO_ID,
+}
+_OPEN_RECORD = {
+    "actionId": "details",
+    "kind": "openRecord",
+    "sourceId": "open-requests",
+    "fieldKeys": ["title"],
+}
+_TRIGGER_AUTOMATION = {
+    "actionId": "approve",
+    "kind": "triggerAutomation",
+    "sourceId": "open-requests",
+    "automationIds": ["301"],
+    "label": "Approve",
+}
+_OPEN_CARD = {"actionId": "open-card", "kind": "openCard"}
+
+
+@pytest.mark.unit
+def test_interface_actions_parses_each_kind_by_its_kind_key() -> None:
+    actions = InterfaceActions.model_validate(
+        [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION, _OPEN_CARD]
+    )
+
+    assert [type(action) for action in actions.root] == [
+        OpenStartFormAction,
+        OpenRecordAction,
+        TriggerAutomationAction,
+        OpenCardAction,
+    ]
+
+
+@pytest.mark.unit
+def test_interface_actions_dump_round_trips_the_api_keys_without_unset_options() -> (
+    None
+):
+    actions = [_OPEN_START_FORM, _OPEN_RECORD, _TRIGGER_AUTOMATION, _OPEN_CARD]
+
+    assert (
+        InterfaceActions.model_validate(actions).model_dump(
+            by_alias=True, exclude_none=True
+        )
+        == actions
+    )
+
+
+@pytest.mark.unit
+def test_interface_actions_open_card_drops_keys_the_api_ignores() -> None:
+    actions = InterfaceActions.model_validate(
+        [{**_OPEN_CARD, "sourceId": "open-requests"}]
+    )
+
+    assert actions.model_dump(by_alias=True, exclude_none=True) == [_OPEN_CARD]
+
+
+@pytest.mark.unit
+def test_interface_actions_reads_snake_case_keys() -> None:
+    snake = InterfaceActions.model_validate(
+        [
+            {
+                "action_id": "details",
+                "kind": "openRecord",
+                "source_id": "open-requests",
+                "display": "page",
+                "page_id": "record-page-uuid",
+            }
+        ]
+    )
+
+    assert snake.model_dump(by_alias=True, exclude_none=True) == [
+        {
+            "actionId": "details",
+            "kind": "openRecord",
+            "sourceId": "open-requests",
+            "display": "page",
+            "pageId": "record-page-uuid",
+        }
+    ]
+
+
+@pytest.mark.unit
+def test_interface_actions_takes_numeric_automation_ids_as_strings() -> None:
+    action = InterfaceActions.model_validate(
+        [{**_TRIGGER_AUTOMATION, "automationIds": [301, " 302 "]}]
+    ).root[0]
+
+    assert isinstance(action, TriggerAutomationAction)
+    assert action.automation_ids == ["301", "302"]
+
+
+@pytest.mark.unit
+def test_interface_actions_takes_an_empty_list() -> None:
+    assert InterfaceActions.model_validate([]).root == []
+
+
+@pytest.mark.unit
+def test_interface_actions_takes_fifty_actions() -> None:
+    actions = [{**_OPEN_START_FORM, "actionId": f"a{index}"} for index in range(50)]
+
+    assert len(InterfaceActions.model_validate(actions).root) == 50
+
+
+@pytest.mark.unit
+def test_interface_actions_rejects_a_fifty_first_action() -> None:
+    actions = [{**_OPEN_START_FORM, "actionId": f"a{index}"} for index in range(51)]
+
+    with pytest.raises(ValidationError, match="at most 50"):
+        InterfaceActions.model_validate(actions)
+
+
+@pytest.mark.unit
+def test_interface_actions_rejects_a_repeated_action_id() -> None:
+    with pytest.raises(ValidationError, match="own actionId; repeated: details"):
+        InterfaceActions.model_validate(
+            [_OPEN_RECORD, {**_TRIGGER_AUTOMATION, "actionId": "details"}]
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "action",
+    [
+        {**_OPEN_START_FORM, "kind": "openUrl"},
+        {key: value for key, value in _OPEN_START_FORM.items() if key != "kind"},
+        {**_OPEN_START_FORM, "actionId": ""},
+        {**_OPEN_START_FORM, "actionId": "has space"},
+        {**_OPEN_START_FORM, "actionId": "ação"},
+        {**_OPEN_START_FORM, "actionId": "a" * 65},
+        {key: value for key, value in _OPEN_START_FORM.items() if key != "actionId"},
+        {**_OPEN_START_FORM, "repoId": " "},
+        {**_OPEN_START_FORM, "sourceId": "open-requests"},
+        {**_OPEN_RECORD, "sourceId": ""},
+        {**_OPEN_RECORD, "display": "drawer"},
+        {**_OPEN_RECORD, "display": "page"},
+        {**_OPEN_RECORD, "fieldKeys": [" "]},
+        {**_TRIGGER_AUTOMATION, "automationIds": []},
+        {**_TRIGGER_AUTOMATION, "automationIds": [""]},
+        {**_TRIGGER_AUTOMATION, "label": 3},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["abc"]},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["2abc"]},
+        {**_TRIGGER_AUTOMATION, "automationIds": ["-301"]},
+        {**_TRIGGER_AUTOMATION, "automation_id": "301"},
+    ],
+    ids=[
+        "unknown kind",
+        "no kind",
+        "blank actionId",
+        "actionId with a space",
+        "actionId with non-ASCII letters",
+        "actionId over 64 characters",
+        "no actionId",
+        "blank repoId",
+        "key of another kind",
+        "blank sourceId",
+        "unknown display",
+        "page display without pageId",
+        "blank field key",
+        "no automation ids",
+        "blank automation id",
+        "label not text",
+        "automation id not digits",
+        "automation id with a digit prefix",
+        "negative automation id",
+        "unknown key",
+    ],
+)
+def test_interface_actions_rejects_what_the_api_would_reject(
+    action: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        InterfaceActions.model_validate([action])
+
+
+@pytest.mark.unit
+def test_interface_actions_page_display_error_names_page_id() -> None:
+    with pytest.raises(ValidationError) as excinfo:
+        InterfaceActions.model_validate([{**_OPEN_RECORD, "display": "page"}])
+
+    assert "pageId" in str(excinfo.value)
+
+
+@pytest.mark.unit
+def test_interface_actions_takes_a_64_character_action_id() -> None:
+    action_id = "a" * 62 + "_-"
+
+    assert (
+        InterfaceActions.model_validate([{**_OPEN_START_FORM, "actionId": action_id}])
+        .root[0]
+        .action_id
+        == action_id
+    )
+
+
+@pytest.mark.unit
+def test_interface_action_kinds_lists_every_action_kind() -> None:
+    assert INTERFACE_ACTION_KINDS == (
+        "openStartForm",
+        "openRecord",
+        "triggerAutomation",
+        "openCard",
+    )

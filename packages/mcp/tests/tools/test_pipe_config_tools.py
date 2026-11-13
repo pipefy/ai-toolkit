@@ -14,6 +14,7 @@ from pipefy_sdk import (
     PipefyClient,
     PipefyGraphQLError,
     PipefyRequestTimeoutError,
+    PipePhaseSetupError,
 )
 from pipefy_sdk.graphql_inputs import (
     CreateFieldConditionInput,
@@ -173,10 +174,158 @@ async def test_create_pipe_success(
         )
 
     assert result.is_error is False
-    mock_pipe_config_client.create_pipe.assert_awaited_once_with("N", "10")
+    mock_pipe_config_client.create_pipe.assert_awaited_once_with(
+        "N", "10", phases=None, start_form_fields=None, labels=None
+    )
     payload = extract_payload(result)
     assert payload["success"] is True
     assert "createPipe" in payload["result"]
+
+
+@pytest.mark.anyio
+async def test_create_pipe_passes_phases_start_form_fields_and_labels(
+    pipe_config_session, mock_pipe_config_client, extract_payload
+):
+    phases = [{"name": "Triage"}, {"name": "Approved", "done": True}]
+    fields = [{"label": "Amount", "type_id": "currency", "required": True}]
+    labels = [{"name": "Urgent", "color": "#f00"}]
+    mock_pipe_config_client.create_pipe.return_value = {
+        "createPipe": {
+            "pipe": {
+                "id": "1",
+                "phases": [
+                    {"id": "11", "name": "Triage", "done": False},
+                    {"id": "12", "name": "Approved", "done": True},
+                ],
+            }
+        }
+    }
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": phases,
+                "start_form_fields": fields,
+                "labels": labels,
+            },
+        )
+
+    mock_pipe_config_client.create_pipe.assert_awaited_once_with(
+        "Purchases", "10", phases=phases, start_form_fields=fields, labels=labels
+    )
+    payload = extract_payload(result)
+    assert payload["success"] is True
+    assert payload["result"]["createPipe"]["pipe"]["phases"][1]["id"] == "12"
+
+
+@pytest.mark.anyio
+async def test_create_pipe_rejects_an_unknown_phase_key(
+    pipe_config_session, mock_pipe_config_client
+):
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": [{"name": "Triage", "index": 1}],
+            },
+        )
+
+    assert_invalid_arguments_envelope(result)
+    mock_pipe_config_client.create_pipe.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_create_pipe_value_error_is_invalid_arguments(
+    pipe_config_session, mock_pipe_config_client, extract_payload
+):
+    mock_pipe_config_client.create_pipe.side_effect = ValueError(
+        "Phase names must be unique in a pipe: ['Done']"
+    )
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": [{"name": "Done"}, {"name": "Done"}],
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+    assert "must be unique" in payload["error"]["message"]
+
+
+@pytest.mark.anyio
+async def test_create_pipe_phase_setup_error_names_the_pipe(
+    pipe_config_session, mock_pipe_config_client, extract_payload
+):
+    created = [{"id": "11", "name": "Triage", "done": False}]
+    mock_pipe_config_client.create_pipe.side_effect = PipePhaseSetupError(
+        pipe_id="1", created_phases=created, reason="Phase not saved"
+    )
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": [{"name": "Triage"}, {"name": "Approved"}],
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "PIPE_PHASE_SETUP_FAILED"
+    assert "Pipe 1 was created" in payload["error"]["message"]
+    assert payload["error"]["details"] == {"pipe_id": "1", "created_phases": created}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("debug", [True, False])
+async def test_create_pipe_phase_setup_error_debug_suffix(
+    pipe_config_session, mock_pipe_config_client, extract_payload, debug
+):
+    cause = PipefyGraphQLError(
+        [
+            {
+                "message": "Phase not saved",
+                "extensions": {
+                    "code": "RECORD_INVALID",
+                    "correlation_id": "corr-123",
+                },
+            }
+        ]
+    )
+    error = PipePhaseSetupError(pipe_id="1", created_phases=[], reason=str(cause))
+    error.__cause__ = cause
+    mock_pipe_config_client.create_pipe.side_effect = error
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "create_pipe",
+            {
+                "name": "Purchases",
+                "organization_id": 10,
+                "phases": [{"name": "Triage"}],
+                "debug": debug,
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["error"]["code"] == "PIPE_PHASE_SETUP_FAILED"
+    message = payload["error"]["message"]
+    assert message.startswith("Pipe 1 was created")
+    suffix = "(debug: codes=RECORD_INVALID; correlation_id=corr-123)"
+    assert message.endswith(suffix) is debug
 
 
 @pytest.mark.anyio

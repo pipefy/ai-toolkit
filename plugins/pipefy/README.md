@@ -24,11 +24,11 @@ Each skill folder holds a `SKILL.md` with the shared domain guidance. MCP client
 | **Observability** | [pipefy-observability](skills/pipefy-observability/SKILL.md) | Logs, usage, credits, execution metrics, job exports. |
 | **Members, Email & Webhooks** | [pipefy-members-email-webhooks](skills/pipefy-members-email-webhooks/SKILL.md) | Membership, email, webhooks. |
 | **Portal setup** | [pipefy-portal-setup](skills/pipefy-portal-setup/SKILL.md) | Main portal, pages, elements, sub-portals (publish/unpublish). |
-| **HTML interfaces** | [pipefy-html-interfaces](skills/pipefy-html-interfaces/SKILL.md) | Pages written as one HTML document, with data sources from pipes and tables. |
+| **HTML interfaces** | [pipefy-html-interfaces](skills/pipefy-html-interfaces/SKILL.md) | Pages written as one HTML document, with data sources from pipes and tables and button actions on their records. |
 | **Introspection** | [pipefy-introspection](skills/pipefy-introspection/SKILL.md) | Schema discovery and GraphQL fallback. |
 | **Attachments** | [pipefy-attachments](skills/pipefy-attachments/SKILL.md) | Upload files to card or table-record attachment fields. |
-| **Building** | [pipefy-building](skills/pipefy-building/SKILL.md) | Thin router: map build/configure intent → domain skill. Not a delivery playbook. |
-| **Process Design** | [pipefy-process-design](skills/pipefy-process-design/SKILL.md) | Process architecture (consulting; not execution). |
+| **Building** | [pipefy-building](skills/pipefy-building/SKILL.md) | Router: one part goes to its domain skill. A whole process goes to process design while a business decision is open, and otherwise to the domain skills in dependency order. A build method from the user decides how to build. Not a delivery playbook. |
+| **Process Design** | [pipefy-process-design](skills/pipefy-process-design/SKILL.md) | Design a process with the user and return a process specification that a builder can use (consulting, writes nothing). |
 | **Process Impact** | [pipefy-process-impact](skills/pipefy-process-impact/SKILL.md) | Where an automation or AI agent returns the most time: one hop, the arithmetic, the cheapest step (consulting; not execution). |
 | **Process Intelligence** | [pipefy-process-intelligence](skills/pipefy-process-intelligence/SKILL.md) | Analyze pipes for improvement opportunities. |
 | **API Fallback** | [pipefy-api-fallback](skills/pipefy-api-fallback/SKILL.md) | Raw GraphQL fallback when higher-level tools are insufficient. |
