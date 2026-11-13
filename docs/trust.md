@@ -60,6 +60,7 @@ The toolkit sends no other telemetry.
   - It skips the write when a `pipefy` entry already exists.
   - It records the run in `~/.local/state/pipefy/install-receipt` for `uninstall.sh`.
   - It asks before it runs `npx skills add`.
+  - `npx skills add` downloads the skills at the release tag that the script installs.
   - `--no-skills` skips that step.
 - **`/pipefy:install`** (Claude Code plugin)
   - The command asks before it runs `uv tool install --force pipefy-cli` from PyPI.
