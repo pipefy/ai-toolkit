@@ -99,6 +99,16 @@ UPDATE_PHASE_MUTATION = gql(
     """
 )
 
+UPDATE_PHASE_JUMPS_MUTATION = gql(
+    """
+    mutation ($input: UpdatePhaseJumpsInput!) {
+        updatePhaseJumps(input: $input) {
+            success
+        }
+    }
+    """
+)
+
 DELETE_PHASE_MUTATION = gql(
     """
     mutation ($input: DeletePhaseInput!) {
@@ -288,6 +298,7 @@ __all__ = [
     "UPDATE_FIELD_CONDITION_MUTATION",
     "UPDATE_LABEL_MUTATION",
     "UPDATE_PHASE_FIELD_MUTATION",
+    "UPDATE_PHASE_JUMPS_MUTATION",
     "UPDATE_PHASE_MUTATION",
     "UPDATE_PIPE_MUTATION",
 ]

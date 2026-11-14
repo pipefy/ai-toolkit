@@ -1,6 +1,6 @@
 # Pipes & Cards
 
-Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **42 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
+Read, create, update, and delete pipes, phases, phase fields, labels, cards, and field conditions. **43 tools.** (Card-to-card relation tools `get_card_relations` / `delete_card_relation` / `create_card_relation` are documented in [Connections & Relations](relations.md).)
 
 ## Cross-cutting patterns
 
@@ -51,7 +51,7 @@ Pipefy’s GraphQL API uses **string** IDs for pipes, phases, cards, and most ot
 |-------|-------|-------|
 | Pipe | `create_pipe`, `update_pipe`, `delete_pipe`, `clone_pipe` | `create_pipe` takes optional `phases`, `start_form_fields` and `labels`. With `phases`, the pipe gets exactly those phases, in order, each connected to the phases beside it, instead of Inbox, Doing and Done; the result lists the new phases, start form fields and labels with their ids. A failure after the pipe exists returns `PIPE_PHASE_SETUP_FAILED` with `pipe_id` and the phases created so far in `error.details`. `delete_pipe`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
 | Phase | `create_phase`, `update_phase`, `delete_phase` | `index` is a float sort key: a value between two existing keys inserts between those phases. Equal keys have no fixed order; use a key no other phase has. A new pipe's Inbox, Doing and Done keys are 1, 2 and 3, and 0 omits the phase from `get_pipe` phases. `get_pipe` returns each key as `phases[].index`, in ascending order. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. `delete_phase`: [two-step](cross-cutting.md#destructive-operations) with `confirmation_token`. |
-| Phase transitions | `get_phase_allowed_move_targets` | Read-only; mirrors **Phase → Connections** (`cards_can_be_moved_to_phases`). Call before `move_card_to_phase`. `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it; other edges are changed in the Pipefy UI. |
+| Phase transitions | `get_phase_allowed_move_targets`, `set_phase_move_targets` | `get_phase_allowed_move_targets` is read-only and mirrors **Phase → Connections** (`cards_can_be_moved_to_phases`). Call it before `move_card_to_phase`. `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it. `set_phase_move_targets` adds other connections and keeps the current ones. With `replace=true`, it sends the complete list. |
 | Phase field | `create_phase_field`, `update_phase_field`, `delete_phase_field` | `field_type` maps to API `type`; `field_id` may be a slug or numeric ID. |
 | Label | `create_label`, `update_label`, `delete_label` | `color` must be a hex string (e.g. `#FF0000`), not a name. |
 
@@ -133,17 +133,21 @@ get_phase_cards_count(phase_id="341234567")
 get_phase_cards(phase_id="341234567", first=50, include_fields=true)
 ```
 
-### Phase transitions (`get_phase_allowed_move_targets`)
+### Phase transitions (`get_phase_allowed_move_targets`, `set_phase_move_targets`)
 
-Outbound moves are constrained by UI-configured connections — there is no API to add edges.
+A card moves only to a phase that its current phase connects to. Move rules in automations and AI agents have the same limit.
 
 1. Resolve source phase: `get_card(card_id).current_phase.id` (or known `phase_id` before move).
 2. `get_phase_allowed_move_targets(phase_id=<source>)` → `allowed_phases` (`{id, name}`).
 3. `move_card_to_phase(card_id, destination_phase_id=<allowed id>)`.
 
-CLI: `pipefy phase targets <phase_id> --json`.
+To add a connection, call `set_phase_move_targets(phase_id=<source>, target_phase_ids=[<destination>])`. The API replaces the whole list on each write. The tool therefore reads the current connections, writes them with the new ones through `updatePhaseJumps`, and reads the list back. With `replace=true`, the tool skips the first read, writes only `target_phase_ids`, and removes the other connections. An empty list with `replace=true` removes every connection. The write changes only the connections, not the phase name. A connection goes one way, from the source phase to the destination. Each destination must be a phase of the same pipe. The source phase and the start form phase are not valid destinations. Pipefy rejects the source phase with `RECORD_INVALID`. It rejects the start form phase or a phase of another pipe with `INVALID_INPUT` and names the id in the message. A rejected call saves no change. The result holds the list that the tool reads back after the write, in the shape of `get_phase_allowed_move_targets`.
 
-Empty `allowed_phases` means no outbound transitions are configured in the UI.
+The API has no atomic add. Two additions on the same phase can read the same list, and the later write removes the destination that the other one saved. Send all new destinations of one phase in one call. If you need more than one call on the same phase, wait for each call to finish before you start the next one. The read-back returns the saved state at that moment. It does not stop a later write by another client, such as the Pipefy UI.
+
+CLI: `pipefy phase targets <phase_id> --json` lists the connections. `--add <id>` adds a destination and `--set <id>` replaces the list. Both options are repeatable. `--clear` removes every connection.
+
+Empty `allowed_phases` means the phase has no outgoing connections.
 
 ## Field condition tools
 

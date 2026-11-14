@@ -62,6 +62,21 @@ def phase_targets(
     phase_id: str = resource_id_argument(
         help="Source phase id (card's current phase)."
     ),
+    add: list[str] = typer.Option(
+        [],
+        "--add",
+        help="Destination phase id to connect. Keeps the current connections (repeatable).",
+    ),
+    replace_with: list[str] = typer.Option(
+        [],
+        "--set",
+        help="Destination phase id for the complete list. Removes the other connections (repeatable).",
+    ),
+    clear: bool = typer.Option(
+        False,
+        "--clear",
+        help="Remove every connection from this phase.",
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -69,9 +84,30 @@ def phase_targets(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """List phases a card may move to from this phase (UI transition rules)."""
+    """List or change the phases a card may move to from this phase.
+
+    Without --add, --set or --clear, the command lists the connections. Each destination
+    must be a phase of the same pipe. The source phase and the start form phase
+    are not valid destinations. A change keeps the phase name.
+
+    --add keeps the connections that it reads before the write. If another client
+    saves a connection on the same phase after that read, the write removes it.
+    Pass every new destination of one phase with repeated --add in one command. If
+    you run more than one command for the same phase, wait for each one to finish
+    before you start the next one. The printed list is the saved state at the time
+    of the read-back. It does not stop a later write by another client.
+    """
+    if sum(map(bool, (add, replace_with, clear))) > 1:
+        typer.echo("Pass only one of --add, --set or --clear.", err=True)
+        raise typer.Exit(2)
 
     async def factory(client: PipefyClient):
+        if add:
+            return await client.set_phase_move_targets(phase_id, add, replace=False)
+        if replace_with or clear:
+            return await client.set_phase_move_targets(
+                phase_id, replace_with, replace=True
+            )
         return await client.get_phase_allowed_move_targets(phase_id)
 
     run_cli_command(ctx, json_out, factory)

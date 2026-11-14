@@ -467,7 +467,7 @@ class PipeConfigTools:
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
             to avoid trial-and-error moves. ``create_phase`` connects a new phase to
-            the phases beside it; other connections are changed in the Pipefy UI.
+            the phases beside it. ``set_phase_move_targets`` adds other connections.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -653,8 +653,8 @@ class PipeConfigTools:
 
             The new phase is connected to the phases beside it in ``index`` order,
             so cards can move between them. Call ``get_phase_allowed_move_targets``
-            on the new phase and its neighbors to read the result, and change the
-            connections in the Pipefy UI when they need changes. The success
+            on the new phase and its neighbors to read the result. Use
+            ``set_phase_move_targets`` to add or replace connections. The success
             payload repeats this as a ``connection_hint`` key.
 
             Args:
@@ -731,8 +731,8 @@ class PipeConfigTools:
             name (resolved via get_phase_fields). Values identical to the current state
             are accepted but result in a no-op API call.
 
-            Updating a phase does not change its Phase Connections /
-            ``allowed_phases``; change them in the Pipefy UI. Call
+            This tool does not change the phases that a card can move to. Use
+            ``set_phase_move_targets`` for those connections. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 
@@ -819,6 +819,84 @@ class PipeConfigTools:
                 label="Phase updated.",
                 data=raw,
                 connection_hint=TRANSITION_RULES_HINT,
+            )
+
+        @mcp.tool(
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
+            ),
+            meta=REMOTE,
+        )
+        async def set_phase_move_targets(
+            phase_id: PipefyId,
+            target_phase_ids: list[PipefyId],
+            ctx: Context,
+            replace: bool = False,
+            debug: bool = False,
+        ) -> dict[str, Any]:
+            """Add phases that a card can move to from a source phase, or replace them all.
+
+            A card moves only to a phase that its current phase connects to. A move
+            rule in an automation or an AI agent has the same limit. A new phase
+            connects only to the phases beside it. Use this tool to add other
+            connections, for example from an approval phase to a rejection phase.
+
+            By default, the tool keeps the current connections and adds
+            ``target_phase_ids``. With ``replace=True``, ``target_phase_ids`` becomes
+            the complete list, and the tool removes each connection that is not in it.
+            An empty list with ``replace=True`` removes every connection. The tool
+            changes only the connections, not the phase name. ``data`` holds the
+            list that the tool reads back after the write, in the shape of
+            ``get_phase_allowed_move_targets``.
+
+            The API has no atomic add. The default mode keeps the connections that
+            it reads before the write. If another client saves a connection on the
+            same phase after that read, the write removes it. Send all new
+            destinations of one phase in one call. If you need more than one call
+            for the same phase, wait for each call to return before you start the
+            next one. ``data`` shows the saved state at the time of the read-back.
+            It does not stop a later write by another client, such as the Pipefy UI.
+
+            A connection goes one way, from the source phase to the destination.
+            Each destination must be a phase of the same pipe. The source phase and
+            the start form phase are not valid destinations. Pipefy rejects the
+            source phase with ``RECORD_INVALID``. It rejects the start form phase or
+            a phase of another pipe with ``INVALID_INPUT`` and names the id in the
+            message. A rejected call saves no change.
+
+            Args:
+                phase_id: Source phase ID.
+                    Discover via: ``get_pipe(pipe_id).phases[].id``.
+                target_phase_ids: Destination phase IDs. Send at least one, unless
+                    ``replace`` is True.
+                    Discover via: ``get_pipe(pipe_id).phases[].id``.
+                replace: When True, remove each connection that is not in
+                    ``target_phase_ids``.
+                debug: When True, append GraphQL codes and correlation_id to errors.
+            """
+            client = get_pipefy_client(ctx)
+            phase_id_str, err = validate_tool_id(phase_id, "phase_id")
+            if err is not None:
+                return err
+            try:
+                raw = await client.set_phase_move_targets(
+                    phase_id_str, target_phase_ids, replace=replace
+                )
+            except ValueError as exc:
+                return build_pipe_tool_error_payload(
+                    message=str(exc), code="INVALID_ARGUMENTS"
+                )
+            except Exception as exc:  # noqa: BLE001
+                return handle_pipe_config_tool_graphql_error(
+                    exc,
+                    "Set phase move targets failed.",
+                    debug=debug,
+                    resource_kind="phase",
+                    resource_id=phase_id_str,
+                )
+            return tool_success(
+                data=normalize_phase_allowed_move_targets(raw),
+                message="Phase move targets saved.",
             )
 
         @mcp.tool(

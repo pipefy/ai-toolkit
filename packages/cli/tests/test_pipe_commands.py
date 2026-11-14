@@ -411,6 +411,118 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
     mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("342182335")
+    mock_client.set_phase_move_targets.assert_not_called()
+
+
+def _invoke_phase_targets(runner, mock_client, args):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(app, ["phase", "targets", "5001", *args])
+
+
+def test_phase_targets_add_keeps_the_current_connections(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-add")
+    payload = {
+        "phase": {
+            "id": "5001",
+            "name": "Doing",
+            "cards_can_be_moved_to_phases": [
+                {"id": "200", "name": "Done"},
+                {"id": "300", "name": "Rejected"},
+            ],
+        }
+    }
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock(return_value=payload)
+
+    result = _invoke_phase_targets(
+        runner, mock_client, ["--add", "300", "--add", "400", "--json"]
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == payload
+    mock_client.set_phase_move_targets.assert_awaited_once_with(
+        "5001", ["300", "400"], replace=False
+    )
+
+
+def test_phase_targets_set_replaces_the_connections(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-set")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock(return_value={"phase": {}})
+
+    result = _invoke_phase_targets(runner, mock_client, ["--set", "300", "--json"])
+
+    assert result.exit_code == 0
+    mock_client.set_phase_move_targets.assert_awaited_once_with(
+        "5001", ["300"], replace=True
+    )
+
+
+def test_phase_targets_rejects_add_with_set(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-both")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock()
+
+    result = _invoke_phase_targets(
+        runner, mock_client, ["--add", "300", "--set", "400"]
+    )
+
+    assert result.exit_code == 2
+    assert "only one of" in result.stderr
+    mock_client.set_phase_move_targets.assert_not_called()
+
+
+def test_phase_targets_clear_removes_every_connection(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-clear")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock(return_value={"phase": {}})
+
+    result = _invoke_phase_targets(runner, mock_client, ["--clear", "--json"])
+
+    assert result.exit_code == 0
+    mock_client.set_phase_move_targets.assert_awaited_once_with(
+        "5001", [], replace=True
+    )
+
+
+def test_phase_targets_rejects_clear_with_add(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-clear-add")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock()
+
+    result = _invoke_phase_targets(runner, mock_client, ["--clear", "--add", "300"])
+
+    assert result.exit_code == 2
+    assert "only one of" in result.stderr
+    mock_client.set_phase_move_targets.assert_not_called()
+
+
+def test_phase_targets_value_error_exits_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-blank")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock(
+        side_effect=ValueError("target_phase_ids is empty")
+    )
+
+    result = _invoke_phase_targets(runner, mock_client, ["--add", " "])
+
+    assert result.exit_code == 2
+    assert "target_phase_ids is empty" in result.stderr
 
 
 def test_phase_count_json(runner, clean_pipefy_env, saved_cwd, oauth_env):

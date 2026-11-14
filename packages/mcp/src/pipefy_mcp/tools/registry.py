@@ -198,6 +198,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "set_interface_actions",
         "set_interface_sources",
         "set_llm_provider_active_status",
+        "set_phase_move_targets",
         "set_role",
         "set_table_record_field_value",
         "toggle_ai_agent_status",

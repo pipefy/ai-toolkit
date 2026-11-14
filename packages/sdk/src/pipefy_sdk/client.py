@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -452,6 +453,41 @@ class PipefyClient:
     async def update_phase(self, input: UpdatePhaseInput) -> dict:
         """Update phase attributes."""
         return await self._pipe_config_service.update_phase(input)
+
+    async def set_phase_move_targets(
+        self,
+        phase_id: str | int,
+        target_phase_ids: Sequence[str | int],
+        *,
+        replace: bool = False,
+    ) -> dict:
+        """Add phases a card can move to from ``phase_id``, or replace them all.
+
+        By default, the call keeps the current connections and adds
+        ``target_phase_ids``. With ``replace``, ``target_phase_ids`` becomes the
+        complete list, and an empty list removes every connection. The write
+        changes only the connections, not the phase name. Returns the
+        connections read back after the write, in the shape of
+        :meth:`get_phase_allowed_move_targets`.
+
+        The API has no atomic add. An addition keeps the connections that its
+        first read returned. If another client saves a connection on the same
+        phase after that read, this write removes it. Send all new destinations
+        of one phase in one call. If you need more than one call for the same
+        phase, wait for each call to finish before you start the next one. The
+        read-back shows the saved state at that moment. It does not stop a
+        later write by another client, such as the Pipefy UI.
+
+        Raises:
+            ValueError: ``target_phase_ids`` is a string or bytes, an id is
+                blank, the list is empty without ``replace``, or an addition
+                does not find the phase.
+            PipefyAPIError: The write returns ``success: false``, or the
+                read-back returns no phase.
+        """
+        return await self._pipe_config_service.set_phase_move_targets(
+            phase_id, target_phase_ids, replace=replace
+        )
 
     async def delete_phase(self, phase_id: str | int) -> dict:
         """Delete a phase by ID (permanent)."""

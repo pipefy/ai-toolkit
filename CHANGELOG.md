@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SDK / MCP / CLI `set_phase_move_targets`**: adds phases that a card can move to from a source phase. `PipefyClient.set_phase_move_targets` reads the current connections, writes them with the new ones through `updatePhaseJumps`, and reads the list back. The write changes only the connections, not the phase name. `replace=True` skips the first read and writes only the given ids, and an empty list with `replace=True` removes every connection. A string or bytes in place of the id list, an empty list without `replace`, or a blank id raises `ValueError` before any call. The API has no atomic add. Two additions on the same phase at the same time can lose a destination, so send all new destinations of one phase in one call. The MCP tool returns the list that it reads back, in the shape of `get_phase_allowed_move_targets`. It is remote-safe and belongs to the `workflow` domain and the `builder` profile. The CLI twin is `pipefy phase targets PHASE_ID` with `--add ID` or `--set ID` (both repeatable) or `--clear`. Without one of these options, the command lists the connections.
+
+### Changed
+
+- **Phase connection hint**: `TRANSITION_RULES_HINT` and the descriptions of `create_phase`, `update_phase` and `get_phase_allowed_move_targets` point to `set_phase_move_targets` instead of the Pipefy UI.
+- **Skills `pipefy-pipes-and-cards`, `pipefy-automations`, `pipefy-ai-agents` and `pipefy-process-design`, phase connections**: the agent reads the source phase connections before it creates a move rule. It adds with `set_phase_move_targets` only the missing connections that the request or the specification names, and asks which source phases to connect when neither says. If the agent cannot add a connection, it creates the move rule off or skips it. A design no longer lists phase connections as a manual step.
+
 ## [0.5.7-beta.1] - 2026-11-13
 
 ### Added
