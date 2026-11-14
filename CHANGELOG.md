@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SDK / MCP / CLI AI automations, start state**: `create_ai_automation` takes `active` (default `true`). `CreateAiAutomationInput` has the same field, and `pipefy ai-automation create` takes `--active/--no-active`. With `active=false`, one call creates the rule disabled, so the rule does not run on cards between a create call and a separate disable call. A call without `active` creates an enabled rule, as before.
+
 ## [0.5.7-beta.1] - 2026-11-13
 
 ### Added

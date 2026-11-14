@@ -760,6 +760,51 @@ def test_ai_automation_create_succeeds_without_service_account(
     sent_input = mock_client.create_ai_automation.call_args.args[0]
     assert sent_input.pipe_id == "1"
     assert sent_input.field_ids == ["88"]
+    assert sent_input.active is True
+
+
+def test_ai_automation_create_no_active_creates_the_rule_disabled(
+    runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ai-create-inactive")
+    mock_client = MagicMock()
+    mock_client.validate_ai_automation_prompt = AsyncMock(
+        return_value={"success": True, "valid": True, "problems": []}
+    )
+    mock_client.create_ai_automation = AsyncMock(
+        return_value={
+            "automation_id": "auto-2",
+            "message": "AI Automation created successfully. ID: auto-2",
+        }
+    )
+
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        r = runner.invoke(
+            app,
+            [
+                "ai-automation",
+                "create",
+                "--pipe",
+                "1",
+                "--name",
+                "Email summary",
+                "--event-id",
+                "card_created",
+                "--prompt",
+                "Summarize: %{9}",
+                "--field-ids",
+                '["88"]',
+                "--no-active",
+                "--json",
+            ],
+        )
+
+    assert r.exit_code == 0, r.stderr
+    sent_input = mock_client.create_ai_automation.call_args.args[0]
+    assert sent_input.active is False
 
 
 def test_automation_create_exits_on_preflight_error(

@@ -319,20 +319,25 @@ Usage: pipefy ai-automation create [OPTIONS]
  Create an AI automation (``create_ai_automation``).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ *  --pipe                  TEXT  Pipe id. [required]                         │
-│ *  --name          -n      TEXT  Automation name. [required]                 │
-│ *  --event-id              TEXT  Trigger event id. [required]                │
-│ *  --prompt                TEXT  AI prompt with %{internal_id} refs.         │
-│                                  [required]                                  │
-│ *  --field-ids             TEXT  JSON array of output field ids. [required]  │
-│    --action-repo           TEXT  Optional action repo id (defaults to        │
-│                                  --pipe).                                    │
-│    --skills-ids            TEXT  Optional JSON array of skill id strings.    │
-│    --event-params          TEXT  Optional JSON object.                       │
-│    --condition             TEXT  Optional JSON object (omit for default      │
-│                                  placeholder).                               │
+│ *  --pipe                             TEXT  Pipe id. [required]              │
+│ *  --name          -n                 TEXT  Automation name. [required]      │
+│ *  --event-id                         TEXT  Trigger event id. [required]     │
+│ *  --prompt                           TEXT  AI prompt with %{internal_id}    │
+│                                             refs.                            │
+│                                             [required]                       │
+│ *  --field-ids                        TEXT  JSON array of output field ids.  │
+│                                             [required]                       │
+│    --active            --no-active          Create enabled or disabled.      │
+│                                             [default: active]                │
+│    --action-repo                      TEXT  Optional action repo id          │
+│                                             (defaults to --pipe).            │
+│    --skills-ids                       TEXT  Optional JSON array of skill id  │
+│                                             strings.                         │
+│    --event-params                     TEXT  Optional JSON object.            │
+│    --condition                        TEXT  Optional JSON object (omit for   │
+│                                             default placeholder).            │
 │    --json          -j                                                        │
-│    --help                        Show this message and exit.                 │
+│    --help                                   Show this message and exit.      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP ai-automation/delete
