@@ -100,10 +100,17 @@ Create AI only after the user's yes:
 
    Returns `valid:true|false`, `problems`, `warnings`, `field_map`. Catches mistakes in one read-only call vs 2–3 failed mutation roundtrips.
 
-4. If `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, and `active`. The SDK takes a `CreateAiAutomationInput` with those values.
-5. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
-6. For a rule that starts off, test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
-7. For a temporary off case, use `update_ai_automation` with `active=true` after the read and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
+4. If the rule must start off, make sure that your surface supports `active` on create. Do this before the create call:
+
+   - MCP: the input schema of `create_ai_automation` on the connected server lists `active`.
+   - SDK: the installed `CreateAiAutomationInput` declares `active`, so `"active" in CreateAiAutomationInput.model_fields` is true.
+
+   If `active` is missing, stop before the create call. Tell the user that this MCP server or SDK version cannot create the rule off, and that a version with `active` on `create_ai_automation` is necessary. An older version accepts `active=false` without an error, ignores the value, and creates the rule on. Do not create the rule on and then disable it. Do not create it with `create_automation` and `generate_with_ai`. The CLI needs no check, because a `pipefy` version without the off flag rejects the command before it creates the rule. A rule that starts on needs no check.
+
+5. If step 3 returned `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, and `active`. The SDK takes a `CreateAiAutomationInput` with those values.
+6. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
+7. For a rule that starts off, test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
+8. For a temporary off case, use `update_ai_automation` with `active=true` after the read and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
 
 ---
 
