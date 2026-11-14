@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -452,6 +453,18 @@ class PipefyClient:
     async def update_phase(self, input: UpdatePhaseInput) -> dict:
         """Update phase attributes."""
         return await self._pipe_config_service.update_phase(input)
+
+    async def set_phase_move_targets(
+        self,
+        phase_id: str | int,
+        target_phase_ids: Sequence[str | int],
+        *,
+        replace: bool = False,
+    ) -> dict:
+        """Add phases a card can move to from ``phase_id``, or replace them all."""
+        return await self._pipe_config_service.set_phase_move_targets(
+            phase_id, target_phase_ids, replace=replace
+        )
 
     async def delete_phase(self, phase_id: str | int) -> dict:
         """Delete a phase by ID (permanent)."""

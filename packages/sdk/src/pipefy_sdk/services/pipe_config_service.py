@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from typing import Any
 
 from pipefy_infra.coerce import optional_str
@@ -19,6 +20,10 @@ from pipefy_sdk.graphql_inputs import (
     UpdatePipeInput,
 )
 from pipefy_sdk.label_color import normalize_label_color
+from pipefy_sdk.phase_move_targets import (
+    parse_target_phase_ids,
+    plan_phase_move_targets,
+)
 from pipefy_sdk.queries.pipe_config_queries import (
     CLONE_PIPE_MUTATION,
     CREATE_FIELD_CONDITION_MUTATION,
@@ -33,6 +38,7 @@ from pipefy_sdk.queries.pipe_config_queries import (
     DELETE_PIPE_MUTATION,
     GET_FIELD_CONDITION_QUERY,
     GET_FIELD_CONDITIONS_QUERY,
+    SET_PHASE_MOVE_TARGETS_MUTATION,
     UPDATE_FIELD_CONDITION_MUTATION,
     UPDATE_LABEL_MUTATION,
     UPDATE_PHASE_FIELD_MUTATION,
@@ -199,6 +205,38 @@ class PipeConfigService:
         return await self._executor.execute_query(
             UPDATE_PHASE_MUTATION, {"input": input.to_graphql_input()}
         )
+
+    async def set_phase_move_targets(
+        self,
+        phase_id: str | int,
+        target_phase_ids: Sequence[str | int],
+        *,
+        replace: bool = False,
+    ) -> dict:
+        """Set the phases a card can move to from ``phase_id``.
+
+        Adds ``target_phase_ids`` to the current connections, or with
+        ``replace`` makes them the complete list. An empty list with ``replace``
+        removes every connection. Returns ``{"phase": ...}``
+        with the saved ``cards_can_be_moved_to_phases``, the shape of
+        ``get_phase_allowed_move_targets``.
+
+        Raises:
+            ValueError: An id is blank, the list is empty without ``replace``,
+                or the phase is not found.
+        """
+        parsed_ids = parse_target_phase_ids(target_phase_ids, replace=replace)
+        allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
+            phase_id
+        )
+        update_input = plan_phase_move_targets(
+            phase_id, allowed_moves, parsed_ids, replace=replace
+        )
+        raw = await self._executor.execute_query(
+            SET_PHASE_MOVE_TARGETS_MUTATION,
+            {"input": update_input.to_graphql_input()},
+        )
+        return {"phase": raw["updatePhase"]["phase"]}
 
     async def delete_phase(self, phase_id: str | int) -> dict:
         """Delete a phase by ID (permanent)."""
