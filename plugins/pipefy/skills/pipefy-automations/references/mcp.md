@@ -18,7 +18,13 @@ For a validated AI automation, call `create_ai_automation` with `name`, `event_i
 create_ai_automation name="Summarize intake" event_id="card_created" pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"] active=false
 ```
 
-The success response holds the new id in `automation_id`. Read the rule with `get_ai_automation`. Activate it only when the shared workflow permits activation:
+In the default response, the new id is in `data.automation_id`. A server with the legacy envelope returns it as `automation_id` at the top level. Pass that id to `get_ai_automation` to read the saved rule:
+
+```text
+get_ai_automation automation_id=<automation_id>
+```
+
+Activate the rule only when the shared workflow permits activation:
 
 ```text
 update_ai_automation automation_id=<automation_id> active=true
