@@ -710,10 +710,8 @@ async def test_set_phase_move_targets_keeps_the_rejected_ids_in_the_error(
     mock_pipe_config_client.set_phase_move_targets.side_effect = PipefyGraphQLError(
         [
             {
-                "message": (
-                    "Validation failed: Jump targets are not possible destinations: 99"
-                ),
-                "extensions": {"code": "RECORD_INVALID"},
+                "message": "Invalid input: targetPhaseIds (99)",
+                "extensions": {"code": "INVALID_INPUT"},
             }
         ]
     )
@@ -726,7 +724,7 @@ async def test_set_phase_move_targets_keeps_the_rejected_ids_in_the_error(
 
     payload = extract_payload(result)
     assert payload["success"] is False
-    assert "not possible destinations: 99" in payload["error"]["message"]
+    assert "targetPhaseIds (99)" in payload["error"]["message"]
 
 
 @pytest.mark.unit

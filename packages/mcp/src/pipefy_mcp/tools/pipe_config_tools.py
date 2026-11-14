@@ -844,14 +844,25 @@ class PipeConfigTools:
             By default, the tool keeps the current connections and adds
             ``target_phase_ids``. With ``replace=True``, ``target_phase_ids`` becomes
             the complete list, and the tool removes each connection that is not in it.
-            An empty list with ``replace=True`` removes every connection.
-            ``data`` holds the saved list in the shape of
+            An empty list with ``replace=True`` removes every connection. The tool
+            changes only the connections, not the phase name. ``data`` holds the
+            list that the tool reads back after the write, in the shape of
             ``get_phase_allowed_move_targets``.
+
+            The API has no atomic add. The default mode keeps the connections that
+            it reads before the write. If another client saves a connection on the
+            same phase after that read, the write removes it. Send all new
+            destinations of one phase in one call. If you need more than one call
+            for the same phase, wait for each call to return before you start the
+            next one. ``data`` shows the saved state at the time of the read-back.
+            It does not stop a later write by another client, such as the Pipefy UI.
 
             A connection goes one way, from the source phase to the destination.
             Each destination must be a phase of the same pipe. The source phase and
-            the start form phase are not valid destinations. Pipefy rejects other
-            ids with ``RECORD_INVALID`` and names them in the message.
+            the start form phase are not valid destinations. Pipefy rejects the
+            source phase with ``RECORD_INVALID``. It rejects the start form phase or
+            a phase of another pipe with ``INVALID_INPUT`` and names the id in the
+            message. A rejected call saves no change.
 
             Args:
                 phase_id: Source phase ID.
