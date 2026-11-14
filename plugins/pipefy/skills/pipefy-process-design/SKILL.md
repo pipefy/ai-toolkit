@@ -136,11 +136,11 @@ At the build level, the builder creates these rules inactive. In this list, a ru
 - A rule that the build adds to a pipe that existed before this conversation, when the pipe has cards that the rule can match.
 - A rule that runs on a time limit or a schedule, on a pipe that has cards.
 - A rule that reads an unconfirmed business assumption (a pending item).
-- A rule that moves a card through a phase connection that does not exist yet.
+- A rule that moves a card through a phase connection that the builder could not add.
 
 For the first two kinds, read the rule again. Compare it with the specification. If it matches and no other off case applies, activate it without another yes. An inactive request, an unconfirmed assumption, or a missing connection keeps the rule off.
 
-For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. Record each rule that the builder creates inactive as `created inactive` in Pending items, with the reason and the next action. If a missing connection prevents creation even with `active=false`, record the rule as `skipped` in Pending items, with the same details. Wait for the connection before creating the rule. Never report a rejected creation as `created inactive`. The builder does not create a rule that needs a business value that the specification does not hold. Record that rule as `not created` in Pending items. Give the missing value as the reason and the user's answer as the next action.
+For traditional automations, use the "Start state" section in `pipefy-automations`. For AI automations, use its "Create an AI automation inactive" section. For AI agents, use the "Active lifecycle" section in `pipefy-ai-agents`. Record each rule that the builder creates inactive as `created inactive` in Pending items, with the reason and the next action. Before the builder creates a rule that moves a card, it adds each missing phase connection with `set_phase_move_targets`. If a missing connection prevents creation even with `active=false`, record the rule as `skipped` in Pending items, with the same details. Never report a rejected creation as `created inactive`. The builder does not create a rule that needs a business value that the specification does not hold. Record that rule as `not created` in Pending items. Give the missing value as the reason and the user's answer as the next action.
 
 The specification records acceptance examples and pending work. Report an unchecked example as pending. Do not declare the process ready until its acceptance examples pass and no required work remains.
 
@@ -235,7 +235,6 @@ Next step: <one offer with a one-line reason. Nothing is built until the user sa
 
 Manual steps name the parts of the design that only the Pipefy UI creates:
 
-- Phase connections other than the links that a new phase gets to its neighbours (`pipefy-pipes-and-cards`).
 - Email templates (`pipefy-members-email-webhooks`).
 - Rules that apply a label (`pipefy-automations`).
 

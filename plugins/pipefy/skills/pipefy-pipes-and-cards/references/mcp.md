@@ -16,6 +16,14 @@ With `skip_elicitation=true`, `create_card` filters `fields` to the editable fie
 
 `get_pipe` returns phase metadata inside the pipe's phases. On a required empty field, `move_card_to_phase` may return `success: false` naming the field and optionally a hide hint. Always discover allowed targets first.
 
+To add a destination to a phase, send only the new phase id. The tool keeps the current connections and returns the saved list in `data.allowed_phases`:
+
+```
+set_phase_move_targets phase_id="341234567" target_phase_ids=["341234570"]
+```
+
+With `replace=true`, `target_phase_ids` becomes the complete list, and an empty list removes every connection. A connection goes one way. An id from another pipe, the source phase, or the start form phase returns `success: false` with `RECORD_INVALID`, and the message names the rejected id.
+
 ## Attachments
 
 `upload_attachment_to_card` takes exactly one source: `file_path` on the MCP server's filesystem (local profile only), or `file_url` (SSRF-guarded download, any profile and required on hosted). The attachment `field_id` is a slug. See `pipefy-attachments`.

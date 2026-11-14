@@ -23,13 +23,15 @@ A build request defaults to `build`. The `build` and `build inactive` levels app
 
 In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests, delete the acceptance cards with the usual delete confirmation.
 
+A rule that moves a card needs a connection from the source phase to the destination phase. Before you create the rule, read the connections with `get_phase_allowed_move_targets`. If the destination is missing, add it with `set_phase_move_targets`, then read the connections again.
+
 Create an automation off only in these cases:
 
 - The user asks for `build inactive`, in any words.
 - The pipe existed before this conversation and has cards that the rule can match.
 - A time rule or a scheduled rule runs in a pipe with cards.
 - The rule reads a business assumption that the user did not confirm.
-- A move needs a phase connection that does not exist.
+- A move needs a phase connection that `set_phase_move_targets` could not add.
 
 For the existing-card and time-rule cases, read the saved rule and compare it with the specification, or with the restated request when no specification exists. If no other off case applies, activate the rule in the same build. Do not ask for another yes.
 
@@ -286,9 +288,9 @@ On `create_automation`, when `extra_input.action_params.field_map` is present, t
 
 For `move_single_card` actions with trigger `card_moved`, **`create_automation` only** validates that the destination phase is reachable from the source via `cards_can_be_moved_to_phases` (same read-only data as `move_card_to_phase`). `update_automation` does not run this check.
 
-If invalid, read the error message listing permitted destination phases and the UI-only transition configuration hint.
+If invalid, read the error message. It lists the permitted destination phases and a hint on how to add a connection.
 
-Recovery: read the allowed phases in `error.message`, or call `get_phase_allowed_move_targets(phase_id=<source_phase_id>)` on the source phase from `event_params.to_phase_id`, then re-issue `create_automation` with a permitted destination phase id.
+Recovery: read the allowed phases in `error.message`, or call `get_phase_allowed_move_targets(phase_id=<source_phase_id>)` on the source phase from `event_params.to_phase_id`, then re-issue `create_automation` with a permitted destination phase id. If the design needs the rejected destination, add it with `set_phase_move_targets(phase_id=<source_phase_id>, target_phase_ids=[<destination_phase_id>])` and re-issue the same call.
 
 ---
 
@@ -347,7 +349,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 - **`create_automation` cycle detection.** Same-pipe `card_created` + `create_card` rejected with `"This automation can't be created! It would result in an endless card creation cycle."` Use a different trigger, target a different pipe, or use `update_card` instead.
 - **`create_automation` fails with unknown event/action.** Always run `get_automation_events` + `get_automation_actions` first; do not guess IDs.
 - **Planned a rule that applies a label.** No such action exists in the catalog. The trigger does: `sla_based` is available, so only the label action is missing. See [Applying a label has no automation action](#applying-a-label-has-no-automation-action) before offering anything else.
-- **Phase transition error on `move_single_card`.** Only `create_automation` preflights transitions. Read allowed phase ids in the error text or call `get_phase_allowed_move_targets`, then re-issue with a permitted destination. UI is the only edit surface for transition rules.
+- **Phase transition error on `move_single_card`.** Only `create_automation` preflights transitions. Read allowed phase ids in the error text or call `get_phase_allowed_move_targets`, then re-issue with a permitted destination. To keep the planned destination, add the connection with `set_phase_move_targets` first.
 - **Cross-pipe `PERMISSION_DENIED`.** SA must be member of both source and destination pipes for `create_connected_card` / cross-pipe `create_card`. Recovery: `get_pipe_members` + `invite_members`.
 - **`get_automation_logs_by_repo` returns empty.** Pipe has no traditional automation executions; not an error. AI agent executions are separate (see `get_ai_agent_logs`).
 - **`create_send_task_automation` fires immediately when `active=true`.** Pass `active=false` first if you want to wire it up before the rule starts firing. The 2026-04-16 orphaned-task incident is the cautionary tale.
