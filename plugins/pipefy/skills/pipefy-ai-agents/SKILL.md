@@ -41,7 +41,7 @@ A build request defaults to `build`. The `build` and `build inactive` levels app
 
 In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests and the log checks in "Verify", delete the acceptance cards with the usual delete confirmation.
 
-A behavior that moves a card needs a connection from the source phase to the destination phase. Before you create the agent, read the connections with `get_phase_allowed_move_targets`. If the destination is missing, add it with `set_phase_move_targets`, then read the connections again.
+A behavior that moves a card needs a connection from the source phase to the destination phase. Before you create the agent, read the connections with `get_phase_allowed_move_targets`. A new connection applies at once to every card in the source phase, also while the agent is off. People and other rules can then move those cards to the destination. Add only the connections that the request or the specification names. An event such as `field_updated` can occur in more than one phase. If the request or the specification does not say which phases are the source, ask the user which phases to connect. If the source is already defined, do not ask again. Add each missing destination with `set_phase_move_targets`, all destinations of one source phase in one call. Make sure that the list in the result holds each destination.
 
 Create an agent off only in these cases:
 
