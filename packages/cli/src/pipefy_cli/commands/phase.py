@@ -88,7 +88,14 @@ def phase_targets(
 
     Without --add, --set or --clear, the command lists the connections. Each destination
     must be a phase of the same pipe. The source phase and the start form phase
-    are not valid destinations.
+    are not valid destinations. A change keeps the phase name.
+
+    --add keeps the connections that it reads before the write. If another client
+    saves a connection on the same phase after that read, the write removes it.
+    Pass every new destination of one phase with repeated --add in one command. If
+    you run more than one command for the same phase, wait for each one to finish
+    before you start the next one. The printed list is the saved state at the time
+    of the read-back. It does not stop a later write by another client.
     """
     if sum(map(bool, (add, replace_with, clear))) > 1:
         typer.echo("Pass only one of --add, --set or --clear.", err=True)

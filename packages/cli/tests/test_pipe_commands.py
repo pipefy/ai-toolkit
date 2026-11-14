@@ -411,6 +411,7 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
     mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("342182335")
+    mock_client.set_phase_move_targets.assert_not_called()
 
 
 def _invoke_phase_targets(runner, mock_client, args):
