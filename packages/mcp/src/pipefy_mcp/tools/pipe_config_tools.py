@@ -467,7 +467,7 @@ class PipeConfigTools:
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
             to avoid trial-and-error moves. ``create_phase`` connects a new phase to
-            the phases beside it; other connections are changed in the Pipefy UI.
+            the phases beside it. ``set_phase_move_targets`` adds other connections.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -653,8 +653,8 @@ class PipeConfigTools:
 
             The new phase is connected to the phases beside it in ``index`` order,
             so cards can move between them. Call ``get_phase_allowed_move_targets``
-            on the new phase and its neighbors to read the result, and change the
-            connections in the Pipefy UI when they need changes. The success
+            on the new phase and its neighbors to read the result. Use
+            ``set_phase_move_targets`` to add or replace connections. The success
             payload repeats this as a ``connection_hint`` key.
 
             Args:
@@ -731,8 +731,8 @@ class PipeConfigTools:
             name (resolved via get_phase_fields). Values identical to the current state
             are accepted but result in a no-op API call.
 
-            Updating a phase does not change its Phase Connections /
-            ``allowed_phases``; change them in the Pipefy UI. Call
+            This tool does not change the phases that a card can move to. Use
+            ``set_phase_move_targets`` for those connections. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 
