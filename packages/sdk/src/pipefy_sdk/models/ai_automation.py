@@ -253,6 +253,10 @@ class CreateAiAutomationInput(BaseModel):
         min_length=1,
         description="Non-empty list of field internal IDs as strings",
     )
+    active: bool = Field(
+        default=True,
+        description="Whether the rule starts enabled. Use false to create it off.",
+    )
     skills_ids: list[str] = Field(
         default_factory=list,
         description="AI skill IDs to attach. Defaults to empty (no skills).",

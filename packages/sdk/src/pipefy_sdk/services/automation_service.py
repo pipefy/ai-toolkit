@@ -452,6 +452,7 @@ class AutomationService:
             automation_input.event_id,
             ACTION_ID_GENERATE_WITH_AI,
             action_repo_id=automation_input.action_repo_id,
+            active=automation_input.active,
             action_params={
                 "aiParams": _ai_params_payload(
                     prompt=automation_input.prompt,

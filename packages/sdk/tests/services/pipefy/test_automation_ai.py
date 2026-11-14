@@ -168,6 +168,33 @@ async def test_create_omits_event_params_when_none():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_create_sends_active_true_when_omitted():
+    service, executor = _make_service(
+        {"createAutomation": {"automation": {"id": "456"}}}
+    )
+
+    await service.create_ai_automation(_create_input())
+
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp["active"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_sends_active_false_in_the_create_mutation():
+    service, executor = _make_service(
+        {"createAutomation": {"automation": {"id": "456"}}}
+    )
+
+    await service.create_ai_automation(_create_input(active=False))
+
+    executor.execute_query.assert_awaited_once()
+    inp = executor.execute_query.call_args[0][1]["input"]
+    assert inp["active"] is False
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_create_missing_automation_id_raises():
     service, _ = _make_service({"createAutomation": {}})
 
