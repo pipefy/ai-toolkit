@@ -107,10 +107,17 @@ Create AI only after the user's yes:
 
    If `active` is missing, stop before the create call. Tell the user that this MCP server or SDK version cannot create the rule off, and that a version with `active` on `create_ai_automation` is necessary. An older version accepts `active=false` without an error, ignores the value, and creates the rule on. Do not create the rule on and then disable it. Do not create it with `create_automation` and `generate_with_ai`. The CLI needs no check, because a `pipefy` version without the off flag rejects the command before it creates the rule. A rule that starts on needs no check.
 
-5. If step 3 returned `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, and `active`. The SDK takes a `CreateAiAutomationInput` with those values.
-6. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
+5. If step 3 returned `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. If the specification or the request restricts the trigger, send the restriction in the same call. Send the event filter in `event_params`, for example `to_phase_id` for `card_moved`. Send field tests in `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)). For a rule without a restriction, omit both. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, `active`, `event_params`, and `condition`. The SDK takes a `CreateAiAutomationInput` with those values. The reference for your surface shows where the response holds the new id.
+6. Read the rule with `get_ai_automation` and the new id. Before any activation, compare the saved rule with the specification or the request:
+
+   - `active`, the prompt, and the output fields.
+   - `event_id` and `event_params`. For a rule restricted to one phase, make sure that the saved destination phase (`event_params.to_phase_id`) is the phase in the request.
+   - `condition`. A rule without a condition reads back with empty `expressions` and `expressions_structure` lists. That is a match.
+
+   If a saved value differs from the request, do not activate the rule. Correct the rule and read it again.
+
 7. For a rule that starts off, test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
-8. For a temporary off case, use `update_ai_automation` with `active=true` after the read and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
+8. For a temporary off case, use `update_ai_automation` with `active=true` after the comparison in step 6 and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
 
 ---
 
