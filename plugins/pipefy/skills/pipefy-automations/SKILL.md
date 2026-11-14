@@ -111,7 +111,7 @@ Create AI only after the user's yes:
 6. Read the rule with `get_ai_automation` and the new id. Before any activation, compare the saved rule with the specification or the request:
 
    - `active`, the prompt, and the output fields.
-   - `event_id` and `event_params`. For a rule restricted to one phase, make sure that the saved destination phase (`event_params.to_phase_id`) is the phase in the request.
+   - `event_id` and `event_params`. For a rule restricted to one phase, compare the phase key that the selected event uses. That key is `to_phase_id` for `card_moved`, `fromPhaseId` for `card_left_phase`, and `inPhaseId` for `card_inbox_received_email`. Ignore a phase key that the event does not use. It can read back as `null`.
    - `condition`. A rule without a condition reads back with empty `expressions` and `expressions_structure` lists. That is a match.
 
    If a saved value differs from the request, do not activate the rule. Correct the rule and read it again.
