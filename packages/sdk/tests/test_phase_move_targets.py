@@ -28,6 +28,19 @@ def test_parse_target_phase_ids_keeps_order_and_drops_repeats():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("scalar", ["", "123", b"123"])
+@pytest.mark.parametrize("replace", [False, True])
+def test_parse_target_phase_ids_rejects_a_string_or_bytes(scalar, replace):
+    with pytest.raises(ValueError, match="must be a list of phase ids"):
+        parse_target_phase_ids(scalar, replace=replace)
+
+
+@pytest.mark.unit
+def test_parse_target_phase_ids_keeps_a_one_item_list_whole():
+    assert parse_target_phase_ids(["123"], replace=False) == ("123",)
+
+
+@pytest.mark.unit
 def test_parse_target_phase_ids_rejects_an_empty_list_without_replace():
     with pytest.raises(ValueError, match="target_phase_ids is empty"):
         parse_target_phase_ids([], replace=False)

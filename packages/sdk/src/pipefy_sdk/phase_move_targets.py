@@ -17,8 +17,14 @@ def parse_target_phase_ids(
     An empty list is valid only with ``replace``. It removes every connection.
 
     Raises:
-        ValueError: An id is blank, or the list is empty and ``replace`` is False.
+        ValueError: ``target_phase_ids`` is a string or bytes, an id is blank,
+            or the list is empty and ``replace`` is False.
     """
+    if isinstance(target_phase_ids, (str, bytes)):
+        raise ValueError(
+            f"target_phase_ids must be a list of phase ids: received "
+            f"{target_phase_ids!r}, expected a list such as ['123']"
+        )
     parsed: dict[str, None] = {}
     for index, raw in enumerate(target_phase_ids):
         phase_id = str(raw).strip()
