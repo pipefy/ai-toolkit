@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK / MCP / CLI AI automations, start state**: `create_ai_automation` takes `active` (default `true`). `CreateAiAutomationInput` has the same field, and `pipefy ai-automation create` takes `--active/--no-active`. With `active=false`, one call creates the rule disabled, so the rule does not run on cards between a create call and a separate disable call. A call without `active` creates an enabled rule, as before.
 
+### Changed
+
+- **Skills `pipefy-automations` and `pipefy-process-design`, inactive AI automations**: an AI automation that must start off uses `create_ai_automation` with `active=false`. The skill and its MCP and CLI references no longer show the recipe that created the rule through `create_automation` with `generate_with_ai`. The API still accepts that route. `pipefy-process-design` points to "Start state" for traditional and AI automations.
+
 ## [0.5.7-beta.1] - 2026-11-13
 
 ### Added

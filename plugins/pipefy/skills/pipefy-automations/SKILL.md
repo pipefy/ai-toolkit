@@ -35,7 +35,7 @@ For the existing-card and time-rule cases, read the saved rule and compare it wi
 
 Keep a rule off when the user asked for it, until the user permits activation. Keep a rule with a pending assumption off until the user confirms that assumption. Keep a rule with a missing connection off until that connection exists. Activate only when none of these conditions still requires an off state. If the tool rejects a missing connection, skip that rule until the connection exists.
 
-Create traditional and task automations with `active=false` for an off case. Otherwise, use `active=true`. For an AI automation that must start off, use "Create an AI automation inactive" below. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
+Create traditional, task, and AI automations with `active=false` for an off case. Otherwise, use `active=true`. Set the state in the create call. Do not create an active rule and then disable it, because the rule can run on cards between the two calls. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
 
 ---
 
@@ -73,7 +73,7 @@ Create AI only after the user's yes:
 | ------------ | --------- |
 | `get_ai_automations` | List `generate_with_ai` rules from the pipe's mixed listing. Each page contains at most 50 mixed rules; continue with `after` before concluding an AI rule does not exist. |
 | `get_ai_automation` | Full config including prompt, fields, condition. |
-| `create_ai_automation` | Create a prompt-driven automation (requires AI enabled on the pipe). |
+| `create_ai_automation` | Create a prompt-driven automation (requires AI enabled on the pipe). `active` defaults to true. |
 | `update_ai_automation` | Change name, `active`, prompt, `field_ids`, or `condition`. |
 | `delete_ai_automation` | Destructive delete. |
 | `validate_ai_automation_prompt` | **Pre-flight check.** Returns `{valid, problems, warnings, field_map}` — also detects prompt `%{id}` ∩ `field_ids` overlap. |
@@ -100,35 +100,10 @@ Create AI only after the user's yes:
 
    Returns `valid:true|false`, `problems`, `warnings`, `field_map`. Catches mistakes in one read-only call vs 2–3 failed mutation roundtrips.
 
-4. If `valid:true`, create the automation in the state from "Start state". For an active rule, use `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, and `name`. The SDK takes a `CreateAiAutomationInput` with those values. For an inactive rule, use "Create an AI automation inactive" below.
+4. If `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, and `active`. The SDK takes a `CreateAiAutomationInput` with those values.
 5. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
-
----
-
-## Create an AI automation inactive
-
-Use this recipe when "Start state" requires an inactive AI automation. `create_ai_automation` has no `active` input. It creates an active rule. Do not create an active rule and then disable it. Use one `create_automation` call with `active=false`.
-
-1. Read the input and output field `internal_id` values from the pipe.
-2. Run `validate_ai_automation_prompt` with the `pipe_id`, the prompt, the output `field_ids`, and the selected `event_id`. The `event_id` check catches an event that the pipe does not have, because `create_automation` does not run the event checks of `create_ai_automation`. Do not use `scheduler`: `create_ai_automation` rejects it as an AI automation event, but `validate_ai_automation_prompt` accepts it, so this rule is the only check. Continue only when `valid` is true.
-
-   ```text
-   validate_ai_automation_prompt pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"] event_id=card_created
-   ```
-
-3. Use `action_id=generate_with_ai` and `active=false` in `create_automation`. Put the prompt in `extra_input.action_params.aiParams.value`. Put output field ids in `fieldIds` and AI skill ids in `skillsIds`. Use an empty `skillsIds` list when no AI skill applies. Preserve the selected `event_params` and `condition` in `extra_input`. Without a user condition, send the explicit default condition from the example.
-
-The ids below are examples. Replace them with ids from the pipe. This example uses `card_created`, which needs no `event_params`:
-
-```text
-create_automation pipe_id=67890 name="Summarize intake" trigger_id=card_created action_id=generate_with_ai active=false extra_input={"action_params":{"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}},"condition":{"expressions":[{"structure_id":0,"field_address":"","operation":"","value":""}],"expressions_structure":[[0]]}}
-```
-
-4. Read the created rule with `get_ai_automation`. Make sure that `active` is false and the prompt, fields, event, and condition match the request. The default condition from the example reads back as empty `expressions` and `expressions_structure` lists. That is a match.
-5. Test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
-6. For a temporary off case, use `update_ai_automation` with `active=true` after the read and acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
-
-The [MCP reference](references/mcp.md#create-an-ai-automation-inactive) and the [CLI reference](references/cli.md#create-an-ai-automation-inactive) show where each surface returns the new automation id, and the activation call.
+6. For a rule that starts off, test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
+7. For a temporary off case, use `update_ai_automation` with `active=true` after the read and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
 
 ---
 
