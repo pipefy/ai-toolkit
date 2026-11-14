@@ -461,7 +461,30 @@ class PipefyClient:
         *,
         replace: bool = False,
     ) -> dict:
-        """Add phases a card can move to from ``phase_id``, or replace them all."""
+        """Add phases a card can move to from ``phase_id``, or replace them all.
+
+        By default, the call keeps the current connections and adds
+        ``target_phase_ids``. With ``replace``, ``target_phase_ids`` becomes the
+        complete list, and an empty list removes every connection. The write
+        changes only the connections, not the phase name. Returns the
+        connections read back after the write, in the shape of
+        :meth:`get_phase_allowed_move_targets`.
+
+        The API has no atomic add. An addition keeps the connections that its
+        first read returned. If another client saves a connection on the same
+        phase after that read, this write removes it. Send all new destinations
+        of one phase in one call. If you need more than one call for the same
+        phase, wait for each call to finish before you start the next one. The
+        read-back shows the saved state at that moment. It does not stop a
+        later write by another client, such as the Pipefy UI.
+
+        Raises:
+            ValueError: ``target_phase_ids`` is a string or bytes, an id is
+                blank, the list is empty without ``replace``, or an addition
+                does not find the phase.
+            PipefyAPIError: The write returns ``success: false``, or the
+                read-back returns no phase.
+        """
         return await self._pipe_config_service.set_phase_move_targets(
             phase_id, target_phase_ids, replace=replace
         )

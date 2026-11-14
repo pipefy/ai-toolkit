@@ -99,18 +99,11 @@ UPDATE_PHASE_MUTATION = gql(
     """
 )
 
-SET_PHASE_MOVE_TARGETS_MUTATION = gql(
+UPDATE_PHASE_JUMPS_MUTATION = gql(
     """
-    mutation SetPhaseMoveTargets($input: UpdatePhaseInput!) {
-        updatePhase(input: $input) {
-            phase {
-                id
-                name
-                cards_can_be_moved_to_phases {
-                    id
-                    name
-                }
-            }
+    mutation ($input: UpdatePhaseJumpsInput!) {
+        updatePhaseJumps(input: $input) {
+            success
         }
     }
     """
@@ -302,10 +295,10 @@ __all__ = [
     "DELETE_PIPE_MUTATION",
     "GET_FIELD_CONDITION_QUERY",
     "GET_FIELD_CONDITIONS_QUERY",
-    "SET_PHASE_MOVE_TARGETS_MUTATION",
     "UPDATE_FIELD_CONDITION_MUTATION",
     "UPDATE_LABEL_MUTATION",
     "UPDATE_PHASE_FIELD_MUTATION",
+    "UPDATE_PHASE_JUMPS_MUTATION",
     "UPDATE_PHASE_MUTATION",
     "UPDATE_PIPE_MUTATION",
 ]

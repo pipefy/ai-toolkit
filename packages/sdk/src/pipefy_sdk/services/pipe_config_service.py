@@ -8,7 +8,7 @@ from typing import Any
 
 from pipefy_infra.coerce import optional_str
 
-from pipefy_sdk.exceptions import PipePhaseSetupError
+from pipefy_sdk.exceptions import PipefyAPIError, PipePhaseSetupError
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.graphql_inputs import (
     CreateFieldConditionInput,
@@ -21,8 +21,8 @@ from pipefy_sdk.graphql_inputs import (
 )
 from pipefy_sdk.label_color import normalize_label_color
 from pipefy_sdk.phase_move_targets import (
+    merge_phase_move_targets,
     parse_target_phase_ids,
-    plan_phase_move_targets,
 )
 from pipefy_sdk.queries.pipe_config_queries import (
     CLONE_PIPE_MUTATION,
@@ -38,10 +38,10 @@ from pipefy_sdk.queries.pipe_config_queries import (
     DELETE_PIPE_MUTATION,
     GET_FIELD_CONDITION_QUERY,
     GET_FIELD_CONDITIONS_QUERY,
-    SET_PHASE_MOVE_TARGETS_MUTATION,
     UPDATE_FIELD_CONDITION_MUTATION,
     UPDATE_LABEL_MUTATION,
     UPDATE_PHASE_FIELD_MUTATION,
+    UPDATE_PHASE_JUMPS_MUTATION,
     UPDATE_PHASE_MUTATION,
     UPDATE_PIPE_MUTATION,
 )
@@ -215,28 +215,36 @@ class PipeConfigService:
     ) -> dict:
         """Set the phases a card can move to from ``phase_id``.
 
-        Adds ``target_phase_ids`` to the current connections, or with
-        ``replace`` makes them the complete list. An empty list with ``replace``
-        removes every connection. Returns ``{"phase": ...}``
-        with the saved ``cards_can_be_moved_to_phases``, the shape of
-        ``get_phase_allowed_move_targets``.
-
-        Raises:
-            ValueError: An id is blank, the list is empty without ``replace``,
-                or the phase is not found.
+        See :meth:`PipefyClient.set_phase_move_targets` for the contract. An
+        addition reads the connections, writes the merged list with
+        ``updatePhaseJumps``, and reads them back. A replacement skips the
+        first read.
         """
         parsed_ids = parse_target_phase_ids(target_phase_ids, replace=replace)
-        allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
-            phase_id
-        )
-        update_input = plan_phase_move_targets(
-            phase_id, allowed_moves, parsed_ids, replace=replace
-        )
+        jump_target_ids = list(parsed_ids)
+        if not replace:
+            allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
+                phase_id
+            )
+            jump_target_ids = merge_phase_move_targets(
+                phase_id, allowed_moves, parsed_ids
+            )
         raw = await self._executor.execute_query(
-            SET_PHASE_MOVE_TARGETS_MUTATION,
-            {"input": update_input.to_graphql_input()},
+            UPDATE_PHASE_JUMPS_MUTATION,
+            {"input": {"phaseId": str(phase_id), "targetPhaseIds": jump_target_ids}},
         )
-        return {"phase": raw["updatePhase"]["phase"]}
+        if not raw["updatePhaseJumps"]["success"]:
+            raise PipefyAPIError(
+                f"updatePhaseJumps returned success=false for phase_id={str(phase_id)!r}. "
+                "Read the connections with get_phase_allowed_move_targets before you retry."
+            )
+        saved = await self._pipe_service.get_phase_allowed_move_targets(phase_id)
+        if not saved.get("phase"):
+            raise PipefyAPIError(
+                f"updatePhaseJumps saved the connections of phase_id={str(phase_id)!r}, "
+                "but the read-back returned no phase."
+            )
+        return saved
 
     async def delete_phase(self, phase_id: str | int) -> dict:
         """Delete a phase by ID (permanent)."""

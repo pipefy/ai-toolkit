@@ -1,11 +1,10 @@
-"""Build the ``updatePhase`` input that sets the phases a card can move to."""
+"""Build the list of phases a card can move to, for ``updatePhaseJumps``."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
 
-from pipefy_sdk.graphql_inputs import UpdatePhaseInput
 from pipefy_sdk.phase_inventory import get_phase_not_found_message
 
 
@@ -42,24 +41,21 @@ def parse_target_phase_ids(
     return tuple(parsed)
 
 
-def plan_phase_move_targets(
+def merge_phase_move_targets(
     phase_id: str | int,
     allowed_moves: dict[str, Any],
     target_phase_ids: tuple[str, ...],
-    *,
-    replace: bool,
-) -> UpdatePhaseInput:
-    """Build the input that gives ``phase_id`` its new outgoing connections.
+) -> list[str]:
+    """Return the current destinations of ``phase_id`` followed by the new ones.
 
-    ``updatePhase`` replaces the whole ``jumpTargetIds`` list and requires
-    ``name``. The input therefore repeats the current name. Unless ``replace``
-    is True, it also keeps the current destinations before the new ones.
+    ``updatePhaseJumps`` replaces the whole list, so an addition must send the
+    destinations that the read returned too. A destination that another client
+    saves after that read is not in the list, and the write removes it.
 
     Args:
         phase_id: Source phase.
         allowed_moves: ``get_phase_allowed_move_targets`` payload for ``phase_id``.
         target_phase_ids: Output of :func:`parse_target_phase_ids`.
-        replace: Send ``target_phase_ids`` as the complete list.
 
     Raises:
         ValueError: The read returned no phase.
@@ -67,17 +63,10 @@ def plan_phase_move_targets(
     phase = allowed_moves.get("phase")
     if not phase:
         raise ValueError(get_phase_not_found_message(phase_id))
-    jump_target_ids = list(target_phase_ids)
-    if not replace:
-        current = [
-            str(row["id"]) for row in phase.get("cards_can_be_moved_to_phases") or []
-        ]
-        jump_target_ids = current + [t for t in target_phase_ids if t not in current]
-    return UpdatePhaseInput(
-        id=str(phase_id),
-        name=phase["name"],
-        jumpTargetIds=jump_target_ids,
-    )
+    current = [
+        str(row["id"]) for row in phase.get("cards_can_be_moved_to_phases") or []
+    ]
+    return current + [t for t in target_phase_ids if t not in current]
 
 
-__all__ = ["parse_target_phase_ids", "plan_phase_move_targets"]
+__all__ = ["merge_phase_move_targets", "parse_target_phase_ids"]

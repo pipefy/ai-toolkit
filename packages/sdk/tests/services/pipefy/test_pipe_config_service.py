@@ -31,7 +31,6 @@ from pipefy_sdk.queries.pipe_config_queries import (
     DELETE_PIPE_MUTATION,
     GET_FIELD_CONDITION_QUERY,
     GET_FIELD_CONDITIONS_QUERY,
-    SET_PHASE_MOVE_TARGETS_MUTATION,
     UPDATE_FIELD_CONDITION_MUTATION,
     UPDATE_LABEL_MUTATION,
     UPDATE_PHASE_FIELD_MUTATION,
@@ -376,104 +375,6 @@ async def test_update_phase_merges_id_and_attrs():
     assert result == {
         "updatePhase": {"phase": {"id": "3", "name": "Renamed", "done": True}},
     }
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_set_phase_move_targets_adds_to_the_current_targets():
-    pipe_service = AsyncMock()
-    pipe_service.get_phase_allowed_move_targets.return_value = {
-        "phase": {
-            "id": "3",
-            "name": "Review",
-            "cards_can_be_moved_to_phases": [{"id": "4", "name": "Approved"}],
-        }
-    }
-    saved_phase = {
-        "id": "3",
-        "name": "Review",
-        "cards_can_be_moved_to_phases": [
-            {"id": "4", "name": "Approved"},
-            {"id": "5", "name": "Rejected"},
-        ],
-    }
-    service, executor = _make_service_with_pipe(
-        {"updatePhase": {"phase": saved_phase}}, pipe_service
-    )
-
-    result = await service.set_phase_move_targets(3, ["5"])
-
-    pipe_service.get_phase_allowed_move_targets.assert_awaited_once_with(3)
-    query, variables = executor.execute_query.call_args[0]
-    assert query is SET_PHASE_MOVE_TARGETS_MUTATION
-    assert variables == {
-        "input": {"id": "3", "name": "Review", "jumpTargetIds": ["4", "5"]},
-    }
-    assert result == {"phase": saved_phase}
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_set_phase_move_targets_replace_sends_only_the_given_targets():
-    pipe_service = AsyncMock()
-    pipe_service.get_phase_allowed_move_targets.return_value = {
-        "phase": {
-            "id": "3",
-            "name": "Review",
-            "cards_can_be_moved_to_phases": [{"id": "4", "name": "Approved"}],
-        }
-    }
-    service, executor = _make_service_with_pipe(
-        {"updatePhase": {"phase": {"id": "3"}}}, pipe_service
-    )
-
-    await service.set_phase_move_targets("3", ["5"], replace=True)
-
-    variables = executor.execute_query.call_args[0][1]
-    assert variables["input"]["jumpTargetIds"] == ["5"]
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_set_phase_move_targets_replace_with_no_targets_clears_them():
-    pipe_service = AsyncMock()
-    pipe_service.get_phase_allowed_move_targets.return_value = {
-        "phase": {
-            "id": "3",
-            "name": "Review",
-            "cards_can_be_moved_to_phases": [{"id": "4", "name": "Approved"}],
-        }
-    }
-    service, executor = _make_service_with_pipe(
-        {
-            "updatePhase": {
-                "phase": {
-                    "id": "3",
-                    "name": "Review",
-                    "cards_can_be_moved_to_phases": None,
-                }
-            }
-        },
-        pipe_service,
-    )
-
-    await service.set_phase_move_targets("3", [], replace=True)
-
-    variables = executor.execute_query.call_args[0][1]
-    assert variables == {"input": {"id": "3", "name": "Review", "jumpTargetIds": []}}
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_set_phase_move_targets_rejects_an_empty_list_before_any_call():
-    pipe_service = AsyncMock()
-    service, executor = _make_service_with_pipe({}, pipe_service)
-
-    with pytest.raises(ValueError, match="target_phase_ids is empty"):
-        await service.set_phase_move_targets("3", [])
-
-    pipe_service.get_phase_allowed_move_targets.assert_not_called()
-    executor.execute_query.assert_not_called()
 
 
 @pytest.mark.unit
