@@ -150,5 +150,23 @@ class HtmlValidationError(PipefyError):
         )
 
 
+PORTAL_PERMISSION_MESSAGE = (
+    "Permission denied. The account the toolkit signs in as needs the "
+    "organization permission `create_portal` or `manage_portals` (request it "
+    "from your organization admin) and, to write to an existing portal, the "
+    "admin role on that portal. An organization admin is still denied on a "
+    "portal they have not joined, even one they created: that account must join "
+    "it once through the Interfaces `joinAsAdmin` mutation, which the toolkit "
+    "does not expose."
+)
+
+
 class PortalPermissionError(ValueError):
-    """Raised when a portal Interfaces operation fails with PERMISSION_DENIED."""
+    """Raised when a portal Interfaces operation fails with PERMISSION_DENIED.
+
+    The default message names both grants a portal write needs: the
+    organization permission and the admin role on the target portal.
+    """
+
+    def __init__(self, message: str = PORTAL_PERMISSION_MESSAGE) -> None:
+        super().__init__(message)

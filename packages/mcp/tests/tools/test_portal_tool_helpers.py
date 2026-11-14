@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from pipefy_sdk import PipefyGraphQLError
 from pipefy_sdk.exceptions import (
+    PORTAL_PERMISSION_MESSAGE,
     HtmlValidationError,
     HtmlViolation,
     PortalPermissionError,
@@ -19,24 +20,22 @@ from pipefy_mcp.tools.portal_tool_helpers import (
     validate_sort_page_ids_no_duplicates,
 )
 
-_PORTAL_PERMISSION_MSG = (
-    "Permission denied. Request organization permissions such as "
-    "`create_portal` or `manage_portals` from your admin."
-)
-
 
 @pytest.mark.unit
 def test_map_portal_error_returns_portal_permission_message() -> None:
     """Pre-mapped SDK permission errors are returned without substring heuristics."""
-    exc = PortalPermissionError(_PORTAL_PERMISSION_MSG)
-    assert map_portal_error_to_message(exc) == _PORTAL_PERMISSION_MSG
+    exc = PortalPermissionError()
+    assert map_portal_error_to_message(exc) == PORTAL_PERMISSION_MESSAGE
 
 
 @pytest.mark.unit
 def test_map_portal_error_blank_permission_message_uses_fallback():
+    """A blank permission error falls back to the SDK message, joinAsAdmin included."""
     message = map_portal_error_to_message(PortalPermissionError("  "))
+    assert message == PORTAL_PERMISSION_MESSAGE
     assert "create_portal" in message
     assert "manage_portals" in message
+    assert "joinAsAdmin" in message
     assert "Try again" not in message
 
 
