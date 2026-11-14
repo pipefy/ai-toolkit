@@ -824,6 +824,73 @@ class PipeConfigTools:
         @mcp.tool(
             annotations=ToolAnnotations(
                 readOnlyHint=False,
+            ),
+            meta=REMOTE,
+        )
+        async def set_phase_move_targets(
+            phase_id: PipefyId,
+            target_phase_ids: list[PipefyId],
+            ctx: Context,
+            replace: bool = False,
+            debug: bool = False,
+        ) -> dict[str, Any]:
+            """Add phases that a card can move to from a source phase, or replace them all.
+
+            A card moves only to a phase that its current phase connects to. A move
+            rule in an automation or an AI agent has the same limit. A new phase
+            connects only to the phases beside it. Use this tool to add other
+            connections, for example from an approval phase to a rejection phase.
+
+            By default, the tool keeps the current connections and adds
+            ``target_phase_ids``. With ``replace=True``, ``target_phase_ids`` becomes
+            the complete list, and the tool removes each connection that is not in it.
+            An empty list with ``replace=True`` removes every connection.
+            ``data`` holds the saved list in the shape of
+            ``get_phase_allowed_move_targets``.
+
+            A connection goes one way, from the source phase to the destination.
+            Each destination must be a phase of the same pipe. The source phase and
+            the start form phase are not valid destinations. Pipefy rejects other
+            ids with ``RECORD_INVALID`` and names them in the message.
+
+            Args:
+                phase_id: Source phase ID.
+                    Discover via: ``get_pipe(pipe_id).phases[].id``.
+                target_phase_ids: Destination phase IDs. Send at least one, unless
+                    ``replace`` is True.
+                    Discover via: ``get_pipe(pipe_id).phases[].id``.
+                replace: When True, remove each connection that is not in
+                    ``target_phase_ids``.
+                debug: When True, append GraphQL codes and correlation_id to errors.
+            """
+            client = get_pipefy_client(ctx)
+            phase_id_str, err = validate_tool_id(phase_id, "phase_id")
+            if err is not None:
+                return err
+            try:
+                raw = await client.set_phase_move_targets(
+                    phase_id_str, target_phase_ids, replace=replace
+                )
+            except ValueError as exc:
+                return build_pipe_tool_error_payload(
+                    message=str(exc), code="INVALID_ARGUMENTS"
+                )
+            except Exception as exc:  # noqa: BLE001
+                return handle_pipe_config_tool_graphql_error(
+                    exc,
+                    "Set phase move targets failed.",
+                    debug=debug,
+                    resource_kind="phase",
+                    resource_id=phase_id_str,
+                )
+            return tool_success(
+                data=normalize_phase_allowed_move_targets(raw),
+                message="Phase move targets saved.",
+            )
+
+        @mcp.tool(
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
                 destructiveHint=True,
             ),
             meta=REMOTE,

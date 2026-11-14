@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **197** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **198** tools).
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -139,7 +139,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_organization_report` | `pipefy report-org get` | shipped | Organization reports. |
 | `get_organization_report_export` | (poll via `pipefy report-org export --format json`) | shipped | Organization reports + export-shaped. |
 | `get_organization_reports` | `pipefy report-org list` | shipped | Organization reports. |
-| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). |
+| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). `set_phase_move_targets` changes them. |
 | `get_phase_cards` | `pipefy phase cards` | shipped | ``Phase.cards`` pagination (``--first`` default 50, ``--after``, ``--include-fields``). Prefer over ``get_cards`` for phase-local inventory. |
 | `get_phase_cards_count` | `pipefy phase count` | shipped | Native ``Phase.cards_count`` via ``get_phase``; pair with ``get_phase_cards`` to list. |
 | `get_interface_html` | `pipefy portal html-interface get` | shipped | Interfaces schema; read-only; HTML interface with each `customCode` element's live document. Raises on a grid-layout interface (use `get_portal`). Remote-safe. |
@@ -184,6 +184,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `set_interface_actions` | `pipefy portal html-interface set-actions` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its `metadata.actions` (`[]` removes them), keeping its other metadata keys and data sources, and sets or keeps `editable` (`--editable/--no-editable`). Actions are checked before the call, and each `sourceId`/`repoId` against the element's sources. Remote-safe. |
 | `set_interface_sources` | `pipefy portal html-interface set-sources` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its data sources (`[]` removes them), keeping its `metadata` and `editable`. Sources are checked before the call. Remote-safe. |
 | `set_llm_provider_active_status` | `pipefy ai-provider set-active-status` | shipped | Custom (BYOM) provider; `--active/--inactive`; org from session. |
+| `set_phase_move_targets` | `pipefy phase targets --add` / `--set` / `--clear` | shipped | `updatePhase` `jumpTargetIds` (replace-all on the API). The default adds to the current connections. `replace` (CLI `--set`) sends the complete list, and an empty list with `replace` (CLI `--clear`) removes every connection. Remote-safe. |
 | `set_role` | `pipefy member set-role` | shipped | — |
 | `set_table_record_field_value` | `pipefy record update` | shipped | (``--field-id`` + ``--value``). |
 | `simulate_automation` | `pipefy automation simulate` | shipped | (`--pipe`, `--action-id`, `--sample-card`, optional JSON fragments). |
