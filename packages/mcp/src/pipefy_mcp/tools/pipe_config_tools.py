@@ -848,7 +848,8 @@ class PipeConfigTools:
             An empty list with ``replace=True`` removes every connection. The tool
             changes only the connections, not the phase name. ``data`` holds the
             list that the tool reads back after the write, in the shape of
-            ``get_phase_allowed_move_targets``.
+            ``get_phase_allowed_move_targets``. When every id is already connected,
+            the default mode makes no write and returns the current list.
 
             The API has no atomic add. The default mode keeps the connections that
             it reads before the write. If another client saves a connection on the

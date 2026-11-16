@@ -77,6 +77,11 @@ def test_merge_sends_a_target_that_is_already_connected_once():
 
 
 @pytest.mark.unit
+def test_merge_returns_none_when_every_target_is_already_connected():
+    assert merge_phase_move_targets("10", _allowed_moves(), ("30", "20")) is None
+
+
+@pytest.mark.unit
 def test_merge_on_a_phase_whose_connections_read_as_null():
     allowed_moves = {
         "phase": {"id": "10", "name": "Review", "cards_can_be_moved_to_phases": None}

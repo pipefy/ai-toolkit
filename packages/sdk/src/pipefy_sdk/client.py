@@ -468,7 +468,8 @@ class PipefyClient:
         complete list, and an empty list removes every connection. The write
         changes only the connections, not the phase name. Returns the
         connections read back after the write, in the shape of
-        :meth:`get_phase_allowed_move_targets`.
+        :meth:`get_phase_allowed_move_targets`. When every target is already
+        connected, an addition makes no write and returns its first read.
 
         The API has no atomic add. An addition keeps the connections that its
         first read returned. If another client saves a connection on the same

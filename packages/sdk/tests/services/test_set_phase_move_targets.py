@@ -79,13 +79,27 @@ async def test_add_keeps_current_connections_and_returns_the_saved_list():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_add_of_a_phase_that_is_already_connected_keeps_the_list():
+async def test_add_of_a_phase_that_is_already_connected_makes_no_write():
     api = _PhaseConnectionsApi(targets=("20", "30"))
     client, _ = _connect(api)
 
-    await client.set_phase_move_targets("10", ["30"])
+    result = await client.set_phase_move_targets("10", ["30", "20"])
 
     assert api.targets == ["20", "30"]
+    assert "updatePhaseJumps" not in api.operations
+    assert result == await client.get_phase_allowed_move_targets("10")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_add_of_a_connected_phase_keeps_a_destination_saved_after_its_read():
+    api = _PhaseConnectionsApi(targets=("20",))
+    api.after_first_read = lambda phase: phase.targets.append("40")
+    client, _ = _connect(api)
+
+    await client.set_phase_move_targets("10", ["20"])
+
+    assert api.targets == ["20", "40"]
 
 
 @pytest.mark.unit

@@ -45,12 +45,14 @@ def merge_phase_move_targets(
     phase_id: str | int,
     allowed_moves: dict[str, Any],
     target_phase_ids: tuple[str, ...],
-) -> list[str]:
+) -> list[str] | None:
     """Return the current destinations of ``phase_id`` followed by the new ones.
 
     ``updatePhaseJumps`` replaces the whole list, so an addition must send the
     destinations that the read returned too. A destination that another client
-    saves after that read is not in the list, and the write removes it.
+    saves after that read is not in the list, and the write removes it. Returns
+    ``None`` when every target is already connected, so the caller skips the
+    write.
 
     Args:
         phase_id: Source phase.
@@ -66,7 +68,10 @@ def merge_phase_move_targets(
     current = [
         str(row["id"]) for row in phase.get("cards_can_be_moved_to_phases") or []
     ]
-    return current + [t for t in target_phase_ids if t not in current]
+    added = [t for t in target_phase_ids if t not in current]
+    if not added:
+        return None
+    return current + added
 
 
 __all__ = ["merge_phase_move_targets", "parse_target_phase_ids"]

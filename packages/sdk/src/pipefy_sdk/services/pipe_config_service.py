@@ -217,8 +217,9 @@ class PipeConfigService:
 
         See :meth:`PipefyClient.set_phase_move_targets` for the contract. An
         addition reads the connections, writes the merged list with
-        ``updatePhaseJumps``, and reads them back. A replacement skips the
-        first read.
+        ``updatePhaseJumps``, and reads them back. When every target is already
+        connected, it returns the first read and makes no write. A replacement
+        skips the first read.
         """
         parsed_ids = parse_target_phase_ids(target_phase_ids, replace=replace)
         jump_target_ids = list(parsed_ids)
@@ -226,9 +227,10 @@ class PipeConfigService:
             allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
                 phase_id
             )
-            jump_target_ids = merge_phase_move_targets(
-                phase_id, allowed_moves, parsed_ids
-            )
+            merged = merge_phase_move_targets(phase_id, allowed_moves, parsed_ids)
+            if merged is None:
+                return allowed_moves
+            jump_target_ids = merged
         raw = await self._executor.execute_query(
             UPDATE_PHASE_JUMPS_MUTATION,
             {"input": {"phaseId": str(phase_id), "targetPhaseIds": jump_target_ids}},
