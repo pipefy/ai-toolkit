@@ -5,9 +5,12 @@ from __future__ import annotations
 TRANSITION_RULES_HINT = (
     "Phase transition rules (Pipe settings -> Phase -> Connections) set where a card "
     "can move. create_phase connects a new phase to the phases beside it. "
-    "set_phase_move_targets (CLI: pipefy phase targets --add) adds other connections. "
     "Use get_phase_allowed_move_targets on the source phase to list valid destinations "
-    "(GraphQL field phase.cards_can_be_moved_to_phases)."
+    "(GraphQL field phase.cards_can_be_moved_to_phases). A new connection applies to "
+    "every card in the source phase. Add one only when the user asks for it or the "
+    "process design needs it, with set_phase_move_targets (CLI: pipefy phase targets "
+    "--add). If the session does not have that tool, ask a pipe admin to add the "
+    "connection."
 )
 
 
