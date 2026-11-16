@@ -3,7 +3,7 @@
 import pytest
 from _shared.mock_clients import mock_executor
 
-from pipefy_sdk import PipefyAPIError, PipefyGraphQLError
+from pipefy_sdk import PhaseNotFoundError, PipefyAPIError, PipefyGraphQLError
 from pipefy_sdk.client import Executors, PipefyClient
 from pipefy_sdk.settings import PipefySettings
 
@@ -169,7 +169,7 @@ async def test_add_does_not_restore_a_name_changed_after_its_read():
 async def test_add_on_a_phase_the_read_does_not_return_writes_nothing():
     executor = mock_executor({"phase": None})
 
-    with pytest.raises(ValueError, match="Phase 10 not found or access denied"):
+    with pytest.raises(PhaseNotFoundError, match="Phase 10 not found or access denied"):
         await _client(executor).set_phase_move_targets("10", ["30"])
 
     assert executor.execute_query.await_count == 1

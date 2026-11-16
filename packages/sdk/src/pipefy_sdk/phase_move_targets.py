@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from pipefy_sdk.phase_inventory import get_phase_not_found_message
+from pipefy_sdk.exceptions import PhaseNotFoundError
 
 
 def parse_target_phase_ids(
@@ -58,11 +58,11 @@ def merge_phase_move_targets(
         target_phase_ids: Output of :func:`parse_target_phase_ids`.
 
     Raises:
-        ValueError: The read returned no phase.
+        PhaseNotFoundError: The read returned no phase.
     """
     phase = allowed_moves.get("phase")
     if not phase:
-        raise ValueError(get_phase_not_found_message(phase_id))
+        raise PhaseNotFoundError(phase_id)
     current = [
         str(row["id"]) for row in phase.get("cards_can_be_moved_to_phases") or []
     ]

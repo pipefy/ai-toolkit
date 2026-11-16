@@ -11,6 +11,7 @@ from _mcp_compat import (
 )
 from pipefy_sdk import (
     FIELD_TYPE_IDS,
+    PhaseNotFoundError,
     PipefyClient,
     PipefyGraphQLError,
     PipefyRequestTimeoutError,
@@ -701,6 +702,26 @@ async def test_set_phase_move_targets_value_error_is_invalid_arguments(
     assert payload["success"] is False
     assert payload["error"]["code"] == "INVALID_ARGUMENTS"
     assert "target_phase_ids is empty" in payload["error"]["message"]
+
+
+@pytest.mark.anyio
+async def test_set_phase_move_targets_missing_phase_is_not_found(
+    pipe_config_session, mock_pipe_config_client, extract_payload
+):
+    mock_pipe_config_client.set_phase_move_targets.side_effect = PhaseNotFoundError(
+        "10"
+    )
+
+    async with pipe_config_session as session:
+        result = await session.call_tool(
+            "set_phase_move_targets",
+            {"phase_id": 10, "target_phase_ids": [20]},
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "NOT_FOUND"
+    assert payload["error"]["message"] == "Phase 10 not found or access denied."
 
 
 @pytest.mark.anyio

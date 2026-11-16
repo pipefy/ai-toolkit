@@ -9,6 +9,7 @@ from pipefy_sdk import (
     CreatePipePhase,
     CreatePipeStartFormField,
     FieldTypeId,
+    PhaseNotFoundError,
     PipefyClient,
     PipefyId,
     PipePhaseSetupError,
@@ -882,6 +883,8 @@ class PipeConfigTools:
                 raw = await client.set_phase_move_targets(
                     phase_id_str, target_phase_ids, replace=replace
                 )
+            except PhaseNotFoundError as exc:
+                return build_pipe_tool_error_payload(message=str(exc), code="NOT_FOUND")
             except ValueError as exc:
                 return build_pipe_tool_error_payload(
                     message=str(exc), code="INVALID_ARGUMENTS"

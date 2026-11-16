@@ -1,5 +1,6 @@
 import pytest
 
+from pipefy_sdk import PhaseNotFoundError
 from pipefy_sdk.phase_move_targets import (
     merge_phase_move_targets,
     parse_target_phase_ids,
@@ -91,5 +92,5 @@ def test_merge_on_a_phase_with_no_connections():
 
 @pytest.mark.unit
 def test_merge_rejects_a_phase_the_read_did_not_return():
-    with pytest.raises(ValueError, match="Phase 10 not found or access denied"):
+    with pytest.raises(PhaseNotFoundError, match="Phase 10 not found or access denied"):
         merge_phase_move_targets("10", {"phase": None}, ("20",))

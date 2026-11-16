@@ -480,8 +480,9 @@ class PipefyClient:
 
         Raises:
             ValueError: ``target_phase_ids`` is a string or bytes, an id is
-                blank, the list is empty without ``replace``, or an addition
-                does not find the phase.
+                blank, or the list is empty without ``replace``.
+            PhaseNotFoundError: An addition does not find the phase. It is
+                also a ``ValueError``.
             PipefyAPIError: The write returns ``success: false``, or the
                 read-back returns no phase.
         """

@@ -17,6 +17,7 @@ against.
 from __future__ import annotations
 
 from pipefy_sdk import (
+    PhaseNotFoundError,
     PipefyAPIError,
     PipefyError,
     PipefyGraphQLError,
@@ -46,6 +47,13 @@ def test_raised_graphql_error_is_caught_by_the_root() -> None:
         assert exc.errors == [{"message": "denied"}]
     else:  # pragma: no cover - the raise above always fires
         raise AssertionError("PipefyGraphQLError escaped except PipefyError")
+
+
+def test_phase_not_found_is_catchable_as_the_root_and_as_a_value_error() -> None:
+    """Back-compat: a missing phase on an addition was a bare ``ValueError``."""
+    assert issubclass(PhaseNotFoundError, PipefyError)
+    assert issubclass(PhaseNotFoundError, ValueError)
+    assert str(PhaseNotFoundError(10)) == "Phase 10 not found or access denied."
 
 
 def test_request_timeout_is_catchable_as_the_root() -> None:

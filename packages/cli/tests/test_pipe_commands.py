@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from pipefy_sdk import PipePhaseSetupError
+from pipefy_sdk import PhaseNotFoundError, PipePhaseSetupError
 from pipefy_sdk.graphql_inputs import (
     RepoPreferenceInput,
     UpdatePipeInput,
@@ -523,6 +523,21 @@ def test_phase_targets_value_error_exits_2(
 
     assert result.exit_code == 2
     assert "target_phase_ids is empty" in result.stderr
+
+
+def test_phase_targets_missing_phase_exits_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-missing")
+    mock_client = MagicMock()
+    mock_client.set_phase_move_targets = AsyncMock(
+        side_effect=PhaseNotFoundError("5001")
+    )
+
+    result = _invoke_phase_targets(runner, mock_client, ["--add", "300"])
+
+    assert result.exit_code == 1
+    assert "Phase 5001 not found or access denied." in result.stderr
 
 
 def test_phase_count_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
