@@ -462,7 +462,7 @@ class PipeConfigTools:
             ctx: Context,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """List phases a card may move to from a source phase (UI transition rules).
+            """List phases a card may move to from a source phase (phase connections).
 
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
