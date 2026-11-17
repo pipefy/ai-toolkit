@@ -621,7 +621,7 @@ class AutomationService:
             simulation_id=simulation_id,
             automation_simulation=row,
             warnings=simulation_output_warnings(
-                row, requested_simulation_field_ids(action_params)
+                row, requested_simulation_field_ids(input_obj.get("action_params"))
             ),
         )
 

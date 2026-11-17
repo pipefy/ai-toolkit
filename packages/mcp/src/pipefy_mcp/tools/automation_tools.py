@@ -354,8 +354,10 @@ class AutomationTools:
             The tool reads the simulation one time. When ``status`` is ``processing``,
             read the result with ``get_automation_simulation``. Each call of this tool
             starts a new simulation. When the first read is already ``success``,
-            ``warnings`` lists bracket placeholders and the ``aiParams.fieldIds`` fields
-            with no value, as ``get_automation_simulation`` does.
+            ``warnings`` lists bracket placeholders and the fields with no value, as
+            ``get_automation_simulation`` does. The fields come from the
+            ``action_params.aiParams.fieldIds`` that the tool sends, after the
+            ``extra_input`` merge.
 
             **Pipe context:** ``pipe_id`` is forwarded as ``event_repo_id`` and ``action_repo_id`` on the
             simulation input (Pipefy often returns ``INTERNAL_SERVER_ERROR`` if these are omitted). Override

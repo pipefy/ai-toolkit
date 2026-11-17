@@ -1241,8 +1241,9 @@ class PipefyClient:
         The API accepts only ``action_id`` ``generate_with_ai``. When ``status`` is
         ``processing``, read the result with ``get_automation_simulation``. When the
         first read is already ``success``, ``warnings`` lists the output to check. It
-        uses the rules of ``get_automation_simulation`` and the ``fieldIds`` in
-        ``action_params.aiParams``. Otherwise ``warnings`` is empty.
+        uses the rules of ``get_automation_simulation`` and the ``fieldIds`` in the
+        ``action_params.aiParams`` that the call sends, after the ``extra_input``
+        merge. Otherwise ``warnings`` is empty.
         """
         return await self._automation_service.simulate_automation(
             pipe_id=pipe_id,

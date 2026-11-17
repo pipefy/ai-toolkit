@@ -114,23 +114,55 @@ async def test_unknown_simulation_id_raises_with_the_id():
         await _service(executor, FakeClock()).get_automation_simulation("sim-404")
 
 
+def _ai_params(*field_ids):
+    return {"aiParams": {"value": "x", "fieldIds": list(field_ids)}}
+
+
 @pytest.mark.unit
-async def test_simulate_automation_warns_about_the_first_final_read():
+@pytest.mark.parametrize(
+    ("action_params", "extra_input", "final", "expected_warnings"),
+    [
+        pytest.param(
+            _ai_params("101", "102"),
+            None,
+            {"101": {"label": "Reply", "type": "long_text", "value": "[Seu Nome]"}},
+            [
+                {"field_id": "101", "kind": "placeholder", "text": "[Seu Nome]"},
+                {"field_id": "102", "kind": "empty", "text": ""},
+            ],
+            id="action_params",
+        ),
+        pytest.param(
+            _ai_params("101", "102"),
+            {"action_params": _ai_params("201", "202")},
+            {"201": {"label": "Reply", "type": "long_text", "value": "Done"}},
+            [{"field_id": "202", "kind": "empty", "text": ""}],
+            id="extra_input_replaces_action_params",
+        ),
+        pytest.param(
+            None,
+            {"action_params": _ai_params("201", "202")},
+            {"201": {"label": "Reply", "type": "long_text", "value": "Done"}},
+            [{"field_id": "202", "kind": "empty", "text": ""}],
+            id="extra_input_only",
+        ),
+    ],
+)
+async def test_simulate_automation_warns_about_the_first_final_read(
+    action_params, extra_input, final, expected_warnings
+):
     mutation = {"createAutomationSimulation": {"simulationId": "sim-5"}}
-    final = {"101": {"label": "Reply", "type": "long_text", "value": "[Seu Nome]"}}
     executor = mock_executor(side_effect=[mutation, _read("success", final)])
 
     result = await _service(executor, FakeClock()).simulate_automation(
         pipe_id="p1",
         action_id="generate_with_ai",
         sample_card_id="c1",
-        action_params={"aiParams": {"value": "x", "fieldIds": ["101", "102"]}},
+        action_params=action_params,
+        extra_input=extra_input,
     )
 
-    assert result["warnings"] == [
-        {"field_id": "101", "kind": "placeholder", "text": "[Seu Nome]"},
-        {"field_id": "102", "kind": "empty", "text": ""},
-    ]
+    assert result["warnings"] == expected_warnings
 
 
 @pytest.mark.unit
