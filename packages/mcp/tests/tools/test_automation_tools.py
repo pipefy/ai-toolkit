@@ -973,6 +973,7 @@ async def test_simulate_automation_success(
     assert payload["simulation_id"] == "sim-1"
     assert payload["automation_simulation"]["simulationResult"] == {"x": 1}
     assert payload["warnings"] == [warning]
+    assert payload["field_ids"] == ["101"]
 
 
 @pytest.mark.anyio
@@ -1422,7 +1423,9 @@ async def test_simulate_automation_hint_keeps_the_field_ids_while_processing(
             },
         )
 
-    message = extract_payload(result)["message"]
+    payload = extract_payload(result)
+    assert payload["field_ids"] == ["201", "202"]
+    message = payload["message"]
     assert (
         "get_automation_simulation(simulation_id='sim-8', field_ids=['201', '202'])"
         in message

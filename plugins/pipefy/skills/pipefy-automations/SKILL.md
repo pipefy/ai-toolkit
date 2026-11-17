@@ -212,7 +212,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
    simulate_automation pipe_id=67890 action_id=generate_with_ai sample_card_id=456 event_id=card_created action_params={"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}}
    ```
 
-4. Read the immediate result. It can contain `simulation_id`, `status:"processing"`, and a null `simulationResult`. Keep the ID. Each `simulate_automation` call starts a new simulation, so do not call it again to get the result. Read the existing simulation with `get_automation_simulation`, and send the `fieldIds` of the prompt as `field_ids`:
+4. Read the immediate result. It can contain `simulation_id`, `status:"processing"`, and a null `simulationResult`. Keep the ID. Each `simulate_automation` call starts a new simulation, so do not call it again to get the result. Read the existing simulation with `get_automation_simulation`, and send the `field_ids` that `simulate_automation` returned:
 
    ```
    get_automation_simulation simulation_id=<simulation_id> field_ids=["900000101"]

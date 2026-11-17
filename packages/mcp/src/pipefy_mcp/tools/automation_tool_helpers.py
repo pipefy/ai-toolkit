@@ -45,7 +45,7 @@ class AutomationMutationSuccessPayload(TypedDict):
     automation: dict[str, Any]
 
 
-class AutomationSimulationSuccessPayload(TypedDict):
+class _AutomationSimulationPayload(TypedDict):
     success: Literal[True]
     message: str
     simulation_id: str
@@ -53,7 +53,11 @@ class AutomationSimulationSuccessPayload(TypedDict):
     warnings: list[SimulationOutputWarning]
 
 
-class AutomationSimulationReadPayload(AutomationSimulationSuccessPayload):
+class AutomationSimulationSuccessPayload(_AutomationSimulationPayload):
+    field_ids: list[str]
+
+
+class AutomationSimulationReadPayload(_AutomationSimulationPayload):
     waited_seconds: float
 
 
@@ -107,6 +111,7 @@ def build_automation_simulation_success_payload(
         "simulation_id": simulation_id,
         "automation_simulation": automation_simulation,
         "warnings": warnings,
+        "field_ids": field_ids,
     }
 
 
