@@ -333,6 +333,7 @@ class AiAutomationTools:
             pipe_id: PipefyId,
             prompt: str,
             field_ids: list[str],
+            active: bool = True,
             skills_ids: list[str] | None = None,
             event_params: dict | None = None,
             condition: dict | None = None,
@@ -359,6 +360,7 @@ class AiAutomationTools:
                     Discover via: ``get_phase_fields(phase_id)[].internal_id`` for ``%{internal_id}`` tokens.
                 field_ids: List of field internal IDs where the AI writes its output.
                     Discover via: ``get_phase_fields(phase_id)[].internal_id``.
+                active: When True (default), the rule is created enabled and can run on the next matching event. Set False to start disabled; enable it later with ``update_ai_automation`` (``active=True``).
                 skills_ids: AI skill IDs to attach. Defaults to empty (no skills).
                 event_params: Trigger-specific filters (e.g. {"to_phase_id": "..."} for card_moved, {"triggerFieldIds": [...]} for field_updated).
                 condition: Optional trigger condition dict. Omit to use the built-in placeholder (empty expression list) so Pipefy always receives a condition on create. Pass a dict to set a custom condition.
@@ -383,6 +385,7 @@ class AiAutomationTools:
                     pipe_id=pipe_id,
                     prompt=prompt,
                     field_ids=field_ids,
+                    active=active,
                     **optional_fields,
                 )
             except ValidationError as exc:

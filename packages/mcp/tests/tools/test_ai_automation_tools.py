@@ -801,6 +801,38 @@ class TestCreateAiAutomation:
         assert dumped["expressions"][0]["field_address"] == "status"
         assert dumped["expressions"][0]["operation"] == "eq"
 
+    @pytest.mark.parametrize(
+        ("arguments", "expected_active"),
+        [({}, True), ({"active": False}, False)],
+        ids=["omitted", "false"],
+    )
+    async def test_active_reaches_the_client_input(
+        self,
+        client_session,
+        mock_pipefy_client,
+        arguments,
+        expected_active,
+    ):
+        mock_pipefy_client.create_ai_automation.return_value = {
+            "automation_id": "777",
+            "message": "AI Automation created successfully. ID: 777",
+        }
+        async with client_session as session:
+            result = await session.call_tool(
+                "create_ai_automation",
+                {
+                    "name": "Start state",
+                    "event_id": "card_created",
+                    "pipe_id": "303",
+                    "prompt": "Summarize %{133}",
+                    "field_ids": ["133"],
+                    **arguments,
+                },
+            )
+        assert result.is_error is False
+        validated_input = mock_pipefy_client.create_ai_automation.call_args[0][0]
+        assert validated_input.active is expected_active
+
     async def test_validation_error_returns_error_payload(
         self,
         client_session,

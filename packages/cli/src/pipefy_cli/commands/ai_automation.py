@@ -180,6 +180,9 @@ def ai_automation_create(
     field_ids: str = typer.Option(
         ..., "--field-ids", help="JSON array of output field ids."
     ),
+    active: bool = typer.Option(
+        True, "--active/--no-active", help="Create enabled or disabled."
+    ),
     action_repo: str | None = typer.Option(
         None, "--action-repo", help="Optional action repo id (defaults to --pipe)."
     ),
@@ -220,6 +223,7 @@ def ai_automation_create(
                 "action_repo_id": action_repo.strip() if action_repo else None,
                 "prompt": prompt,
                 "field_ids": fids,
+                "active": active,
                 "skills_ids": skills,
             }
             if ep is not None:
