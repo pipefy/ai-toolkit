@@ -6,6 +6,8 @@ from typing import Any
 
 from typing_extensions import TypedDict
 
+from pipefy_sdk.automation_simulation import SimulationOutputWarning
+
 
 class AutomationEventRepoRef(TypedDict, total=False):
     """Nested ``event_repo`` on a full automation rule."""
@@ -292,7 +294,20 @@ class AutomationSimulationRow(TypedDict, total=False):
 
 
 class SimulateAutomationServiceResult(TypedDict):
-    """Mutation + query outcome from ``AutomationService.simulate_automation``."""
+    """Mutation + query outcome from ``AutomationService.simulate_automation``.
+
+    ``warnings`` is empty unless the first read already holds a ``success`` result.
+    """
 
     simulation_id: str
     automation_simulation: AutomationSimulationRow
+    warnings: list[SimulationOutputWarning]
+
+
+class AutomationSimulationReadResult(TypedDict):
+    """Outcome of ``AutomationService.get_automation_simulation``."""
+
+    simulation_id: str
+    automation_simulation: AutomationSimulationRow
+    warnings: list[SimulationOutputWarning]
+    waited_seconds: float

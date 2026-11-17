@@ -21,6 +21,7 @@ from pipefy_sdk.automation_preflight import (
     validate_automation_field_map_field_ids,
     validate_traditional_automation_move_transition,
 )
+from pipefy_sdk.automation_simulation import SIMULATION_DEFAULT_WAIT_SECONDS
 from pipefy_sdk.exceptions import AiAgentConfigureError
 from pipefy_sdk.field_filters import (
     filter_editable_field_definitions,
@@ -76,6 +77,7 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationEventRow,
     AutomationListPage,
     AutomationRuleRecord,
+    AutomationSimulationReadResult,
     CreateAutomationMutationResult,
     DeleteAutomationServiceResult,
     SimulateAutomationServiceResult,
@@ -1234,7 +1236,14 @@ class PipefyClient:
         name: str | None = None,
         extra_input: dict[str, Any] | None = None,
     ) -> SimulateAutomationServiceResult:
-        """Dry-run a traditional automation action against a sample card (simulation mutation + query)."""
+        """Start an AI automation simulation on a sample card, and read it one time.
+
+        The API accepts only ``action_id`` ``generate_with_ai``. When ``status`` is
+        ``processing``, read the result with ``get_automation_simulation``. When the
+        first read is already ``success``, ``warnings`` lists the output to check. It
+        uses the rules of ``get_automation_simulation`` and the ``fieldIds`` in
+        ``action_params.aiParams``. Otherwise ``warnings`` is empty.
+        """
         return await self._automation_service.simulate_automation(
             pipe_id=pipe_id,
             action_id=action_id,
@@ -1245,6 +1254,40 @@ class PipefyClient:
             condition=condition,
             name=name,
             extra_input=extra_input,
+        )
+
+    async def get_automation_simulation(
+        self,
+        simulation_id: str,
+        *,
+        timeout_seconds: int = SIMULATION_DEFAULT_WAIT_SECONDS,
+        field_ids: Sequence[str | int] | None = None,
+    ) -> AutomationSimulationReadResult:
+        """Read the result of an AI automation simulation, and wait while it runs.
+
+        ``simulate_automation`` often returns ``status`` ``processing`` with no result.
+        This method reads the simulation every 2 seconds until ``status`` is not
+        ``processing`` or ``timeout_seconds`` passes. It does not start a new simulation.
+        If the limit passes first, the result has ``status`` ``processing``. Then call
+        this method again with the same ``simulation_id``.
+
+        ``warnings`` lists the output to check before you trust the prompt. A
+        ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``. An
+        ``empty`` warning names a field in ``field_ids`` that got no value. A warning does
+        not stop the call. Correct the instruction in the prompt and simulate again.
+
+        Args:
+            simulation_id: The ``simulation_id`` that ``simulate_automation`` returned.
+            timeout_seconds: Maximum wait, from 0 to 60. With 0, the method reads one time.
+            field_ids: The ``aiParams.fieldIds`` of the simulated prompt. Without them,
+                ``warnings`` has no ``empty`` items.
+
+        Raises:
+            ValueError: ``timeout_seconds`` is not from 0 to 60, or no simulation has
+                this ``simulation_id``.
+        """
+        return await self._automation_service.get_automation_simulation(
+            simulation_id, timeout_seconds=timeout_seconds, field_ids=field_ids
         )
 
     async def delete_automation(

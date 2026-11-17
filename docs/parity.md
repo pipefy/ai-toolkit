@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **198** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **199** tools).
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -119,6 +119,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_automation_jobs_export_csv` | `pipefy export automation-jobs-csv` (also `pipefy automation export csv`) | shipped | (export id argument). |
 | `get_automation_logs` | `pipefy automation logs --automation` | shipped | (mutually exclusive with `--repo`). |
 | `get_automation_logs_by_repo` | `pipefy automation logs --repo` | shipped | — |
+| `get_automation_simulation` | `pipefy automation simulation` | shipped | Reads `automationSimulation` every 2 seconds until `status` is not `processing` or the limit passes (`--timeout`, 0 to 60, default 30). It starts no simulation. `warnings` lists bracket placeholders and, with `--field-id` (MCP `field_ids`), each field with no output. Remote-safe. |
 | `get_automations` | `pipefy automation list` | shipped | (optional `--organization` / `--pipe`; `--first` 1 to 50, `--after` cursor). `--json` prints the whole page (`nodes`, `totalCount`, `pageInfo`); without `--json`, a table of each row's scalar columns plus `totalCount` / `hasNextPage`, with `event_params` and `condition` left to `--json`. |
 | `get_automations_usage` | `pipefy usage automations` (also `pipefy automation usage`) | shipped | (`--organization`, `--from`, `--to` ISO range). |
 | `get_available_ai_models` | `pipefy ai-provider models` | shipped | LLM provider discovery; vendor model list (`--provider-name`). |

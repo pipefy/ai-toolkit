@@ -888,6 +888,8 @@ Usage: pipefy automation [OPTIONS] COMMAND [ARGS]...
 │ delete             Delete an automation rule (``delete_automation``).        │
 │ simulate           Dry-run an automation against a card                      │
 │                    (``simulate_automation``).                                │
+│ simulation         Read a simulation result and wait while it runs           │
+│                    (``get_automation_simulation``).                          │
 │ logs               List automation execution logs (``get_automation_logs``   │
 │                    or ``get_automation_logs_by_repo``).                      │
 │ event-attributes   List official event-attribute tokens                      │
@@ -1200,6 +1202,37 @@ Usage: pipefy automation simulate [OPTIONS]
 │                                   simulation input.                          │
 │    --json           -j            Print machine-readable JSON to stdout.     │
 │    --help                         Show this message and exit.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP automation/simulation
+Usage: pipefy automation simulation [OPTIONS] SIMULATION_ID
+
+ Read a simulation result and wait while it runs
+ (``get_automation_simulation``).
+
+ The command reads the simulation every 2 seconds until its status is not
+ processing or the --timeout passes. It does not start a new simulation.
+ ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
+ fields with no output. Correct the instruction in the prompt and simulate
+ again.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    simulation_id      TEXT  The simulation_id that `pipefy automation      │
+│                               simulate` printed.                             │
+│                               [required]                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --timeout           INTEGER RANGE [0<=x<=60]  Maximum wait in seconds, from  │
+│                                               0 to 60. With 0, the command   │
+│                                               reads one time.                │
+│                                               [default: 30]                  │
+│ --field-id          TEXT                      A field id of the simulated    │
+│                                               prompt (aiParams.fieldIds), to │
+│                                               list fields with no output     │
+│                                               (repeatable).                  │
+│ --json      -j                                Print machine-readable JSON to │
+│                                               stdout.                        │
+│ --help                                        Show this message and exit.    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP automation/update

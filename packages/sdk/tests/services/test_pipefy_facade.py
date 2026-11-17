@@ -268,6 +268,9 @@ async def test_pipefy_client_facade_delegates_to_services_without_modifying_args
     automation_service.simulate_automation = AsyncMock(
         return_value={"ok": "simulate_automation"}
     )
+    automation_service.get_automation_simulation = AsyncMock(
+        return_value={"ok": "get_automation_simulation"}
+    )
     automation_service.delete_automation = AsyncMock(
         return_value={"ok": "delete_automation"}
     )
@@ -631,6 +634,13 @@ async def test_pipefy_client_facade_delegates_to_services_without_modifying_args
         condition=None,
         name=None,
         extra_input=None,
+    )
+
+    assert await client.get_automation_simulation(
+        "sim-1", timeout_seconds=10, field_ids=["101"]
+    ) == {"ok": "get_automation_simulation"}
+    automation_service.get_automation_simulation.assert_awaited_once_with(
+        "sim-1", timeout_seconds=10, field_ids=["101"]
     )
 
     assert await client.delete_automation("rm") == {"ok": "delete_automation"}

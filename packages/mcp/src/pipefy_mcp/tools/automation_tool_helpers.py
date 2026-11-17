@@ -10,6 +10,7 @@ from pipefy_sdk import (
     AutomationEventRow,
     AutomationRuleRecord,
     AutomationRuleSummary,
+    SimulationOutputWarning,
 )
 from typing_extensions import NotRequired, TypedDict
 
@@ -49,6 +50,11 @@ class AutomationSimulationSuccessPayload(TypedDict):
     message: str
     simulation_id: str
     automation_simulation: dict[str, Any]
+    warnings: list[SimulationOutputWarning]
+
+
+class AutomationSimulationReadPayload(AutomationSimulationSuccessPayload):
+    waited_seconds: float
 
 
 class AutomationToolErrorPayload(TypedDict):
@@ -85,15 +91,50 @@ def build_automation_mutation_success_payload(
 def build_automation_simulation_success_payload(
     simulation_id: str,
     automation_simulation: dict[str, Any],
+    warnings: list[SimulationOutputWarning],
 ) -> AutomationSimulationSuccessPayload:
     """Success payload with full ``automationSimulation`` row and the mutation ``simulationId``."""
 
     return {
         "success": True,
-        "message": "Automation simulation completed.",
+        "message": _simulation_message(
+            "Automation simulation completed.", simulation_id, automation_simulation
+        ),
         "simulation_id": simulation_id,
         "automation_simulation": automation_simulation,
+        "warnings": warnings,
     }
+
+
+def build_automation_simulation_read_payload(
+    simulation_id: str,
+    automation_simulation: dict[str, Any],
+    warnings: list[SimulationOutputWarning],
+    waited_seconds: float,
+) -> AutomationSimulationReadPayload:
+    """Success payload for ``get_automation_simulation``, with the time it waited."""
+
+    return {
+        "success": True,
+        "message": _simulation_message(
+            "Automation simulation read.", simulation_id, automation_simulation
+        ),
+        "simulation_id": simulation_id,
+        "automation_simulation": automation_simulation,
+        "warnings": warnings,
+        "waited_seconds": waited_seconds,
+    }
+
+
+def _simulation_message(
+    final_message: str, simulation_id: str, automation_simulation: dict[str, Any]
+) -> str:
+    if automation_simulation.get("status") != "processing":
+        return final_message
+    return (
+        "The simulation is still processing. Read it with "
+        f"get_automation_simulation(simulation_id={simulation_id!r})."
+    )
 
 
 def build_automation_read_success_payload(
@@ -208,11 +249,13 @@ __all__ = [
     "AutomationMutationSuccessPayload",
     "AutomationReadSuccessPayload",
     "AutomationReadToolData",
+    "AutomationSimulationReadPayload",
     "AutomationSimulationSuccessPayload",
     "AutomationToolErrorPayload",
     "build_automation_error_payload",
     "build_automation_mutation_success_payload",
     "build_automation_read_success_payload",
+    "build_automation_simulation_read_payload",
     "build_automation_simulation_success_payload",
     "handle_automation_tool_graphql_error",
 ]
