@@ -105,6 +105,7 @@ AUDIT: list[tuple[str, str, list[str]]] = [
         "ai_automation_tools.py",
         ["get_phase_fields", "get_automation_events"],
     ),
+    ("set_phase_move_targets", "pipe_config_tools.py", ["get_pipe"]),
     ("create_webhook", "webhook_tools.py", ["search_pipes"]),
     ("update_webhook", "webhook_tools.py", ["get_webhooks"]),
 ]

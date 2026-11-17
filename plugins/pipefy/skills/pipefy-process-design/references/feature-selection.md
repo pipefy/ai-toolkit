@@ -34,7 +34,7 @@ Write one line for each step in Platform choices:
 
 - **Boundary values.** The native number tests are "greater than" and "less than". A rule for "5,000.00 or more" uses "greater than 4,999.99", or the other path uses "less than 5,000.00". Write the boundary result in Decisions so that the builder can test it.
 - **Empty values.** Give the empty case its own result. Make the field required in the phase that collects it, or add a rule with the `blank` test.
-- **Phase moves.** A move rule needs a connection between the two phases. A new pipe connects each phase only to the phases beside it. Other connections are a manual step in the Pipefy interface. Keep the dependent rule off until the connection exists. If creation fails even with `active=false`, record `skipped` instead of `created inactive`. See `pipefy-pipes-and-cards`.
+- **Phase moves.** A move rule needs a connection between the two phases. A new pipe connects each phase only to the phases beside it. The builder adds each other connection with `set_phase_move_targets` before it creates the rule. If the builder cannot add the connection, keep the dependent rule off. If creation fails even with `active=false`, record `skipped` instead of `created inactive`. See `pipefy-pipes-and-cards`.
 - **Labels.** No automation action applies a label to a card. Propose a status field that a rule fills, or a manual step. See `pipefy-automations`.
 - **Email.** A rule that sends email needs an email template. Only the Pipefy interface creates a template. Email to an address outside the company is an external effect.
 - **Event and action pairs.** Not every event works with every action. Before you promise a rule, check the pair in `pipefy-automations`.

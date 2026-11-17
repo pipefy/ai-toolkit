@@ -21,6 +21,7 @@ CLI: `pipefy pipe create "Customer Onboarding" --org 300123456 --phases '[{"name
 | `update_phase` | `pipefy phase update <id>` |
 | `delete_phase` | `pipefy phase delete <id>` |
 | `get_phase_allowed_move_targets` | `pipefy phase targets <id>` |
+| `set_phase_move_targets` | `pipefy phase targets <id> --add <phase_id>` (`--set` replaces the list, `--clear` removes every connection) |
 | `get_phase_cards_count` | `pipefy phase count <id>` |
 | `get_phase_cards` | `pipefy phase cards <id>` |
 

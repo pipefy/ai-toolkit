@@ -220,7 +220,7 @@ class PipeService:
         return {"organizations": filtered_orgs, "search_limits": limits}
 
     async def get_phase_allowed_move_targets(self, phase_id: str | int) -> dict:
-        """List phases a card may move to from ``phase_id`` (UI transition rules).
+        """List phases a card may move to from ``phase_id`` (phase connections).
 
         Read-only: mirrors Pipefy **Phase → Connections**. Returns the GraphQL
         ``phase`` object including ``cards_can_be_moved_to_phases``.

@@ -167,6 +167,7 @@ REMOTE_SEED = frozenset(
         "clone_pipe",
         "create_phase",
         "update_phase",
+        "set_phase_move_targets",
         "delete_phase",
         "create_phase_field",
         "update_phase_field",
