@@ -5,6 +5,7 @@ from pipefy_sdk.automation_simulation import (
     parse_simulation_wait_seconds,
     requested_simulation_field_ids,
     simulation_output_warnings,
+    simulation_read_budget,
 )
 
 
@@ -147,3 +148,14 @@ def test_poll_stops_at_the_limit(waited, limit):
         )
         is None
     )
+
+
+@pytest.mark.unit
+def test_read_budget_is_the_time_left_before_the_limit():
+    assert simulation_read_budget(waited_seconds=4.0, timeout_seconds=5) == 1.0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("waited", "limit"), [(5.0, 5), (6.3, 5), (0.0, 0)])
+def test_read_budget_is_none_at_or_after_the_limit(waited, limit):
+    assert simulation_read_budget(waited_seconds=waited, timeout_seconds=limit) is None

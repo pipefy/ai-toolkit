@@ -13,6 +13,7 @@ from pipefy_sdk.automation_simulation import (
     parse_simulation_wait_seconds,
     requested_simulation_field_ids,
     simulation_output_warnings,
+    simulation_read_budget,
 )
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.models.ai_automation import (
@@ -33,6 +34,11 @@ from pipefy_sdk.queries.automation_queries import (
     GET_AUTOMATIONS_FOR_ORG_AND_REPO_QUERY,
     GET_PIPE_ORGANIZATION_ID_QUERY,
     UPDATE_AUTOMATION_MUTATION,
+)
+from pipefy_sdk.read_deadline import (
+    ReadBeforeDeadline,
+    ReadDeadlinePassed,
+    await_before_deadline,
 )
 from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
@@ -208,10 +214,12 @@ class AutomationService:
         executor: GraphQLExecutor,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
+        read_before_deadline: ReadBeforeDeadline = await_before_deadline,
     ) -> None:
         self._executor = executor
         self._sleep = sleep
         self._clock = clock
+        self._read_before_deadline = read_before_deadline
 
     async def get_automation(self, automation_id: str) -> AutomationRuleRecord | None:
         """Fetch one automation by ID.
@@ -638,20 +646,32 @@ class AutomationService:
         """
         limit = parse_simulation_wait_seconds(timeout_seconds)
         started = self._clock()
+        row = await self._read_automation_simulation(simulation_id)
         while True:
-            row = await self._read_automation_simulation(simulation_id)
-            waited = self._clock() - started
             delay = next_simulation_poll_delay(
-                row.get("status"), waited_seconds=waited, timeout_seconds=limit
+                row.get("status"),
+                waited_seconds=self._clock() - started,
+                timeout_seconds=limit,
             )
             if delay is None:
                 break
             await self._sleep(delay)
+            budget = simulation_read_budget(
+                waited_seconds=self._clock() - started, timeout_seconds=limit
+            )
+            if budget is None:
+                break
+            try:
+                row = await self._read_before_deadline(
+                    lambda: self._read_automation_simulation(simulation_id), budget
+                )
+            except ReadDeadlinePassed:
+                break
         return AutomationSimulationReadResult(
             simulation_id=simulation_id,
             automation_simulation=row,
             warnings=simulation_output_warnings(row, field_ids),
-            waited_seconds=round(waited, 1),
+            waited_seconds=round(self._clock() - started, 1),
         )
 
     async def _read_automation_simulation(

@@ -372,7 +372,10 @@ def automation_simulation(
     """Read a simulation result and wait while it runs (``get_automation_simulation``).
 
     The command reads the simulation every 2 seconds until its status is not
-    processing or the --timeout passes. It does not start a new simulation.
+    processing or the --timeout passes. It does not start a new simulation. The
+    first read always runs, also with 0, and uses the client's request timeout (30
+    seconds). Each later wait and read ends by the limit, counted from the start of
+    the call. One call lasts at most the first read plus the limit.
     ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
     fields with no output. Correct the instruction in the prompt and simulate again.
     """

@@ -456,8 +456,12 @@ class AutomationTools:
             ``simulate_automation`` often returns ``status`` ``processing`` with no
             result. This tool reads the simulation every 2 seconds until ``status`` is
             not ``processing`` or ``timeout_seconds`` passes. It does not start a new
-            simulation. If the limit passes first, ``status`` stays ``processing``. Then
-            call this tool again with the same ``simulation_id``.
+            simulation. The first read always runs, also with 0, and uses the client's
+            request timeout (30 seconds). Each later wait and read ends by the limit,
+            counted from the start of the call. One call lasts at most the first read
+            plus the limit. If the limit passes first, the result holds the last read,
+            with ``status`` ``processing``. Then call this tool again with the same
+            ``simulation_id``.
 
             ``warnings`` lists the output to check before you trust the prompt. A
             ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``.

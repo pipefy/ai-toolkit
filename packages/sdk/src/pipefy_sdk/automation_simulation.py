@@ -54,6 +54,16 @@ def next_simulation_poll_delay(
     return min(SIMULATION_POLL_INTERVAL_SECONDS, remaining)
 
 
+def simulation_read_budget(
+    *, waited_seconds: float, timeout_seconds: int
+) -> float | None:
+    """Seconds left for the next read, or ``None`` when the limit has passed."""
+    remaining = timeout_seconds - waited_seconds
+    if remaining <= 0:
+        return None
+    return remaining
+
+
 def requested_simulation_field_ids(
     action_params: Mapping[str, Any] | None,
 ) -> list[str]:
@@ -124,4 +134,5 @@ __all__ = [
     "parse_simulation_wait_seconds",
     "requested_simulation_field_ids",
     "simulation_output_warnings",
+    "simulation_read_budget",
 ]
