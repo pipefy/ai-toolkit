@@ -8,16 +8,12 @@ from typing import Any
 from pipefy_sdk.exceptions import PhaseNotFoundError
 
 
-def parse_target_phase_ids(
-    target_phase_ids: Sequence[str | int], *, replace: bool
-) -> tuple[str, ...]:
+def parse_target_phase_ids(target_phase_ids: Sequence[str | int]) -> tuple[str, ...]:
     """Return the destination ids as strings, in order, each one once.
-
-    An empty list is valid only with ``replace``. It removes every connection.
 
     Raises:
         ValueError: ``target_phase_ids`` is a string or bytes, an id is blank,
-            or the list is empty and ``replace`` is False.
+            or the list is empty.
     """
     if isinstance(target_phase_ids, (str, bytes)):
         raise ValueError(
@@ -33,10 +29,11 @@ def parse_target_phase_ids(
                 "expected a phase id"
             )
         parsed[phase_id] = None
-    if not parsed and not replace:
+    if not parsed:
         raise ValueError(
             "target_phase_ids is empty: pass at least one destination phase id. "
-            "To remove every connection, send an empty list with replace."
+            "This call does not remove a connection. Ask a pipe admin to remove "
+            "it in the Pipefy UI."
         )
     return tuple(parsed)
 

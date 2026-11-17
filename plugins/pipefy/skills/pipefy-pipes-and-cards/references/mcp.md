@@ -22,7 +22,7 @@ To add destinations to a phase, send only the new phase ids, all in one call. Th
 set_phase_move_targets phase_id="341234567" target_phase_ids=["341234570"]
 ```
 
-With `replace=true`, `target_phase_ids` becomes the complete list, and an empty list removes every connection. A connection goes one way. The source phase as a destination returns `success: false` with `RECORD_INVALID`. A phase of another pipe or the start form phase returns `INVALID_INPUT`, and the message names the id. A rejected call saves no change.
+The tool does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. A connection goes one way. The source phase as a destination returns `success: false` with `RECORD_INVALID`. A phase of another pipe or the start form phase returns `INVALID_INPUT`, and the message names the id. A rejected call saves no change.
 
 The tool keeps the connections that it reads before the write. If another client adds a destination to the same phase between that read and the write, the write removes it. Wait for each call on a phase to return before you start the next one.
 

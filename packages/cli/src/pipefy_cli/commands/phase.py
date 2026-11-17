@@ -67,16 +67,6 @@ def phase_targets(
         "--add",
         help="Destination phase id to connect. Keeps the current connections (repeatable).",
     ),
-    replace_with: list[str] = typer.Option(
-        [],
-        "--set",
-        help="Destination phase id for the complete list. Removes the other connections (repeatable).",
-    ),
-    clear: bool = typer.Option(
-        False,
-        "--clear",
-        help="Remove every connection from this phase.",
-    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -84,11 +74,12 @@ def phase_targets(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """List or change the phases a card may move to from this phase.
+    """List the phases a card may move to from this phase, or add to them.
 
-    Without --add, --set or --clear, the command lists the connections. Each destination
-    must be a phase of the same pipe. The source phase and the start form phase
-    are not valid destinations. A change keeps the phase name.
+    Without --add, the command lists the connections. It does not remove a
+    connection. Ask a pipe admin to remove it in the Pipefy UI. Each destination
+    must be a phase of the same pipe. The source phase and the start form phase are
+    not valid destinations. An addition keeps the phase name.
 
     --add keeps the connections that it reads before the write. If another client
     saves a connection on the same phase after that read, the write removes it.
@@ -97,17 +88,10 @@ def phase_targets(
     before you start the next one. The printed list is the saved state at the time
     of the read-back. It does not stop a later write by another client.
     """
-    if sum(map(bool, (add, replace_with, clear))) > 1:
-        typer.echo("Pass only one of --add, --set or --clear.", err=True)
-        raise typer.Exit(2)
 
     async def factory(client: PipefyClient):
         if add:
-            return await client.set_phase_move_targets(phase_id, add, replace=False)
-        if replace_with or clear:
-            return await client.set_phase_move_targets(
-                phase_id, replace_with, replace=True
-            )
+            return await client.set_phase_move_targets(phase_id, add)
         return await client.get_phase_allowed_move_targets(phase_id)
 
     run_cli_command(ctx, json_out, factory)

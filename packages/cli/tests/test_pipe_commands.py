@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from pipefy_sdk import PhaseNotFoundError, PipePhaseSetupError
 from pipefy_sdk.graphql_inputs import (
     RepoPreferenceInput,
@@ -445,68 +446,20 @@ def test_phase_targets_add_keeps_the_current_connections(
 
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
-    mock_client.set_phase_move_targets.assert_awaited_once_with(
-        "5001", ["300", "400"], replace=False
-    )
+    mock_client.set_phase_move_targets.assert_awaited_once_with("5001", ["300", "400"])
 
 
-def test_phase_targets_set_replaces_the_connections(
-    runner, clean_pipefy_env, saved_cwd, oauth_env
+@pytest.mark.parametrize("args", [["--set", "300"], ["--clear"]])
+def test_phase_targets_cannot_remove_a_connection(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, args
 ):
-    oauth_env("ph-targets-set")
-    mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock(return_value={"phase": {}})
-
-    result = _invoke_phase_targets(runner, mock_client, ["--set", "300", "--json"])
-
-    assert result.exit_code == 0
-    mock_client.set_phase_move_targets.assert_awaited_once_with(
-        "5001", ["300"], replace=True
-    )
-
-
-def test_phase_targets_rejects_add_with_set(
-    runner, clean_pipefy_env, saved_cwd, oauth_env
-):
-    oauth_env("ph-targets-both")
+    oauth_env("ph-targets-no-remove")
     mock_client = MagicMock()
     mock_client.set_phase_move_targets = AsyncMock()
 
-    result = _invoke_phase_targets(
-        runner, mock_client, ["--add", "300", "--set", "400"]
-    )
+    result = _invoke_phase_targets(runner, mock_client, args)
 
     assert result.exit_code == 2
-    assert "only one of" in result.stderr
-    mock_client.set_phase_move_targets.assert_not_called()
-
-
-def test_phase_targets_clear_removes_every_connection(
-    runner, clean_pipefy_env, saved_cwd, oauth_env
-):
-    oauth_env("ph-targets-clear")
-    mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock(return_value={"phase": {}})
-
-    result = _invoke_phase_targets(runner, mock_client, ["--clear", "--json"])
-
-    assert result.exit_code == 0
-    mock_client.set_phase_move_targets.assert_awaited_once_with(
-        "5001", [], replace=True
-    )
-
-
-def test_phase_targets_rejects_clear_with_add(
-    runner, clean_pipefy_env, saved_cwd, oauth_env
-):
-    oauth_env("ph-targets-clear-add")
-    mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock()
-
-    result = _invoke_phase_targets(runner, mock_client, ["--clear", "--add", "300"])
-
-    assert result.exit_code == 2
-    assert "only one of" in result.stderr
     mock_client.set_phase_move_targets.assert_not_called()
 
 

@@ -610,7 +610,7 @@ def _saved_move_targets(*targets):
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_adds_by_default(
+async def test_set_phase_move_targets_adds_to_the_current_connections(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
     mock_pipe_config_client.set_phase_move_targets.return_value = _saved_move_targets(
@@ -624,7 +624,7 @@ async def test_set_phase_move_targets_adds_by_default(
         )
 
     mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", ["40"], replace=False
+        "10", ["40"]
     )
     payload = extract_payload(result)
     assert payload["success"] is True
@@ -639,11 +639,20 @@ async def test_set_phase_move_targets_adds_by_default(
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_passes_replace(
+async def test_set_phase_move_targets_offers_no_replace_argument(pipe_config_session):
+    async with pipe_config_session as session:
+        tools = (await session.list_tools()).tools
+
+    tool = next(t for t in tools if t.name == "set_phase_move_targets")
+    assert "replace" not in tool.input_schema["properties"]
+
+
+@pytest.mark.anyio
+async def test_set_phase_move_targets_adds_when_a_caller_still_sends_replace(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
     mock_pipe_config_client.set_phase_move_targets.return_value = _saved_move_targets(
-        "40"
+        "20", "40"
     )
 
     async with pipe_config_session as session:
@@ -653,35 +662,12 @@ async def test_set_phase_move_targets_passes_replace(
         )
 
     mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", ["40"], replace=True
+        "10", ["40"]
     )
     assert extract_payload(result)["data"]["allowed_phases"] == [
-        {"id": "40", "name": "Phase 40"}
+        {"id": "20", "name": "Phase 20"},
+        {"id": "40", "name": "Phase 40"},
     ]
-
-
-@pytest.mark.anyio
-async def test_set_phase_move_targets_replace_with_an_empty_list_clears_them(
-    pipe_config_session, mock_pipe_config_client, extract_payload
-):
-    mock_pipe_config_client.set_phase_move_targets.return_value = {
-        "phase": {
-            "id": "10",
-            "name": "Manager review",
-            "cards_can_be_moved_to_phases": None,
-        }
-    }
-
-    async with pipe_config_session as session:
-        result = await session.call_tool(
-            "set_phase_move_targets",
-            {"phase_id": 10, "target_phase_ids": [], "replace": True},
-        )
-
-    mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", [], replace=True
-    )
-    assert extract_payload(result)["data"]["allowed_phases"] == []
 
 
 @pytest.mark.anyio

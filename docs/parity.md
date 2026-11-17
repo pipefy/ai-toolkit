@@ -139,7 +139,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_organization_report` | `pipefy report-org get` | shipped | Organization reports. |
 | `get_organization_report_export` | (poll via `pipefy report-org export --format json`) | shipped | Organization reports + export-shaped. |
 | `get_organization_reports` | `pipefy report-org list` | shipped | Organization reports. |
-| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). `set_phase_move_targets` changes them. |
+| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). `set_phase_move_targets` adds to them. |
 | `get_phase_cards` | `pipefy phase cards` | shipped | ``Phase.cards`` pagination (``--first`` default 50, ``--after``, ``--include-fields``). Prefer over ``get_cards`` for phase-local inventory. |
 | `get_phase_cards_count` | `pipefy phase count` | shipped | Native ``Phase.cards_count`` via ``get_phase``; pair with ``get_phase_cards`` to list. |
 | `get_interface_html` | `pipefy portal html-interface get` | shipped | Interfaces schema; read-only; HTML interface with each `customCode` element's live document. Raises on a grid-layout interface (use `get_portal`). Remote-safe. |
@@ -184,7 +184,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `set_interface_actions` | `pipefy portal html-interface set-actions` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its `metadata.actions` (`[]` removes them), keeping its other metadata keys and data sources, and sets or keeps `editable` (`--editable/--no-editable`). Actions are checked before the call, and each `sourceId`/`repoId` against the element's sources. Remote-safe. |
 | `set_interface_sources` | `pipefy portal html-interface set-sources` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its data sources (`[]` removes them), keeping its `metadata` and `editable`. Sources are checked before the call. Remote-safe. |
 | `set_llm_provider_active_status` | `pipefy ai-provider set-active-status` | shipped | Custom (BYOM) provider; `--active/--inactive`; org from session. |
-| `set_phase_move_targets` | `pipefy phase targets --add` / `--set` / `--clear` | shipped | `updatePhaseJumps` (replace-all on the API, no atomic add). The default reads the current connections and adds to them, with no write when every id is already connected. `replace` (CLI `--set`) sends the complete list, and an empty list with `replace` (CLI `--clear`) removes every connection. Each write reads the list back. Remote-safe. |
+| `set_phase_move_targets` | `pipefy phase targets --add` | shipped | `updatePhaseJumps` (replace-all on the API, no atomic add). The call reads the current connections and adds to them, with no write when every id is already connected. It does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. Each write reads the list back. Remote-safe. |
 | `set_role` | `pipefy member set-role` | shipped | — |
 | `set_table_record_field_value` | `pipefy record update` | shipped | (``--field-id`` + ``--value``). |
 | `simulate_automation` | `pipefy automation simulate` | shipped | (`--pipe`, `--action-id`, `--sample-card`, optional JSON fragments). |

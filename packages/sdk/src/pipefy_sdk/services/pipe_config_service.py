@@ -210,27 +210,21 @@ class PipeConfigService:
         self,
         phase_id: str | int,
         target_phase_ids: Sequence[str | int],
-        *,
-        replace: bool = False,
     ) -> dict:
-        """Set the phases a card can move to from ``phase_id``.
+        """Add phases a card can move to from ``phase_id``.
 
-        See :meth:`PipefyClient.set_phase_move_targets` for the contract. An
-        addition reads the connections, writes the merged list with
+        See :meth:`PipefyClient.set_phase_move_targets` for the contract. The
+        call reads the connections, writes the merged list with
         ``updatePhaseJumps``, and reads them back. When every target is already
-        connected, it returns the first read and makes no write. A replacement
-        skips the first read.
+        connected, it returns the first read and makes no write.
         """
-        parsed_ids = parse_target_phase_ids(target_phase_ids, replace=replace)
-        jump_target_ids = list(parsed_ids)
-        if not replace:
-            allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
-                phase_id
-            )
-            merged = merge_phase_move_targets(phase_id, allowed_moves, parsed_ids)
-            if merged is None:
-                return allowed_moves
-            jump_target_ids = merged
+        parsed_ids = parse_target_phase_ids(target_phase_ids)
+        allowed_moves = await self._pipe_service.get_phase_allowed_move_targets(
+            phase_id
+        )
+        jump_target_ids = merge_phase_move_targets(phase_id, allowed_moves, parsed_ids)
+        if jump_target_ids is None:
+            return allowed_moves
         raw = await self._executor.execute_query(
             UPDATE_PHASE_JUMPS_MUTATION,
             {"input": {"phaseId": str(phase_id), "targetPhaseIds": jump_target_ids}},
