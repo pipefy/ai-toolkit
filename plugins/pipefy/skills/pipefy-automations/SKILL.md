@@ -219,7 +219,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
    ```
 
    The read waits up to 30 seconds (`timeout_seconds`, 0 to 60). If `status` is still `processing` when it returns, read again with the same ID. If the second read also ends in `processing`, report the result as pending with the ID.
-5. Read `warnings` before you accept the output. A `placeholder` warning holds a bracket placeholder such as `[Your Name]`. An `empty` warning names a field that got no value. For a placeholder, correct the instruction in the prompt and simulate again. For an empty field, check if the prompt asks for that value.
+5. Read `warnings` before you accept the output. A `placeholder` warning holds a bracket placeholder such as `[Your Name]`. An `empty` warning names a field that got no value. Compare each flagged text with the output that the prompt asks for. Accept text that the prompt asks for, such as a literal `[URGENT]` prefix. For an unfilled marker, such as `[Your Name]` where the reply needs a real name, correct the instruction in the prompt and simulate again. For an empty field, check if the prompt asks for that value.
 
 ---
 
@@ -319,7 +319,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 
 - `get_automation` returns the new rule with correct trigger and actions.
 - `validate_ai_automation_prompt` returns `valid:true` before AI automation creation.
-- `simulate_automation` (AI rules) returns a simulation ID. `get_automation_simulation` returns the final `simulationResult` with no `placeholder` warning, or the result is reported as pending with the ID.
+- `simulate_automation` (AI rules) returns a simulation ID. `get_automation_simulation` returns the final `simulationResult`, or the agent reports the result as pending with the ID. Each `placeholder` warning left in the final result holds text that the prompt asks for.
 
 ## Failure modes
 

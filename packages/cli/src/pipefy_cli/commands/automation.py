@@ -377,7 +377,10 @@ def automation_simulation(
     seconds). Each later wait and read ends by the limit, counted from the start of
     the call. One call lasts at most the first read plus the limit.
     ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
-    fields with no output. Correct the instruction in the prompt and simulate again.
+    fields with no output. Compare each flagged text with the output that the prompt
+    asks for. Accept text that the prompt asks for, such as a literal [URGENT]
+    prefix. For an unfilled marker, such as [Your Name] where the reply needs a real
+    name, correct the instruction in the prompt and simulate again.
     """
 
     async def factory(client: PipefyClient):

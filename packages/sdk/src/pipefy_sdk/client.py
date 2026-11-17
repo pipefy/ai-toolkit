@@ -1280,7 +1280,10 @@ class PipefyClient:
         ``warnings`` lists the output to check before you trust the prompt. A
         ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``. An
         ``empty`` warning names a field in ``field_ids`` that got no value. A warning does
-        not stop the call. Correct the instruction in the prompt and simulate again.
+        not stop the call. Compare each flagged text with the output that the prompt asks
+        for. Accept text that the prompt asks for, such as a literal ``[URGENT]`` prefix.
+        For an unfilled marker, such as ``[Your Name]`` where the reply needs a real
+        name, correct the instruction in the prompt and simulate again.
 
         Args:
             simulation_id: The ``simulation_id`` that ``simulate_automation`` returned.

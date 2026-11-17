@@ -357,7 +357,11 @@ class AutomationTools:
             ``warnings`` lists bracket placeholders and the fields with no value, as
             ``get_automation_simulation`` does. The fields come from the
             ``action_params.aiParams.fieldIds`` that the tool sends, after the
-            ``extra_input`` merge.
+            ``extra_input`` merge. Compare each flagged text with the output that the
+            prompt asks for. Accept text that the prompt asks for, such as a literal
+            ``[URGENT]`` prefix. For an unfilled marker, such as ``[Your Name]`` where
+            the reply needs a real name, correct the instruction in the prompt and
+            simulate again.
 
             **Pipe context:** ``pipe_id`` is forwarded as ``event_repo_id`` and ``action_repo_id`` on the
             simulation input (Pipefy often returns ``INTERNAL_SERVER_ERROR`` if these are omitted). Override
@@ -467,7 +471,10 @@ class AutomationTools:
             ``warnings`` lists the output to check before you trust the prompt. A
             ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``.
             An ``empty`` warning names a field in ``field_ids`` that got no value. A
-            warning does not stop the call. Correct the instruction in the prompt and
+            warning does not stop the call. Compare each flagged text with the output
+            that the prompt asks for. Accept text that the prompt asks for, such as a
+            literal ``[URGENT]`` prefix. For an unfilled marker, such as ``[Your Name]``
+            where the reply needs a real name, correct the instruction in the prompt and
             simulate again.
 
             Args:
