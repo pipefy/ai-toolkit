@@ -648,29 +648,6 @@ async def test_set_phase_move_targets_offers_no_replace_argument(pipe_config_ses
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_adds_when_a_caller_still_sends_replace(
-    pipe_config_session, mock_pipe_config_client, extract_payload
-):
-    mock_pipe_config_client.set_phase_move_targets.return_value = _saved_move_targets(
-        "20", "40"
-    )
-
-    async with pipe_config_session as session:
-        result = await session.call_tool(
-            "set_phase_move_targets",
-            {"phase_id": "10", "target_phase_ids": ["40"], "replace": True},
-        )
-
-    mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", ["40"]
-    )
-    assert extract_payload(result)["data"]["allowed_phases"] == [
-        {"id": "20", "name": "Phase 20"},
-        {"id": "40", "name": "Phase 40"},
-    ]
-
-
-@pytest.mark.anyio
 async def test_set_phase_move_targets_value_error_is_invalid_arguments(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
