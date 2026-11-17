@@ -936,6 +936,7 @@ async def test_simulate_automation_success(
             "simulationResult": {"x": 1},
         },
         "warnings": [warning],
+        "field_ids": ["101"],
     }
 
     async with automation_session as session:
@@ -1365,8 +1366,68 @@ async def test_get_automation_simulation_says_to_read_again_while_processing(
     )
     payload = extract_payload(result)
     assert payload["success"] is True
-    assert "sim-7" in payload["message"]
-    assert "get_automation_simulation" in payload["message"]
+    assert "get_automation_simulation(simulation_id='sim-7')" in payload["message"]
+    assert "send the fieldIds of the prompt as field_ids" in payload["message"]
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_hint_keeps_the_field_ids_while_processing(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.get_automation_simulation.return_value = _simulation_read(
+        "processing", waited=30.0
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation",
+            {"simulation_id": "sim-7", "field_ids": [201, 202]},
+        )
+
+    message = extract_payload(result)["message"]
+    assert (
+        "get_automation_simulation(simulation_id='sim-7', field_ids=['201', '202'])"
+        in message
+    )
+    assert "Send the same field_ids on each read" in message
+
+
+@pytest.mark.anyio
+async def test_simulate_automation_hint_keeps_the_field_ids_while_processing(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.simulate_automation.return_value = {
+        "simulation_id": "sim-8",
+        "automation_simulation": {
+            "status": "processing",
+            "details": None,
+            "simulationResult": None,
+        },
+        "warnings": [],
+        "field_ids": ["201", "202"],
+    }
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "simulate_automation",
+            {
+                "pipe_id": "p1",
+                "action_id": "generate_with_ai",
+                "sample_card_id": "c9",
+                "extra_input": {
+                    "action_params": {
+                        "aiParams": {"value": "x", "fieldIds": [201, 202]}
+                    }
+                },
+            },
+        )
+
+    message = extract_payload(result)["message"]
+    assert (
+        "get_automation_simulation(simulation_id='sim-8', field_ids=['201', '202'])"
+        in message
+    )
+    assert "Send the same field_ids on each read" in message
 
 
 @pytest.mark.anyio

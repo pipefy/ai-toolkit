@@ -1243,7 +1243,9 @@ class PipefyClient:
         first read is already ``success``, ``warnings`` lists the output to check. It
         uses the rules of ``get_automation_simulation`` and the ``fieldIds`` in the
         ``action_params.aiParams`` that the call sends, after the ``extra_input``
-        merge. Otherwise ``warnings`` is empty.
+        merge. Otherwise ``warnings`` is empty. ``field_ids`` holds those
+        ``fieldIds``. Send them as ``field_ids`` on each ``get_automation_simulation``
+        read.
         """
         return await self._automation_service.simulate_automation(
             pipe_id=pipe_id,

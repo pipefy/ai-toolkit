@@ -226,7 +226,7 @@ def _ai_params(*field_ids):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("action_params", "extra_input", "final", "expected_warnings"),
+    ("action_params", "extra_input", "final", "expected_warnings", "expected_ids"),
     [
         pytest.param(
             _ai_params("101", "102"),
@@ -236,6 +236,7 @@ def _ai_params(*field_ids):
                 {"field_id": "101", "kind": "placeholder", "text": "[Seu Nome]"},
                 {"field_id": "102", "kind": "empty", "text": ""},
             ],
+            ["101", "102"],
             id="action_params",
         ),
         pytest.param(
@@ -243,6 +244,7 @@ def _ai_params(*field_ids):
             {"action_params": _ai_params("201", "202")},
             {"201": {"label": "Reply", "type": "long_text", "value": "Done"}},
             [{"field_id": "202", "kind": "empty", "text": ""}],
+            ["201", "202"],
             id="extra_input_replaces_action_params",
         ),
         pytest.param(
@@ -250,12 +252,13 @@ def _ai_params(*field_ids):
             {"action_params": _ai_params("201", "202")},
             {"201": {"label": "Reply", "type": "long_text", "value": "Done"}},
             [{"field_id": "202", "kind": "empty", "text": ""}],
+            ["201", "202"],
             id="extra_input_only",
         ),
     ],
 )
 async def test_simulate_automation_warns_about_the_first_final_read(
-    action_params, extra_input, final, expected_warnings
+    action_params, extra_input, final, expected_warnings, expected_ids
 ):
     mutation = {"createAutomationSimulation": {"simulationId": "sim-5"}}
     executor = mock_executor(side_effect=[mutation, _read("success", final)])
@@ -269,6 +272,7 @@ async def test_simulate_automation_warns_about_the_first_final_read(
     )
 
     assert result["warnings"] == expected_warnings
+    assert result["field_ids"] == expected_ids
 
 
 @pytest.mark.unit
@@ -284,3 +288,4 @@ async def test_simulate_automation_has_no_warnings_while_processing():
     )
 
     assert result["warnings"] == []
+    assert result["field_ids"] == ["101"]

@@ -297,11 +297,14 @@ class SimulateAutomationServiceResult(TypedDict):
     """Mutation + query outcome from ``AutomationService.simulate_automation``.
 
     ``warnings`` is empty unless the first read already holds a ``success`` result.
+    ``field_ids`` is the ``aiParams.fieldIds`` that the mutation sent, after the
+    ``extra_input`` merge. Send it as ``field_ids`` to ``get_automation_simulation``.
     """
 
     simulation_id: str
     automation_simulation: AutomationSimulationRow
     warnings: list[SimulationOutputWarning]
+    field_ids: list[str]
 
 
 class AutomationSimulationReadResult(TypedDict):

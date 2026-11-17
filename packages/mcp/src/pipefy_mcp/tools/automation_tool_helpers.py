@@ -92,13 +92,17 @@ def build_automation_simulation_success_payload(
     simulation_id: str,
     automation_simulation: dict[str, Any],
     warnings: list[SimulationOutputWarning],
+    field_ids: list[str],
 ) -> AutomationSimulationSuccessPayload:
     """Success payload with full ``automationSimulation`` row and the mutation ``simulationId``."""
 
     return {
         "success": True,
         "message": _simulation_message(
-            "Automation simulation completed.", simulation_id, automation_simulation
+            "Automation simulation completed.",
+            simulation_id,
+            automation_simulation,
+            field_ids,
         ),
         "simulation_id": simulation_id,
         "automation_simulation": automation_simulation,
@@ -111,13 +115,17 @@ def build_automation_simulation_read_payload(
     automation_simulation: dict[str, Any],
     warnings: list[SimulationOutputWarning],
     waited_seconds: float,
+    field_ids: list[str] | None,
 ) -> AutomationSimulationReadPayload:
     """Success payload for ``get_automation_simulation``, with the time it waited."""
 
     return {
         "success": True,
         "message": _simulation_message(
-            "Automation simulation read.", simulation_id, automation_simulation
+            "Automation simulation read.",
+            simulation_id,
+            automation_simulation,
+            field_ids,
         ),
         "simulation_id": simulation_id,
         "automation_simulation": automation_simulation,
@@ -127,13 +135,26 @@ def build_automation_simulation_read_payload(
 
 
 def _simulation_message(
-    final_message: str, simulation_id: str, automation_simulation: dict[str, Any]
+    final_message: str,
+    simulation_id: str,
+    automation_simulation: dict[str, Any],
+    field_ids: list[str] | None,
 ) -> str:
     if automation_simulation.get("status") != "processing":
         return final_message
+    if field_ids:
+        next_read = (
+            f"get_automation_simulation(simulation_id={simulation_id!r}, "
+            f"field_ids={field_ids!r})."
+        )
+    else:
+        next_read = (
+            f"get_automation_simulation(simulation_id={simulation_id!r}), and "
+            "send the fieldIds of the prompt as field_ids."
+        )
     return (
-        "The simulation is still processing. Read it with "
-        f"get_automation_simulation(simulation_id={simulation_id!r})."
+        f"The simulation is still processing. Read it again with {next_read} "
+        "Send the same field_ids on each read while the status is processing."
     )
 
 

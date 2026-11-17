@@ -439,6 +439,7 @@ class AutomationTools:
                 result["simulation_id"],
                 sim_row,
                 result["warnings"],
+                result["field_ids"],
             )
 
         @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), meta=REMOTE)
@@ -498,6 +499,7 @@ class AutomationTools:
                 result["automation_simulation"],
                 result["warnings"],
                 result["waited_seconds"],
+                field_id_strs,
             )
 
         @mcp.tool(

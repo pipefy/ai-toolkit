@@ -624,13 +624,13 @@ class AutomationService:
         if raw_sid is None or (isinstance(raw_sid, str) and not raw_sid.strip()):
             raise ValueError("createAutomationSimulation returned no simulationId.")
         simulation_id = str(raw_sid).strip()
+        field_ids = requested_simulation_field_ids(input_obj.get("action_params"))
         row = await self._read_automation_simulation(simulation_id)
         return SimulateAutomationServiceResult(
             simulation_id=simulation_id,
             automation_simulation=row,
-            warnings=simulation_output_warnings(
-                row, requested_simulation_field_ids(input_obj.get("action_params"))
-            ),
+            warnings=simulation_output_warnings(row, field_ids),
+            field_ids=field_ids,
         )
 
     async def get_automation_simulation(
