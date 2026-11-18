@@ -12,7 +12,7 @@ An invalid `create_automation` phase transition returns `success: false` with a 
 
 Invalid `field_map` field IDs fail before GraphQL with `success: false` and the offending ID.
 
-`simulate_automation` and `get_automation_simulation` return `simulation_id`, `automation_simulation` and `warnings` at the top level, not under `data`. `simulate_automation` also returns `field_ids`, the `fieldIds` that the call sent. `get_automation_simulation` also returns `waited_seconds`. Send the same `simulation_id` and `field_ids` on each read. A read without `field_ids` gives no `empty` warning. While `status` is `processing`, `message` names the next call with those `field_ids`.
+`simulate_automation` and `get_automation_simulation` return `simulation_id`, `automation_simulation` and `warnings` at the top level, not under `data`. `simulate_automation` also returns `field_ids`, the `fieldIds` that the call sent. `get_automation_simulation` also returns `waited_seconds`. Send the same `simulation_id` and `field_ids` on each read. If `field_ids` is empty, omit it. A read without `field_ids` gives no `empty` warning. While `status` is `processing`, `message` names the next call with those `field_ids`, or with only the `simulation_id` when the list is empty.
 
 For a validated AI automation, call `create_ai_automation` with `name`, `event_id`, `pipe_id`, `prompt`, `field_ids`, and `active`. Use `active=false` for a rule that must start off:
 

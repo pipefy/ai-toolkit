@@ -355,14 +355,15 @@ class AutomationTools:
             ``action_params.aiParams.fieldIds`` that the tool sends, after the
             ``extra_input`` merge. When ``status`` is ``processing``, read the result
             with ``get_automation_simulation`` and send the same ``simulation_id`` and
-            ``field_ids`` on each read. Each call of this tool starts a new simulation.
-            When the first read is already ``success``, ``warnings`` lists bracket
-            placeholders and the fields with no value, as ``get_automation_simulation``
-            does. The fields are the ones in ``field_ids``. Compare each flagged text
-            with the output that the prompt asks for. Accept text that the prompt asks
-            for, such as a literal ``[URGENT]`` prefix. For an unfilled marker, such as
-            ``[Your Name]`` where the reply needs a real name, correct the instruction
-            in the prompt and simulate again.
+            ``field_ids`` on each read. If ``field_ids`` is empty, omit it. Each call of
+            this tool starts a new simulation. When the first read is already
+            ``success``, ``warnings`` lists bracket placeholders and the fields with no
+            value, as ``get_automation_simulation`` does. The fields are the ones in
+            ``field_ids``. Compare each flagged text with the output that the prompt
+            asks for. Accept text that the prompt asks for, such as a literal
+            ``[URGENT]`` prefix. For an unfilled marker, such as ``[Your Name]`` where
+            the reply needs a real name, correct the instruction in the prompt and
+            simulate again.
 
             **Pipe context:** ``pipe_id`` is forwarded as ``event_repo_id`` and ``action_repo_id`` on the
             simulation input (Pipefy often returns ``INTERNAL_SERVER_ERROR`` if these are omitted). Override

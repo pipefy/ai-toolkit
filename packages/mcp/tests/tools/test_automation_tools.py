@@ -1369,6 +1369,7 @@ async def test_get_automation_simulation_says_to_read_again_while_processing(
     assert payload["success"] is True
     assert "get_automation_simulation(simulation_id='sim-7')" in payload["message"]
     assert "send the fieldIds of the prompt as field_ids" in payload["message"]
+    assert "Send the same field_ids on each read" in payload["message"]
 
 
 @pytest.mark.anyio
@@ -1431,6 +1432,35 @@ async def test_simulate_automation_hint_keeps_the_field_ids_while_processing(
         in message
     )
     assert "Send the same field_ids on each read" in message
+
+
+@pytest.mark.anyio
+async def test_simulate_automation_hint_has_no_field_ids_advice_when_none_were_sent(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.simulate_automation.return_value = {
+        "simulation_id": "sim-9",
+        "automation_simulation": {
+            "status": "processing",
+            "details": None,
+            "simulationResult": None,
+        },
+        "warnings": [],
+        "field_ids": [],
+    }
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "simulate_automation",
+            {"pipe_id": "p1", "action_id": "generate_with_ai", "sample_card_id": "c9"},
+        )
+
+    payload = extract_payload(result)
+    assert payload["field_ids"] == []
+    message = payload["message"]
+    assert "get_automation_simulation(simulation_id='sim-9')." in message
+    assert "fieldIds" not in message
+    assert "field_ids" not in message
 
 
 @pytest.mark.anyio

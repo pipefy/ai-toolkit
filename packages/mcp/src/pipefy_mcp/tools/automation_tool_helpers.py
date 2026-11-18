@@ -147,19 +147,18 @@ def _simulation_message(
 ) -> str:
     if automation_simulation.get("status") != "processing":
         return final_message
-    if field_ids:
-        next_read = (
-            f"get_automation_simulation(simulation_id={simulation_id!r}, "
-            f"field_ids={field_ids!r})."
+    pending = "The simulation is still processing. Read it again with"
+    same_ids = "Send the same field_ids on each read while the status is processing."
+    if field_ids is None:
+        return (
+            f"{pending} get_automation_simulation(simulation_id={simulation_id!r}), "
+            f"and send the fieldIds of the prompt as field_ids. {same_ids}"
         )
-    else:
-        next_read = (
-            f"get_automation_simulation(simulation_id={simulation_id!r}), and "
-            "send the fieldIds of the prompt as field_ids."
-        )
+    if not field_ids:
+        return f"{pending} get_automation_simulation(simulation_id={simulation_id!r})."
     return (
-        f"The simulation is still processing. Read it again with {next_read} "
-        "Send the same field_ids on each read while the status is processing."
+        f"{pending} get_automation_simulation(simulation_id={simulation_id!r}, "
+        f"field_ids={field_ids!r}). {same_ids}"
     )
 
 
