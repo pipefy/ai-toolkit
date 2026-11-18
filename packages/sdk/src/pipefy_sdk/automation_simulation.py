@@ -10,7 +10,7 @@ SIMULATION_PROCESSING_STATUS = "processing"
 SIMULATION_SUCCESS_STATUS = "success"
 SIMULATION_POLL_INTERVAL_SECONDS = 2.0
 SIMULATION_DEFAULT_WAIT_SECONDS = 30
-SIMULATION_MAX_WAIT_SECONDS = 60
+SIMULATION_MAX_WAIT_SECONDS = 45
 
 # A link label is followed by "(", so "[text](url)" never matches.
 _BRACKET_PLACEHOLDER = re.compile(r"\[([^\[\]\n]{1,60})\](?!\()")
@@ -32,7 +32,7 @@ class SimulationOutputWarning(TypedDict):
 
 
 def parse_simulation_wait_seconds(timeout_seconds: int) -> int:
-    """Return ``timeout_seconds`` when it is a whole number from 0 to 60."""
+    """Return ``timeout_seconds`` when it is a whole number from 0 to 45."""
     in_range = 0 <= timeout_seconds <= SIMULATION_MAX_WAIT_SECONDS
     if isinstance(timeout_seconds, bool) or not in_range:
         raise ValueError(

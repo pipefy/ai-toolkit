@@ -32,7 +32,7 @@ and `pageInfo.hasNextPage`; use the next cursor until no page remains.
 
 Use `--condition` on `pipefy automation create` and `pipefy automation update` for the shared condition payload.
 
-`pipefy automation simulation` takes `--timeout` (0 to 60, default 30) and one `--field-id` for each field id of the prompt.
+`pipefy automation simulation` takes `--timeout` (0 to 45, default 30) and one `--field-id` for each field id of the prompt.
 
 ## Create an AI automation
 

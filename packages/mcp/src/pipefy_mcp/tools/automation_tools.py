@@ -465,10 +465,10 @@ class AutomationTools:
             not ``processing`` or ``timeout_seconds`` passes. It does not start a new
             simulation. The first read always runs, also with 0, and uses the client's
             request timeout (30 seconds). Each later wait and read ends by the limit,
-            counted from the start of the call. One call lasts at most the first read
-            plus the limit. If the limit passes first, the result holds the last read,
-            with ``status`` ``processing``. Then call this tool again with the same
-            ``simulation_id``.
+            counted from the start of the call. So one call ends by the limit, unless
+            the first read alone takes longer. If the limit passes first, the result
+            holds the last read, with ``status`` ``processing``. Then call this tool
+            again with the same ``simulation_id``.
 
             ``warnings`` lists the output to check before you trust the prompt. A
             ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``.
@@ -481,7 +481,7 @@ class AutomationTools:
 
             Args:
                 simulation_id: The ``simulation_id`` that ``simulate_automation`` returned.
-                timeout_seconds: Maximum wait, from 0 to 60. With 0, the tool reads one time.
+                timeout_seconds: Maximum wait, from 0 to 45. With 0, the tool reads one time.
                 field_ids: The ``aiParams.fieldIds`` of the simulated prompt. Without
                     them, ``warnings`` has no ``empty`` items.
                 debug: When True, append GraphQL codes and correlation_id to errors.

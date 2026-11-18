@@ -100,13 +100,13 @@ def test_requested_field_ids_come_from_ai_params(action_params, expected):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("value", [0, 30, 60])
-def test_wait_seconds_accepts_zero_to_sixty(value):
+@pytest.mark.parametrize("value", [0, 30, 45])
+def test_wait_seconds_accepts_zero_to_forty_five(value):
     assert parse_simulation_wait_seconds(value) == value
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("value", [-1, 61, True])
+@pytest.mark.parametrize("value", [-1, 46, True])
 def test_wait_seconds_rejects_values_outside_the_range(value):
     with pytest.raises(ValueError, match=rf"timeout_seconds={value!r}"):
         parse_simulation_wait_seconds(value)

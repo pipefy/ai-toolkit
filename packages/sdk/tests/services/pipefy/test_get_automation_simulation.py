@@ -204,9 +204,9 @@ async def test_zero_timeout_reads_once():
 async def test_rejects_a_timeout_outside_the_range_before_any_read():
     executor = mock_executor(side_effect=[_read("success", {})])
 
-    with pytest.raises(ValueError, match="timeout_seconds=61"):
+    with pytest.raises(ValueError, match="timeout_seconds=46"):
         await _service(executor, FakeClock()).get_automation_simulation(
-            "sim-4", timeout_seconds=61
+            "sim-4", timeout_seconds=46
         )
 
     executor.execute_query.assert_not_called()

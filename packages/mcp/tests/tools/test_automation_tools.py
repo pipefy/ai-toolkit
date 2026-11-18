@@ -1464,7 +1464,7 @@ async def test_simulate_automation_hint_has_no_field_ids_advice_when_none_were_s
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("timeout_seconds", [-1, 61])
+@pytest.mark.parametrize("timeout_seconds", [-1, 46])
 async def test_get_automation_simulation_rejects_a_timeout_out_of_range(
     automation_session, mock_automation_client, timeout_seconds
 ):
@@ -1516,4 +1516,4 @@ async def test_get_automation_simulation_is_read_only(automation_session):
     tool = next(t for t in listed.tools if t.name == "get_automation_simulation")
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is True
-    assert tool.input_schema["properties"]["timeout_seconds"]["maximum"] == 60
+    assert tool.input_schema["properties"]["timeout_seconds"]["maximum"] == 45

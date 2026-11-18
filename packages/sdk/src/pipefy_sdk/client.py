@@ -1267,12 +1267,13 @@ class PipefyClient:
 
         ``simulate_automation`` often returns ``status`` ``processing`` with no result.
         This method reads the simulation every 2 seconds until ``status`` is not
-        ``processing`` or ``timeout_seconds`` passes. It does not start a new simulation.
-        The first read always runs, also with 0, and uses the client's request timeout
-        (30 seconds). Each later wait and read ends by the limit, counted from the
-        start of the call. One call lasts at most the first read plus the limit. If the
-        limit passes first, the result holds the last read, with ``status``
-        ``processing``. Then call this method again with the same ``simulation_id``.
+        ``processing`` or ``timeout_seconds`` passes. It does not start a new
+        simulation. The first read always runs, also with 0, and uses the client's
+        request timeout (30 seconds). Each later wait and read ends by the limit,
+        counted from the start of the call. So one call ends by the limit, unless the
+        first read alone takes longer. If the limit passes first, the result holds the
+        last read, with ``status`` ``processing``. Then call this method again with the
+        same ``simulation_id``.
 
         ``warnings`` lists the output to check before you trust the prompt. A
         ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``. An
@@ -1284,12 +1285,12 @@ class PipefyClient:
 
         Args:
             simulation_id: The ``simulation_id`` that ``simulate_automation`` returned.
-            timeout_seconds: Maximum wait, from 0 to 60. With 0, the method reads one time.
+            timeout_seconds: Maximum wait, from 0 to 45. With 0, the method reads one time.
             field_ids: The ``aiParams.fieldIds`` of the simulated prompt. Without them,
                 ``warnings`` has no ``empty`` items.
 
         Raises:
-            ValueError: ``timeout_seconds`` is not from 0 to 60, or no simulation has
+            ValueError: ``timeout_seconds`` is not from 0 to 45, or no simulation has
                 this ``simulation_id``.
         """
         return await self._automation_service.get_automation_simulation(

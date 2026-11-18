@@ -355,7 +355,7 @@ def automation_simulation(
         "--timeout",
         min=0,
         max=SIMULATION_MAX_WAIT_SECONDS,
-        help="Maximum wait in seconds, from 0 to 60. With 0, the command reads one time.",
+        help="Maximum wait in seconds, from 0 to 45. With 0, the command reads one time.",
     ),
     field_ids: list[str] | None = typer.Option(
         None,
@@ -375,7 +375,8 @@ def automation_simulation(
     processing or the --timeout passes. It does not start a new simulation. The
     first read always runs, also with 0, and uses the client's request timeout (30
     seconds). Each later wait and read ends by the limit, counted from the start of
-    the call. One call lasts at most the first read plus the limit.
+    the call. So one call ends by the limit, unless the first read alone takes
+    longer.
     ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
     fields with no output. Compare each flagged text with the output that the prompt
     asks for. Accept text that the prompt asks for, such as a literal [URGENT]

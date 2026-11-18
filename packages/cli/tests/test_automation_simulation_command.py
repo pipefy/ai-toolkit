@@ -74,7 +74,7 @@ def test_simulation_defaults_to_thirty_seconds_and_no_field_ids(
     )
 
 
-@pytest.mark.parametrize("timeout", ["-1", "61"])
+@pytest.mark.parametrize("timeout", ["-1", "46"])
 def test_simulation_rejects_a_timeout_out_of_range(
     runner: CliRunner, clean_pipefy_env, saved_cwd, oauth_env, timeout
 ):

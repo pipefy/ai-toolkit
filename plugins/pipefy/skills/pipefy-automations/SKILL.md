@@ -218,7 +218,7 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
    get_automation_simulation simulation_id=<simulation_id> field_ids=["900000101"]
    ```
 
-   The read waits up to 30 seconds (`timeout_seconds`, 0 to 60). If `status` is still `processing` when it returns, read again with the same ID. If the second read also ends in `processing`, report the result as pending with the ID.
+   The read waits up to 30 seconds (`timeout_seconds`, 0 to 45). If `status` is still `processing` when it returns, read again with the same ID. If the second read also ends in `processing`, report the result as pending with the ID.
 5. Read `warnings` before you accept the output. A `placeholder` warning holds a bracket placeholder such as `[Your Name]`. An `empty` warning names a field that got no value. Compare each flagged text with the output that the prompt asks for. Accept text that the prompt asks for, such as a literal `[URGENT]` prefix. For an unfilled marker, such as `[Your Name]` where the reply needs a real name, correct the instruction in the prompt and simulate again. For an empty field, check if the prompt asks for that value.
 
 ---

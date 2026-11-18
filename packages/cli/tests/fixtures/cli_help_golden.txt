@@ -1214,12 +1214,13 @@ Usage: pipefy automation simulation [OPTIONS] SIMULATION_ID
  processing or the --timeout passes. It does not start a new simulation. The
  first read always runs, also with 0, and uses the client's request timeout (30
  seconds). Each later wait and read ends by the limit, counted from the start
- of the call. One call lasts at most the first read plus the limit.
- ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
- fields with no output. Compare each flagged text with the output that the
- prompt asks for. Accept text that the prompt asks for, such as a literal
- [URGENT] prefix. For an unfilled marker, such as [Your Name] where the reply
- needs a real name, correct the instruction in the prompt and simulate again.
+ of the call. So one call ends by the limit, unless the first read alone takes
+ longer. ``warnings`` lists bracket placeholders such as [Your Name] and the
+ --field-id fields with no output. Compare each flagged text with the output
+ that the prompt asks for. Accept text that the prompt asks for, such as a
+ literal [URGENT] prefix. For an unfilled marker, such as [Your Name] where the
+ reply needs a real name, correct the instruction in the prompt and simulate
+ again.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    simulation_id      TEXT  The simulation_id that `pipefy automation      │
@@ -1227,8 +1228,8 @@ Usage: pipefy automation simulation [OPTIONS] SIMULATION_ID
 │                               [required]                                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --timeout           INTEGER RANGE [0<=x<=60]  Maximum wait in seconds, from  │
-│                                               0 to 60. With 0, the command   │
+│ --timeout           INTEGER RANGE [0<=x<=45]  Maximum wait in seconds, from  │
+│                                               0 to 45. With 0, the command   │
 │                                               reads one time.                │
 │                                               [default: 30]                  │
 │ --field-id          TEXT                      A field id of the simulated    │
