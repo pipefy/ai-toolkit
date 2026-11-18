@@ -84,6 +84,7 @@ REMOTE_SEED = frozenset(
         "get_automation_execution_metrics",
         "get_automation_logs",
         "get_automation_logs_by_repo",
+        "get_automation_simulation",
         "get_automations_usage",
         "get_automation_jobs_export",
         "get_automation_jobs_export_csv",

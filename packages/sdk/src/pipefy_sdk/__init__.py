@@ -4,6 +4,11 @@ from __future__ import annotations
 
 __version__ = "0.5.7-beta.1"
 
+from pipefy_sdk.automation_simulation import (
+    SIMULATION_DEFAULT_WAIT_SECONDS,
+    SIMULATION_MAX_WAIT_SECONDS,
+    SimulationOutputWarning,
+)
 from pipefy_sdk.client import PipefyClient, PipefyEngine
 from pipefy_sdk.exceptions import (
     AiAgentConfigureError,
@@ -147,6 +152,9 @@ __all__ = [
     "AutomationListPage",
     "AutomationRuleRecord",
     "AutomationRuleSummary",
+    "SIMULATION_DEFAULT_WAIT_SECONDS",
+    "SIMULATION_MAX_WAIT_SECONDS",
+    "SimulationOutputWarning",
     "BehaviorInput",
     "BehaviorPayload",
     "CardSearch",

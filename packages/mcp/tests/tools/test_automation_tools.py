@@ -28,6 +28,7 @@ def mock_automation_client():
     client.create_send_task_automation = AsyncMock()
     client.update_automation = AsyncMock()
     client.simulate_automation = AsyncMock()
+    client.get_automation_simulation = AsyncMock()
     client.delete_automation = AsyncMock()
     client.get_phase_allowed_move_targets = AsyncMock()
     client.get_pipe_members = AsyncMock()
@@ -926,6 +927,7 @@ async def test_create_and_update_automation_tools_are_not_read_only(
 async def test_simulate_automation_success(
     automation_session, mock_automation_client, extract_payload
 ):
+    warning = {"field_id": "101", "kind": "placeholder", "text": "[Your Name]"}
     mock_automation_client.simulate_automation.return_value = {
         "simulation_id": "sim-1",
         "automation_simulation": {
@@ -933,6 +935,8 @@ async def test_simulate_automation_success(
             "details": {"message": "done"},
             "simulationResult": {"x": 1},
         },
+        "warnings": [warning],
+        "field_ids": ["101"],
     }
 
     async with automation_session as session:
@@ -968,6 +972,8 @@ async def test_simulate_automation_success(
     assert payload["success"] is True
     assert payload["simulation_id"] == "sim-1"
     assert payload["automation_simulation"]["simulationResult"] == {"x": 1}
+    assert payload["warnings"] == [warning]
+    assert payload["field_ids"] == ["101"]
 
 
 @pytest.mark.anyio
@@ -1301,3 +1307,213 @@ async def test_create_send_task_automation_validation_error_has_no_pydantic_nois
     assert "input_value=" not in message
     assert "pydantic.dev" not in message
     mock_automation_client.create_send_task_automation.assert_not_called()
+
+
+def _simulation_read(status, warnings=(), waited=4.0):
+    return {
+        "simulation_id": "sim-7",
+        "automation_simulation": {
+            "status": status,
+            "details": None,
+            "simulationResult": {} if status == "success" else None,
+        },
+        "warnings": list(warnings),
+        "waited_seconds": waited,
+    }
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_returns_the_final_read(
+    automation_session, mock_automation_client, extract_payload
+):
+    warning = {"field_id": "102", "kind": "empty", "text": ""}
+    mock_automation_client.get_automation_simulation.return_value = _simulation_read(
+        "success", [warning]
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation",
+            {"simulation_id": " sim-7 ", "timeout_seconds": 20, "field_ids": [102]},
+        )
+
+    mock_automation_client.get_automation_simulation.assert_awaited_once_with(
+        "sim-7", timeout_seconds=20, field_ids=["102"]
+    )
+    payload = extract_payload(result)
+    assert payload["success"] is True
+    assert payload["simulation_id"] == "sim-7"
+    assert payload["automation_simulation"]["status"] == "success"
+    assert payload["warnings"] == [warning]
+    assert payload["waited_seconds"] == 4.0
+    assert "get_automation_simulation" not in payload["message"]
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_says_to_read_again_while_processing(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.get_automation_simulation.return_value = _simulation_read(
+        "processing", waited=30.0
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation", {"simulation_id": "sim-7"}
+        )
+
+    mock_automation_client.get_automation_simulation.assert_awaited_once_with(
+        "sim-7", timeout_seconds=30, field_ids=None
+    )
+    payload = extract_payload(result)
+    assert payload["success"] is True
+    assert "get_automation_simulation(simulation_id='sim-7')" in payload["message"]
+    assert "send the fieldIds of the prompt as field_ids" in payload["message"]
+    assert "Send the same field_ids on each read" in payload["message"]
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_hint_keeps_the_field_ids_while_processing(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.get_automation_simulation.return_value = _simulation_read(
+        "processing", waited=30.0
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation",
+            {"simulation_id": "sim-7", "field_ids": [201, 202]},
+        )
+
+    message = extract_payload(result)["message"]
+    assert (
+        "get_automation_simulation(simulation_id='sim-7', field_ids=['201', '202'])"
+        in message
+    )
+    assert "Send the same field_ids on each read" in message
+
+
+@pytest.mark.anyio
+async def test_simulate_automation_hint_keeps_the_field_ids_while_processing(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.simulate_automation.return_value = {
+        "simulation_id": "sim-8",
+        "automation_simulation": {
+            "status": "processing",
+            "details": None,
+            "simulationResult": None,
+        },
+        "warnings": [],
+        "field_ids": ["201", "202"],
+    }
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "simulate_automation",
+            {
+                "pipe_id": "p1",
+                "action_id": "generate_with_ai",
+                "sample_card_id": "c9",
+                "extra_input": {
+                    "action_params": {
+                        "aiParams": {"value": "x", "fieldIds": [201, 202]}
+                    }
+                },
+            },
+        )
+
+    payload = extract_payload(result)
+    assert payload["field_ids"] == ["201", "202"]
+    message = payload["message"]
+    assert (
+        "get_automation_simulation(simulation_id='sim-8', field_ids=['201', '202'])"
+        in message
+    )
+    assert "Send the same field_ids on each read" in message
+
+
+@pytest.mark.anyio
+async def test_simulate_automation_hint_has_no_field_ids_advice_when_none_were_sent(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.simulate_automation.return_value = {
+        "simulation_id": "sim-9",
+        "automation_simulation": {
+            "status": "processing",
+            "details": None,
+            "simulationResult": None,
+        },
+        "warnings": [],
+        "field_ids": [],
+    }
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "simulate_automation",
+            {"pipe_id": "p1", "action_id": "generate_with_ai", "sample_card_id": "c9"},
+        )
+
+    payload = extract_payload(result)
+    assert payload["field_ids"] == []
+    message = payload["message"]
+    assert "get_automation_simulation(simulation_id='sim-9')." in message
+    assert "fieldIds" not in message
+    assert "field_ids" not in message
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("timeout_seconds", [-1, 46])
+async def test_get_automation_simulation_rejects_a_timeout_out_of_range(
+    automation_session, mock_automation_client, timeout_seconds
+):
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation",
+            {"simulation_id": "sim-7", "timeout_seconds": timeout_seconds},
+        )
+
+    mock_automation_client.get_automation_simulation.assert_not_called()
+    assert_invalid_arguments_envelope(result)
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_rejects_a_blank_id(
+    automation_session, mock_automation_client
+):
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation", {"simulation_id": "  "}
+        )
+
+    mock_automation_client.get_automation_simulation.assert_not_called()
+    assert_invalid_arguments_envelope(result)
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_unknown_id_returns_the_sdk_message(
+    automation_session, mock_automation_client, extract_payload
+):
+    mock_automation_client.get_automation_simulation.side_effect = ValueError(
+        "automationSimulation returned no simulation for simulation_id='sim-404'."
+    )
+
+    async with automation_session as session:
+        result = await session.call_tool(
+            "get_automation_simulation", {"simulation_id": "sim-404"}
+        )
+
+    payload = extract_payload(result)
+    assert payload["success"] is False
+    assert "sim-404" in tool_error_message(payload)
+
+
+@pytest.mark.anyio
+async def test_get_automation_simulation_is_read_only(automation_session):
+    async with automation_session as session:
+        listed = await session.list_tools()
+    tool = next(t for t in listed.tools if t.name == "get_automation_simulation")
+    assert tool.annotations is not None
+    assert tool.annotations.read_only_hint is True
+    assert tool.input_schema["properties"]["timeout_seconds"]["maximum"] == 45

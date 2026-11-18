@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
 from pipefy_sdk import (
     AUTOMATIONS_LIST_MAX_PAGE_SIZE,
+    SIMULATION_DEFAULT_WAIT_SECONDS,
+    SIMULATION_MAX_WAIT_SECONDS,
     AutomationConditionInput,
     CreateSendTaskAutomationInput,
     PipefyId,
 )
 from pipefy_sdk.automation_preflight import AutomationPreflightError
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from pipefy_mcp.core.tool_error_envelope import tool_error_message
 from pipefy_mcp.tools.automation_tool_helpers import (
     build_automation_error_payload,
     build_automation_mutation_success_payload,
     build_automation_read_success_payload,
+    build_automation_simulation_read_payload,
     build_automation_simulation_success_payload,
     build_automations_listed_message,
     handle_automation_tool_graphql_error,
@@ -36,6 +39,7 @@ from pipefy_mcp.tools.validation_helpers import (
     format_validation_error_message,
     mutation_error_if_not_optional_dict,
     validate_optional_tool_id,
+    validate_optional_tool_id_list,
     validate_tool_id,
 )
 
@@ -347,6 +351,20 @@ class AutomationTools:
             ``move_single_card``, ``send_a_task``) returns a validation error. Use this
             to preview AI-generated output on ``sample_card_id`` before enabling the rule.
 
+            The tool reads the simulation one time. ``field_ids`` holds the
+            ``action_params.aiParams.fieldIds`` that the tool sends, after the
+            ``extra_input`` merge. When ``status`` is ``processing``, read the result
+            with ``get_automation_simulation`` and send the same ``simulation_id`` and
+            ``field_ids`` on each read. If ``field_ids`` is empty, omit it. Each call of
+            this tool starts a new simulation. When the first read is already
+            ``success``, ``warnings`` lists bracket placeholders and the fields with no
+            value, as ``get_automation_simulation`` does. The fields are the ones in
+            ``field_ids``. Compare each flagged text with the output that the prompt
+            asks for. Accept text that the prompt asks for, such as a literal
+            ``[URGENT]`` prefix. For an unfilled marker, such as ``[Your Name]`` where
+            the reply needs a real name, correct the instruction in the prompt and
+            simulate again.
+
             **Pipe context:** ``pipe_id`` is forwarded as ``event_repo_id`` and ``action_repo_id`` on the
             simulation input (Pipefy often returns ``INTERNAL_SERVER_ERROR`` if these are omitted). Override
             via ``extra_input`` for cross-pipe setups.
@@ -426,6 +444,71 @@ class AutomationTools:
             return build_automation_simulation_success_payload(
                 result["simulation_id"],
                 sim_row,
+                result["warnings"],
+                result["field_ids"],
+            )
+
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), meta=REMOTE)
+        async def get_automation_simulation(
+            ctx: Context,
+            simulation_id: PipefyId,
+            timeout_seconds: Annotated[
+                int, Field(ge=0, le=SIMULATION_MAX_WAIT_SECONDS)
+            ] = SIMULATION_DEFAULT_WAIT_SECONDS,
+            field_ids: list[PipefyId] | None = None,
+            debug: bool = False,
+        ) -> dict[str, Any]:
+            """Read the result of an AI automation simulation, and wait while it runs.
+
+            ``simulate_automation`` often returns ``status`` ``processing`` with no
+            result. This tool reads the simulation every 2 seconds until ``status`` is
+            not ``processing`` or ``timeout_seconds`` passes. It does not start a new
+            simulation. The first read always runs, also with 0, and uses the client's
+            request timeout (30 seconds). Each later wait and read ends by the limit,
+            counted from the start of the call. So one call ends by the limit, unless
+            the first read alone takes longer. If the limit passes first, the result
+            holds the last read, with ``status`` ``processing``. Then call this tool
+            again with the same ``simulation_id``.
+
+            ``warnings`` lists the output to check before you trust the prompt. A
+            ``placeholder`` warning holds a bracket placeholder such as ``[Your Name]``.
+            An ``empty`` warning names a field in ``field_ids`` that got no value. A
+            warning does not stop the call. Compare each flagged text with the output
+            that the prompt asks for. Accept text that the prompt asks for, such as a
+            literal ``[URGENT]`` prefix. For an unfilled marker, such as ``[Your Name]``
+            where the reply needs a real name, correct the instruction in the prompt and
+            simulate again.
+
+            Args:
+                simulation_id: The ``simulation_id`` that ``simulate_automation`` returned.
+                timeout_seconds: Maximum wait, from 0 to 45. With 0, the tool reads one time.
+                field_ids: The ``aiParams.fieldIds`` of the simulated prompt. Without
+                    them, ``warnings`` has no ``empty`` items.
+                debug: When True, append GraphQL codes and correlation_id to errors.
+            """
+            client = get_pipefy_client(ctx)
+            sim_id, sim_err = validate_tool_id(simulation_id, "simulation_id")
+            if sim_err is not None:
+                return sim_err
+            field_id_strs, ids_err = validate_optional_tool_id_list(
+                field_ids, "field_ids"
+            )
+            if ids_err is not None:
+                return ids_err
+            try:
+                result = await client.get_automation_simulation(
+                    sim_id, timeout_seconds=timeout_seconds, field_ids=field_id_strs
+                )
+            except ValueError as exc:
+                return build_automation_error_payload(message=str(exc))
+            except Exception as exc:  # noqa: BLE001
+                return await handle_automation_tool_graphql_error(exc, ctx, debug)
+            return build_automation_simulation_read_payload(
+                result["simulation_id"],
+                result["automation_simulation"],
+                result["warnings"],
+                result["waited_seconds"],
+                field_id_strs,
             )
 
         @mcp.tool(

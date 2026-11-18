@@ -10,6 +10,7 @@ Use the shared domain workflow in `SKILL.md`; apply the following controls only 
 | `update_automation` | `pipefy automation update` |
 | `delete_automation` | `pipefy automation delete` |
 | `simulate_automation` | `pipefy automation simulate` |
+| `get_automation_simulation` | `pipefy automation simulation <simulation_id>` |
 | `get_automation_events` | `pipefy automation events list` |
 | `get_automation_event_attributes` | `pipefy automation event-attributes` |
 | `get_automation_actions` | `pipefy automation actions list` |
@@ -30,6 +31,8 @@ Destructive deletes require `--yes`; there is no confirmation token.
 and `pageInfo.hasNextPage`; use the next cursor until no page remains.
 
 Use `--condition` on `pipefy automation create` and `pipefy automation update` for the shared condition payload.
+
+`pipefy automation simulation` takes `--timeout` (0 to 45, default 30) and one `--field-id` for each field id of the prompt.
 
 ## Create an AI automation
 
