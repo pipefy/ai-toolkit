@@ -2643,7 +2643,8 @@ Usage: pipefy phase [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ get       Load phase metadata and fields by id (via ``get_phase_fields``).   │
-│ targets   List or change the phases a card may move to from this phase.      │
+│ targets   List the phases a card may move to from this phase, or add to      │
+│           them.                                                              │
 │ count     Return native ``Phase.cards_count`` for a phase (fast inventory).  │
 │ cards     List cards in a phase (``Phase.cards`` pagination).                │
 │ create    Create a phase in a pipe.                                          │
@@ -2741,11 +2742,12 @@ Usage: pipefy phase get [OPTIONS] PHASE_ID
 ### HELP phase/targets
 Usage: pipefy phase targets [OPTIONS] PHASE_ID
 
- List or change the phases a card may move to from this phase.
+ List the phases a card may move to from this phase, or add to them.
 
- Without --add, --set or --clear, the command lists the connections. Each
- destination must be a phase of the same pipe. The source phase and the start
- form phase are not valid destinations. A change keeps the phase name.
+ Without --add, the command lists the connections. It does not remove a
+ connection. Ask a pipe admin to remove it in the Pipefy UI. Each destination
+ must be a phase of the same pipe. The source phase and the start form phase
+ are not valid destinations. An addition keeps the phase name.
  --add keeps the connections that it reads before the write. If another client
  saves a connection on the same phase after that read, the write removes it.
  Pass every new destination of one phase with repeated --add in one command. If
@@ -2757,13 +2759,10 @@ Usage: pipefy phase targets [OPTIONS] PHASE_ID
 │ *    phase_id      TEXT  Source phase id (card's current phase). [required]  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --add            TEXT  Destination phase id to connect. Keeps the current    │
-│                        connections (repeatable).                             │
-│ --set            TEXT  Destination phase id for the complete list. Removes   │
-│                        the other connections (repeatable).                   │
-│ --clear                Remove every connection from this phase.              │
-│ --json   -j            Print machine-readable JSON to stdout.                │
-│ --help                 Show this message and exit.                           │
+│ --add           TEXT  Destination phase id to connect. Keeps the current     │
+│                       connections (repeatable).                              │
+│ --json  -j            Print machine-readable JSON to stdout.                 │
+│ --help                Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP phase/update

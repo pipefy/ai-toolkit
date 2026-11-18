@@ -23,6 +23,7 @@ DOMAINS: dict[str, frozenset[str]] = {
     "workflow": frozenset(
         {
             "add_card_comment",
+            "add_phase_move_targets",
             "clone_pipe",
             "create_attachment_presigned_url",
             "create_card",
@@ -65,7 +66,6 @@ DOMAINS: dict[str, frozenset[str]] = {
             "search_pipes",
             "send_email_with_template",
             "send_inbox_email",
-            "set_phase_move_targets",
             "update_card",
             "update_card_field",
             "update_comment",
@@ -411,6 +411,7 @@ PROFILES: dict[str, frozenset[str]] = {
     # Pipe builder (pipe admin): configure pipes, phases, fields, conditions, automations, and AI agents.
     "builder": frozenset(
         {
+            "add_phase_move_targets",
             "clone_pipe",
             "create_ai_agent",
             "create_ai_automation",
@@ -468,7 +469,6 @@ PROFILES: dict[str, frozenset[str]] = {
             "introspect_type",
             "search_pipes",
             "search_schema",
-            "set_phase_move_targets",
             "simulate_automation",
             "toggle_ai_agent_status",
             "update_ai_agent",
