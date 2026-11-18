@@ -468,7 +468,7 @@ class PipeConfigTools:
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
             to avoid trial-and-error moves. ``create_phase`` connects a new phase to
-            the phases beside it. ``set_phase_move_targets`` adds other connections.
+            the phases beside it. ``add_phase_move_targets`` adds other connections.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -655,8 +655,8 @@ class PipeConfigTools:
             The new phase is connected to the phases beside it in ``index`` order,
             so cards can move between them. Call ``get_phase_allowed_move_targets``
             on the new phase and its neighbors to read the result. Use
-            ``set_phase_move_targets`` to add or replace connections. The success
-            payload repeats this as a ``connection_hint`` key.
+            ``add_phase_move_targets`` to add connections. The success payload
+            repeats this as a ``connection_hint`` key.
 
             Args:
                 pipe_id: Pipe that will contain the phase.
@@ -733,7 +733,7 @@ class PipeConfigTools:
             are accepted but result in a no-op API call.
 
             This tool does not change the phases that a card can move to. Use
-            ``set_phase_move_targets`` for those connections. Call
+            ``add_phase_move_targets`` for those connections. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 
@@ -828,31 +828,29 @@ class PipeConfigTools:
             ),
             meta=REMOTE,
         )
-        async def set_phase_move_targets(
+        async def add_phase_move_targets(
             phase_id: PipefyId,
             target_phase_ids: list[PipefyId],
             ctx: Context,
-            replace: bool = False,
             debug: bool = False,
         ) -> dict[str, Any]:
-            """Add phases that a card can move to from a source phase, or replace them all.
+            """Add phases that a card can move to from a source phase.
 
             A card moves only to a phase that its current phase connects to. A move
             rule in an automation or an AI agent has the same limit. A new phase
             connects only to the phases beside it. Use this tool to add other
             connections, for example from an approval phase to a rejection phase.
 
-            By default, the tool keeps the current connections and adds
-            ``target_phase_ids``. With ``replace=True``, ``target_phase_ids`` becomes
-            the complete list, and the tool removes each connection that is not in it.
-            An empty list with ``replace=True`` removes every connection. The tool
-            changes only the connections, not the phase name. ``data`` holds the
-            list that the tool reads back after the write, in the shape of
-            ``get_phase_allowed_move_targets``. When every id is already connected,
-            the default mode makes no write and returns the current list.
+            The tool keeps the current connections and adds ``target_phase_ids``.
+            It does not remove a connection. Ask a pipe admin to remove it in the
+            Pipefy UI. The tool changes only the connections, not the
+            phase name. ``data`` holds the list that the tool reads back after the
+            write, in the shape of ``get_phase_allowed_move_targets``. When every id
+            is already connected, the tool makes no write and returns the current
+            list.
 
-            The API has no atomic add. The default mode keeps the connections that
-            it reads before the write. If another client saves a connection on the
+            The API has no atomic add. The tool keeps the connections that it
+            reads before the write. If another client saves a connection on the
             same phase after that read, the write removes it. Send all new
             destinations of one phase in one call. If you need more than one call
             for the same phase, wait for each call to return before you start the
@@ -869,11 +867,8 @@ class PipeConfigTools:
             Args:
                 phase_id: Source phase ID.
                     Discover via: ``get_pipe(pipe_id).phases[].id``.
-                target_phase_ids: Destination phase IDs. Send at least one, unless
-                    ``replace`` is True.
+                target_phase_ids: Destination phase IDs. Send at least one.
                     Discover via: ``get_pipe(pipe_id).phases[].id``.
-                replace: When True, remove each connection that is not in
-                    ``target_phase_ids``.
                 debug: When True, append GraphQL codes and correlation_id to errors.
             """
             client = get_pipefy_client(ctx)
@@ -881,8 +876,8 @@ class PipeConfigTools:
             if err is not None:
                 return err
             try:
-                raw = await client.set_phase_move_targets(
-                    phase_id_str, target_phase_ids, replace=replace
+                raw = await client.add_phase_move_targets(
+                    phase_id_str, target_phase_ids
                 )
             except PhaseNotFoundError as exc:
                 return build_pipe_tool_error_payload(message=str(exc), code="NOT_FOUND")
@@ -893,7 +888,7 @@ class PipeConfigTools:
             except Exception as exc:  # noqa: BLE001
                 return handle_pipe_config_tool_graphql_error(
                     exc,
-                    "Set phase move targets failed.",
+                    "Add phase move targets failed.",
                     debug=debug,
                     resource_kind="phase",
                     resource_id=phase_id_str,

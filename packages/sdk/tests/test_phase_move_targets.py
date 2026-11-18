@@ -21,7 +21,7 @@ def _allowed_moves(targets=("20", "30")):
 
 @pytest.mark.unit
 def test_parse_target_phase_ids_keeps_order_and_drops_repeats():
-    assert parse_target_phase_ids([40, " 20 ", "40", "20"], replace=False) == (
+    assert parse_target_phase_ids([40, " 20 ", "40", "20"]) == (
         "40",
         "20",
     )
@@ -29,33 +29,26 @@ def test_parse_target_phase_ids_keeps_order_and_drops_repeats():
 
 @pytest.mark.unit
 @pytest.mark.parametrize("scalar", ["", "123", b"123"])
-@pytest.mark.parametrize("replace", [False, True])
-def test_parse_target_phase_ids_rejects_a_string_or_bytes(scalar, replace):
+def test_parse_target_phase_ids_rejects_a_string_or_bytes(scalar):
     with pytest.raises(ValueError, match="must be a list of phase ids"):
-        parse_target_phase_ids(scalar, replace=replace)
+        parse_target_phase_ids(scalar)
 
 
 @pytest.mark.unit
 def test_parse_target_phase_ids_keeps_a_one_item_list_whole():
-    assert parse_target_phase_ids(["123"], replace=False) == ("123",)
+    assert parse_target_phase_ids(["123"]) == ("123",)
 
 
 @pytest.mark.unit
-def test_parse_target_phase_ids_rejects_an_empty_list_without_replace():
+def test_parse_target_phase_ids_rejects_an_empty_list():
     with pytest.raises(ValueError, match="target_phase_ids is empty"):
-        parse_target_phase_ids([], replace=False)
+        parse_target_phase_ids([])
 
 
 @pytest.mark.unit
-def test_parse_target_phase_ids_accepts_an_empty_list_with_replace():
-    assert parse_target_phase_ids([], replace=True) == ()
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("replace", [False, True])
-def test_parse_target_phase_ids_rejects_a_blank_id(replace):
+def test_parse_target_phase_ids_rejects_a_blank_id():
     with pytest.raises(ValueError, match=r"target_phase_ids\[1\] is blank"):
-        parse_target_phase_ids(["20", " "], replace=replace)
+        parse_target_phase_ids(["20", " "])
 
 
 @pytest.mark.unit

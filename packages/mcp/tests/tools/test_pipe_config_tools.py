@@ -114,7 +114,7 @@ def mock_pipe_config_client():
     client.get_pipe = AsyncMock()
     client.create_phase = AsyncMock()
     client.update_phase = AsyncMock()
-    client.set_phase_move_targets = AsyncMock()
+    client.add_phase_move_targets = AsyncMock()
     client.delete_phase = AsyncMock()
     client.get_phase_fields = AsyncMock(return_value={"fields": []})
     client.create_phase_field = AsyncMock()
@@ -610,21 +610,21 @@ def _saved_move_targets(*targets):
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_adds_by_default(
+async def test_add_phase_move_targets_adds_to_the_current_connections(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    mock_pipe_config_client.set_phase_move_targets.return_value = _saved_move_targets(
+    mock_pipe_config_client.add_phase_move_targets.return_value = _saved_move_targets(
         "20", "40"
     )
 
     async with pipe_config_session as session:
         result = await session.call_tool(
-            "set_phase_move_targets",
+            "add_phase_move_targets",
             {"phase_id": 10, "target_phase_ids": [40]},
         )
 
-    mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", ["40"], replace=False
+    mock_pipe_config_client.add_phase_move_targets.assert_awaited_once_with(
+        "10", ["40"]
     )
     payload = extract_payload(result)
     assert payload["success"] is True
@@ -639,62 +639,25 @@ async def test_set_phase_move_targets_adds_by_default(
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_passes_replace(
-    pipe_config_session, mock_pipe_config_client, extract_payload
-):
-    mock_pipe_config_client.set_phase_move_targets.return_value = _saved_move_targets(
-        "40"
-    )
-
+async def test_add_phase_move_targets_offers_no_replace_argument(pipe_config_session):
     async with pipe_config_session as session:
-        result = await session.call_tool(
-            "set_phase_move_targets",
-            {"phase_id": "10", "target_phase_ids": ["40"], "replace": True},
-        )
+        tools = (await session.list_tools()).tools
 
-    mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", ["40"], replace=True
-    )
-    assert extract_payload(result)["data"]["allowed_phases"] == [
-        {"id": "40", "name": "Phase 40"}
-    ]
+    tool = next(t for t in tools if t.name == "add_phase_move_targets")
+    assert "replace" not in tool.input_schema["properties"]
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_replace_with_an_empty_list_clears_them(
+async def test_add_phase_move_targets_value_error_is_invalid_arguments(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    mock_pipe_config_client.set_phase_move_targets.return_value = {
-        "phase": {
-            "id": "10",
-            "name": "Manager review",
-            "cards_can_be_moved_to_phases": None,
-        }
-    }
-
-    async with pipe_config_session as session:
-        result = await session.call_tool(
-            "set_phase_move_targets",
-            {"phase_id": 10, "target_phase_ids": [], "replace": True},
-        )
-
-    mock_pipe_config_client.set_phase_move_targets.assert_awaited_once_with(
-        "10", [], replace=True
-    )
-    assert extract_payload(result)["data"]["allowed_phases"] == []
-
-
-@pytest.mark.anyio
-async def test_set_phase_move_targets_value_error_is_invalid_arguments(
-    pipe_config_session, mock_pipe_config_client, extract_payload
-):
-    mock_pipe_config_client.set_phase_move_targets.side_effect = ValueError(
+    mock_pipe_config_client.add_phase_move_targets.side_effect = ValueError(
         "target_phase_ids is empty: pass at least one destination phase id"
     )
 
     async with pipe_config_session as session:
         result = await session.call_tool(
-            "set_phase_move_targets",
+            "add_phase_move_targets",
             {"phase_id": 10, "target_phase_ids": []},
         )
 
@@ -705,16 +668,16 @@ async def test_set_phase_move_targets_value_error_is_invalid_arguments(
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_missing_phase_is_not_found(
+async def test_add_phase_move_targets_missing_phase_is_not_found(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    mock_pipe_config_client.set_phase_move_targets.side_effect = PhaseNotFoundError(
+    mock_pipe_config_client.add_phase_move_targets.side_effect = PhaseNotFoundError(
         "10"
     )
 
     async with pipe_config_session as session:
         result = await session.call_tool(
-            "set_phase_move_targets",
+            "add_phase_move_targets",
             {"phase_id": 10, "target_phase_ids": [20]},
         )
 
@@ -725,10 +688,10 @@ async def test_set_phase_move_targets_missing_phase_is_not_found(
 
 
 @pytest.mark.anyio
-async def test_set_phase_move_targets_keeps_the_rejected_ids_in_the_error(
+async def test_add_phase_move_targets_keeps_the_rejected_ids_in_the_error(
     pipe_config_session, mock_pipe_config_client, extract_payload
 ):
-    mock_pipe_config_client.set_phase_move_targets.side_effect = PipefyGraphQLError(
+    mock_pipe_config_client.add_phase_move_targets.side_effect = PipefyGraphQLError(
         [
             {
                 "message": "Invalid input: targetPhaseIds (99)",
@@ -739,7 +702,7 @@ async def test_set_phase_move_targets_keeps_the_rejected_ids_in_the_error(
 
     async with pipe_config_session as session:
         result = await session.call_tool(
-            "set_phase_move_targets",
+            "add_phase_move_targets",
             {"phase_id": 10, "target_phase_ids": [99]},
         )
 
