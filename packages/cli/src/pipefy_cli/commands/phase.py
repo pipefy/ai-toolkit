@@ -91,7 +91,7 @@ def phase_targets(
 
     async def factory(client: PipefyClient):
         if add:
-            return await client.set_phase_move_targets(phase_id, add)
+            return await client.add_phase_move_targets(phase_id, add)
         return await client.get_phase_allowed_move_targets(phase_id)
 
     run_cli_command(ctx, json_out, factory)

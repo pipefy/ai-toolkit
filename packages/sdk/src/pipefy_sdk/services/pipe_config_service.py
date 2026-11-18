@@ -206,14 +206,14 @@ class PipeConfigService:
             UPDATE_PHASE_MUTATION, {"input": input.to_graphql_input()}
         )
 
-    async def set_phase_move_targets(
+    async def add_phase_move_targets(
         self,
         phase_id: str | int,
         target_phase_ids: Sequence[str | int],
     ) -> dict:
         """Add phases a card can move to from ``phase_id``.
 
-        See :meth:`PipefyClient.set_phase_move_targets` for the contract. The
+        See :meth:`PipefyClient.add_phase_move_targets` for the contract. The
         call reads the connections, writes the merged list with
         ``updatePhaseJumps``, and reads them back. When every target is already
         connected, it returns the first read and makes no write.

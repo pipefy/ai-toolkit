@@ -454,7 +454,7 @@ class PipefyClient:
         """Update phase attributes."""
         return await self._pipe_config_service.update_phase(input)
 
-    async def set_phase_move_targets(
+    async def add_phase_move_targets(
         self,
         phase_id: str | int,
         target_phase_ids: Sequence[str | int],
@@ -484,7 +484,7 @@ class PipefyClient:
             PipefyAPIError: The write returns ``success: false``, or the
                 read-back returns no phase.
         """
-        return await self._pipe_config_service.set_phase_move_targets(
+        return await self._pipe_config_service.add_phase_move_targets(
             phase_id, target_phase_ids
         )
 

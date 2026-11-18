@@ -19,7 +19,7 @@ With `skip_elicitation=true`, `create_card` filters `fields` to the editable fie
 To add destinations to a phase, send only the new phase ids, all in one call. The tool keeps the current connections. After the write, it reads the list back and returns it in `data.allowed_phases`:
 
 ```
-set_phase_move_targets phase_id="341234567" target_phase_ids=["341234570"]
+add_phase_move_targets phase_id="341234567" target_phase_ids=["341234570"]
 ```
 
 The tool does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. A connection goes one way. The source phase as a destination returns `success: false` with `RECORD_INVALID`. A phase of another pipe or the start form phase returns `INVALID_INPUT`, and the message names the id. A rejected call saves no change.

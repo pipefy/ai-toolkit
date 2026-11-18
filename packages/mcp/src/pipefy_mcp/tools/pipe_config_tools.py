@@ -468,7 +468,7 @@ class PipeConfigTools:
             Read-only mirror of Pipefy **Phase -> Connections** (GraphQL
             ``phase.cards_can_be_moved_to_phases``). Call before ``move_card_to_phase``
             to avoid trial-and-error moves. ``create_phase`` connects a new phase to
-            the phases beside it. ``set_phase_move_targets`` adds other connections.
+            the phases beside it. ``add_phase_move_targets`` adds other connections.
 
             Args:
                 phase_id: Source phase ID (typically the card's ``current_phase.id``).
@@ -655,7 +655,7 @@ class PipeConfigTools:
             The new phase is connected to the phases beside it in ``index`` order,
             so cards can move between them. Call ``get_phase_allowed_move_targets``
             on the new phase and its neighbors to read the result. Use
-            ``set_phase_move_targets`` to add connections. The success payload
+            ``add_phase_move_targets`` to add connections. The success payload
             repeats this as a ``connection_hint`` key.
 
             Args:
@@ -733,7 +733,7 @@ class PipeConfigTools:
             are accepted but result in a no-op API call.
 
             This tool does not change the phases that a card can move to. Use
-            ``set_phase_move_targets`` for those connections. Call
+            ``add_phase_move_targets`` for those connections. Call
             ``get_phase_allowed_move_targets`` on the source phase before a move.
             The success payload repeats this as a ``connection_hint`` key.
 
@@ -828,7 +828,7 @@ class PipeConfigTools:
             ),
             meta=REMOTE,
         )
-        async def set_phase_move_targets(
+        async def add_phase_move_targets(
             phase_id: PipefyId,
             target_phase_ids: list[PipefyId],
             ctx: Context,
@@ -876,7 +876,7 @@ class PipeConfigTools:
             if err is not None:
                 return err
             try:
-                raw = await client.set_phase_move_targets(
+                raw = await client.add_phase_move_targets(
                     phase_id_str, target_phase_ids
                 )
             except PhaseNotFoundError as exc:
@@ -888,7 +888,7 @@ class PipeConfigTools:
             except Exception as exc:  # noqa: BLE001
                 return handle_pipe_config_tool_graphql_error(
                     exc,
-                    "Set phase move targets failed.",
+                    "Add phase move targets failed.",
                     debug=debug,
                     resource_kind="phase",
                     resource_id=phase_id_str,

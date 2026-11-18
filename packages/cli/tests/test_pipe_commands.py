@@ -412,7 +412,7 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
     mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("342182335")
-    mock_client.set_phase_move_targets.assert_not_called()
+    mock_client.add_phase_move_targets.assert_not_called()
 
 
 def _invoke_phase_targets(runner, mock_client, args):
@@ -438,7 +438,7 @@ def test_phase_targets_add_keeps_the_current_connections(
         }
     }
     mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock(return_value=payload)
+    mock_client.add_phase_move_targets = AsyncMock(return_value=payload)
 
     result = _invoke_phase_targets(
         runner, mock_client, ["--add", "300", "--add", "400", "--json"]
@@ -446,7 +446,7 @@ def test_phase_targets_add_keeps_the_current_connections(
 
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
-    mock_client.set_phase_move_targets.assert_awaited_once_with("5001", ["300", "400"])
+    mock_client.add_phase_move_targets.assert_awaited_once_with("5001", ["300", "400"])
 
 
 @pytest.mark.parametrize("args", [["--set", "300"], ["--clear"]])
@@ -455,12 +455,12 @@ def test_phase_targets_cannot_remove_a_connection(
 ):
     oauth_env("ph-targets-no-remove")
     mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock()
+    mock_client.add_phase_move_targets = AsyncMock()
 
     result = _invoke_phase_targets(runner, mock_client, args)
 
     assert result.exit_code == 2
-    mock_client.set_phase_move_targets.assert_not_called()
+    mock_client.add_phase_move_targets.assert_not_called()
 
 
 def test_phase_targets_value_error_exits_2(
@@ -468,7 +468,7 @@ def test_phase_targets_value_error_exits_2(
 ):
     oauth_env("ph-targets-blank")
     mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock(
+    mock_client.add_phase_move_targets = AsyncMock(
         side_effect=ValueError("target_phase_ids is empty")
     )
 
@@ -483,7 +483,7 @@ def test_phase_targets_missing_phase_exits_1(
 ):
     oauth_env("ph-targets-missing")
     mock_client = MagicMock()
-    mock_client.set_phase_move_targets = AsyncMock(
+    mock_client.add_phase_move_targets = AsyncMock(
         side_effect=PhaseNotFoundError("5001")
     )
 
