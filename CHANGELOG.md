@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.8-beta.1] - 2026-11-19
+
 ### Added
 
 - **SDK / MCP / CLI `get_automation_simulation`**: reads an AI automation simulation again until its `status` is not `processing` or `timeout_seconds` passes (0 to 45, default 30). It reads every 2 seconds and starts no simulation. The first read always runs, also with 0, and uses the client's request timeout (30 seconds). Each later wait and read ends by the limit, counted from the start of the call. So one call ends by the limit, unless the first read alone takes longer. `simulate_automation` returns `field_ids`. `get_automation_simulation` returns `waited_seconds`. Both calls return `warnings`. A `placeholder` warning holds a bracket placeholder such as `[Your Name]` from the output. An `empty` warning names a field from `field_ids` that got no value. A warning does not stop the call. While `status` is `processing`, the MCP `message` repeats the `field_ids` of the call for the next read. The MCP tool is read-only and remote-safe, in the `automation` domain and the `builder` profile. The CLI twin is `pipefy automation simulation SIMULATION_ID` with `--timeout` and a repeatable `--field-id`.
