@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.5.7-beta.1"
+__version__ = "0.5.8-beta.1"
 
 from pipefy_sdk.automation_simulation import (
     SIMULATION_DEFAULT_WAIT_SECONDS,
