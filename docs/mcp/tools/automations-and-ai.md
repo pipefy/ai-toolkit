@@ -1,12 +1,12 @@
 # Automations & AI
 
-Traditional automations (if/then rules) and AI-powered automations and agents. **23 tools.** (Execution logs, usage exports, and credit dashboards are in [Observability](observability.md).)
+Traditional automations (if/then rules) and AI-powered automations and agents. **24 tools.** (Execution logs, usage exports, and credit dashboards are in [Observability](observability.md).)
 
 ---
 
 ## Traditional automations (rules engine)
 
-Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe via the standard GraphQL API.
+Eleven tools manage Pipefy traditional automations: if/then rules bound to a pipe via the standard GraphQL API.
 
 **Tip:** For **send-a-task** rules (`send_a_task` action), use `create_send_task_automation` (pipe, trigger, task title, recipients) instead of hand-building `action_params.taskParams` on `create_automation`. For other actions, call `get_automation_events` (global event catalog) and `get_automation_actions` with the target pipe (`repoId`) before `create_automation` to pick valid `trigger_id` / `action_id` values. Writes accept optional `extra_input` (top-level keys are snake_case, e.g. `action_params`, `event_params`; mirror `get_automation` output) and `debug=true` on errors.
 
@@ -17,7 +17,8 @@ Ten tools manage Pipefy traditional automations: if/then rules bound to a pipe v
 | `get_automation_actions` | Yes | Catalog of action types for a pipe (IDs and field metadata). |
 | `get_automation_events` | Yes | Catalog of trigger event definitions (global list; tool still takes `pipe_id` for context). |
 | `get_automation_event_attributes` | Yes | **Event-scoped only** (today: one token). Full `field_map.value` list: see [Common value tokens](#common-value-tokens-copy_from) below. |
-| `simulate_automation` | Yes | Runs a dry-run simulation for an automation with a payload (see tool docstring). |
+| `simulate_automation` | No | Starts a simulation of an AI automation (`generate_with_ai` only) on a sample card and reads it one time. When `status` is `processing`, read the result with `get_automation_simulation` and send the returned `field_ids`. If that list is empty, omit `field_ids`. When the first read is final, `warnings` follows the rules of `get_automation_simulation`, with the `fieldIds` that the call sends after the `extra_input` merge. |
+| `get_automation_simulation` | Yes | Reads a simulation again until `status` is not `processing` or `timeout_seconds` passes (0 to 45, default 30). It starts no simulation. The first read always runs, also with 0, and uses the client's request timeout (30 seconds). Each later wait and read ends by the limit, counted from the start of the call. So one call ends by the limit, unless the first read alone takes longer. `warnings` lists bracket placeholders such as `[Your Name]` and, with `field_ids`, each field that got no value. A warning does not stop the call. Compare each flagged text with the output that the prompt asks for. Accept text that the prompt asks for, such as a literal `[URGENT]` prefix. For an unfilled marker, such as `[Your Name]` where the reply needs a real name, correct the instruction in the prompt and simulate again. |
 | `create_automation` | No | Creates a rule: `pipe_id`, `name`, `trigger_id`, `action_id`; `active` defaults to true. Set `active: false` to create disabled. Optional first-class typed `condition` (see [Condition contract](#condition-contract-condition)); other fields via `extra_input`. |
 | `create_send_task_automation` | No | Creates a send-a-task automation (`pipe_id`, trigger, task title, recipients). Created active; disable via `update_automation`. |
 | `update_automation` | No | Patches a rule: first-class typed `condition` (see [Condition contract](#condition-contract-condition)) and/or `extra_input` (`UpdateAutomationInput` fields). Requires at least one. |
@@ -146,7 +147,7 @@ AI automations are separate from traditional rules above. They are prompt-driven
 
 | Tool | Read-only | Role |
 |------|-----------|------|
-| `create_ai_automation` | No | Prompt-driven automation writing to one or more card fields (AI must be enabled on the pipe). |
+| `create_ai_automation` | No | Prompt-driven automation writing to one or more card fields (AI must be enabled on the pipe). Optional `active` (default `true`). `false` creates the rule disabled in the same call. |
 | `update_ai_automation` | No | Change name, `active`, prompt, `field_ids`, or `condition`. |
 | `get_ai_automation` | Yes | Loads one AI automation by id (same GraphQL read path as `get_automation`). |
 | `get_ai_automations` | Yes | Lists **only** `generate_with_ai` automations from one page of the pipe's rules (optional org resolution, `first` 1 to 50, `after`). `pagination` describes the mixed connection, not the AI subset; continue while `has_more` is true before concluding an AI rule does not exist. |

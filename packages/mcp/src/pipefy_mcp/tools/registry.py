@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 PIPEFY_TOOL_NAMES = frozenset(
     {
         "add_card_comment",
+        "add_phase_move_targets",
         "add_service_account_to_pipe",
         "call_ipaas_tool",
         "clone_pipe",
@@ -131,6 +132,7 @@ PIPEFY_TOOL_NAMES = frozenset(
         "get_automation_jobs_export_csv",
         "get_automation_logs",
         "get_automation_logs_by_repo",
+        "get_automation_simulation",
         "get_automations",
         "get_automations_usage",
         "get_available_ai_models",

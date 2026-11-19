@@ -319,20 +319,25 @@ Usage: pipefy ai-automation create [OPTIONS]
  Create an AI automation (``create_ai_automation``).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ *  --pipe                  TEXT  Pipe id. [required]                         │
-│ *  --name          -n      TEXT  Automation name. [required]                 │
-│ *  --event-id              TEXT  Trigger event id. [required]                │
-│ *  --prompt                TEXT  AI prompt with %{internal_id} refs.         │
-│                                  [required]                                  │
-│ *  --field-ids             TEXT  JSON array of output field ids. [required]  │
-│    --action-repo           TEXT  Optional action repo id (defaults to        │
-│                                  --pipe).                                    │
-│    --skills-ids            TEXT  Optional JSON array of skill id strings.    │
-│    --event-params          TEXT  Optional JSON object.                       │
-│    --condition             TEXT  Optional JSON object (omit for default      │
-│                                  placeholder).                               │
+│ *  --pipe                             TEXT  Pipe id. [required]              │
+│ *  --name          -n                 TEXT  Automation name. [required]      │
+│ *  --event-id                         TEXT  Trigger event id. [required]     │
+│ *  --prompt                           TEXT  AI prompt with %{internal_id}    │
+│                                             refs.                            │
+│                                             [required]                       │
+│ *  --field-ids                        TEXT  JSON array of output field ids.  │
+│                                             [required]                       │
+│    --active            --no-active          Create enabled or disabled.      │
+│                                             [default: active]                │
+│    --action-repo                      TEXT  Optional action repo id          │
+│                                             (defaults to --pipe).            │
+│    --skills-ids                       TEXT  Optional JSON array of skill id  │
+│                                             strings.                         │
+│    --event-params                     TEXT  Optional JSON object.            │
+│    --condition                        TEXT  Optional JSON object (omit for   │
+│                                             default placeholder).            │
 │    --json          -j                                                        │
-│    --help                        Show this message and exit.                 │
+│    --help                                   Show this message and exit.      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP ai-automation/delete
@@ -883,6 +888,8 @@ Usage: pipefy automation [OPTIONS] COMMAND [ARGS]...
 │ delete             Delete an automation rule (``delete_automation``).        │
 │ simulate           Dry-run an automation against a card                      │
 │                    (``simulate_automation``).                                │
+│ simulation         Read a simulation result and wait while it runs           │
+│                    (``get_automation_simulation``).                          │
 │ logs               List automation execution logs (``get_automation_logs``   │
 │                    or ``get_automation_logs_by_repo``).                      │
 │ event-attributes   List official event-attribute tokens                      │
@@ -1195,6 +1202,43 @@ Usage: pipefy automation simulate [OPTIONS]
 │                                   simulation input.                          │
 │    --json           -j            Print machine-readable JSON to stdout.     │
 │    --help                         Show this message and exit.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### HELP automation/simulation
+Usage: pipefy automation simulation [OPTIONS] SIMULATION_ID
+
+ Read a simulation result and wait while it runs
+ (``get_automation_simulation``).
+
+ The command reads the simulation every 2 seconds until its status is not
+ processing or the --timeout passes. It does not start a new simulation. The
+ first read always runs, also with 0, and uses the client's request timeout (30
+ seconds). Each later wait and read ends by the limit, counted from the start
+ of the call. So one call ends by the limit, unless the first read alone takes
+ longer. ``warnings`` lists bracket placeholders such as [Your Name] and the
+ --field-id fields with no output. Compare each flagged text with the output
+ that the prompt asks for. Accept text that the prompt asks for, such as a
+ literal [URGENT] prefix. For an unfilled marker, such as [Your Name] where the
+ reply needs a real name, correct the instruction in the prompt and simulate
+ again.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    simulation_id      TEXT  The simulation_id that `pipefy automation      │
+│                               simulate` printed.                             │
+│                               [required]                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --timeout           INTEGER RANGE [0<=x<=45]  Maximum wait in seconds, from  │
+│                                               0 to 45. With 0, the command   │
+│                                               reads one time.                │
+│                                               [default: 30]                  │
+│ --field-id          TEXT                      A field id of the simulated    │
+│                                               prompt (aiParams.fieldIds), to │
+│                                               list fields with no output     │
+│                                               (repeatable).                  │
+│ --json      -j                                Print machine-readable JSON to │
+│                                               stdout.                        │
+│ --help                                        Show this message and exit.    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP automation/update
@@ -2600,8 +2644,8 @@ Usage: pipefy phase [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ get       Load phase metadata and fields by id (via ``get_phase_fields``).   │
-│ targets   List phases a card may move to from this phase (UI transition      │
-│           rules).                                                            │
+│ targets   List the phases a card may move to from this phase, or add to      │
+│           them.                                                              │
 │ count     Return native ``Phase.cards_count`` for a phase (fast inventory).  │
 │ cards     List cards in a phase (``Phase.cards`` pagination).                │
 │ create    Create a phase in a pipe.                                          │
@@ -2699,14 +2743,27 @@ Usage: pipefy phase get [OPTIONS] PHASE_ID
 ### HELP phase/targets
 Usage: pipefy phase targets [OPTIONS] PHASE_ID
 
- List phases a card may move to from this phase (UI transition rules).
+ List the phases a card may move to from this phase, or add to them.
+
+ Without --add, the command lists the connections. It does not remove a
+ connection. Ask a pipe admin to remove it in the Pipefy UI. Each destination
+ must be a phase of the same pipe. The source phase and the start form phase
+ are not valid destinations. An addition keeps the phase name.
+ --add keeps the connections that it reads before the write. If another client
+ saves a connection on the same phase after that read, the write removes it.
+ Pass every new destination of one phase with repeated --add in one command. If
+ you run more than one command for the same phase, wait for each one to finish
+ before you start the next one. The printed list is the saved state at the time
+ of the read-back. It does not stop a later write by another client.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │ *    phase_id      TEXT  Source phase id (card's current phase). [required]  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --json  -j        Print machine-readable JSON to stdout.                     │
-│ --help            Show this message and exit.                                │
+│ --add           TEXT  Destination phase id to connect. Keeps the current     │
+│                       connections (repeatable).                              │
+│ --json  -j            Print machine-readable JSON to stdout.                 │
+│ --help                Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ### HELP phase/update

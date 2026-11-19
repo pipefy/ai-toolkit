@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import asyncio
+import time
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any, cast
 
+from pipefy_sdk.automation_simulation import (
+    SIMULATION_DEFAULT_WAIT_SECONDS,
+    next_simulation_poll_delay,
+    parse_simulation_wait_seconds,
+    requested_simulation_field_ids,
+    simulation_output_warnings,
+    simulation_read_budget,
+)
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.models.ai_automation import (
     AutomationEventParamsInput,
@@ -25,6 +35,11 @@ from pipefy_sdk.queries.automation_queries import (
     GET_PIPE_ORGANIZATION_ID_QUERY,
     UPDATE_AUTOMATION_MUTATION,
 )
+from pipefy_sdk.read_deadline import (
+    ReadBeforeDeadline,
+    ReadDeadlinePassed,
+    await_before_deadline,
+)
 from pipefy_sdk.services.automation_graphql_types import (
     AutomationActionRow,
     AutomationEventAttributeRow,
@@ -32,6 +47,7 @@ from pipefy_sdk.services.automation_graphql_types import (
     AutomationListPage,
     AutomationRuleRecord,
     AutomationRuleSummary,
+    AutomationSimulationReadResult,
     AutomationSimulationRow,
     CreateAutomationMutationResult,
     DeleteAutomationServiceResult,
@@ -192,8 +208,18 @@ def _raise_if_automation_mutation_has_errors(
 class AutomationService:
     """Reads and mutations for traditional pipe automations (rules engine)."""
 
-    def __init__(self, *, executor: GraphQLExecutor) -> None:
+    def __init__(
+        self,
+        *,
+        executor: GraphQLExecutor,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        clock: Callable[[], float] = time.monotonic,
+        read_before_deadline: ReadBeforeDeadline = await_before_deadline,
+    ) -> None:
         self._executor = executor
+        self._sleep = sleep
+        self._clock = clock
+        self._read_before_deadline = read_before_deadline
 
     async def get_automation(self, automation_id: str) -> AutomationRuleRecord | None:
         """Fetch one automation by ID.
@@ -452,6 +478,7 @@ class AutomationService:
             automation_input.event_id,
             ACTION_ID_GENERATE_WITH_AI,
             action_repo_id=automation_input.action_repo_id,
+            active=automation_input.active,
             action_params={
                 "aiParams": _ai_params_payload(
                     prompt=automation_input.prompt,
@@ -597,6 +624,59 @@ class AutomationService:
         if raw_sid is None or (isinstance(raw_sid, str) and not raw_sid.strip()):
             raise ValueError("createAutomationSimulation returned no simulationId.")
         simulation_id = str(raw_sid).strip()
+        field_ids = requested_simulation_field_ids(input_obj.get("action_params"))
+        row = await self._read_automation_simulation(simulation_id)
+        return SimulateAutomationServiceResult(
+            simulation_id=simulation_id,
+            automation_simulation=row,
+            warnings=simulation_output_warnings(row, field_ids),
+            field_ids=field_ids,
+        )
+
+    async def get_automation_simulation(
+        self,
+        simulation_id: str,
+        *,
+        timeout_seconds: int = SIMULATION_DEFAULT_WAIT_SECONDS,
+        field_ids: Sequence[str | int] | None = None,
+    ) -> AutomationSimulationReadResult:
+        """Read a simulation again until it leaves ``processing`` or ``timeout_seconds`` passes.
+
+        See :meth:`PipefyClient.get_automation_simulation` for the contract.
+        """
+        limit = parse_simulation_wait_seconds(timeout_seconds)
+        started = self._clock()
+        row = await self._read_automation_simulation(simulation_id)
+        while True:
+            delay = next_simulation_poll_delay(
+                row.get("status"),
+                waited_seconds=self._clock() - started,
+                timeout_seconds=limit,
+            )
+            if delay is None:
+                break
+            await self._sleep(delay)
+            budget = simulation_read_budget(
+                waited_seconds=self._clock() - started, timeout_seconds=limit
+            )
+            if budget is None:
+                break
+            try:
+                row = await self._read_before_deadline(
+                    lambda: self._read_automation_simulation(simulation_id), budget
+                )
+            except ReadDeadlinePassed:
+                break
+        return AutomationSimulationReadResult(
+            simulation_id=simulation_id,
+            automation_simulation=row,
+            warnings=simulation_output_warnings(row, field_ids),
+            waited_seconds=round(self._clock() - started, 1),
+        )
+
+    async def _read_automation_simulation(
+        self, simulation_id: str
+    ) -> AutomationSimulationRow:
         raw_query = await self._executor.execute_query(
             AUTOMATION_SIMULATION_QUERY,
             {"simulationId": simulation_id},
@@ -604,12 +684,11 @@ class AutomationService:
         row = raw_query.get("automationSimulation")
         if not isinstance(row, dict):
             raise ValueError(
-                "automationSimulation query returned no data for the simulationId."
+                f"automationSimulation returned no simulation for "
+                f"simulation_id={simulation_id!r}. Use the simulation_id that "
+                "simulate_automation returned."
             )
-        return SimulateAutomationServiceResult(
-            simulation_id=simulation_id,
-            automation_simulation=cast(AutomationSimulationRow, row),
-        )
+        return cast(AutomationSimulationRow, row)
 
     async def delete_automation(
         self, automation_id: str

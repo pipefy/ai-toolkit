@@ -5,6 +5,8 @@ from __future__ import annotations
 import typer
 from pipefy_sdk import (
     AUTOMATIONS_LIST_MAX_PAGE_SIZE,
+    SIMULATION_DEFAULT_WAIT_SECONDS,
+    SIMULATION_MAX_WAIT_SECONDS,
     AutomationConditionInput,
     CreateSendTaskAutomationInput,
     PipefyClient,
@@ -337,6 +339,54 @@ def automation_simulate(
             condition=cond,
             name=name,
             extra_input=ex,
+        )
+
+    run_cli_command(ctx, json_out, factory)
+
+
+@automation_app.command("simulation", context_settings=ID_POSITIONAL_CONTEXT_SETTINGS)
+def automation_simulation(
+    ctx: typer.Context,
+    simulation_id: str = resource_id_argument(
+        help="The simulation_id that `pipefy automation simulate` printed."
+    ),
+    timeout: int = typer.Option(
+        SIMULATION_DEFAULT_WAIT_SECONDS,
+        "--timeout",
+        min=0,
+        max=SIMULATION_MAX_WAIT_SECONDS,
+        help="Maximum wait in seconds, from 0 to 45. With 0, the command reads one time.",
+    ),
+    field_ids: list[str] | None = typer.Option(
+        None,
+        "--field-id",
+        help="A field id of the simulated prompt (aiParams.fieldIds), to list fields with no output (repeatable).",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Print machine-readable JSON to stdout.",
+    ),
+) -> None:
+    """Read a simulation result and wait while it runs (``get_automation_simulation``).
+
+    The command reads the simulation every 2 seconds until its status is not
+    processing or the --timeout passes. It does not start a new simulation. The
+    first read always runs, also with 0, and uses the client's request timeout (30
+    seconds). Each later wait and read ends by the limit, counted from the start of
+    the call. So one call ends by the limit, unless the first read alone takes
+    longer.
+    ``warnings`` lists bracket placeholders such as [Your Name] and the --field-id
+    fields with no output. Compare each flagged text with the output that the prompt
+    asks for. Accept text that the prompt asks for, such as a literal [URGENT]
+    prefix. For an unfilled marker, such as [Your Name] where the reply needs a real
+    name, correct the instruction in the prompt and simulate again.
+    """
+
+    async def factory(client: PipefyClient):
+        return await client.get_automation_simulation(
+            simulation_id, timeout_seconds=timeout, field_ids=field_ids or None
         )
 
     run_cli_command(ctx, json_out, factory)

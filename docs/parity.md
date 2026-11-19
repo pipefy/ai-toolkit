@@ -2,7 +2,7 @@
 
 This matrix is the source of truth for **MCP tool ↔ `pipefy` CLI** coverage. Update it whenever MCP tools or CLI commands are added, renamed, or removed.
 
-**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **197** tools).
+**Registry source:** `PIPEFY_TOOL_NAMES` in `packages/mcp/src/pipefy_mcp/tools/registry.py` (must stay in sync with this table: **199** tools).
 
 **Later CLI coverage:** areas such as attachments, field conditions, email, audit export, traditional automations, exports/usage, introspection, and raw GraphQL appear as **shipped** below when the matching Typer commands exist in `packages/cli`.
 
@@ -32,7 +32,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `call_ipaas_tool` | — | deferred | iPaaS (Advanced Automations) tool invocation; MCP-first. Destructive catalog calls use the same `confirmation_token` two-step; mixed `ADD`/`UPDATE` stay one-shot. CLI twin considered once agent usage settles. |
 | `clone_pipe` | `pipefy pipe clone` | shipped | optional `--org`. |
 | `create_ai_agent` | `pipefy agent create` | shipped | AI Agents domain; `--active/--inactive` (default active) mirrors MCP `active`; inactive sets `disabled_at` on create + chained update. |
-| `create_ai_automation` | `pipefy ai-automation create` | shipped | AI Automations domain; post-v0.1 CLI unless explicitly rescoped. |
+| `create_ai_automation` | `pipefy ai-automation create` | shipped | AI Automations domain. `--active/--no-active` (default active) mirrors MCP `active`. |
 | `create_ai_knowledge_base_data_lookup` | `pipefy kb data-lookup create` | shipped | Knowledge bases; pipe-scoped (`--pipe-uuid`, `--name` <=80, `--description` <=300, `--source-repo-id` numeric pipe ID, `--output-fields` JSON array 1-30, `--conditions` JSON array, optional `--search-query`). Conditions are typed client-side (static needs a string value; AI-filled needs the input trio). CLI gates on the read-access probe. |
 | `create_ai_knowledge_base_document` | `pipefy kb document create` | shipped | Knowledge bases; one-shot PDF upload (presigned URL, S3 PUT, create mutation). Pipe-scoped (`--pipe-uuid`, `--file`, `--name` <=80, `--description` <=300, all required). `.pdf` and 20 MiB cap enforced client-side; step-tagged errors (`file_read`/`presigned_url`/`s3_upload`/`kb_create`). CLI gates on the read-access probe. Indexing is asynchronous. |
 | `create_ai_knowledge_base_plain_text` | `pipefy kb plain-text create` | shipped | Knowledge bases; pipe-scoped (`--pipe-uuid`, `--name` <=80, `--content` <=3500, `--description` <=300, all required). CLI gates on the read-access probe; limits fail fast client-side. |
@@ -119,6 +119,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_automation_jobs_export_csv` | `pipefy export automation-jobs-csv` (also `pipefy automation export csv`) | shipped | (export id argument). |
 | `get_automation_logs` | `pipefy automation logs --automation` | shipped | (mutually exclusive with `--repo`). |
 | `get_automation_logs_by_repo` | `pipefy automation logs --repo` | shipped | — |
+| `get_automation_simulation` | `pipefy automation simulation` | shipped | Reads `automationSimulation` every 2 seconds until `status` is not `processing` or the limit passes (`--timeout`, 0 to 45, default 30). It starts no simulation. The first read always runs, also with 0, and uses the client's request timeout (30 seconds). Each later wait and read ends by the limit, counted from the start of the call. So one call ends by the limit, unless the first read alone takes longer. `warnings` lists bracket placeholders and, with `--field-id` (MCP `field_ids`), each field with no output. Remote-safe. |
 | `get_automations` | `pipefy automation list` | shipped | (optional `--organization` / `--pipe`; `--first` 1 to 50, `--after` cursor). `--json` prints the whole page (`nodes`, `totalCount`, `pageInfo`); without `--json`, a table of each row's scalar columns plus `totalCount` / `hasNextPage`, with `event_params` and `condition` left to `--json`. |
 | `get_automations_usage` | `pipefy usage automations` (also `pipefy automation usage`) | shipped | (`--organization`, `--from`, `--to` ISO range). |
 | `get_available_ai_models` | `pipefy ai-provider models` | shipped | LLM provider discovery; vendor model list (`--provider-name`). |
@@ -139,7 +140,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `get_organization_report` | `pipefy report-org get` | shipped | Organization reports. |
 | `get_organization_report_export` | (poll via `pipefy report-org export --format json`) | shipped | Organization reports + export-shaped. |
 | `get_organization_reports` | `pipefy report-org list` | shipped | Organization reports. |
-| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). |
+| `get_phase_allowed_move_targets` | `pipefy phase targets` | shipped | Read-only; mirrors Phase -> Connections (`cards_can_be_moved_to_phases`). `add_phase_move_targets` adds to them. |
 | `get_phase_cards` | `pipefy phase cards` | shipped | ``Phase.cards`` pagination (``--first`` default 50, ``--after``, ``--include-fields``). Prefer over ``get_cards`` for phase-local inventory. |
 | `get_phase_cards_count` | `pipefy phase count` | shipped | Native ``Phase.cards_count`` via ``get_phase``; pair with ``get_phase_cards`` to list. |
 | `get_interface_html` | `pipefy portal html-interface get` | shipped | Interfaces schema; read-only; HTML interface with each `customCode` element's live document. Raises on a grid-layout interface (use `get_portal`). Remote-safe. |
@@ -184,6 +185,7 @@ MCP destructive tools use a two-step `confirmation_token` (see [Destructive oper
 | `set_interface_actions` | `pipefy portal html-interface set-actions` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its `metadata.actions` (`[]` removes them), keeping its other metadata keys and data sources, and sets or keeps `editable` (`--editable/--no-editable`). Actions are checked before the call, and each `sourceId`/`repoId` against the element's sources. Remote-safe. |
 | `set_interface_sources` | `pipefy portal html-interface set-sources` | shipped | Interfaces `updateElement` on an HTML interface's `customCode` element; replaces its data sources (`[]` removes them), keeping its `metadata` and `editable`. Sources are checked before the call. Remote-safe. |
 | `set_llm_provider_active_status` | `pipefy ai-provider set-active-status` | shipped | Custom (BYOM) provider; `--active/--inactive`; org from session. |
+| `add_phase_move_targets` | `pipefy phase targets --add` | shipped | `updatePhaseJumps` (replace-all on the API, no atomic add). The call reads the current connections and adds to them, with no write when every id is already connected. It does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. Each write reads the list back. Remote-safe. |
 | `set_role` | `pipefy member set-role` | shipped | — |
 | `set_table_record_field_value` | `pipefy record update` | shipped | (``--field-id`` + ``--value``). |
 | `simulate_automation` | `pipefy automation simulate` | shipped | (`--pipe`, `--action-id`, `--sample-card`, optional JSON fragments). |

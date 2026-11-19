@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from pipefy_sdk import PipePhaseSetupError
+import pytest
+from pipefy_sdk import PhaseNotFoundError, PipePhaseSetupError
 from pipefy_sdk.graphql_inputs import (
     RepoPreferenceInput,
     UpdatePipeInput,
@@ -411,6 +412,85 @@ def test_phase_targets_json(runner, clean_pipefy_env, saved_cwd, oauth_env):
     assert result.exit_code == 0
     assert json.loads(result.stdout) == payload
     mock_client.get_phase_allowed_move_targets.assert_awaited_once_with("342182335")
+    mock_client.add_phase_move_targets.assert_not_called()
+
+
+def _invoke_phase_targets(runner, mock_client, args):
+    with patch(
+        "pipefy_cli.commands._common.get_authenticated_client",
+        return_value=mock_client,
+    ):
+        return runner.invoke(app, ["phase", "targets", "5001", *args])
+
+
+def test_phase_targets_add_keeps_the_current_connections(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-add")
+    payload = {
+        "phase": {
+            "id": "5001",
+            "name": "Doing",
+            "cards_can_be_moved_to_phases": [
+                {"id": "200", "name": "Done"},
+                {"id": "300", "name": "Rejected"},
+            ],
+        }
+    }
+    mock_client = MagicMock()
+    mock_client.add_phase_move_targets = AsyncMock(return_value=payload)
+
+    result = _invoke_phase_targets(
+        runner, mock_client, ["--add", "300", "--add", "400", "--json"]
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == payload
+    mock_client.add_phase_move_targets.assert_awaited_once_with("5001", ["300", "400"])
+
+
+@pytest.mark.parametrize("args", [["--set", "300"], ["--clear"]])
+def test_phase_targets_cannot_remove_a_connection(
+    runner, clean_pipefy_env, saved_cwd, oauth_env, args
+):
+    oauth_env("ph-targets-no-remove")
+    mock_client = MagicMock()
+    mock_client.add_phase_move_targets = AsyncMock()
+
+    result = _invoke_phase_targets(runner, mock_client, args)
+
+    assert result.exit_code == 2
+    mock_client.add_phase_move_targets.assert_not_called()
+
+
+def test_phase_targets_value_error_exits_2(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-blank")
+    mock_client = MagicMock()
+    mock_client.add_phase_move_targets = AsyncMock(
+        side_effect=ValueError("target_phase_ids is empty")
+    )
+
+    result = _invoke_phase_targets(runner, mock_client, ["--add", " "])
+
+    assert result.exit_code == 2
+    assert "target_phase_ids is empty" in result.stderr
+
+
+def test_phase_targets_missing_phase_exits_1(
+    runner, clean_pipefy_env, saved_cwd, oauth_env
+):
+    oauth_env("ph-targets-missing")
+    mock_client = MagicMock()
+    mock_client.add_phase_move_targets = AsyncMock(
+        side_effect=PhaseNotFoundError("5001")
+    )
+
+    result = _invoke_phase_targets(runner, mock_client, ["--add", "300"])
+
+    assert result.exit_code == 1
+    assert "Phase 5001 not found or access denied." in result.stderr
 
 
 def test_phase_count_json(runner, clean_pipefy_env, saved_cwd, oauth_env):

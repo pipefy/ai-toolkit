@@ -62,6 +62,11 @@ def phase_targets(
     phase_id: str = resource_id_argument(
         help="Source phase id (card's current phase)."
     ),
+    add: list[str] = typer.Option(
+        [],
+        "--add",
+        help="Destination phase id to connect. Keeps the current connections (repeatable).",
+    ),
     json_out: bool = typer.Option(
         False,
         "--json",
@@ -69,9 +74,24 @@ def phase_targets(
         help="Print machine-readable JSON to stdout.",
     ),
 ) -> None:
-    """List phases a card may move to from this phase (UI transition rules)."""
+    """List the phases a card may move to from this phase, or add to them.
+
+    Without --add, the command lists the connections. It does not remove a
+    connection. Ask a pipe admin to remove it in the Pipefy UI. Each destination
+    must be a phase of the same pipe. The source phase and the start form phase are
+    not valid destinations. An addition keeps the phase name.
+
+    --add keeps the connections that it reads before the write. If another client
+    saves a connection on the same phase after that read, the write removes it.
+    Pass every new destination of one phase with repeated --add in one command. If
+    you run more than one command for the same phase, wait for each one to finish
+    before you start the next one. The printed list is the saved state at the time
+    of the read-back. It does not stop a later write by another client.
+    """
 
     async def factory(client: PipefyClient):
+        if add:
+            return await client.add_phase_move_targets(phase_id, add)
         return await client.get_phase_allowed_move_targets(phase_id)
 
     run_cli_command(ctx, json_out, factory)

@@ -23,19 +23,21 @@ A build request defaults to `build`. The `build` and `build inactive` levels app
 
 In this section, a pipe with cards has cards that existed before this build. Acceptance cards that the build creates do not count. After the tests, delete the acceptance cards with the usual delete confirmation.
 
+A rule that moves a card needs a connection from the source phase to the destination phase. Before you create the rule, read the connections with `get_phase_allowed_move_targets`. A new connection applies at once to every card in the source phase, also while the rule is off. People and other rules can then move those cards to the destination. Add only the connections that the request or the specification names. An event such as `field_updated` can occur in more than one phase. If the request or the specification does not say which phases are the source, ask the user which phases to connect. If the source is already defined, do not ask again. Add each missing destination with `add_phase_move_targets`, all destinations of one source phase in one call. Make sure that the list in the result holds each destination.
+
 Create an automation off only in these cases:
 
 - The user asks for `build inactive`, in any words.
 - The pipe existed before this conversation and has cards that the rule can match.
 - A time rule or a scheduled rule runs in a pipe with cards.
 - The rule reads a business assumption that the user did not confirm.
-- A move needs a phase connection that does not exist.
+- A move needs a phase connection that `add_phase_move_targets` could not add.
 
 For the existing-card and time-rule cases, read the saved rule and compare it with the specification, or with the restated request when no specification exists. If no other off case applies, activate the rule in the same build. Do not ask for another yes.
 
 Keep a rule off when the user asked for it, until the user permits activation. Keep a rule with a pending assumption off until the user confirms that assumption. Keep a rule with a missing connection off until that connection exists. Activate only when none of these conditions still requires an off state. If the tool rejects a missing connection, skip that rule until the connection exists.
 
-Create traditional and task automations with `active=false` for an off case. Otherwise, use `active=true`. For an AI automation that must start off, use "Create an AI automation inactive" below. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
+Create traditional, task, and AI automations with `active=false` for an off case. Otherwise, use `active=true`. Set the state in the create call. Do not create an active rule and then disable it, because the rule can run on cards between the two calls. Each webhook, email outside the company, or member invitation still needs its own yes. That yes does not change the build level.
 
 ---
 
@@ -73,7 +75,7 @@ Create AI only after the user's yes:
 | ------------ | --------- |
 | `get_ai_automations` | List `generate_with_ai` rules from the pipe's mixed listing. Each page contains at most 50 mixed rules; continue with `after` before concluding an AI rule does not exist. |
 | `get_ai_automation` | Full config including prompt, fields, condition. |
-| `create_ai_automation` | Create a prompt-driven automation (requires AI enabled on the pipe). |
+| `create_ai_automation` | Create a prompt-driven automation (requires AI enabled on the pipe). `active` defaults to true. |
 | `update_ai_automation` | Change name, `active`, prompt, `field_ids`, or `condition`. |
 | `delete_ai_automation` | Destructive delete. |
 | `validate_ai_automation_prompt` | **Pre-flight check.** Returns `{valid, problems, warnings, field_map}` — also detects prompt `%{id}` ∩ `field_ids` overlap. |
@@ -100,35 +102,24 @@ Create AI only after the user's yes:
 
    Returns `valid:true|false`, `problems`, `warnings`, `field_map`. Catches mistakes in one read-only call vs 2–3 failed mutation roundtrips.
 
-4. If `valid:true`, create the automation in the state from "Start state". For an active rule, use `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, and `name`. The SDK takes a `CreateAiAutomationInput` with those values. For an inactive rule, use "Create an AI automation inactive" below.
-5. Read the rule with `get_ai_automation`. Make sure that its prompt, fields, and `active` match the specification.
+4. If the rule must start off, make sure that your surface supports `active` on create. Do this before the create call:
 
----
+   - MCP: the input schema of `create_ai_automation` on the connected server lists `active`.
+   - SDK: the installed `CreateAiAutomationInput` declares `active`, so `"active" in CreateAiAutomationInput.model_fields` is true.
 
-## Create an AI automation inactive
+   If `active` is missing, stop before the create call. Tell the user that this MCP server or SDK version cannot create the rule off, and that a version with `active` on `create_ai_automation` is necessary. An older version accepts `active=false` without an error, ignores the value, and creates the rule on. Do not create the rule on and then disable it. Do not create it with `create_automation` and `generate_with_ai`. That route skips the input checks of `create_ai_automation`, for example the check that rejects a `scheduler` event. It also makes the agent write the `aiParams` payload by hand. The CLI needs no check, because a `pipefy` version without the off flag rejects the command before it creates the rule. A rule that starts on needs no check.
 
-Use this recipe when "Start state" requires an inactive AI automation. `create_ai_automation` has no `active` input. It creates an active rule. Do not create an active rule and then disable it. Use one `create_automation` call with `active=false`.
+5. If step 3 returned `valid:true`, call `create_ai_automation` with the selected event, pipe, prompt, output fields, and name. Set `active` from "Start state": `active=false` for an off case, otherwise `active=true`. If the specification or the request restricts the trigger, send the restriction in the same call. Send the event filter in `event_params`, for example `to_phase_id` for `card_moved`. Send field tests in `condition` (see [Conditions](#conditions--gate-a-rule-on-field-tests)). For a rule without a restriction, omit both. MCP uses `event_id`, `pipe_id`, `prompt`, `field_ids`, `name`, `active`, `event_params`, and `condition`. The SDK takes a `CreateAiAutomationInput` with those values. The reference for your surface shows where the response holds the new id.
+6. Read the rule with `get_ai_automation` and the new id. Before any activation, compare the saved rule with the specification or the request:
 
-1. Read the input and output field `internal_id` values from the pipe.
-2. Run `validate_ai_automation_prompt` with the `pipe_id`, the prompt, the output `field_ids`, and the selected `event_id`. The `event_id` check catches an event that the pipe does not have, because `create_automation` does not run the event checks of `create_ai_automation`. Do not use `scheduler`: `create_ai_automation` rejects it as an AI automation event, but `validate_ai_automation_prompt` accepts it, so this rule is the only check. Continue only when `valid` is true.
+   - `active`, the prompt, and the output fields.
+   - `event_id` and `event_params`. For a rule restricted to one phase, compare the phase key that the selected event uses. That key is `to_phase_id` for `card_moved`, `fromPhaseId` for `card_left_phase`, and `inPhaseId` for `card_inbox_received_email`. Ignore a phase key that the event does not use. It can read back as `null`.
+   - `condition`. A rule without a condition reads back with empty `expressions` and `expressions_structure` lists. That is a match.
 
-   ```text
-   validate_ai_automation_prompt pipe_id=67890 prompt="Summarize %{900000102} into the summary field." field_ids=["900000101"] event_id=card_created
-   ```
+   If a saved value differs from the request, do not activate the rule. Correct the rule and read it again.
 
-3. Use `action_id=generate_with_ai` and `active=false` in `create_automation`. Put the prompt in `extra_input.action_params.aiParams.value`. Put output field ids in `fieldIds` and AI skill ids in `skillsIds`. Use an empty `skillsIds` list when no AI skill applies. Preserve the selected `event_params` and `condition` in `extra_input`. Without a user condition, send the explicit default condition from the example.
-
-The ids below are examples. Replace them with ids from the pipe. This example uses `card_created`, which needs no `event_params`:
-
-```text
-create_automation pipe_id=67890 name="Summarize intake" trigger_id=card_created action_id=generate_with_ai active=false extra_input={"action_params":{"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}},"condition":{"expressions":[{"structure_id":0,"field_address":"","operation":"","value":""}],"expressions_structure":[[0]]}}
-```
-
-4. Read the created rule with `get_ai_automation`. Make sure that `active` is false and the prompt, fields, event, and condition match the request. The default condition from the example reads back as empty `expressions` and `expressions_structure` lists. That is a match.
-5. Test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
-6. For a temporary off case, use `update_ai_automation` with `active=true` after the read and acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
-
-The [MCP reference](references/mcp.md#create-an-ai-automation-inactive) and the [CLI reference](references/cli.md#create-an-ai-automation-inactive) show where each surface returns the new automation id, and the activation call.
+7. For a rule that starts off, test the saved prompt on acceptance cards with [Steps: simulate an AI automation](#steps-simulate-an-ai-automation). If the output differs from the expected result, keep the rule off.
+8. For a temporary off case, use `update_ai_automation` with `active=true` after the comparison in step 6 and the acceptance tests. Keep the rule off if another off case still applies. Read the rule again after activation.
 
 ---
 
@@ -221,13 +212,14 @@ Use when the user wants an if/then rule to **stamp or copy values** onto the tri
    simulate_automation pipe_id=67890 action_id=generate_with_ai sample_card_id=456 event_id=card_created action_params={"aiParams":{"value":"Summarize %{900000102} into the summary field.","fieldIds":["900000101"],"skillsIds":[]}}
    ```
 
-4. Read the immediate result. It can contain `simulation_id`, `status:"processing"`, and a null `simulationResult`. Keep the ID. Each `simulate_automation` call starts a new simulation. Read the existing simulation through `execute_graphql`:
+4. Read the immediate result. It can contain `simulation_id`, `status:"processing"`, and a null `simulationResult`. Keep the ID. Each `simulate_automation` call starts a new simulation, so do not call it again to get the result. Read the existing simulation with `get_automation_simulation`, and send the `field_ids` that `simulate_automation` returned. If that list is empty, omit `field_ids`:
 
-   ```graphql
-   query { automationSimulation(simulationId: "<simulation_id>") { status simulationResult details { errorType message } } }
+   ```
+   get_automation_simulation simulation_id=<simulation_id> field_ids=["900000101"]
    ```
 
-   Re-read after a short wait until `status` leaves `processing`. If it is still processing after a few reads, report the result as pending with the ID.
+   The read waits up to 30 seconds (`timeout_seconds`, 0 to 45). If `status` is still `processing` when it returns, read again with the same ID. If the second read also ends in `processing`, report the result as pending with the ID.
+5. Read `warnings` before you accept the output. A `placeholder` warning holds a bracket placeholder such as `[Your Name]`. An `empty` warning names a field that got no value. Compare each flagged text with the output that the prompt asks for. Accept text that the prompt asks for, such as a literal `[URGENT]` prefix. For an unfilled marker, such as `[Your Name]` where the reply needs a real name, correct the instruction in the prompt and simulate again. For an empty field, check if the prompt asks for that value.
 
 ---
 
@@ -286,9 +278,9 @@ On `create_automation`, when `extra_input.action_params.field_map` is present, t
 
 For `move_single_card` actions with trigger `card_moved`, **`create_automation` only** validates that the destination phase is reachable from the source via `cards_can_be_moved_to_phases` (same read-only data as `move_card_to_phase`). `update_automation` does not run this check.
 
-If invalid, read the error message listing permitted destination phases and the UI-only transition configuration hint.
+If invalid, read the error message. It lists the permitted destination phases and a hint on how to add a connection.
 
-Recovery: read the allowed phases in `error.message`, or call `get_phase_allowed_move_targets(phase_id=<source_phase_id>)` on the source phase from `event_params.to_phase_id`, then re-issue `create_automation` with a permitted destination phase id.
+Recovery: read the allowed phases in `error.message`, or call `get_phase_allowed_move_targets(phase_id=<source_phase_id>)` on the source phase from `event_params.to_phase_id`, then re-issue `create_automation` with a permitted destination phase id. If the design needs the rejected destination, add it with `add_phase_move_targets(phase_id=<source_phase_id>, target_phase_ids=[<destination_phase_id>])` and re-issue the same call.
 
 ---
 
@@ -327,7 +319,7 @@ Use this pattern for approvals, financial decisions, content publication, and an
 
 - `get_automation` returns the new rule with correct trigger and actions.
 - `validate_ai_automation_prompt` returns `valid:true` before AI automation creation.
-- `simulate_automation` (AI rules) returns a simulation ID; a follow-up `automationSimulation` read returns the final `simulationResult`, or the result is reported as pending with the ID.
+- `simulate_automation` (AI rules) returns a simulation ID. `get_automation_simulation` returns the final `simulationResult`, or the agent reports the result as pending with the ID. Each `placeholder` warning left in the final result holds text that the prompt asks for.
 
 ## Failure modes
 
@@ -342,12 +334,12 @@ Use this pattern for approvals, financial decisions, content publication, and an
 ### Other failure modes
 
 - **`simulate_automation` is AI-only.** Only `generate_with_ai` `action_id` accepted. For traditional rules, use `get_automation_logs` after the rule fires.
-- **Async simulation result.** A `processing` response has no final result yet. Keep the `simulation_id` and read it with the `automationSimulation` query through `execute_graphql` (see [Steps: simulate an AI automation](#steps-simulate-an-ai-automation)). `get_automation_logs` requires a real automation ID, and another `simulate_automation` call starts a new simulation.
+- **Async simulation result.** A `processing` response has no final result yet. Keep the `simulation_id` and read it with `get_automation_simulation` (see [Steps: simulate an AI automation](#steps-simulate-an-ai-automation)). `get_automation_logs` requires a real automation ID, and another `simulate_automation` call starts a new simulation.
 - **`validate_ai_automation_prompt` returns `valid:false`.** Read `problems` (per-field) and `warnings`. Most common: prompt missing `%{internal_id}` reference, or `field_ids` overlap with prompt `%{id}` tokens.
 - **`create_automation` cycle detection.** Same-pipe `card_created` + `create_card` rejected with `"This automation can't be created! It would result in an endless card creation cycle."` Use a different trigger, target a different pipe, or use `update_card` instead.
 - **`create_automation` fails with unknown event/action.** Always run `get_automation_events` + `get_automation_actions` first; do not guess IDs.
 - **Planned a rule that applies a label.** No such action exists in the catalog. The trigger does: `sla_based` is available, so only the label action is missing. See [Applying a label has no automation action](#applying-a-label-has-no-automation-action) before offering anything else.
-- **Phase transition error on `move_single_card`.** Only `create_automation` preflights transitions. Read allowed phase ids in the error text or call `get_phase_allowed_move_targets`, then re-issue with a permitted destination. UI is the only edit surface for transition rules.
+- **Phase transition error on `move_single_card`.** Only `create_automation` preflights transitions. Read allowed phase ids in the error text or call `get_phase_allowed_move_targets`, then re-issue with a permitted destination. To keep the planned destination, add the connection with `add_phase_move_targets` first.
 - **Cross-pipe `PERMISSION_DENIED`.** SA must be member of both source and destination pipes for `create_connected_card` / cross-pipe `create_card`. Recovery: `get_pipe_members` + `invite_members`.
 - **`get_automation_logs_by_repo` returns empty.** Pipe has no traditional automation executions; not an error. AI agent executions are separate (see `get_ai_agent_logs`).
 - **`create_send_task_automation` fires immediately when `active=true`.** Pass `active=false` first if you want to wire it up before the rule starts firing. The 2026-04-16 orphaned-task incident is the cautionary tale.

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from pipefy_sdk.phase_inventory import get_phase_not_found_message
+
 # Typed SDK errors for gradual service-layer migration; not all call sites raise these yet.
 
 
@@ -86,6 +88,19 @@ class PipePhaseSetupError(PipefyError):
             f"{reason.strip().rstrip('.')}. Requested phases created: {names}. Read the "
             "pipe with get_pipe, then fix its phases or delete it with delete_pipe."
         )
+
+
+class PhaseNotFoundError(PipefyError, ValueError):
+    """Raised when a phase read returns no phase for ``phase_id``.
+
+    The API returns no phase both when the phase does not exist and when the
+    caller cannot read it. It subclasses :class:`ValueError` as well, so an
+    existing ``except ValueError`` handler keeps catching it.
+    """
+
+    def __init__(self, phase_id: str | int) -> None:
+        self.phase_id = str(phase_id)
+        super().__init__(get_phase_not_found_message(phase_id))
 
 
 def _text_or_none(value: object) -> str | None:

@@ -20,7 +20,7 @@ Read, create, update, and delete pipes, phases, phase fields, labels, cards, att
 
 - **Field types** for `create_phase_field` are the API's `FieldTypeId` enum values (lower case, e.g. `short_text`, not `SHORT_TEXT`). The tool's input schema lists them.
 
-- **Phase connections.** `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it. After adding a phase, call `get_phase_allowed_move_targets` on it and on its neighbors. Change the connections in the Pipefy UI only when the result needs changes. Call `get_phase_allowed_move_targets` before moves.
+- **Phase connections.** A card moves only to a phase that its current phase connects to. A move rule in an automation or an AI agent has the same limit. `create_phase`, and `create_pipe` with `phases`, connect each new phase to the phases beside it. A new connection applies at once to every card in the source phase. Add only the connections that the user or the specification asks for, with `add_phase_move_targets`. If neither names the phases to connect, ask the user. The tool keeps the current connections. It does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. The API has no atomic add. Send all new destinations of one phase in one call. If you need more than one call on the same phase, wait for each call to finish before you start the next one. Call `get_phase_allowed_move_targets` before moves.
 - **Verify-after-write.** After create/update, re-read with the matching get tool (`get_pipe`, `get_card`, `get_phase_fields`, etc.) before reporting success. Do not treat the write response alone as proof.
 
 ---
@@ -68,6 +68,7 @@ Call `create_phase` with an `index`. `index` is a float sort key: a value betwee
 | `update_phase` | No | Rename, set the done flag. `update_phase` has no index field. To move a phase that has no cards, delete it and create it again with the sort key. |
 | `delete_phase` | No | **Destructive; review and approve first.** |
 | `get_phase_allowed_move_targets` | Yes | Valid destination phases before `move_card_to_phase`. |
+| `add_phase_move_targets` | No | Add destination phases to a phase. It does not remove a connection. Ask a pipe admin to remove it in the Pipefy UI. |
 | `get_phase_cards_count` | Yes | Native per-phase card count via `get_phase`. |
 | `get_phase_cards` | Yes | Paginated cards in a phase. |
 
@@ -75,7 +76,7 @@ Call `create_phase` with an `index`. `index` is a float sort key: a value betwee
 
 ## Seed pipe across phases
 
-Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. The phases must already be connected; `get_phase_allowed_move_targets` shows the connections.
+Use this workflow to place at least one card in each workflow phase (demos, QA checklists, chaos pipes) **without** `execute_graphql`. The phases must be connected. `get_phase_allowed_move_targets` shows the connections, and `add_phase_move_targets` adds a missing one.
 
 ### Tools needed
 
@@ -119,7 +120,7 @@ Before `move_card_to_phase`, call `get_phase_allowed_move_targets`. Required emp
 
 ### Failure modes
 
-- **Empty `allowed_phases`:** configure **Phase → Connections** in the Pipefy UI; the API cannot add edges.
+- **Empty `allowed_phases`:** the phase has no outgoing connections. Ask the user which phases to connect, unless the user or the specification already names them. Add those connections with `add_phase_move_targets`.
 - **Unexpected empty count:** use `get_phase_cards` to list cards before creating duplicates.
 
 ---
