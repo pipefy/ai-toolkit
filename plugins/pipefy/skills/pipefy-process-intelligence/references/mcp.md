@@ -33,3 +33,5 @@ create_automation pipe_id=<id> name="Automate manual step" trigger_id=<EVENT_ID>
 ```text
 create_field_condition phase_id=<PHASE_ID> name="Show follow-up" condition=<CONDITION_DICT> actions=<ACTION_DICTS>
 ```
+
+`create_field_condition` reads the new rule back. When Pipefy stores the rule on the pipe's start form, the tool returns `FIELD_CONDITION_WRONG_PHASE` with `error.details.condition_id`. Find the stored phase in `error.details.actual_phase_id`, or read the rule with `get_field_condition` when that key is missing. If the stored phase is the start form phase of the same pipe, the rule exists. Do not delete it or create it again, also when the error tells you to.

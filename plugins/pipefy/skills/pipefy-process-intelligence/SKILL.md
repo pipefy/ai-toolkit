@@ -131,7 +131,7 @@ Each round focuses on 1–2 improvements; report results before proceeding.
    - The SDK takes one `input` argument. It is a `CreateFieldConditionInput` with the keys `phaseId`, `name`, `condition`, and `actions`.
    - The CLI command is in the [CLI reference](references/cli.md).
 
-4. Read the phase's rules again with `get_field_conditions(phase_id)`. Make sure that the new rule is on the requested phase. The API can store a new rule on the start form instead. If the rule is not on the requested phase, do not create it again. Report the limitation to the user. Ask before you delete the misplaced rule with `delete_field_condition`.
+4. Read the new rule back with `get_field_condition` and its id. Pipefy can store a field condition on the pipe's start form instead of the requested phase. The `get_pipe` result names the start form phase. A rule on the requested phase or on that start form is not an error. Do not delete it or create it again. If the read finds no rule, report the failure to the user.
 
 ---
 
