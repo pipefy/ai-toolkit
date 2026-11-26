@@ -121,9 +121,17 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
 1. Identify a field that should only show when another field has a specific value.
 2. Read the phase's current rules with `get_field_conditions(phase_id)`, so the new condition does not repeat or contradict one.
-3. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
+3. Read the field-condition input schema. Then create the condition. The API requires a `name`, so send it with the `condition` dict and the `actions` list:
 
-   Operation: `create_field_condition phase_id=<PHASE_ID> name="Show follow-up" condition=<CONDITION_DICT> actions=<ACTION_DICTS>`
+   Operation: `create_field_condition` with `<PHASE_ID>`, `name="Show follow-up"`, `<CONDITION_DICT>`, and `<ACTION_DICTS>`
+
+   Each surface puts these values in a different place:
+
+   - MCP takes the separate arguments `phase_id`, `name`, `condition`, and `actions`.
+   - The SDK takes one `input` argument. It is a `CreateFieldConditionInput` with the keys `phaseId`, `name`, `condition`, and `actions`.
+   - The CLI command is in the [CLI reference](references/cli.md).
+
+4. Read the phase's rules again with `get_field_conditions(phase_id)`. Make sure that the new rule is on the requested phase. The API can store a new rule on the start form instead. If the rule is not on the requested phase, do not create it again. Report the limitation to the user. Ask before you delete the misplaced rule with `delete_field_condition`.
 
 ---
 
