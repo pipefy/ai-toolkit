@@ -1784,7 +1784,10 @@ Usage: pipefy field-condition create [OPTIONS]
 │                               structure_id / expressions_structure entries   │
 │                               are coerced to int by the SDK. A field slug in │
 │                               field_address is sent as the field             │
-│                               internal_id.                                   │
+│                               internal_id. A slug made only of digits is     │
+│                               sent as is. For that field, copy the           │
+│                               internal_id from get_phase_fields or           │
+│                               get_start_form_fields.                         │
 │                               [required]                                     │
 │ *  --actions            TEXT  JSON array: action objects. Each item needs    │
 │                               phaseFieldId (use the field's internal_id from │
@@ -1846,7 +1849,11 @@ Usage: pipefy field-condition update [OPTIONS] CONDITION_ID
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ *  --extra          TEXT  JSON object: fields to patch (camelCase keys for   │
-│                           UpdateFieldConditionInput).                        │
+│                           UpdateFieldConditionInput). A field slug in        │
+│                           field_address is sent as the field internal_id. A  │
+│                           slug made only of digits is sent as is. For that   │
+│                           field, copy the internal_id from get_phase_fields  │
+│                           or get_start_form_fields.                          │
 │                           [required]                                         │
 │    --json   -j            Print machine-readable JSON to stdout.             │
 │    --help                 Show this message and exit.                        │

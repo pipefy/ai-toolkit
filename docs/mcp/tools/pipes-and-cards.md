@@ -164,5 +164,5 @@ Five tools read and configure conditional visibility on phase fields.
 - `create_field_condition` maps to `createFieldConditionInput`: `phase_id`, `condition`, `actions`.
 - Action entries use `phaseFieldId` with the target field's `internal_id` from `get_phase_fields` (not the slug `id`).
 - The tool rejects an empty `condition`, an empty `expressions` list, and slug-like `phaseFieldId` values.
-- A field slug in `field_address` is sent as the field `internal_id`. Pipefy saves a slug there as sent. Then a move fails for each card of the pipe that has an empty required field in its phase. A value that is no field slug of the pipe, such as `title`, is sent as is. Only the first segment of a connected-field path changes.
+- A field slug in `field_address` is sent as the field `internal_id`. Pipefy saves a slug there as sent. Then a move fails for each card of the pipe that has an empty required field in its phase. A value that is no field slug of the pipe, such as `title`, is sent as is. Only the first segment of a connected-field path changes. A slug made only of digits is sent as is. For that field, copy the `internal_id` from `get_phase_fields` or `get_start_form_fields`.
 - Use `introspect_type('createFieldConditionInput')` / `UpdateFieldConditionInput` for optional keys in `extra_input`.

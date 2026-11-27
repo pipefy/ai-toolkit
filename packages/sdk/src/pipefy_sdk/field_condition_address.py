@@ -32,6 +32,7 @@ def field_address_slug_heads(condition: Mapping[str, Any] | None) -> set[str]:
     """Return the non-numeric first segments of the condition's ``field_address`` values.
 
     An empty set means every address is already a numeric id, so no lookup is needed.
+    A field slug made only of digits counts as an id and is sent as is.
     """
     heads: set[str] = set()
     for expression in _expressions(condition):

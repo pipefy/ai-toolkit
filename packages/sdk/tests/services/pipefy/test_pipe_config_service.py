@@ -947,6 +947,7 @@ async def test_create_field_condition_success():
         )
     )
 
+    executor.execute_query.assert_awaited_once()
     query, variables = executor.execute_query.call_args[0]
     assert query is CREATE_FIELD_CONDITION_MUTATION
     assert variables == {
