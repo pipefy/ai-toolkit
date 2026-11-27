@@ -136,8 +136,8 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 
    Each surface puts these values in a different place:
 
-   - MCP takes the separate arguments `phase_id`, `name`, `condition`, and `actions`.
    - The SDK takes one `input` argument. It is a `CreateFieldConditionInput` with the keys `phaseId`, `name`, `condition`, and `actions`.
+   - The MCP call is in the [MCP reference](references/mcp.md).
    - The CLI command is in the [CLI reference](references/cli.md).
 
 4. Read the new rule back with `get_field_condition` and its id. Pipefy can store a field condition on the pipe's start form instead of the requested phase. The `get_pipe` result names the start form phase. A rule on the requested phase or on that start form is not an error. Do not delete it or create it again. If the read finds no rule, report the failure to the user.
