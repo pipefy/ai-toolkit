@@ -120,7 +120,12 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 **Example: add a field condition**
 
 1. Identify a field that should only show when another field has a specific value.
-2. Read the phase's current rules with `get_field_conditions(phase_id)`, so the new condition does not repeat or contradict one.
+2. Before you create a rule, read the current rules:
+
+   - Read the rules of the requested phase with `get_field_conditions(phase_id)`.
+   - If `startFormPhaseId` from `get_pipe` is not `phase_id`, also read `get_field_conditions(startFormPhaseId)`. Pipefy can store the rules of a phase on the start form.
+
+   A rule is equivalent when it has the same condition and the same actions. If either list has an equivalent rule, tell the user that the rule exists. Then skip steps 3 and 4. Also make sure that the new rule does not contradict a rule in either list.
 3. Read the field-condition input schema. Then create the condition. The API requires a `name`, so send it with the `condition` dict and the `actions` list:
 
    Operation: `create_field_condition` with `<PHASE_ID>`, `name="Show follow-up"`, `<CONDITION_DICT>`, and `<ACTION_DICTS>`
