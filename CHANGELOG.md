@@ -12,7 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **SDK / MCP / CLI field conditions, field slug in `field_address`**: `create_field_condition` and `update_field_condition` send a field slug in `field_address` as the field `internal_id`. Pipefy saves a slug there as sent. Then a move fails with a generic error for each card of the pipe that has an empty required field in its phase. The SDK reads the pipe's fields only when an address is not numeric. A value that is no field slug of the pipe, such as `title`, is sent as is. A slug that names two fields of the pipe is rejected before the request. A slug made only of digits is sent as is. For that field, copy the `internal_id` from `get_phase_fields` or `get_start_form_fields`.
 
-  A rule saved with a slug before this change keeps it after an upgrade. To repair it, run `pipefy field-condition update <id> --extra '<json>'`. The JSON needs the full `condition`, with the `expressions_structure` that you want, and the current `actions`. The API rejects an update that sends `condition` without `actions`. For a rule with two or more expressions, take the AND/OR grouping from the original definition, because a read does not return `expressions_structure`. Then read the rule with `get_field_condition` and check the saved `field_address`.
+  A rule saved with a slug before this change keeps it after an upgrade. To repair it, run `pipefy field-condition update <id> --extra '<json>'`. The JSON needs the full `condition`, with the `expressions_structure` that you want, and the current `actions`. The API rejects an update that sends `condition` without `actions`.
+
+  Copy the complete actions from the original rule definition or a GraphQL query. For each action, preserve `whenEvaluator` and the target field or phase. If the rule has multiple expressions, copy its AND/OR grouping from the same source. `get_field_condition` omits `expressions_structure`, `whenEvaluator`, and phase targets. After the update, use `get_field_condition` to check the saved `field_address`.
 
 ## [0.5.8-beta.1] - 2026-11-19
 
