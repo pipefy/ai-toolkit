@@ -9,6 +9,11 @@ from typing import Any
 from pipefy_infra.coerce import optional_str
 
 from pipefy_sdk.exceptions import PipefyAPIError, PipePhaseSetupError
+from pipefy_sdk.field_condition_address import (
+    field_address_slug_heads,
+    internal_ids_by_field_slug,
+    resolve_field_address_slugs,
+)
 from pipefy_sdk.graphql_executor import GraphQLExecutor
 from pipefy_sdk.graphql_inputs import (
     CreateFieldConditionInput,
@@ -36,8 +41,10 @@ from pipefy_sdk.queries.pipe_config_queries import (
     DELETE_PHASE_FIELD_MUTATION,
     DELETE_PHASE_MUTATION,
     DELETE_PIPE_MUTATION,
+    FIELD_CONDITION_REPO_ID_QUERY,
     GET_FIELD_CONDITION_QUERY,
     GET_FIELD_CONDITIONS_QUERY,
+    PHASE_REPO_ID_QUERY,
     UPDATE_FIELD_CONDITION_MUTATION,
     UPDATE_LABEL_MUTATION,
     UPDATE_PHASE_FIELD_MUTATION,
@@ -455,11 +462,17 @@ class PipeConfigService:
 
         ``condition`` and ``actions`` are normalized on the way out; see
         :func:`normalize_field_condition_payload` for the two shapes the
-        mutation answers with an opaque 500.
+        mutation answers with an opaque 500. A field slug in ``field_address``
+        is sent as the field ``internal_id`` (see
+        :func:`resolve_field_address_slugs`).
         """
+        payload = await self._with_field_slugs_resolved(
+            _normalized_field_condition_input(input),
+            phase_id=input.phaseId,
+            condition_id=None,
+        )
         return await self._executor.execute_query(
-            CREATE_FIELD_CONDITION_MUTATION,
-            {"input": _normalized_field_condition_input(input)},
+            CREATE_FIELD_CONDITION_MUTATION, {"input": payload}
         )
 
     async def update_field_condition(self, input: UpdateFieldConditionInput) -> dict:
@@ -468,12 +481,54 @@ class PipeConfigService:
         ``condition`` is normalized (persisted ``expression.id`` dropped,
         ``structure_id`` and ``expressions_structure`` entries coerced to
         ``int``) and ``actions`` has ``actionId: "hidden"`` canonicalized to
-        ``"hide"``.
+        ``"hide"``. A field slug in ``field_address`` is sent as the field
+        ``internal_id``, as on create.
         """
-        return await self._executor.execute_query(
-            UPDATE_FIELD_CONDITION_MUTATION,
-            {"input": _normalized_field_condition_input(input)},
+        payload = await self._with_field_slugs_resolved(
+            _normalized_field_condition_input(input),
+            phase_id=input.phase_id,
+            condition_id=input.id,
         )
+        return await self._executor.execute_query(
+            UPDATE_FIELD_CONDITION_MUTATION, {"input": payload}
+        )
+
+    async def _with_field_slugs_resolved(
+        self,
+        payload: dict[str, Any],
+        *,
+        phase_id: str | int | None,
+        condition_id: str | int | None,
+    ) -> dict[str, Any]:
+        """Return ``payload`` with field slugs in ``field_address`` sent as ``internal_id``."""
+        condition = payload.get("condition")
+        slugs = field_address_slug_heads(condition)
+        if not slugs:
+            return payload
+        if phase_id is not None:
+            data = await self._executor.execute_query(
+                PHASE_REPO_ID_QUERY, {"phaseId": str(phase_id)}
+            )
+            repo_id = (data.get("phase") or {}).get("repo_id")
+        else:
+            data = await self._executor.execute_query(
+                FIELD_CONDITION_REPO_ID_QUERY, {"id": str(condition_id)}
+            )
+            repo_id = ((data.get("fieldCondition") or {}).get("phase") or {}).get(
+                "repo_id"
+            )
+        if repo_id is None:
+            raise ValueError(
+                f"cannot resolve field_address {sorted(slugs)!r}: no pipe found for "
+                f"phase {phase_id!r} or field condition {condition_id!r}; send the "
+                "internal_id from get_phase_fields"
+            )
+        pipe_row = await self._pipe_service.get_pipe(str(repo_id))
+        internal_ids = internal_ids_by_field_slug((pipe_row or {}).get("pipe") or {})
+        return {
+            **payload,
+            "condition": resolve_field_address_slugs(condition, internal_ids),
+        }
 
     async def delete_field_condition(self, condition_id: str) -> dict:
         """Delete a field condition permanently (`DeleteFieldConditionInput`).

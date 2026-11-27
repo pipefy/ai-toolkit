@@ -29,8 +29,10 @@ from pipefy_sdk.queries.pipe_config_queries import (
     DELETE_PHASE_FIELD_MUTATION,
     DELETE_PHASE_MUTATION,
     DELETE_PIPE_MUTATION,
+    FIELD_CONDITION_REPO_ID_QUERY,
     GET_FIELD_CONDITION_QUERY,
     GET_FIELD_CONDITIONS_QUERY,
+    PHASE_REPO_ID_QUERY,
     UPDATE_FIELD_CONDITION_MUTATION,
     UPDATE_LABEL_MUTATION,
     UPDATE_PHASE_FIELD_MUTATION,
@@ -921,7 +923,7 @@ async def test_create_field_condition_success():
     expr = {
         "expressions": [
             {
-                "field_address": "trigger_field",
+                "field_address": "421234577",
                 "operation": "equals",
                 "value": "yes",
             },
@@ -945,6 +947,7 @@ async def test_create_field_condition_success():
         )
     )
 
+    executor.execute_query.assert_awaited_once()
     query, variables = executor.execute_query.call_args[0]
     assert query is CREATE_FIELD_CONDITION_MUTATION
     assert variables == {
@@ -968,7 +971,7 @@ async def test_create_field_condition_normalizes_actions_and_condition():
         "expressions": [
             {
                 "id": "client-token",
-                "field_address": "a",
+                "field_address": "1",
                 "operation": "equals",
                 "value": "yes",
                 "structure_id": "0",
@@ -1103,6 +1106,109 @@ async def test_update_field_condition_transport_error():
         await service.update_field_condition(
             UpdateFieldConditionInput(id="missing-id", phase_id="88")
         )
+
+
+def _slug_condition():
+    return {
+        "expressions": [
+            {
+                "structure_id": 0,
+                "field_address": "aprovado",
+                "operation": "equals",
+                "value": "Sim",
+            },
+        ],
+        "expressions_structure": [[0]],
+    }
+
+
+def _pipe_with_aprovado():
+    pipe_service = AsyncMock()
+    pipe_service.get_pipe.return_value = {
+        "pipe": {
+            "start_form_fields": [],
+            "phases": [
+                {"id": "99", "fields": [{"id": "aprovado", "internal_id": "436"}]}
+            ],
+        }
+    }
+    return pipe_service
+
+
+def _executor_answering(responses):
+    return mock_executor(side_effect=lambda query, variables: responses[query])
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_field_condition_sends_the_internal_id_for_a_field_slug():
+    """Pipefy keeps a slug as sent, and a slug-addressed rule makes card moves fail."""
+    executor = _executor_answering(
+        {
+            PHASE_REPO_ID_QUERY: {"phase": {"repo_id": 7}},
+            CREATE_FIELD_CONDITION_MUTATION: {
+                "createFieldCondition": {"fieldCondition": {"id": "c"}}
+            },
+        }
+    )
+    pipe_service = _pipe_with_aprovado()
+    service = PipeConfigService(executor=executor, pipe_service=pipe_service)
+
+    await service.create_field_condition(
+        CreateFieldConditionInput(
+            phaseId="99",
+            name="R",
+            condition=_slug_condition(),
+            actions=[{"phaseFieldId": "437", "actionId": "show"}],
+        )
+    )
+
+    pipe_service.get_pipe.assert_awaited_once_with("7")
+    _, variables = executor.execute_query.call_args[0]
+    assert variables["input"]["condition"]["expressions"][0]["field_address"] == "436"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_field_condition_finds_the_pipe_through_the_condition():
+    executor = _executor_answering(
+        {
+            FIELD_CONDITION_REPO_ID_QUERY: {
+                "fieldCondition": {"phase": {"repo_id": 7}}
+            },
+            UPDATE_FIELD_CONDITION_MUTATION: {
+                "updateFieldCondition": {"fieldCondition": {"id": "c"}}
+            },
+        }
+    )
+    service = PipeConfigService(executor=executor, pipe_service=_pipe_with_aprovado())
+
+    await service.update_field_condition(
+        UpdateFieldConditionInput(id="c", condition=_slug_condition())
+    )
+
+    _, variables = executor.execute_query.call_args[0]
+    assert variables["input"]["condition"]["expressions"][0]["field_address"] == "436"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_create_field_condition_with_a_slug_and_no_pipe_sends_nothing():
+    executor = _executor_answering({PHASE_REPO_ID_QUERY: {"phase": None}})
+    service = PipeConfigService(executor=executor, pipe_service=_pipe_with_aprovado())
+
+    with pytest.raises(ValueError, match="'aprovado'.*internal_id"):
+        await service.create_field_condition(
+            CreateFieldConditionInput(
+                phaseId="404",
+                name="R",
+                condition=_slug_condition(),
+                actions=[{"phaseFieldId": "437", "actionId": "show"}],
+            )
+        )
+
+    sent = [c.args[0] for c in executor.execute_query.call_args_list]
+    assert CREATE_FIELD_CONDITION_MUTATION not in sent
 
 
 @pytest.mark.unit
