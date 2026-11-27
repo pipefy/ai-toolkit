@@ -130,7 +130,7 @@ Each round focuses on 1–2 improvements; report results before proceeding.
    A rule is equivalent when both rules have one expression and the expression and the actions are the same. If either list has an equivalent rule, tell the user that the rule exists. Then skip steps 3 and 4.
 
    The read does not show how two or more expressions combine (AND or OR). If a rule with two or more expressions has the same expressions and actions as the planned rule, show that rule to the user. Ask whether to create the new rule. Also make sure that the new rule does not contradict a rule in either list.
-3. Read the field-condition input schema. Then create the condition. The API requires a `name`, so send it with the `condition` dict and the `actions` list. Use the field `internal_id` in `field_address` and in `phaseFieldId`:
+3. Read the field-condition input schema. Then create the condition. The API requires a `name`, so send it with the `condition` dict and the `actions` list. Use the field `internal_id` in `field_address` and in `phaseFieldId`. Pipefy saves a field slug in `field_address` without an error. Then a move fails for each card of the pipe that has an empty required field in its phase:
 
    Operation: `create_field_condition` with `<PHASE_ID>`, `name="Show follow-up"`, `<CONDITION_DICT>`, and `<ACTION_DICTS>`
 

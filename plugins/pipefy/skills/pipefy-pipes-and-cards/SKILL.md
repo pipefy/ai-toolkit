@@ -219,6 +219,8 @@ These tools manage label definitions on the pipe. Applying a pipe label to a car
 
 Do not hide a required field; clear `required` first.
 
+Use the field `internal_id` in `field_address`. Pipefy saves a field slug there without an error. Then a move fails for each card of the pipe that has an empty required field in its phase.
+
 ---
 
 ## Success criteria
