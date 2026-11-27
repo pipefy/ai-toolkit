@@ -213,11 +213,13 @@ These tools manage label definitions on the pipe. Applying a pipe label to a car
 | ------------ | --------- |
 | `get_field_conditions` | List all field conditions on a phase. |
 | `get_field_condition` | Load one field condition by ID. |
-| `create_field_condition` | Create show/hide rule. Verify that the rule is on the requested phase before reporting success. |
+| `create_field_condition` | Create show/hide rule. Read the rule back before reporting success. Pipefy can store it on the pipe's start form (see Failure modes). |
 | `update_field_condition` | Update condition action or rule. |
 | `delete_field_condition` | **Destructive; review and approve first.** |
 
 Do not hide a required field; clear `required` first.
+
+Use the field `internal_id` in `field_address`. Pipefy saves a field slug there without an error. Then a move fails for each card of the pipe that has an empty required field in its phase.
 
 ---
 
@@ -229,7 +231,7 @@ Do not hide a required field; clear `required` first.
 
 ## Failure modes
 
-- **Field condition on the wrong phase:** after `create_field_condition`, read `get_field_conditions(phase_id)` back and check that the rule is on the requested phase. If it is missing or on another phase, delete that condition before recreating; do not blind-retry create on the same requested phase.
+- **Field condition on another phase:** after `create_field_condition`, read the rule back with `get_field_condition` and its id. Pipefy can store a field condition on the pipe's start form instead of the requested phase. `startFormPhaseId` from `get_pipe` names that phase. A rule on the requested phase or on that start form is in place. Do not delete it or create it again. If the rule is on any other phase, delete it before you create it again. If the read finds no rule, report the failure. Do not blind-retry create on the same requested phase.
 - **`create_card` fails with missing required fields:** call `get_start_form_fields` first to discover required `field_id` values.
 - **`create_card` / write reports failure (empty or unclear message):** do not blind-retry. Re-read `get_cards` / `get_phase_cards_count` (or pipe `cards_count`) before any retry — see `pipefy-api-fallback` (ambiguous write failure re read before retry).
 - **Connections missing after a connector field update:** `update_card_field` is replace-all — writing one related card id drops the rest (same replace-all applies to other list-valued fields: attachments, checklists). Prefer `update_card` with `operation` ADD/REMOVE and related **card ids**. Do not rebuild a full list from `get_card` `value` (display titles only); for REMOVE or a safe full rewrite, get current related-card ids from `get_card_relations` (or GraphQL `array_value`). For *writes* via a pipe relation (not a connector field), use `create_card_relation` / `delete_card_relation` — see `pipefy-relations`. Pipe labels and assignees are not fields: use `update_card(label_ids=)` / `assignee_ids` (replace-all); `field_updates` ADD cannot address them.

@@ -120,10 +120,27 @@ Each round focuses on 1–2 improvements; report results before proceeding.
 **Example: add a field condition**
 
 1. Identify a field that should only show when another field has a specific value.
-2. Read the phase's current rules with `get_field_conditions(phase_id)`, so the new condition does not repeat or contradict one.
-3. Read the field-condition input schema, then create the condition with its required `name`, `condition` dict, and `actions` list:
+2. Before you create a rule, read the current rules:
 
-   Operation: `create_field_condition phase_id=<PHASE_ID> name="Show follow-up" condition=<CONDITION_DICT> actions=<ACTION_DICTS>`
+   - Read the rules of the requested phase with `get_field_conditions(phase_id)`.
+   - If `startFormPhaseId` from `get_pipe` is not `phase_id`, also read `get_field_conditions(startFormPhaseId)`. Pipefy can store the rules of a phase on the start form.
+
+   Before you compare, change each field reference in the planned rule and in the rules that you read to the field's `internal_id`. A reference can be the slug `id`, the `uuid`, or the `internal_id`. Find the `internal_id` with `get_phase_fields` or `get_start_form_fields`. Also read the action `hidden` as `hide`.
+
+   A rule is equivalent when both rules have one expression and the expression and the actions are the same. If either list has an equivalent rule, tell the user that the rule exists. Then skip steps 3 and 4.
+
+   The read does not show how two or more expressions combine (AND or OR). If a rule with two or more expressions has the same expressions and actions as the planned rule, show that rule to the user. Ask whether to create the new rule. Also make sure that the new rule does not contradict a rule in either list.
+3. Read the field-condition input schema. Then create the condition. The API requires a `name`, so send it with the `condition` dict and the `actions` list. Use the field `internal_id` in `field_address` and in `phaseFieldId`. Pipefy saves a field slug in `field_address` without an error. Then a move fails for each card of the pipe that has an empty required field in its phase:
+
+   Operation: `create_field_condition` with `<PHASE_ID>`, `name="Show follow-up"`, `<CONDITION_DICT>`, and `<ACTION_DICTS>`
+
+   Each surface puts these values in a different place:
+
+   - The SDK takes one `input` argument. It is a `CreateFieldConditionInput` with the keys `phaseId`, `name`, `condition`, and `actions`.
+   - The MCP call is in the [MCP reference](references/mcp.md).
+   - The CLI command is in the [CLI reference](references/cli.md).
+
+4. Read the new rule back with `get_field_condition` and its id. Pipefy can store a field condition on the pipe's start form instead of the requested phase. The `get_pipe` result names the start form phase. A rule on the requested phase or on that start form is not an error. Do not delete it or create it again. If the read finds no rule, report the failure to the user.
 
 ---
 

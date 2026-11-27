@@ -32,7 +32,7 @@ The tool keeps the connections that it reads before the write. If another client
 
 ## Field-condition controls
 
-`create_field_condition` verifies the rule on the requested phase. `verified: true` indicates verification succeeded; missing/wrong phase returns `success: false` with `error.details.condition_id`. Use that ID (or the ID in the message) to delete the condition through the destructive preview flow before recreating. Do not blind-retry create. If verification reads are inconclusive, the tool may return success with a warning that verification was unavailable.
+`create_field_condition` verifies the rule on the requested phase. `verified: true` indicates verification succeeded. A missing rule or a rule on another phase returns `success: false` with `error.details.condition_id`. Find the stored phase in `error.details.actual_phase_id`, or read the rule with `get_field_condition` when that key is missing. If the stored phase is the start form phase of the same pipe, the rule exists. Do not delete it or create it again, also when the error tells you to. For a rule on any other phase, delete the condition before recreating. Use the condition ID (or the ID in the message) in the destructive preview flow. Do not blind-retry create. If verification reads are inconclusive, the tool may return success with a warning that verification was unavailable.
 
 Do not hide a required field. MCP rejects `hide` / `hidden` on `required=true`; clear `required` first. `update_field_condition` enforces this when top-level `actions` is set. Passing `actions` through `extra_input` returns `INVALID_ARGUMENTS`. See [parity](https://github.com/pipefy/ai-toolkit/blob/main/docs/parity.md).
 
