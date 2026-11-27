@@ -386,6 +386,7 @@ class FieldConditionTools:
                     objects with ``structure_id``, ``field_address``, ``operation``, ``value``) and
                     ``expressions_structure`` (array of arrays of ``structure_id`` values).
                     Discover via: ``get_phase_fields(phase_id)[].internal_id`` for ``field_address``.
+                    A field slug in ``field_address`` is sent as the field ``internal_id``.
                 actions: List of ``FieldConditionActionInput`` dicts; each needs ``phaseFieldId``.
                     ``phaseFieldId`` is usually the field's ``internal_id`` from ``get_phase_fields``,
                     same pattern as ``fill_card_phase_fields`` and ``create_card_relation``.
@@ -522,6 +523,7 @@ class FieldConditionTools:
                     Discover via: ``get_field_conditions(phase_id)[].id``.
                 condition: Optional ``ConditionInput`` dict (same as create).
                     Discover via: ``get_phase_fields(phase_id)[].internal_id`` for ``field_address``.
+                    A field slug in ``field_address`` is sent as the field ``internal_id``.
                 actions: Optional list of ``FieldConditionActionInput`` dicts (same as create).
                     Discover via: ``get_phase_fields(phase_id)[].internal_id`` for ``phaseFieldId``.
                 name: Optional new rule name.

@@ -108,7 +108,8 @@ def field_condition_create(
             "JSON object: ConditionInput. Example: "
             '\'{"expressions":[{"structure_id":0,"field_address":"<internal_id>",'
             '"operation":"equals","value":"X"}],"expressions_structure":[[0]]}\'. '
-            "structure_id / expressions_structure entries are coerced to int by the SDK."
+            "structure_id / expressions_structure entries are coerced to int by the SDK. "
+            "A field slug in field_address is sent as the field internal_id."
         ),
     ),
     actions: str = typer.Option(

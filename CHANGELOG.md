@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **SDK / MCP / CLI field conditions, field slug in `field_address`**: `create_field_condition` and `update_field_condition` send a field slug in `field_address` as the field `internal_id`. Pipefy saves a slug there as sent. Then a move fails with a generic error for each card of the pipe that has an empty required field in its phase. The SDK reads the pipe's fields only when an address is not numeric. A value that is no field slug of the pipe, such as `title`, is sent as is. A slug that names two fields of the pipe is rejected before the request.
+
 ## [0.5.8-beta.1] - 2026-11-19
 
 ### Added

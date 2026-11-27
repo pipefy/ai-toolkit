@@ -1782,7 +1782,9 @@ Usage: pipefy field-condition create [OPTIONS]
 │ *  --condition          TEXT  JSON object: ConditionInput. Example:          │
 │                               '{"expressions":[{"structure_id":0,"field_add… │
 │                               structure_id / expressions_structure entries   │
-│                               are coerced to int by the SDK.                 │
+│                               are coerced to int by the SDK. A field slug in │
+│                               field_address is sent as the field             │
+│                               internal_id.                                   │
 │                               [required]                                     │
 │ *  --actions            TEXT  JSON array: action objects. Each item needs    │
 │                               phaseFieldId (use the field's internal_id from │

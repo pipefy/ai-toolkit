@@ -281,6 +281,28 @@ GET_FIELD_CONDITION_QUERY = gql(
     """
 )
 
+PHASE_REPO_ID_QUERY = gql(
+    """
+    query ($phaseId: ID!) {
+        phase(id: $phaseId) {
+            repo_id
+        }
+    }
+    """
+)
+
+FIELD_CONDITION_REPO_ID_QUERY = gql(
+    """
+    query ($id: ID!) {
+        fieldCondition(id: $id) {
+            phase {
+                repo_id
+            }
+        }
+    }
+    """
+)
+
 __all__ = [
     "CLONE_PIPE_MUTATION",
     "CREATE_FIELD_CONDITION_MUTATION",
@@ -293,8 +315,10 @@ __all__ = [
     "DELETE_PHASE_FIELD_MUTATION",
     "DELETE_PHASE_MUTATION",
     "DELETE_PIPE_MUTATION",
+    "FIELD_CONDITION_REPO_ID_QUERY",
     "GET_FIELD_CONDITION_QUERY",
     "GET_FIELD_CONDITIONS_QUERY",
+    "PHASE_REPO_ID_QUERY",
     "UPDATE_FIELD_CONDITION_MUTATION",
     "UPDATE_LABEL_MUTATION",
     "UPDATE_PHASE_FIELD_MUTATION",
